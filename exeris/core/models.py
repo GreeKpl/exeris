@@ -63,7 +63,10 @@ class ItemType(EntityType):
     }
 
 
-class Entity(Base):  # todo will be abstract
+class Entity(Base):
+    """
+    Abstract base for all entities in the game, like items or locations
+    """
     __tablename__ = "entities"
 
     id = sql.Column(sql.Integer, primary_key=True)
