@@ -24,7 +24,7 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy'],
+    install_requires=['sqlalchemy', 'flask'],
 
     extras_require = {
         'dev': ['check-manifest'],
