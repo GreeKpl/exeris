@@ -1,3 +1,6 @@
+import geoalchemy2 as gis
+from pygeoif import geometry
+
 __author__ = 'Aleksander Chrabąszcz'
 
 import sqlalchemy as sql
@@ -6,6 +9,16 @@ import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy.ext.declarative as decl
 
 Base = decl.declarative_base()
+
+
+# subclasses hierarchy for Entity
+ENTITY_BASE = 1
+ENTITY_ITEM = 2
+ENTITY_LOCATION = 3
+ENTITY_ROOT_LOCATION = 5
+ENTITY_PASSAGE = 6
+ENTITY_CHARACTER = 7
+ENTITY_ACTIVITY = 8
 
 
 class Player(Base):
@@ -43,8 +56,6 @@ class EntityType(Base):
     name = sql.Column(sql.String(32))  # no spaces allowed
     type = sql.Column(sql.SmallInteger)  # discriminator
 
-    ENTITY_BASE = 1
-
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": type,
@@ -55,8 +66,6 @@ class ItemType(EntityType):
     __tablename__ = "item_types"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
-
-    ENTITY_ITEM = 3
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
@@ -69,11 +78,17 @@ class Entity(Base):
     """
     __tablename__ = "entities"
 
+    ROLE_CONSISTED = 1
+    ROLE_CONTAINED = 2
+
     id = sql.Column(sql.Integer, primary_key=True)
     weight = sql.Column(sql.Integer)
-    type = sql.Column(sql.SmallInteger)  # discriminator
 
-    ENTITY_BASE = 1
+    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=False)
+    being_in = sql.orm.relationship("Entity")
+    role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
+
+    type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -85,8 +100,6 @@ class LocationType(EntityType):
     __tablename__ = "item_types"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
-
-    ENTITY_LOCATION = 5
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -106,8 +119,6 @@ class Character(Entity):
     player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player)
 
-    ENTITY_CHARACTER = 2
-
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
     }
@@ -118,10 +129,28 @@ class Item(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    ENTITY_ITEM = 3
-
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
+    }
+
+
+class ActivityType(EntityType):
+    __tablename__ = "activity_types"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_ACTIVITY,
+    }
+
+
+class Activity(Entity):
+    __tablename__ = "activities"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_ACTIVITY,
     }
 
 
@@ -129,22 +158,23 @@ class GameDate(Base):
     __tablename__ = "game_date"
 
     id = sql.Column(sql.Integer, primary_key=True)
-    date = sql.Column(sql.BigInteger)
+    game_date = sql.Column(sql.BigInteger, nullable=False)
+    real_date = sql.Column(sql.Date, nullable=False)
 
 
 class EventTypeGroup(Base):
     __tablename__ = "event_type_groups"
 
     id = sql.Column(sql.Integer, primary_key=True)
+    name = sql.Column(sql.String(32))
 
 
 class EventType(Base):
     __tablename__ = "events"
 
-    CRITICAL = 10
-    IMPORTANT = 6
-    NORMAL = 4
-    IRRELEVANT = 2
+    IMPORTANT = 10
+    NORMAL = 5
+    LOW = 0
 
     name = sql.Column(sql.String, primary_key=True)
     severity = sql.Column(sql.SmallInteger)
@@ -183,9 +213,29 @@ class TypeProperty(Base):
 class EntityProperty(Base):
     __tablename__ = "entity_properties"
 
-    value = sql.Column(psql.JSON)
-    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id))
+    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity)
+    name = sql.Column(sql.String, primary_key=True)
+    data = sql.Column(psql.JSON)
+
+    type = sql.Column(sql.SmallInteger)
+
+    __mapper_args__ = {
+        "polymorphic_identity": ENTITY_BASE,
+        "polymorphic_on": type,
+    }
+
+
+class NodeToNode(Entity):  # TODO! MAY OR MAY NOT WORK
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    left_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
+    right_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_PASSAGE,
+    }
 
 
 class Location(Entity):
@@ -193,7 +243,8 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    ENTITY_LOCATION = 5
+    neighbours = sql.orm.relationship("Location", secondary=NodeToNode, primaryjoin=id==NodeToNode.c.left_node_id,
+                                      secondaryjoin=id==NodeToNode.c.right_node_id, backref="left_nodes")
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -205,11 +256,9 @@ class RootLocation(Location):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    ENTITY_ROOT_LOCATION = 6
-
-    x = sql.Column(sql.Float)
-    y = sql.Column(sql.Float)
+    position = sql.Column(gis.Geometry("POINT")) # todo need coords type or sth
     is_mobile = sql.Column(sql.Boolean)
+    direction = sql.Column(sql.Integer)  # todo need [0, 360]
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
