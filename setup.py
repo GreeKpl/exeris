@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 from os import path
 
 setup(
-    name='exeris',
+    name='exeris2',
     version='0.1',
 
-    description='exeris',
+    description='exeris2',
     long_description='',
 
     url='https://github.com/GreeKpl',
@@ -24,7 +24,7 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy', 'flask'],
+    install_requires=['sqlalchemy', 'flask', 'geoalchemy2'],
 
     extras_require = {
         'dev': ['check-manifest'],

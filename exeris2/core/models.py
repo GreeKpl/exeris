@@ -1,5 +1,4 @@
 import geoalchemy2 as gis
-from pygeoif import geometry
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -7,6 +6,8 @@ import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy.ext.declarative as decl
+
+# from exeris import db  # used to test the schema
 
 Base = decl.declarative_base()
 
@@ -33,7 +34,7 @@ class Player(Base):
     email = sql.Column(sql.String(32), unique=True)
     register_date = sql.Column(sql.Date)
     password = sql.Column(sql.String)
-    sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE))  # used to have correct translations
+    sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))  # used to have correct translations
 
     def is_authenticated(self):
         return True
@@ -97,7 +98,7 @@ class Entity(Base):
 
 
 class LocationType(EntityType):
-    __tablename__ = "item_types"
+    __tablename__ = "location_types"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
 
@@ -115,7 +116,7 @@ class Character(Entity):
     SEX_FEMALE = "f"
 
     name = sql.Column(sql.String)
-    sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE))
+    sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
     player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player)
 
@@ -170,7 +171,7 @@ class EventTypeGroup(Base):
 
 
 class EventType(Base):
-    __tablename__ = "events"
+    __tablename__ = "event_types"
 
     IMPORTANT = 10
     NORMAL = 5
@@ -195,19 +196,21 @@ class Event(Base):
 class EventObserver(Base):
     __tablename__ = "event_observers"
 
-    observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id))
+    observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
     observer = sql.orm.relationship(Character)
-    event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id))
+    event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id), primary_key=True)
     event = sql.orm.relationship(Event)
     times_seen = sql.Column(sql.Integer)
 
 
-class TypeProperty(Base):
-    __tablename__ = "type_properties"
+class EntityTypeProperty(Base):
+    __tablename__ = "entity_type_properties"
 
-    value = sql.Column(psql.JSON)
-    type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id))
+    type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id), primary_key=True)
     type = sql.orm.relationship(EntityType)
+
+    name = sql.Column(sql.String, primary_key=True)
+    data = sql.Column(psql.JSON)
 
 
 class EntityProperty(Base):
@@ -215,6 +218,7 @@ class EntityProperty(Base):
 
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity)
+
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
 
@@ -226,12 +230,13 @@ class EntityProperty(Base):
     }
 
 
-class NodeToNode(Entity):  # TODO! MAY OR MAY NOT WORK
+class Passage(Entity):  # TODO! MAY OR MAY NOT WORK
+    __tablename__ = "passages"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    left_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
-    right_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
+    left_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
+    right_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
@@ -243,8 +248,8 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    neighbours = sql.orm.relationship("Location", secondary=NodeToNode, primaryjoin=id==NodeToNode.c.left_node_id,
-                                      secondaryjoin=id==NodeToNode.c.right_node_id, backref="left_nodes")
+    neighbours = sql.orm.relationship("Location", secondary=Passage, primaryjoin=id == Passage.left_node_id,
+                                      secondaryjoin=id == Passage.right_node_id, backref="locations")
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -256,7 +261,7 @@ class RootLocation(Location):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    position = sql.Column(gis.Geometry("POINT")) # todo need coords type or sth
+    position = sql.Column(gis.Geometry("POINT"))  # todo need coords type or sth
     is_mobile = sql.Column(sql.Boolean)
     direction = sql.Column(sql.Integer)  # todo need [0, 360]
 

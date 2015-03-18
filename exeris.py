@@ -3,10 +3,8 @@ from flask.ext.sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost/exeris111"
+app.config.from_object("config.DevelopmentConfig")
 db = SQLAlchemy(app)
-db.create_all()
 
 @app.route('/')
 def hello_world():
