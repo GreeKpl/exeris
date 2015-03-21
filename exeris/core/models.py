@@ -1,4 +1,5 @@
 import geoalchemy2 as gis
+from exeris.core.main import db
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -6,10 +7,6 @@ import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy.ext.declarative as decl
-
-# from exeris import db  # used to test the schema
-
-Base = decl.declarative_base()
 
 
 # subclasses hierarchy for Entity
@@ -22,7 +19,7 @@ ENTITY_CHARACTER = 7
 ENTITY_ACTIVITY = 8
 
 
-class Player(Base):
+class Player(db.Model):
     __tablename__ = "players"
 
     id = sql.Column(sql.Integer, primary_key=True)
@@ -49,7 +46,7 @@ class Player(Base):
         return self.login
 
 
-class EntityType(Base):
+class EntityType(db.Model):
     __tablename__ = "entity_types"
 
     id = sql.Column(sql.Integer, primary_key=True)
@@ -73,7 +70,7 @@ class ItemType(EntityType):
     }
 
 
-class Entity(Base):
+class Entity(db.Model):
     """
     Abstract base for all entities in the game, like items or locations
     """
@@ -155,22 +152,22 @@ class Activity(Entity):
     }
 
 
-class GameDate(Base):
+class GameDateCheckpoint(db.Model):
     __tablename__ = "game_date"
 
     id = sql.Column(sql.Integer, primary_key=True)
     game_date = sql.Column(sql.BigInteger, nullable=False)
-    real_date = sql.Column(sql.Date, nullable=False)
+    real_date = sql.Column(sql.BigInteger, nullable=False)
 
 
-class EventTypeGroup(Base):
+class EventTypeGroup(db.Model):
     __tablename__ = "event_type_groups"
 
     id = sql.Column(sql.Integer, primary_key=True)
     name = sql.Column(sql.String(32))
 
 
-class EventType(Base):
+class EventType(db.Model):
     __tablename__ = "event_types"
 
     IMPORTANT = 10
@@ -179,21 +176,21 @@ class EventType(Base):
 
     name = sql.Column(sql.String, primary_key=True)
     severity = sql.Column(sql.SmallInteger)
-    group_id = sql.Column(sql.Integer)
+    group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"))
     group = sql.orm.relationship(EventTypeGroup)
 
 
-class Event(Base):
+class Event(db.Model):
     __tablename__ = "events"
 
     id = sql.Column(sql.Integer, primary_key=True)
-    type_name = sql.Column(sql.String)
+    type_name = sql.Column(sql.String, sql.ForeignKey("event_types.name"))
     type = sql.orm.relationship(EventType)
     parameters = sql.Column(psql.JSON)
     date = sql.Column(sql.BigInteger)
 
 
-class EventObserver(Base):
+class EventObserver(db.Model):
     __tablename__ = "event_observers"
 
     observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
@@ -203,7 +200,7 @@ class EventObserver(Base):
     times_seen = sql.Column(sql.Integer)
 
 
-class EntityTypeProperty(Base):
+class EntityTypeProperty(db.Model):
     __tablename__ = "entity_type_properties"
 
     type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id), primary_key=True)
@@ -213,7 +210,7 @@ class EntityTypeProperty(Base):
     data = sql.Column(psql.JSON)
 
 
-class EntityProperty(Base):
+class EntityProperty(db.Model):
     __tablename__ = "entity_properties"
 
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
@@ -230,26 +227,15 @@ class EntityProperty(Base):
     }
 
 
-class Passage(Entity):  # TODO! MAY OR MAY NOT WORK
-    __tablename__ = "passages"
-
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
-
-    left_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
-    right_node_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
-
-    __mapper_args__ = {
-        'polymorphic_identity': ENTITY_PASSAGE,
-    }
-
-
 class Location(Entity):
     __tablename__ = "locations"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    neighbours = sql.orm.relationship("Location", secondary=Passage, primaryjoin=id == Passage.left_node_id,
-                                      secondaryjoin=id == Passage.right_node_id, backref="locations")
+    def neighbours(self):
+        neighbours = [passage.left_location for passage in self.right_passages]
+        neighbours.extend([passage.right_location for passage in self.left_passages])
+        return neighbours
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -261,7 +247,7 @@ class RootLocation(Location):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    position = sql.Column(gis.Geometry("POINT"))  # todo need coords type or sth
+    position = sql.Column(gis.Geometry("POINT"))
     is_mobile = sql.Column(sql.Boolean)
     direction = sql.Column(sql.Integer)  # todo need [0, 360]
 
@@ -269,3 +255,20 @@ class RootLocation(Location):
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
     }
 
+
+class Passage(Entity):
+    __tablename__ = "passages"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
+    right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
+
+    left_location = sql.orm.relationship(Location, primaryjoin=left_location_id == Location.id,
+                                         backref="left_passages")
+    right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
+                                          backref="right_passages")
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_PASSAGE,
+    }

@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 from os import path
 
 setup(
-    name='exeris2',
+    name='exeris',
     version='0.1',
 
-    description='exeris2',
+    description='exeris',
     long_description='',
 
     url='https://github.com/GreeKpl',
