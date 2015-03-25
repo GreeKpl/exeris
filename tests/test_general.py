@@ -1,18 +1,15 @@
-import unittest
-from flask import Flask
-from flask.ext.sqlalchemy import SQLAlchemy
-import time
 from unittest.mock import patch
+
 from flask.ext.testing import TestCase
 
 from exeris.core.main import GameDate, db
 from exeris.core.models import GameDateCheckpoint
-from tests.util import set_up_app_with_database
+from tests import util
 
 
 class GameDateTest(TestCase):
 
-    create_app = set_up_app_with_database
+    create_app = util.set_up_app_with_database
 
     def test_basic(self):
         last_checkpoint_timestamp = 1000
@@ -52,5 +49,4 @@ class GameDateTest(TestCase):
         self.assertTrue(old == like_old)
         self.assertFalse(old != like_old)
 
-    def tearDown(self):
-        db.session.rollback()
+    tearDown = util.tear_down_rollback

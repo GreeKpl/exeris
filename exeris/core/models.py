@@ -1,5 +1,8 @@
 import geoalchemy2 as gis
+from pygeoif import Point, geometry
+from sqlalchemy.ext.hybrid import hybrid_property
 from exeris.core.main import db
+from sqlalchemy.orm import validates
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -7,6 +10,7 @@ import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy.ext.declarative as decl
+from .map import MAP_HEIGHT, MAP_WIDTH
 
 
 # subclasses hierarchy for Entity
@@ -17,6 +21,10 @@ ENTITY_ROOT_LOCATION = 5
 ENTITY_PASSAGE = 6
 ENTITY_CHARACTER = 7
 ENTITY_ACTIVITY = 8
+ENTITY_TERRAIN_AREA = 9
+ENTITY_VISIBILITY_AREA = 10
+ENTITY_TRAVERSABILITY_AREA = 11
+ENTITY_RESOURCE_AREA = 12
 
 
 class Player(db.Model):
@@ -52,6 +60,7 @@ class EntityType(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
 
     name = sql.Column(sql.String(32))  # no spaces allowed
+
     type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
@@ -82,15 +91,15 @@ class Entity(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     weight = sql.Column(sql.Integer)
 
-    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=False)
+    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"))
     being_in = sql.orm.relationship("Entity")
     role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
 
-    type = sql.Column(sql.SmallInteger)  # discriminator
+    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
-        "polymorphic_on": type,
+        "polymorphic_on": discriminator_type,
     }
 
 
@@ -116,6 +125,9 @@ class Character(Entity):
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
     player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player)
+
+    spawn_date = sql.Column(sql.BigInteger)
+    spawn_location = sql.Column(gis.Geometry("POINT"))
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
@@ -232,6 +244,7 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
+    @hybrid_property
     def neighbours(self):
         neighbours = [passage.left_location for passage in self.right_passages]
         neighbours.extend([passage.right_location for passage in self.left_passages])
@@ -247,9 +260,35 @@ class RootLocation(Location):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    position = sql.Column(gis.Geometry("POINT"))
+    _position = sql.Column(gis.Geometry("POINT"))
     is_mobile = sql.Column(sql.Boolean)
-    direction = sql.Column(sql.Integer)  # todo need [0, 360]
+    direction = sql.Column(sql.Integer)
+
+    def __init__(self, position, is_mobile, direction):
+        self.position = position
+        self.is_mobile = is_mobile
+        self.direction = direction
+
+    @validates("direction")
+    def validate_direction(self, key, direction):
+        return direction % 360
+
+    @hybrid_property
+    def position(self):
+        return geometry.from_wkt(self._position)
+
+    @position.setter
+    def position(self, position):  # we assume position is a Point
+        x, y = position.x, position.y
+        if not (0 <= x < MAP_WIDTH):
+            x %= MAP_WIDTH
+        if y < 0:
+            y = -y
+            x = (x + MAP_WIDTH / 2) % MAP_WIDTH
+        if y > MAP_HEIGHT:
+            y = MAP_HEIGHT - (y - MAP_HEIGHT)
+            x = (x + MAP_WIDTH / 2) % MAP_WIDTH
+        self._position = Point(x, y).to_wkt()
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
@@ -271,4 +310,88 @@ class Passage(Entity):
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
+    }
+
+
+class ResourceArea(Entity):
+    __tablename__ = "resource_areas"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    resource_type = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
+
+    area = sql.Column(gis.Geometry("POLYGON"))
+
+    @validates("area")
+    def validate_position(self, key, area):  # we assume position is a Polygon
+        return area.to_wkt()
+
+    quality = sql.Column(sql.Integer)  # amount collected per unit of time
+    amount = sql.Column(sql.Integer)  # amount collected before the resource becomes unavailable
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_RESOURCE_AREA,
+    }
+
+
+class TerrainType(EntityType):
+    __tablename__ = "terrain_types"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+
+    visibility = sql.Column(sql.Float)
+    traversability = sql.Column(sql.Float)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_TERRAIN_AREA,
+    }
+
+
+class TerrainArea(Entity):
+    __tablename__ = "terrain_areas"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    area = sql.Column(gis.Geometry("POLYGON"))
+
+    @validates("area")
+    def validate_position(self, key, area):  # we assume position is a Polygon
+        return area.to_wkt()
+
+    type = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_TERRAIN_AREA,
+    }
+
+
+class VisibilityArea(Entity):
+    __tablename__ = "visibility_areas"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    area = sql.Column(gis.Geometry("POLYGONM"))
+
+    @validates("area")
+    def validate_position(self, key, area):  # we assume position is a Polygon
+        return area.to_wkt()
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_VISIBILITY_AREA,
+    }
+
+
+class TraversabilityArea(Entity):
+    __tablename__ = "traversability_areas"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    area = sql.Column(gis.Geometry("POLYGONM"))
+
+    @validates("area")
+    def validate_position(self, key, area):  # we assume position is a Polygon
+        return area.to_wkt()
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_TRAVERSABILITY_AREA,
     }

@@ -24,4 +24,4 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI_BASE = "postgresql://postgres:root@localhost/"
     SQLALCHEMY_DATABASE_NAME = "exeris_1"
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI_BASE + SQLALCHEMY_DATABASE_NAME
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False

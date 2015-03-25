@@ -21,6 +21,11 @@ def create_app(database=db, config_object_module="config.DevelopmentConfig"):
 
 
 class GameDate:
+    """
+    Class handling in-game date and in-game time intervals. It can be used to get current in-game time (NOW), and also
+    perform basic addition and compare operations.
+    1 minute = 60 seconds, 1 hour = 60 minutes, 1 Sol = 48 hours (24 day + 24 night), 1 moon = 14 Sols
+    """
 
     SEC_IN_MIN = 60
     MIN_IN_HOUR = 60
@@ -76,4 +81,10 @@ class GameDate:
     __ne__ = lambda self, other: self.game_timestamp != other.game_timestamp
     __ge__ = lambda self, other: self.game_timestamp >= other.game_timestamp
     __gt__ = lambda self, other: self.game_timestamp > other.game_timestamp
+
+
+class EventCreator():
+    pass
+
+
 

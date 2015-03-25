@@ -10,3 +10,7 @@ def set_up_app_with_database(self):
         db.create_all()
 
     return app
+
+
+def tear_down_rollback(self):
+    db.session.rollback()
