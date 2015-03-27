@@ -28,6 +28,8 @@ ENTITY_TERRAIN_AREA = 9
 ENTITY_VISIBILITY_AREA = 10
 ENTITY_TRAVERSABILITY_AREA = 11
 ENTITY_RESOURCE_AREA = 12
+ENTITY_PERSISTENT_TERRAIN_AREA = 13
+ENTITY_TEMPORARY_TERRAIN_AREA = 14
 
 
 class Player(db.Model):
@@ -394,51 +396,56 @@ class TerrainType(EntityType):
     }
 
 
-class TerrainArea(Entity):
+class TerrainArea(db.Model):
     __tablename__ = "terrain_areas"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    area = sql.Column(gis.Geometry("POLYGON"))
+    terrain = sql.Column(gis.Geometry("POLYGON"))
 
-    @validates("area")
-    def validate_position(self, key, area):  # we assume position is a Polygon
-        return area.to_wkt()
+    @validates("terrain")
+    def validate_position(self, key, terrain):  # we assume position is a Polygon
+        return terrain.to_wkt()
 
-    type = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
+    visibility = sql.Column(gis.Geometry("POLYGONM"))
+
+    @validates("visibility")
+    def validate_position(self, key, visibility):  # we assume position is a Polygon
+        return visibility.to_wkt()
+
+    traversability = sql.Column(gis.Geometry("POLYGONM"))
+
+    @validates("traversability")
+    def validate_position(self, key, traversability):  # we assume position is a Polygon
+        return traversability.to_wkt()
+
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_TERRAIN_AREA,
     }
 
 
-class VisibilityArea(Entity):
-    __tablename__ = "visibility_areas"
+class PersistentTerrainArea(TerrainArea):
+    __tablename__ = "persistent_terrain_areas"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    area = sql.Column(gis.Geometry("POLYGONM"))
+    # it is assumed that terrain, traversability and visibility columns have the same geometry! (except of M parameter)
 
-    @validates("area")
-    def validate_position(self, key, area):  # we assume position is a Polygon
-        return area.to_wkt()
+    type = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
 
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_VISIBILITY_AREA,
+        'polymorphic_identity': ENTITY_PERSISTENT_TERRAIN_AREA,
     }
 
 
-class TraversabilityArea(Entity):
-    __tablename__ = "traversability_areas"
+class TemporaryTerrainArea(TerrainArea):
+    __tablename__ = "temporary_terrain_areas"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    area = sql.Column(gis.Geometry("POLYGONM"))
-
-    @validates("area")
-    def validate_position(self, key, area):  # we assume position is a Polygon
-        return area.to_wkt()
+    # attention! terrain, traversability and visibility columns don't have to have the same geometry!
 
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_TRAVERSABILITY_AREA,
+        'polymorphic_identity': ENTITY_TEMPORARY_TERRAIN_AREA,
     }
