@@ -1,8 +1,11 @@
+import types
 import geoalchemy2 as gis
 from pygeoif import Point, geometry
 from sqlalchemy.ext.hybrid import hybrid_property
+from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
+from exeris.core.properties import EntityPropertyException
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -91,9 +94,27 @@ class Entity(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     weight = sql.Column(sql.Integer)
 
-    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"))
-    being_in = sql.orm.relationship("Entity")
+    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)
+    being_in = sql.orm.relationship("Entity", uselist=False)
     role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
+
+    def __getattr__(self, item):
+        try:
+            method = properties.get_method(item)
+            return types.MethodType(method, self)  # return method type with updated self
+        except KeyError:
+            try:
+                super().__getattr__(item)
+            except AttributeError:
+                raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__, item))
+
+    def has_property(self, name):
+        entity_property_exists = EntityProperty.query.filter_by(entity=self, name=name).count() > 0
+
+        if entity_property_exists:
+            return True
+
+        return EntityTypeProperty.query.filter_by(type=self.type, name=name).count() > 0
 
     discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
@@ -124,7 +145,7 @@ class Character(Entity):
     name = sql.Column(sql.String)
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
     player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
-    player = sql.orm.relationship(Player)
+    player = sql.orm.relationship(Player, uselist=False)
 
     spawn_date = sql.Column(sql.BigInteger)
     spawn_location = sql.Column(gis.Geometry("POINT"))
@@ -137,7 +158,16 @@ class Character(Entity):
 class Item(Entity):
     __tablename__ = "items"
 
+    def __init__(self, type, being_in, weight):
+        self.type = type
+        self.being_in = being_in
+        self.weight = weight
+        self.role = Entity.ROLE_CONTAINED
+
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    type_id = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
+    type = sql.orm.relationship(ItemType, uselist=False)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
@@ -189,7 +219,7 @@ class EventType(db.Model):
     name = sql.Column(sql.String, primary_key=True)
     severity = sql.Column(sql.SmallInteger)
     group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"))
-    group = sql.orm.relationship(EventTypeGroup)
+    group = sql.orm.relationship(EventTypeGroup, uselist=False)
 
 
 class Event(db.Model):
@@ -197,7 +227,7 @@ class Event(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
     type_name = sql.Column(sql.String, sql.ForeignKey("event_types.name"))
-    type = sql.orm.relationship(EventType)
+    type = sql.orm.relationship(EventType, uselist=False)
     parameters = sql.Column(psql.JSON)
     date = sql.Column(sql.BigInteger)
 
@@ -206,9 +236,9 @@ class EventObserver(db.Model):
     __tablename__ = "event_observers"
 
     observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
-    observer = sql.orm.relationship(Character)
+    observer = sql.orm.relationship(Character, uselist=False)
     event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id), primary_key=True)
-    event = sql.orm.relationship(Event)
+    event = sql.orm.relationship(Event, uselist=False)
     times_seen = sql.Column(sql.Integer)
 
 
@@ -216,7 +246,7 @@ class EntityTypeProperty(db.Model):
     __tablename__ = "entity_type_properties"
 
     type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id), primary_key=True)
-    type = sql.orm.relationship(EntityType)
+    type = sql.orm.relationship(EntityType, uselist=False)
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
@@ -226,7 +256,7 @@ class EntityProperty(db.Model):
     __tablename__ = "entity_properties"
 
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
-    entity = sql.orm.relationship(Entity)
+    entity = sql.orm.relationship(Entity, uselist=False)
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
@@ -244,11 +274,22 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
+    def __init__(self, weight, being_in):
+        self.weight = weight
+        self.being_in = being_in
+        self.role = Entity.ROLE_CONTAINED
+
     @hybrid_property
     def neighbours(self):
         neighbours = [passage.left_location for passage in self.right_passages]
         neighbours.extend([passage.right_location for passage in self.left_passages])
         return neighbours
+
+    def get_root(self):
+        if type(self) is RootLocation:
+            return self
+        else:
+            return self.being_in.get_root()
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -265,6 +306,7 @@ class RootLocation(Location):
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, is_mobile, direction):
+        super().__init__(0, None)
         self.position = position
         self.is_mobile = is_mobile
         self.direction = direction
@@ -290,6 +332,11 @@ class RootLocation(Location):
             x = (x + MAP_WIDTH / 2) % MAP_WIDTH
         self._position = Point(x, y).to_wkt()
 
+    @position.expression
+    def position(cls):
+        return cls._position
+
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
     }
@@ -304,9 +351,9 @@ class Passage(Entity):
     right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
 
     left_location = sql.orm.relationship(Location, primaryjoin=left_location_id == Location.id,
-                                         backref="left_passages")
+                                         backref="left_passages", uselist=False)
     right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
-                                          backref="right_passages")
+                                          backref="right_passages", uselist=False)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,

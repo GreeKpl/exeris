@@ -61,7 +61,7 @@ class GameDate:
 
     @staticmethod
     def now():
-        last_date_point = db.session.query(models.GameDateCheckpoint).first()
+        last_date_point = models.GameDateCheckpoint.query.one()
         now_timestamp = GameDate._get_timestamp()
 
         real_timestamp_base = last_date_point.real_date
