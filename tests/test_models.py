@@ -1,10 +1,12 @@
+import datetime
 from flask.ext.testing import TestCase
 from pygeoif import Point, geometry
+import time
 
 from exeris.core.main import GameDate, db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType
+    ItemType, Character, Player, Entity
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException
 from tests import util
@@ -44,8 +46,8 @@ class LocationTest(TestCase):
         root_loc = RootLocation(pos, False, 100)  # the simplest
         db.session.add(root_loc)
 
-        good_query_results = db.session.query(RootLocation).filter(RootLocation.position==Point(10, 20).to_wkt()).all()
-        bad_query_results = db.session.query(RootLocation).filter(RootLocation.position==Point(20, 20).to_wkt()).all()
+        good_query_results = db.session.query(RootLocation).filter_by(position=Point(10, 20).to_wkt()).all()
+        bad_query_results = db.session.query(RootLocation).filter_by(position=Point(20, 20).to_wkt()).all()
 
         self.assertEqual(1, len(good_query_results))
         self.assertEqual(0, len(bad_query_results))
@@ -55,16 +57,46 @@ class LocationTest(TestCase):
         root_loc = RootLocation(pos, False, 100)  # the simplest
         db.session.add(root_loc)
 
-        farmyard = Location(0, root_loc)
+        farmyard = Location(root_loc, 0)
         db.session.add(farmyard)
 
-        building = Location(0, farmyard)
+        building = Location(farmyard, 0)
         db.session.add(building)
 
-        room = Location(0, building)
+        room = Location(building, 0)
         db.session.add(room)
 
         self.assertEqual(root_loc, room.get_root())
+
+    def test_methods__get_inside(self):
+        print("#######")
+        print(Entity.is_in)
+        print("#######")
+        root_loc = RootLocation(Point(20, 20), False, 100)
+        loc = Location(root_loc, 100)
+
+        db.session.add_all([root_loc, loc])
+
+        # items
+        type1 = ItemType("sword")
+        item1 = Item(type1, loc, 200)
+        item2 = Item(type1, loc, 300)
+
+        db.session.add(type1)
+        db.session.add_all([item1, item2])
+
+        self.assertCountEqual([item1, item2], loc.get_items_inside())
+
+        plr = Player(login="jan", email="aa@gmail.com", register_date=datetime.datetime.now(), register_game_date=GameDate(1000),
+                     sex=Player.SEX_MALE, password="ala123")
+
+        # characters
+        ch1 = Character("Janusz", Character.SEX_MALE, plr, GameDate(1200), Point(10, 20), loc)
+
+        db.session.add(plr)
+        db.session.add(ch1)
+
+        self.assertCountEqual([ch1], loc.get_characters_inside())
 
     tearDown = util.tear_down_rollback
 
@@ -75,14 +107,14 @@ class EntityTest(TestCase):
 
     def test_property_call_by_property(self):
 
-        @properties.property_methods
+        @properties.property_class
         class HappyPropertyType(properties.PropertyType):
             __property__ = "Happy"
-            @properties.registered
-            def be_happy(entity):
+            @properties.property_method
+            def be_happy(self):
                 pass
 
-        item_type = ItemType()
+        item_type = ItemType("sickle")
 
         item = Item(item_type, None, 100)
         prop = EntityProperty(entity=item, name="Happy", data={})

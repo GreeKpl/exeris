@@ -15,12 +15,12 @@ def get_method(name):
     return __registry[name]
 
 
-def registered(function):
+def property_method(function):
     function.property_method = True
     return function
 
 
-def property_methods(clazz):
+def property_class(clazz):
     for cls in inspect.getmro(clazz):
         for attr in cls.__dict__.values():
             if hasattr(attr, "__call__") and hasattr(attr, "property_method"):
@@ -38,11 +38,11 @@ class PropertyType:
     __property__ = None
 
 
-@property_methods
+@property_class
 class TakeablePropertyType(PropertyType):
     __property__ = "Takeable"
 
-    @registered
+    @property_method
     def take_by(self, character):
         pass
 
