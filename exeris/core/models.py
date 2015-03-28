@@ -1,7 +1,8 @@
 import types
 import geoalchemy2 as gis
 from pygeoif import Point, geometry
-from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
+from sqlalchemy.sql import expression, and_, case, select, func, literal_column
 from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
@@ -24,12 +25,11 @@ ENTITY_ROOT_LOCATION = 5
 ENTITY_PASSAGE = 6
 ENTITY_CHARACTER = 7
 ENTITY_ACTIVITY = 8
-ENTITY_TERRAIN_AREA = 9
-ENTITY_VISIBILITY_AREA = 10
-ENTITY_TRAVERSABILITY_AREA = 11
-ENTITY_RESOURCE_AREA = 12
-ENTITY_PERSISTENT_TERRAIN_AREA = 13
-ENTITY_TEMPORARY_TERRAIN_AREA = 14
+
+# subclasses hierarchy for TerrainArea
+AREA_BASE = 9
+AREA_PERSISTENT_TERRAIN = 13
+AREA_TEMPORARY_TERRAIN = 14
 
 
 class Player(db.Model):
@@ -42,9 +42,14 @@ class Player(db.Model):
 
     login = sql.Column(sql.String(24), unique=True)
     email = sql.Column(sql.String(32), unique=True)
-    register_date = sql.Column(sql.Date)
+    register_date = sql.Column(sql.DateTime)
+    register_game_date = sql.Column(sql.BigInteger)
     password = sql.Column(sql.String)
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))  # used to have correct translations
+
+    @validates("register_game_date")
+    def validate_register_game_date(self, key, register_game_date):
+        return register_game_date.game_timestamp
 
     def is_authenticated(self):
         return True
@@ -66,6 +71,9 @@ class EntityType(db.Model):
 
     name = sql.Column(sql.String(32))  # no spaces allowed
 
+    def __init__(self, name):
+        self.name = name
+
     type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
@@ -79,6 +87,9 @@ class ItemType(EntityType):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
 
+    def __init__(self, name):
+        super().__init__(name)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
@@ -90,15 +101,51 @@ class Entity(db.Model):
     """
     __tablename__ = "entities"
 
-    ROLE_CONSISTED = 1
-    ROLE_CONTAINED = 2
+    ROLE_BEING_IN = 1
+    ROLE_MADE_OF = 2
 
     id = sql.Column(sql.Integer, primary_key=True)
     weight = sql.Column(sql.Integer)
 
-    being_in_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)
-    being_in = sql.orm.relationship("Entity", uselist=False)
+    parent_entity_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)
+    parent_entity = sql.orm.relationship(lambda: Entity, primaryjoin=parent_entity_id == id,
+                                         foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
+
+    @hybrid_property
+    def being_in(self):
+        if self.role != Entity.ROLE_BEING_IN:
+            return None
+        return self.parent_entity
+
+    @being_in.setter
+    def being_in(self, parent_entity):
+        self.parent_entity = parent_entity
+        self.role = Entity.ROLE_BEING_IN
+
+    @being_in.expression
+    def being_in(cls):
+        return cls.parent_entity == Entity.id
+        print(select(cls.id).where((cls.role == Item.ROLE_BEING_IN) & (cls.parent_entity == Item)))
+        return select(cls.parent_entity).where((cls.role == Entity.ROLE_BEING_IN) & (cls.parent_entity_id == Entity.id))
+        #return case([(cls.role == Entity.ROLE_BEING_IN, cls.parent_entity_id)], else_=-1)
+        #return select([cls.parent_entity]).where(cls.role == Entity.ROLE_BEING_IN).as_scalar()
+        #return func.IF(cls.role == Entity.ROLE_BEING_IN, Entity.parent_entity, None)
+
+    @hybrid_method
+    def is_in(self, parent):
+        return (self.parent_entity == parent) & (self.role == Entity.ROLE_BEING_IN)
+
+    @hybrid_property
+    def made_of(self):
+        if self.role == Entity.ROLE_BEING_IN:
+            return None
+        return self.parent_entity
+
+    @made_of.setter
+    def made_of(self, parent_entity):
+        self.parent_entity = parent_entity
+        self.role = Entity.ROLE_MADE_OF
 
     def __getattr__(self, item):
         try:
@@ -117,6 +164,15 @@ class Entity(db.Model):
             return True
 
         return EntityTypeProperty.query.filter_by(type=self.type, name=name).count() > 0
+
+    def get_position(self):
+        return self.get_root().position
+
+    def get_root(self):
+        if type(self) is RootLocation:
+            return self
+        else:
+            return self.being_in.get_root()
 
     discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
@@ -144,13 +200,38 @@ class Character(Entity):
     SEX_MALE = "m"
     SEX_FEMALE = "f"
 
+    STATE_ALIVE = 1
+    STATE_DEAD = 2
+
     name = sql.Column(sql.String)
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
+
+    state = sql.Column(sql.SmallInteger)
+
     player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player, uselist=False)
 
     spawn_date = sql.Column(sql.BigInteger)
-    spawn_location = sql.Column(gis.Geometry("POINT"))
+    spawn_position = sql.Column(gis.Geometry("POINT"))
+
+    @validates("spawn_position")
+    def validate_position(self, key, spawn_position):  # we assume position is a Polygon
+        return spawn_position.to_wkt()
+
+    @validates("spawn_date")
+    def validate_spawn_date(self, key, spawn_date):
+        return spawn_date.game_timestamp
+
+    def __init__(self, name, sex, player, spawn_date, spawn_position, being_in):
+        self.being_in = being_in
+        self.name = name
+        self.sex = sex
+        self.player = player
+
+        self.state = Character.STATE_ALIVE
+
+        self.spawn_position = spawn_position
+        self.spawn_date = spawn_date
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
@@ -164,7 +245,6 @@ class Item(Entity):
         self.type = type
         self.being_in = being_in
         self.weight = weight
-        self.role = Entity.ROLE_CONTAINED
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
@@ -271,15 +351,26 @@ class EntityProperty(db.Model):
     }
 
 
+class PassageToNeighbour:
+
+    def __init__(self, passage, second_side):
+        self.passage = passage
+        self.second_side = second_side
+        self.own_side = passage.left_location
+        if passage.left_location == second_side:
+            self.own_side = passage.right_location
+
+
 class Location(Entity):
     __tablename__ = "locations"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, weight, being_in):
-        self.weight = weight
+    def __init__(self, being_in, weight):
         self.being_in = being_in
-        self.role = Entity.ROLE_CONTAINED
+        self.weight = weight
+
+        db.session.add(Passage(self.being_in, self))
 
     @hybrid_property
     def neighbours(self):
@@ -287,11 +378,17 @@ class Location(Entity):
         neighbours.extend([passage.right_location for passage in self.left_passages])
         return neighbours
 
-    def get_root(self):
-        if type(self) is RootLocation:
-            return self
-        else:
-            return self.being_in.get_root()
+    @hybrid_property
+    def passages_to_neighbours(self):
+        neighbours = [PassageToNeighbour(passage, passage.left_location) for passage in self.right_passages]
+        neighbours.extend([PassageToNeighbour(passage, passage.right_location) for passage in self.left_passages])
+        return neighbours
+
+    def get_characters_inside(self):
+        return Character.query.filter(Entity.is_in(self)).all()
+
+    def get_items_inside(self):
+        return Item.query.filter(Entity.is_in(self)).all()
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -308,7 +405,7 @@ class RootLocation(Location):
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, is_mobile, direction):
-        super().__init__(0, None)
+        super().__init__(None, 0)
         self.position = position
         self.is_mobile = is_mobile
         self.direction = direction
@@ -347,6 +444,12 @@ class RootLocation(Location):
 class Passage(Entity):
     __tablename__ = "passages"
 
+    def __init__(self, left_location, right_location):
+        self.weight = 0
+        self.being_in = None
+        self.left_location = left_location
+        self.right_location = right_location
+
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
@@ -362,10 +465,10 @@ class Passage(Entity):
     }
 
 
-class ResourceArea(Entity):
+class ResourceArea(db.Model):
     __tablename__ = "resource_areas"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+    id = sql.Column(sql.Integer, primary_key=True)
 
     resource_type = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
 
@@ -378,10 +481,6 @@ class ResourceArea(Entity):
     quality = sql.Column(sql.Integer)  # amount collected per unit of time
     amount = sql.Column(sql.Integer)  # amount collected before the resource becomes unavailable
 
-    __mapper_args__ = {
-        'polymorphic_identity': ENTITY_RESOURCE_AREA,
-    }
-
 
 class TerrainType(EntityType):
     __tablename__ = "terrain_types"
@@ -392,14 +491,14 @@ class TerrainType(EntityType):
     traversability = sql.Column(sql.Float)
 
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_TERRAIN_AREA,
+        'polymorphic_identity': AREA_BASE,
     }
 
 
 class TerrainArea(db.Model):
     __tablename__ = "terrain_areas"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+    id = sql.Column(sql.Integer, primary_key=True)
 
     terrain = sql.Column(gis.Geometry("POLYGON"))
 
@@ -419,33 +518,37 @@ class TerrainArea(db.Model):
     def validate_position(self, key, traversability):  # we assume position is a Polygon
         return traversability.to_wkt()
 
+    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_TERRAIN_AREA,
+        'polymorphic_identity': AREA_BASE,
+        "polymorphic_on": discriminator_type,
     }
 
 
 class PersistentTerrainArea(TerrainArea):
     __tablename__ = "persistent_terrain_areas"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
-
-    # it is assumed that terrain, traversability and visibility columns have the same geometry! (except of M parameter)
+    id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), primary_key=True)
 
     type = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
 
+    # it is assumed that terrain, traversability and visibility columns have the same geometry! (except of M parameter)
+
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_PERSISTENT_TERRAIN_AREA,
+        'polymorphic_identity': AREA_PERSISTENT_TERRAIN,
     }
 
 
 class TemporaryTerrainArea(TerrainArea):
     __tablename__ = "temporary_terrain_areas"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+    id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), primary_key=True)
 
-    # attention! terrain, traversability and visibility columns don't have to have the same geometry!
+    connected_to = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)  # optional, e.g. for connections
+
+    # attention! terrain, traversability and visibility columns don't have to have the same geometry part!
 
     __mapper_args__ = {
-        'polymorphic_identity': ENTITY_TEMPORARY_TERRAIN_AREA,
+        'polymorphic_identity': AREA_TEMPORARY_TERRAIN,
     }
