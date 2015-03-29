@@ -2,7 +2,7 @@ import types
 import geoalchemy2 as gis
 from pygeoif import Point, geometry
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
-from sqlalchemy.sql import expression, and_, case, select, func, literal_column
+from sqlalchemy.sql import expression, and_, case, select, func, literal_column, or_
 from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
@@ -135,6 +135,11 @@ class Entity(db.Model):
     @hybrid_method
     def is_in(self, parent):
         return (self.parent_entity == parent) & (self.role == Entity.ROLE_BEING_IN)
+
+    @hybrid_method
+    def is_in_any(self, parents):
+        return self.parent_entity_id.in_([p.id for p in parents]) & (self.role == Entity.ROLE_BEING_IN)
+
 
     @hybrid_property
     def made_of(self):
@@ -353,11 +358,11 @@ class EntityProperty(db.Model):
 
 class PassageToNeighbour:
 
-    def __init__(self, passage, second_side):
+    def __init__(self, passage, other_side):
         self.passage = passage
-        self.second_side = second_side
+        self.other_side = other_side
         self.own_side = passage.left_location
-        if passage.left_location == second_side:
+        if passage.left_location == other_side:
             self.own_side = passage.right_location
 
 
@@ -449,8 +454,20 @@ class Passage(Entity):
         self.being_in = None
         self.left_location = left_location
         self.right_location = right_location
+        pt = EntityType("door")  # TODO
+        db.session.add(pt)
+        self.type = pt
+
+
+    @hybrid_method
+    def between(self, first_loc, second_loc):
+        return or_((self.left_location == first_loc) & (self.right_location == second_loc),
+                   (self.right_location == first_loc) & (self.left_location == second_loc))
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    type_id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"))
+    type = sql.orm.relationship(EntityType, uselist=False)
 
     left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
     right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))

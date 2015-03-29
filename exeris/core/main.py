@@ -1,11 +1,15 @@
+from enum import Enum
+
 __author__ = 'aleksander chrabąszcz'
 
-from flask import g, Flask
+from flask import Flask
 import time
 from flask.ext.sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 app = None
+
+from exeris.core.models import Character, Location, Item, RootLocation
 
 from exeris.core import models
 
@@ -81,6 +85,61 @@ class GameDate:
     __ne__ = lambda self, other: self.game_timestamp != other.game_timestamp
     __ge__ = lambda self, other: self.game_timestamp >= other.game_timestamp
     __gt__ = lambda self, other: self.game_timestamp > other.game_timestamp
+
+
+class RangeSpec:
+
+    def characters_near(self):
+        return self.execute(Character)
+
+    def items_near(self):
+        return self.execute(Item)
+
+    def locations_near(self):
+        return self.execute(Location)
+
+    def root_locations_near(self):
+        return self.execute(RootLocation)
+
+
+class SameLocationRange(RangeSpec):
+    def __init__(self, center):
+        self.center = center
+
+    def execute(self, entity_class):
+        return db.session.query(entity_class).filter(entity_class.is_in(self.center)).all()
+
+
+class NeighbouringLocationsRange(RangeSpec):
+
+    def __init__(self, center):
+        self.center = center
+
+    def execute(self, entity_class):
+
+        passages = self.center.passages_to_neighbours
+        accessible_sides = [psg.other_side for psg in passages if not psg.passage.has_property("Blocked")]
+
+        accessible_sides += [self.center]
+        print(accessible_sides)
+
+        return entity_class.query.filter(entity_class.is_in_any(accessible_sides)).all()
+
+
+
+class VisibilityBasedRange(RangeSpec):
+
+    def __init__(self, center, distance):
+        self.center = center
+        self.range = distance
+
+
+class TraversabilityBasedRange(RangeSpec):
+
+    def __init__(self, center, distance):
+        self.center = center
+        self.range = distance
+
 
 
 class EventCreator():

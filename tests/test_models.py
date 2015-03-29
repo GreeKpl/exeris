@@ -133,3 +133,4 @@ class EntityTest(TestCase):
         self.assertRaises(EntityPropertyException, item2.be_happy)
 
     tearDown = util.tear_down_rollback
+
