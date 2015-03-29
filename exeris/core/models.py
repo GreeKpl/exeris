@@ -138,6 +138,7 @@ class Entity(db.Model):
 
     @hybrid_method
     def is_in_any(self, parents):
+        
         return self.parent_entity_id.in_([p.id for p in parents]) & (self.role == Entity.ROLE_BEING_IN)
 
 
@@ -174,6 +175,7 @@ class Entity(db.Model):
             if entities_count > 0:
                 return True
         else:
+            assert len(data_kv) == 1
             key, value = next(iter(data_kv.items()))
             entities_count = EntityProperty.query.filter_by(entity=self, name=name).\
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()

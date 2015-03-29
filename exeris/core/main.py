@@ -118,7 +118,7 @@ class NeighbouringLocationsRange(RangeSpec):
     def execute(self, entity_class):
 
         passages = self.center.passages_to_neighbours
-        accessible_sides = [psg.other_side for psg in passages if not psg.passage.has_property("OpenPassage")]
+        accessible_sides = [psg.other_side for psg in passages if not psg.passage.is_accessible()]
 
         accessible_sides += [self.center]
         print(accessible_sides)
