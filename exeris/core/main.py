@@ -118,13 +118,12 @@ class NeighbouringLocationsRange(RangeSpec):
     def execute(self, entity_class):
 
         passages = self.center.passages_to_neighbours
-        accessible_sides = [psg.other_side for psg in passages if not psg.passage.has_property("Blocked")]
+        accessible_sides = [psg.other_side for psg in passages if not psg.passage.has_property("OpenPassage")]
 
         accessible_sides += [self.center]
         print(accessible_sides)
 
         return entity_class.query.filter(entity_class.is_in_any(accessible_sides)).all()
-
 
 
 class VisibilityBasedRange(RangeSpec):

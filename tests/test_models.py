@@ -6,7 +6,7 @@ import time
 from exeris.core.main import GameDate, db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Character, Player, Entity
+    ItemType, Character, Player, Entity, Passage
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException
 from tests import util
@@ -134,3 +134,26 @@ class EntityTest(TestCase):
 
     tearDown = util.tear_down_rollback
 
+
+class PassageTest(TestCase):
+
+    create_app = util.set_up_app_with_database
+
+    def test_accessibility(self):
+
+        rt = RootLocation(Point(10, 20), False, 213)
+        loc1 = Location(rt, 100)
+        loc2 = Location(rt, 133)
+
+        db.session.add_all([rt, loc1, loc2])
+        passage1 = Passage.query.filter(Passage.between(rt, loc1)).first()
+        passage2 = Passage.query.filter(Passage.between(rt, loc2)).first()
+
+        open_window = EntityProperty(entity=passage1, name="Window", data={"open": True})
+        closed_window = EntityProperty(entity=passage2, name="Window", data={"open": False})
+        db.session.add_all([open_window, closed_window])
+
+        self.assertTrue(passage1.is_accessible())
+        self.assertFalse(passage2.is_accessible())
+
+    tearDown = util.tear_down_rollback

@@ -162,13 +162,29 @@ class Entity(db.Model):
             except AttributeError:
                 raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__, item))
 
-    def has_property(self, name):
-        entity_property_exists = EntityProperty.query.filter_by(entity=self, name=name).count() > 0
+    def has_property(self, name, data_kv=None):
+        if data_kv is None:
+            entities_count = EntityProperty.query.filter_by(entity=self, name=name).count()
 
-        if entity_property_exists:
-            return True
+            if entities_count > 0:
+                return True
 
-        return EntityTypeProperty.query.filter_by(type=self.type, name=name).count() > 0
+            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name).count()
+
+            if entities_count > 0:
+                return True
+        else:
+            key, value = next(iter(data_kv.items()))
+            entities_count = EntityProperty.query.filter_by(entity=self, name=name).\
+                filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
+            if entities_count > 0:
+                return True
+            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name).\
+                filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
+            if entities_count > 0:
+                return True
+        return False
+
 
     def get_position(self):
         return self.get_root().position
@@ -463,6 +479,9 @@ class Passage(Entity):
     def between(self, first_loc, second_loc):
         return or_((self.left_location == first_loc) & (self.right_location == second_loc),
                    (self.right_location == first_loc) & (self.left_location == second_loc))
+
+    def is_accessible(self):
+        return self.has_property("Window", data_kv={"open": True}) or self.has_property("OpenDoor")
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
