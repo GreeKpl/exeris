@@ -1,4 +1,5 @@
 import types
+import collections
 import geoalchemy2 as gis
 from pygeoif import Point, geometry
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
@@ -6,14 +7,14 @@ from sqlalchemy.sql import expression, and_, case, select, func, literal_column,
 from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
-from exeris.core.properties import EntityPropertyException
+from exeris.core.properties import EntityPropertyException, P
+
 
 __author__ = 'Aleksander Chrabąszcz'
 
 import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
-import sqlalchemy.ext.declarative as decl
 from .map import MAP_HEIGHT, MAP_WIDTH
 
 
@@ -133,14 +134,10 @@ class Entity(db.Model):
         #return func.IF(cls.role == Entity.ROLE_BEING_IN, Entity.parent_entity, None)
 
     @hybrid_method
-    def is_in(self, parent):
-        return (self.parent_entity == parent) & (self.role == Entity.ROLE_BEING_IN)
-
-    @hybrid_method
-    def is_in_any(self, parents):
-        
-        return self.parent_entity_id.in_([p.id for p in parents]) & (self.role == Entity.ROLE_BEING_IN)
-
+    def is_in(self, parents):
+        if not isinstance(parents, collections.Iterable):
+            parents = [parents]
+        return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_BEING_IN)
 
     @hybrid_property
     def made_of(self):
@@ -408,10 +405,10 @@ class Location(Entity):
         return neighbours
 
     def get_characters_inside(self):
-        return Character.query.filter(Entity.is_in(self)).all()
+        return Character.query.filter(Character.is_in(self)).all()
 
     def get_items_inside(self):
-        return Item.query.filter(Entity.is_in(self)).all()
+        return Item.query.filter(Item.is_in(self)).all()
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -483,7 +480,7 @@ class Passage(Entity):
                    (self.right_location == first_loc) & (self.left_location == second_loc))
 
     def is_accessible(self):
-        return self.has_property("Window", data_kv={"open": True}) or self.has_property("OpenDoor")
+        return self.has_property(P.WINDOW, data_kv={"open": True}) or self.has_property(P.OPEN_PASSAGE)
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 

@@ -1,3 +1,4 @@
+from collections import deque
 from enum import Enum
 
 __author__ = 'aleksander chrabąszcz'
@@ -9,9 +10,8 @@ from flask.ext.sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 app = None
 
-from exeris.core.models import Character, Location, Item, RootLocation
-
 from exeris.core import models
+from exeris.core.models import Character, Item, RootLocation
 
 import logging
 
@@ -90,24 +90,28 @@ class GameDate:
 class RangeSpec:
 
     def characters_near(self):
-        return self.execute(Character)
+        locs = self.get_locations_near()
+        return Character.query.filter(Character.is_in(locs)).all()
 
     def items_near(self):
-        return self.execute(Item)
+        locs = self.get_locations_near()
+        return Item.query.filter(Item.is_in(locs)).all()
 
     def locations_near(self):
-        return self.execute(Location)
+        locs = self.get_locations_near()
+        return locs
 
     def root_locations_near(self):
-        return self.execute(RootLocation)
+        locs = self.get_locations_near()
+        return [loc for loc in locs if type(loc) is RootLocation]
 
 
 class SameLocationRange(RangeSpec):
     def __init__(self, center):
         self.center = center
 
-    def execute(self, entity_class):
-        return db.session.query(entity_class).filter(entity_class.is_in(self.center)).all()
+    def get_locations_near(self):
+        return self.center
 
 
 class NeighbouringLocationsRange(RangeSpec):
@@ -115,29 +119,76 @@ class NeighbouringLocationsRange(RangeSpec):
     def __init__(self, center):
         self.center = center
 
-    def execute(self, entity_class):
+    def get_locations_near(self):
 
         passages = self.center.passages_to_neighbours
-        accessible_sides = [psg.other_side for psg in passages if not psg.passage.is_accessible()]
+        accessible_sides = [psg.other_side for psg in passages if psg.passage.is_accessible()]
 
         accessible_sides += [self.center]
-        print(accessible_sides)
 
-        return entity_class.query.filter(entity_class.is_in_any(accessible_sides)).all()
+        return accessible_sides
+
+
+def visit_subgraph(node):
+    passages_all = node.passages_to_neighbours
+    passages_left = deque(passages_all)
+    visited_locations = {node}
+    while len(passages_left):
+        passage = passages_left.popleft()
+        if passage.passage.is_accessible():
+            if passage.other_side not in visited_locations:
+                visited_locations.add(passage.other_side)
+                new_passages = passage.other_side.passages_to_neighbours
+                passages_left.extend([p for p in new_passages if p.other_side not in visited_locations])
+    return visited_locations
 
 
 class VisibilityBasedRange(RangeSpec):
 
     def __init__(self, center, distance):
         self.center = center
-        self.range = distance
+        self.distance = distance
+
+    def get_locations_near(self):
+
+        locs = visit_subgraph(self.center)
+
+        roots = [r for r in locs if type(r) is RootLocation]
+        if len(roots):
+            root = roots[0]
+            other_locs = RootLocation.query.\
+                filter(RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)).\
+                filter(RootLocation.id != root.id).all()
+
+            for other_loc in other_locs:
+                print("OTHER!!!!!!!", other_loc.position)
+                locs.update(visit_subgraph(other_loc))
+
+        return locs
 
 
 class TraversabilityBasedRange(RangeSpec):
 
     def __init__(self, center, distance):
         self.center = center
-        self.range = distance
+        self.distance = distance
+
+    def get_locations_near(self):
+
+        locs = visit_subgraph(self.center)
+
+        roots = [r for r in locs if type(r) is RootLocation]
+        if len(roots):
+            root = roots[0]
+            other_locs = RootLocation.query.\
+                filter(RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)).\
+                filter(RootLocation.id != root.id).all()
+
+            for other_loc in other_locs:
+                print("OTHER!!!!!!!", other_loc.position)
+                locs.update(visit_subgraph(other_loc))
+
+        return locs
 
 
 

@@ -3,6 +3,10 @@ import inspect
 
 __author__ = 'Aleksander Chrabąszcz'
 
+class P:
+    WINDOW = "Window"
+    OPEN_PASSAGE = "OpenPassage"
+
 
 __registry = {}
 

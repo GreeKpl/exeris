@@ -8,7 +8,7 @@ from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Character, Player, Entity, Passage
 from exeris.core import properties
-from exeris.core.properties import EntityPropertyException
+from exeris.core.properties import EntityPropertyException, P
 from tests import util
 
 
@@ -69,9 +69,7 @@ class LocationTest(TestCase):
         self.assertEqual(root_loc, room.get_root())
 
     def test_methods__get_inside(self):
-        print("#######")
-        print(Entity.is_in)
-        print("#######")
+
         root_loc = RootLocation(Point(20, 20), False, 100)
         loc = Location(root_loc, 100)
 
@@ -79,12 +77,15 @@ class LocationTest(TestCase):
 
         # items
         type1 = ItemType("sword")
+        db.session.add(type1)
+
         item1 = Item(type1, loc, 200)
         item2 = Item(type1, loc, 300)
 
-        db.session.add(type1)
+
         db.session.add_all([item1, item2])
 
+        print(loc.get_items_inside())  # todo what is that
         self.assertCountEqual([item1, item2], loc.get_items_inside())
 
         plr = Player(login="jan", email="aa@gmail.com", register_date=datetime.datetime.now(), register_game_date=GameDate(1000),
@@ -149,8 +150,8 @@ class PassageTest(TestCase):
         passage1 = Passage.query.filter(Passage.between(rt, loc1)).first()
         passage2 = Passage.query.filter(Passage.between(rt, loc2)).first()
 
-        open_window = EntityProperty(entity=passage1, name="Window", data={"open": True})
-        closed_window = EntityProperty(entity=passage2, name="Window", data={"open": False})
+        open_window = EntityProperty(entity=passage1, name=P.WINDOW, data={"open": True})
+        closed_window = EntityProperty(entity=passage2, name=P.WINDOW, data={"open": False})
         db.session.add_all([open_window, closed_window])
 
         self.assertTrue(passage1.is_accessible())
