@@ -161,7 +161,6 @@ class VisibilityBasedRange(RangeSpec):
                 filter(RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                print("OTHER!!!!!!!", other_loc.position)
                 locs.update(visit_subgraph(other_loc))
 
         return locs
@@ -185,7 +184,6 @@ class TraversabilityBasedRange(RangeSpec):
                 filter(RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                print("OTHER!!!!!!!", other_loc.position)
                 locs.update(visit_subgraph(other_loc))
 
         return locs

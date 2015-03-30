@@ -82,10 +82,8 @@ class LocationTest(TestCase):
         item1 = Item(type1, loc, 200)
         item2 = Item(type1, loc, 300)
 
-
         db.session.add_all([item1, item2])
 
-        print(loc.get_items_inside())  # todo what is that
         self.assertCountEqual([item1, item2], loc.get_items_inside())
 
         plr = Player(login="jan", email="aa@gmail.com", register_date=datetime.datetime.now(), register_game_date=GameDate(1000),

@@ -1,7 +1,7 @@
 import types
 import collections
 import geoalchemy2 as gis
-from pygeoif import Point, geometry
+from pygeoif import Point, geometry, LinearRing, LineString
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
 from sqlalchemy.sql import expression, and_, case, select, func, literal_column, or_
 from exeris.core import properties
@@ -26,11 +26,7 @@ ENTITY_ROOT_LOCATION = 5
 ENTITY_PASSAGE = 6
 ENTITY_CHARACTER = 7
 ENTITY_ACTIVITY = 8
-
-# subclasses hierarchy for TerrainArea
-AREA_BASE = 9
-AREA_PERSISTENT_TERRAIN = 13
-AREA_TEMPORARY_TERRAIN = 14
+ENTITY_TERRAIN_AREA = 9
 
 
 class Player(db.Model):
@@ -137,6 +133,7 @@ class Entity(db.Model):
     def is_in(self, parents):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
+        db.session.flush()  # todo might require more
         return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_BEING_IN)
 
     @hybrid_property
@@ -526,64 +523,124 @@ class TerrainType(EntityType):
     traversability = sql.Column(sql.Float)
 
     __mapper_args__ = {
-        'polymorphic_identity': AREA_BASE,
+        'polymorphic_identity': ENTITY_TERRAIN_AREA,
     }
 
 
-class TerrainArea(db.Model):
+class TerrainArea(Entity):
     __tablename__ = "terrain_areas"
+
+    def __init__(self, terrain_poly, visibility_polym, traversability_polym, priority=1):
+        self.terrain = terrain_poly
+        self.visibility = visibility_polym
+        self.traversability = traversability_polym
+        self.priority = priority
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    _terrain = sql.Column(gis.Geometry("POLYGON"))
+
+    priority = sql.Column(sql.SmallInteger)
+
+
+    @hybrid_property
+    def terrain(self):
+        return self._terrain
+
+    @terrain.setter
+    def terrain(self, value):
+        self._terrain = value.to_wkt()
+
+    _visibility = sql.Column(gis.Geometry("POLYGONM"))
+
+    @hybrid_property
+    def visibility(self):
+        return self._visibility
+
+    @visibility.setter
+    def visibility(self, value):
+        visibility_ewkt = db.session.scalar(self.polym_from_poly(value, 5))
+        self._visibility = visibility_ewkt
+
+    _traversability = sql.Column(gis.Geometry("POLYGONM"))
+
+    @hybrid_property
+    def traversability(self):
+        return self._traversability
+
+    @traversability.setter
+    def traversability(self, value):
+        traversability_ewkt = db.session.scalar(self.polym_from_poly(value, 1))
+        self._traversability = traversability_ewkt
+
+    def polym_from_poly(self, poly, value):
+        outer_ring_wkt = LineString(poly.exterior).to_wkt()
+        return func.ST_AsText(func.ST_MakePolygon(func.ST_AddMeasure(func.ST_GeomFromText(outer_ring_wkt), value, value)))
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_TERRAIN_AREA,
+    }
+
+
+class MapArea(db.Model):  # no overlays
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    terrain = sql.Column(gis.Geometry("POLYGON"))
+    def __init__(self, _terrain, _visibility, _traversability):
+        self._terrain = _terrain
+        self._visibility = _visibility
+        self._traversability = _traversability
 
-    @validates("terrain")
-    def validate_position(self, key, terrain):  # we assume position is a Polygon
-        return terrain.to_wkt()
-
-    visibility = sql.Column(gis.Geometry("POLYGONM"))
-
-    @validates("visibility")
-    def validate_position(self, key, visibility):  # we assume position is a Polygon
-        return visibility.to_wkt()
-
-    traversability = sql.Column(gis.Geometry("POLYGONM"))
-
-    @validates("traversability")
-    def validate_position(self, key, traversability):  # we assume position is a Polygon
-        return traversability.to_wkt()
-
-    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
-
-    __mapper_args__ = {
-        'polymorphic_identity': AREA_BASE,
-        "polymorphic_on": discriminator_type,
-    }
+    _terrain = sql.Column(gis.Geometry("POLYGON"))
+    _visibility = sql.Column(gis.Geometry("POLYGONM"))
+    _traversability = sql.Column(gis.Geometry("POLYGONM"))
 
 
-class PersistentTerrainArea(TerrainArea):
-    __tablename__ = "persistent_terrain_areas"
+def delete_all(seq):
+    for element in seq:
+        db.session.delete(element)
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), primary_key=True)
+# low-level functions to maintain ResultingArea as
+@sql.event.listens_for(TerrainArea, "after_insert")
+@sql.event.listens_for(TerrainArea, "after_update")
+def receive_after_update(mapper, connection, target):
 
-    type = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
+    terrain_envelope = db.session.query(TerrainArea._terrain.ST_Envelope().ST_AsText()).filter_by(id=target.id).first()
+    to_be_deleted = MapArea.query.filter(MapArea._terrain.ST_Intersects(terrain_envelope)).all()
+    delete_all(to_be_deleted)
 
-    # it is assumed that terrain, traversability and visibility columns have the same geometry! (except of M parameter)
+    visibility_envelope = db.session.query(TerrainArea._visibility.ST_Envelope().ST_AsText()).filter_by(id=target.id).first()
+    to_be_deleted = MapArea.query.filter(MapArea._visibility.ST_Intersects(visibility_envelope)).all()
+    delete_all(to_be_deleted)
 
-    __mapper_args__ = {
-        'polymorphic_identity': AREA_PERSISTENT_TERRAIN,
-    }
+    traversability_envelope = db.session.query(TerrainArea._traversability.ST_Envelope().ST_AsText()).filter_by(id=target.id).first()
+    to_be_deleted = MapArea.query.filter(MapArea._traversability.ST_Intersects(traversability_envelope)).all()
+    delete_all(to_be_deleted)
+
+    to_transfer = TerrainArea.query.filter(
+        or_(
+            TerrainArea._terrain.ST_Intersects(terrain_envelope),
+            TerrainArea._visibility.ST_Intersects(visibility_envelope),
+            TerrainArea._traversability.ST_Intersects(traversability_envelope)
+        )).order_by(TerrainArea.priority).all()
+
+    db.session.add_all([MapArea(t._terrain, t._visibility, t._traversability) for t in to_transfer])
+    # todo, should make sure these geometries are not intersecting with stuff with smaller priority
+
+    print(MapArea.query.all())
 
 
-class TemporaryTerrainArea(TerrainArea):
-    __tablename__ = "temporary_terrain_areas"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), primary_key=True)
 
-    connected_to = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)  # optional, e.g. for connections
 
-    # attention! terrain, traversability and visibility columns don't have to have the same geometry part!
 
-    __mapper_args__ = {
-        'polymorphic_identity': AREA_TEMPORARY_TERRAIN,
-    }
+
+
+
+
+
+
+
+
+
+
