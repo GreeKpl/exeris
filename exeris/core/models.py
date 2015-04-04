@@ -109,6 +109,8 @@ class Entity(db.Model):
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
 
+    properties = player = sql.orm.relationship("EntityProperty", back_populates="entity")
+
     @hybrid_property
     def being_in(self):
         if self.role != Entity.ROLE_BEING_IN:
@@ -181,7 +183,6 @@ class Entity(db.Model):
                 return True
         return False
 
-
     def get_position(self):
         return self.get_root().position
 
@@ -197,6 +198,9 @@ class Entity(db.Model):
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": discriminator_type,
     }
+
+    def __repr__(self):
+        return str(self.__class__) + str(self.__dict__)
 
 
 class LocationType(EntityType):
@@ -288,6 +292,12 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
+    required_objects = sql.Column(sql.Integer)
+    required_tools = sql.Column(sql.Integer)
+    ticks_needed = sql.Column(sql.Integer)
+    ticks_left = sql.Column(sql.Integer)
+    result_actions = sql.Column(psql.JSON)  # sth like: [["ManufacturingAction", ], ["NotifyEveryoneNearAction"]]
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ACTIVITY,
     }
@@ -317,8 +327,13 @@ class EventType(db.Model):
 
     name = sql.Column(sql.String, primary_key=True)
     severity = sql.Column(sql.SmallInteger)
-    group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"))
+    group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"), nullable=True)
     group = sql.orm.relationship(EventTypeGroup, uselist=False)
+
+    def __init__(self, name, severity, group=None):
+        self.name = name
+        self.severity = severity
+        self.group = group
 
 
 class Event(db.Model):
@@ -330,6 +345,15 @@ class Event(db.Model):
     parameters = sql.Column(psql.JSON)
     date = sql.Column(sql.BigInteger)
 
+    def __init__(self, event_type, parameters):
+        from .main import GameDate
+        if type(event_type) is str:
+            print(event_type)
+            event_type = EventType.query.filter_by(name=event_type).one()
+        self.type = event_type
+        self.parameters = parameters
+        self.date = GameDate.now().game_timestamp
+
 
 class EventObserver(db.Model):
     __tablename__ = "event_observers"
@@ -339,6 +363,14 @@ class EventObserver(db.Model):
     event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id), primary_key=True)
     event = sql.orm.relationship(Event, uselist=False)
     times_seen = sql.Column(sql.Integer)
+
+    def __init__(self, event, observer):
+        self.event = event
+        self.observer = observer
+        self.times_seen = 0
+
+    def __repr__(self):
+        return str(self.__class__) + str(self.__dict__)
 
 
 class EntityTypeProperty(db.Model):
@@ -355,7 +387,7 @@ class EntityProperty(db.Model):
     __tablename__ = "entity_properties"
 
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
-    entity = sql.orm.relationship(Entity, uselist=False)
+    entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)

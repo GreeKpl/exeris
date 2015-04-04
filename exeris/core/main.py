@@ -11,7 +11,7 @@ db = SQLAlchemy()
 app = None
 
 from exeris.core import models
-from exeris.core.models import Character, Item, RootLocation
+from exeris.core.models import Character, Item, RootLocation, Event, EventType, EventObserver
 
 import logging
 
@@ -189,9 +189,46 @@ class TraversabilityBasedRange(RangeSpec):
         return locs
 
 
-
 class EventCreator():
-    pass
 
+    def get_event_type_by_name(self, name):
+        return EventType.query.filter_by(name=name).one()
+
+    @classmethod
+    def base(cls, tag_base, doer=None, target=None, rng=None, params=None):
+
+        tag_doer = tag_base + "_doer"
+        tag_target = tag_base + "_target"
+        tag_observer = tag_base + "_observer"
+        return EventCreator(rng, tag_doer, tag_target, tag_observer, params, doer, target)
+
+    def __init__(self, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
+        """
+        Either tag_base or tag_doer should be specified. If tag_base is specified then event
+        for doer and observers (based on specified range) are emitted.
+
+        Preferable way is to explicitly specify tag shown for doer, target and observers.
+        Everyone use the same args dict, which is used as args parameters.
+        """
+        if not tag_doer and not tag_observer:
+            raise ValueError("EventCreator doesn't have neither tag_doer nor tag_observer specified")
+
+        if not params:
+            params = {}
+
+        if tag_doer and doer:
+            event_doer = Event(self.get_event_type_by_name(tag_doer), params)
+            db.session.add(event_doer)
+            db.session.add(EventObserver(event_doer, doer))
+        if target and tag_target:
+            event_target = Event(tag_target, params)
+            db.session.add(event_target)
+            db.session.add(EventObserver(event_target, doer))
+        if rng and tag_observer:
+            event_observer = Event(tag_observer, params)
+            event_obs = [EventObserver(event_observer, char) for char in rng.characters_near()
+                         if char not in (doer, target)]
+
+            db.session.add_all(event_obs)
 
 

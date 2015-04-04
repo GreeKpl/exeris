@@ -2,16 +2,18 @@ from exeris.core.main import SameLocationRange
 
 __author__ = 'alek'
 
+
 class AbstractAction:  # top level, we don't assume anything
     pass
+
 
 class Action:  # top level action, where we only know that it's done by a character
 
     def __init__(self, executor):
         self.executor = executor
 
-    def execute(self):
-        self.perform()
+    def perform(self):
+        self.perform_action()
 
 
 # rich collection of pre-configured actions

@@ -1,12 +1,10 @@
-import datetime
 from flask.ext.testing import TestCase
-from pygeoif import Point, geometry
-import time
+from pygeoif import Point
 
 from exeris.core.main import GameDate, db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
-from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Character, Player, Entity, Passage
+from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
+    ItemType, Passage
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException, P
 from tests import util
@@ -86,11 +84,10 @@ class LocationTest(TestCase):
 
         self.assertCountEqual([item1, item2], loc.get_items_inside())
 
-        plr = Player(login="jan", email="aa@gmail.com", register_date=datetime.datetime.now(), register_game_date=GameDate(1000),
-                     sex=Player.SEX_MALE, password="ala123")
+        plr = util.create_player("Player1")
 
         # characters
-        ch1 = Character("Janusz", Character.SEX_MALE, plr, GameDate(1200), Point(10, 20), loc)
+        ch1 = util.create_character("Janusz", loc, plr)
 
         db.session.add(plr)
         db.session.add(ch1)

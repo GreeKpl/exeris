@@ -4,8 +4,9 @@ from flask.ext.testing import TestCase
 from pygeoif import Point
 
 from exeris.core.main import db, GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
-    TraversabilityBasedRange
-from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty
+    TraversabilityBasedRange, EventCreator
+from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
+    EventType, EventObserver
 from exeris.core.properties import P
 from tests import util
 
@@ -20,7 +21,7 @@ class GameDateTest(TestCase):
         db.session.add(checkpoint)
         with patch("exeris.core.main.GameDate._get_timestamp", new=lambda: 1100):
             now = GameDate.now()
-            self.assertAlmostEqual(200, now.game_timestamp)  # non-deterministic in a slow environment!!!
+            self.assertAlmostEqual(200, now.game_timestamp)
 
     def test_params(self):
         date = GameDate(3600 * 48 * 14 * 5 + 3600 * 48 * 3 + 3600 * 30 + 60 * 17 + 33)
@@ -143,5 +144,45 @@ class RangeSpecTest(TestCase):
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
 
 
+    tearDown = util.tear_down_rollback
+
+
+class EventCreatorTest(TestCase):
+
+    create_app = util.set_up_app_with_database
+
+    def test_event_creation(self):
+
+        util.initialize_date()
+
+        et1 = EventType("slap_doer", EventType.IMPORTANT)
+        et2 = EventType("slap_target", EventType.IMPORTANT)
+        et3 = EventType("slap_observer", EventType.NORMAL)
+        db.session.add_all([et1, et2, et3])
+
+        rt = RootLocation(Point(10, 10), False, 103)
+        loc1 = Location(rt, 132)
+        loc2 = Location(rt, 132)
+
+        plr = util.create_player("plr1")
+        ch1 = util.create_character("Janusz", loc1, plr)
+        ch2 = util.create_character("Edek", loc2, plr)
+        ch3 = util.create_character("Dzidek", loc2, plr)
+
+        db.session.add_all([ch1, ch2, ch3])
+
+        psg1 = Passage.query.filter(Passage.between(rt, loc1)).first()
+        psg2 = Passage.query.filter(Passage.between(rt, loc2)).first()
+        db.session.add(EntityProperty(entity=psg1, name=P.OPEN_PASSAGE, data={}))
+        db.session.add(EntityProperty(entity=psg2, name=P.OPEN_PASSAGE, data={}))
+
+        EventCreator.base("slap", doer=ch1, target=ch2,
+                          rng=VisibilityBasedRange(ch1.being_in, 100), params={"hi": "hehe"})
+
+        seen_events = EventObserver.query.filter_by(observer=ch3).all()
+
+        self.assertEqual(1, len(seen_events))
+        self.assertEqual(et3, seen_events[0].event.type)
+        self.assertEqual({"hi": "hehe"}, seen_events[0].event.parameters)
 
     tearDown = util.tear_down_rollback
