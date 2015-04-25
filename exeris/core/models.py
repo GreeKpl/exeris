@@ -1,13 +1,14 @@
 import types
 import collections
 import geoalchemy2 as gis
-from pygeoif import Point, geometry, LinearRing, LineString
+from geoalchemy2.shape import to_shape, from_shape
+from shapely.geometry import LineString, Point
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
 from sqlalchemy.sql import expression, and_, case, select, func, literal_column, or_
 from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
-from exeris.core.properties import EntityPropertyException, P
+from exeris.core.properties import P
 
 
 __author__ = 'Aleksander Chrabąszcz'
@@ -109,7 +110,7 @@ class Entity(db.Model):
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
 
-    properties = player = sql.orm.relationship("EntityProperty", back_populates="entity")
+    properties = sql.orm.relationship("EntityProperty", back_populates="entity")
 
     @hybrid_property
     def being_in(self):
@@ -237,7 +238,7 @@ class Character(Entity):
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
-        return spawn_position.to_wkt()
+        return from_shape(spawn_position)
 
     @validates("spawn_date")
     def validate_spawn_date(self, key, spawn_date):
@@ -419,7 +420,8 @@ class Location(Entity):
         self.being_in = being_in
         self.weight = weight
 
-        db.session.add(Passage(self.being_in, self))
+        if self.being_in is not None:
+            db.session.add(Passage(self.being_in, self))
 
     @hybrid_property
     def neighbours(self):
@@ -465,7 +467,7 @@ class RootLocation(Location):
 
     @hybrid_property
     def position(self):
-        return geometry.from_wkt(self._position)
+        return to_shape(self._position)
 
     @position.setter
     def position(self, position):  # we assume position is a Point
@@ -478,7 +480,7 @@ class RootLocation(Location):
         if y > MAP_HEIGHT:
             y = MAP_HEIGHT - (y - MAP_HEIGHT)
             x = (x + MAP_WIDTH / 2) % MAP_WIDTH
-        self._position = Point(x, y).to_wkt()
+        self._position = from_shape(Point(x, y))
 
     @position.expression
     def position(cls):
@@ -540,7 +542,7 @@ class ResourceArea(db.Model):
 
     @validates("area")
     def validate_position(self, key, area):  # we assume position is a Polygon
-        return area.to_wkt()
+        return from_shape(area)
 
     quality = sql.Column(sql.Integer)  # amount collected per unit of time
     amount = sql.Column(sql.Integer)  # amount collected before the resource becomes unavailable
@@ -581,7 +583,7 @@ class TerrainArea(Entity):
 
     @terrain.setter
     def terrain(self, value):
-        self._terrain = value.to_wkt()
+        self._terrain = from_shape(value)
 
     _visibility = sql.Column(gis.Geometry("POLYGONM"))
 
@@ -606,8 +608,8 @@ class TerrainArea(Entity):
         self._traversability = traversability_ewkt
 
     def polym_from_poly(self, poly, value):
-        outer_ring_wkt = LineString(poly.exterior).to_wkt()
-        return func.ST_AsText(func.ST_MakePolygon(func.ST_AddMeasure(func.ST_GeomFromText(outer_ring_wkt), value, value)))
+        outer_ring_wkt = from_shape(LineString(poly.exterior))
+        return func.ST_AsText(func.ST_MakePolygon(func.ST_AddMeasure(func.ST_GeomFromWKB(outer_ring_wkt), value, value)))
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_TERRAIN_AREA,

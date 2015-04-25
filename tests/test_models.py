@@ -1,5 +1,6 @@
 from flask.ext.testing import TestCase
-from pygeoif import Point
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
 
 from exeris.core.main import GameDate, db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
@@ -44,8 +45,8 @@ class LocationTest(TestCase):
         root_loc = RootLocation(pos, False, 100)  # the simplest
         db.session.add(root_loc)
 
-        good_query_results = db.session.query(RootLocation).filter_by(position=Point(10, 20).to_wkt()).all()
-        bad_query_results = db.session.query(RootLocation).filter_by(position=Point(20, 20).to_wkt()).all()
+        good_query_results = db.session.query(RootLocation).filter_by(position=from_shape(Point(10, 20))).all()
+        bad_query_results = db.session.query(RootLocation).filter_by(position=from_shape(Point(20, 20))).all()
 
         self.assertEqual(1, len(good_query_results))
         self.assertEqual(0, len(bad_query_results))

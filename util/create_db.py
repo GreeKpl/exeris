@@ -11,7 +11,8 @@ def create_db(db_uri_base=Config.SQLALCHEMY_DATABASE_URI_BASE, db_name=Config.SQ
     db.init_app(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri_base + db_name
 
-    db.metadata.create_all()
+    with app.app_context():
+        db.create_all()
 
 if __name__ == "__main__":
     create_db()

@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from flask.ext.testing import TestCase
-from pygeoif import Point
+from shapely.geometry import Point
 
 from exeris.core.main import db, GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     TraversabilityBasedRange, EventCreator

@@ -1,8 +1,8 @@
 from flask.ext.testing import TestCase
+from shapely.geometry import Polygon
 from exeris.core.main import db
 from exeris.core.models import TerrainArea
 from tests import util
-from pygeoif.geometry import Polygon
 
 __author__ = 'alek'
 

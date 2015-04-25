@@ -24,7 +24,7 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy', 'flask', 'geoalchemy2'],
+    install_requires=['sqlalchemy', 'flask', 'geoalchemy2', 'shapely'],
 
     extras_require = {
         'dev': ['check-manifest'],

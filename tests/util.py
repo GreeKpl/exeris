@@ -1,5 +1,5 @@
 import datetime
-from pygeoif import Point
+from shapely.geometry import Point
 from exeris.core.main import create_app, db, GameDate
 from exeris.core.models import Player, Character, GameDateCheckpoint
 
