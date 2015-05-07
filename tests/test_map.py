@@ -15,13 +15,10 @@ class PassageTest(TestCase):
 
         coords = ((0, 0), (2, 0), (3, 2), (1, 1), (0, 0))
         poly = Polygon(coords)
-        area = TerrainArea(poly, poly, poly)
+        area = TerrainArea(poly)
 
         db.session.add(area)
 
         a = TerrainArea.query.all()
-
-        print("FINISH")
-
 
     tearDown = util.tear_down_rollback

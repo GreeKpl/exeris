@@ -59,3 +59,6 @@ class ActionOnItemAndCharacter(Action):
         self.character = character
         self.rng = rng
 
+
+class CreateItemAction(AbstractAction):
+    pass
