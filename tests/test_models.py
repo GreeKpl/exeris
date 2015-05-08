@@ -2,7 +2,8 @@ from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
-from exeris.core.main import GameDate, db
+from exeris.core.main import db
+from exeris.core.general import GameDate
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage

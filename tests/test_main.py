@@ -3,7 +3,8 @@ from unittest.mock import patch
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
-from exeris.core.main import db, GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
+from exeris.core.main import db
+from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     TraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
     EventType, EventObserver

@@ -6,7 +6,7 @@ __author__ = 'aleksander'
 
 from PIL import Image
 from exeris.core.main import db, create_app
-from exeris.core.models import TerrainArea, TerrainType, ResultantTerrainArea, RootLocation
+from exeris.core import models
 
 MAP_PER_PX = 100
 
@@ -18,9 +18,9 @@ create_db()
 COLORS = ["red", "green", "yellow", "brown"]
 
 with app.app_context():
-    tt1 = TerrainType("grass", 1)
-    tt2 = TerrainType("water", 2)
-    road_type = TerrainType("road", 3)
+    tt1 = models.TerrainType("grass", 1)
+    tt2 = models.TerrainType("water", 2)
+    road_type = models.TerrainType("road", 3)
     db.session.add_all([tt1, tt2])
 
     poly1 = Polygon([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)])
@@ -29,17 +29,17 @@ with app.app_context():
     poly4 = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
 
 
-    t1 = TerrainArea(poly1, tt1)
-    t2 = TerrainArea(poly2, tt2)
-    t3 = TerrainArea(poly3, tt1)
-    road = TerrainArea(poly4, road_type)
+    t1 = models.TerrainArea(poly1, tt1)
+    t2 = models.TerrainArea(poly2, tt2)
+    t3 = models.TerrainArea(poly3, tt1)
+    road = models.TerrainArea(poly4, road_type)
 
     db.session.add_all([t1, t2, t3, road])
 
-    rl1 = RootLocation(Point(1, 0), False, 304)
-    rl2 = RootLocation(Point(2, 3), False, 30)
-    rl3 = RootLocation(Point(4, 1), False, 71)
-    rl4 = RootLocation(Point(5, 2), False, 71)
+    rl1 = models.RootLocation(Point(1, 0), False, 304)
+    rl2 = models.RootLocation(Point(2, 3), False, 30)
+    rl3 = models.RootLocation(Point(4, 1), False, 71)
+    rl4 = models.RootLocation(Point(5, 2), False, 71)
 
     db.session.add_all([rl1, rl2, rl3, rl4])
 
@@ -49,7 +49,7 @@ with app.app_context():
 
     #print(ResultantTerrainArea.query.all())
 
-    terrains = TerrainArea.query.all()
+    terrains = models.TerrainArea.query.all()
     draw = ImageDraw.Draw(im)
     for t in terrains:
         coords = t.terrain.exterior.coords[:-1]
@@ -58,7 +58,7 @@ with app.app_context():
         draw.polygon(coords, fill=COLORS[t.terrain_type.color])
         # im.paste(black, (int(pos[0] * MAP_PER_PX), int(pos[1] * MAP_PER_PX)))
 
-    root_locs = RootLocation.query.all()
+    root_locs = models.RootLocation.query.all()
 
     for rl in root_locs:
         p = rl.position.coords[0]

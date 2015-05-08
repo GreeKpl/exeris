@@ -1,5 +1,4 @@
 from flask.ext.testing import TestCase
-import pickle
 from exeris.core import deferred
 from tests import util
 

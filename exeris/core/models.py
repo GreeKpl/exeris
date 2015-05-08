@@ -288,9 +288,8 @@ class Item(Entity):
 
     @hybrid_property
     def removal_game_date(self):
-        from exeris.core.main import GameDate
-
-        return None if not self._removal_game_date else GameDate(self._removal_game_date)
+        from exeris.core import general
+        return None if not self._removal_game_date else general.GameDate(self._removal_game_date)
 
     @removal_game_date.setter
     def removal_game_date(self, game_date):
@@ -312,9 +311,8 @@ class Item(Entity):
                 item.being_in = self.being_in  # move outside
 
         self.being_in = None
-        from exeris.core.main import GameDate
-
-        self.removal_game_date = GameDate.now()
+        from exeris.core import general
+        self.removal_game_date = general.GameDate.now()
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
@@ -395,13 +393,13 @@ class Event(db.Model):
     date = sql.Column(sql.BigInteger)
 
     def __init__(self, event_type, parameters):
-        from .main import GameDate
         if type(event_type) is str:
             print(event_type)
             event_type = EventType.query.filter_by(name=event_type).one()
         self.type = event_type
         self.parameters = parameters
-        self.date = GameDate.now().game_timestamp
+        from exeris.core import general
+        self.date = general.GameDate.now().game_timestamp
 
 
 class EventObserver(db.Model):

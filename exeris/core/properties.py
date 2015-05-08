@@ -1,7 +1,7 @@
-from functools import wraps
 import inspect
 
 __author__ = 'Aleksander Chrabąszcz'
+
 
 class P:
     WINDOW = "Window"

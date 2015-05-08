@@ -1,5 +1,7 @@
-from exeris.core.main import SameLocationRange, db
-from exeris.core.models import Item, ItemType, EntityProperty
+from exeris.core.main import db
+from exeris.core import models
+
+from exeris.core.general import SameLocationRange
 
 __author__ = 'alek'
 
@@ -68,10 +70,11 @@ class CreateItemAction(AbstractAction):
         self.properties = properties
 
     def perform_action(self):
-        item = Item(self.item_type, self.source_activity.being_in, self.item_type.unit_weight)
+        item = models.Item(self.item_type, self.source_activity.being_in, self.item_type.unit_weight)
         db.session.add(item)
+
         for property_name in self.properties:
-            db.session.add(EntityProperty(item, property_name, self.properties[property_name]))
+            db.session.add(models.EntityProperty(item, property_name, self.properties[property_name]))
 
 
 class RemoveItemAction(AbstractAction):

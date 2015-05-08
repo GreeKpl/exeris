@@ -1,9 +1,8 @@
 import time
 from shapely.geometry import Point
 
-from config import DevelopmentConfig
 from exeris.core.main import db, create_app
-from exeris.core.models import RootLocation
+from exeris.core import models
 
 from util import create_db
 
@@ -46,7 +45,7 @@ class Process:
 class TravelProcess(Process):
 
     def run(self):
-        mobile_locs = RootLocation.query.filter_by(is_mobile=True).all()
+        mobile_locs = models.RootLocation.query.filter_by(is_mobile=True).all()
         for loc in mobile_locs:
             pos = loc.position
             point = Point(pos.x + 1, pos.y + 1)
