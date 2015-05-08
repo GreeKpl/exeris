@@ -2,14 +2,13 @@ import types
 import collections
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape
-from shapely.geometry import LineString, Point
-from sqlalchemy.ext.hybrid import hybrid_property, Comparator, hybrid_method
-from sqlalchemy.sql import expression, and_, case, select, func, literal_column, or_
+from shapely.geometry import Point
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.sql import or_
 from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
 from exeris.core.properties import P
-
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -74,6 +73,10 @@ class EntityType(db.Model):
 
     type = sql.Column(sql.SmallInteger)  # discriminator
 
+    @classmethod
+    def by_id(cls, entity_id):
+        return cls.query.get(entity_id)
+
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": type,
@@ -87,6 +90,10 @@ class ItemType(EntityType):
 
     def __init__(self, name):
         super().__init__(name)
+
+    unit_weight = sql.Column(sql.Integer)
+    stackable = sql.Column(sql.Boolean)
+    portable = sql.Column(sql.Boolean)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
@@ -200,6 +207,10 @@ class Entity(db.Model):
         "polymorphic_on": discriminator_type,
     }
 
+    @classmethod
+    def by_id(cls, entity_id):
+        return cls.query.get(entity_id)
+
     def __repr__(self):
         return str(self.__class__) + str(self.__dict__)
 
@@ -273,6 +284,38 @@ class Item(Entity):
     type_id = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
+    _removal_game_date = sql.Column(sql.BigInteger, nullable=True)
+
+    @hybrid_property
+    def removal_game_date(self):
+        from exeris.core.main import GameDate
+
+        return None if not self._removal_game_date else GameDate(self._removal_game_date)
+
+    @removal_game_date.setter
+    def removal_game_date(self, game_date):
+        self._removal_game_date = game_date.game_timestamp
+
+    # TODO
+    '''
+        @removal_game_date.expression
+        def position(cls):
+            return cls._removal_game_date
+    '''
+
+    def remove(self, move_contents=True):
+
+        if move_contents:
+            items_inside = Item.query.filter(Item.is_in(self)).all()
+
+            for item in items_inside:
+                item.being_in = self.being_in  # move outside
+
+        self.being_in = None
+        from exeris.core.main import GameDate
+
+        self.removal_game_date = GameDate.now()
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
@@ -293,11 +336,16 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    required_objects = sql.Column(sql.Integer)
-    required_tools = sql.Column(sql.Integer)
-    ticks_needed = sql.Column(sql.Integer)
-    ticks_left = sql.Column(sql.Integer)
-    result_actions = sql.Column(psql.JSON)  # sth like: [["ManufacturingAction", ], ["NotifyEveryoneNearAction"]]
+    def __init__(self, requirements, result_actions, ticks_needed, ticks_left):
+        self.requirements = requirements
+        self.result_actions = result_actions
+        self.ticks_needed = ticks_needed
+        self.ticks_left = ticks_left
+
+    requirements = sql.Column(psql.JSON)  # a list of requirements
+    result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
+    ticks_needed = sql.Column(sql.Float)
+    ticks_left = sql.Column(sql.Float)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ACTIVITY,
@@ -390,10 +438,19 @@ class EntityProperty(db.Model):
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
+    def __init__(self, entity, name, data):
+        self.entity = entity
+        self.name = name
+        self.data = data
+
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
 
     type = sql.Column(sql.SmallInteger)
+
+    def __repr__(self):
+        return "Property(entity: {}, name: {}, data {}".format(self.entity.id, self.name, self.data)
+
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,

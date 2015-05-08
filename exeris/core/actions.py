@@ -1,19 +1,19 @@
-from exeris.core.main import SameLocationRange
+from exeris.core.main import SameLocationRange, db
+from exeris.core.models import Item, ItemType, EntityProperty
 
 __author__ = 'alek'
 
 
 class AbstractAction:  # top level, we don't assume anything
-    pass
-
-
-class Action:  # top level action, where we only know that it's done by a character
-
-    def __init__(self, executor):
-        self.executor = executor
 
     def perform(self):
         self.perform_action()
+
+
+class Action(AbstractAction):  # top level character action, where we only know that it's done by a character
+
+    def __init__(self, executor):
+        self.executor = executor
 
 
 # rich collection of pre-configured actions
@@ -61,4 +61,27 @@ class ActionOnItemAndCharacter(Action):
 
 
 class CreateItemAction(AbstractAction):
-    pass
+
+    def __init__(self, item_type, source_activity, properties):
+        self.item_type = item_type
+        self.source_activity = source_activity
+        self.properties = properties
+
+    def perform_action(self):
+        item = Item(self.item_type, self.source_activity.being_in, self.item_type.unit_weight)
+        db.session.add(item)
+        for property_name in self.properties:
+            db.session.add(EntityProperty(item, property_name, self.properties[property_name]))
+
+
+class RemoveItemAction(AbstractAction):
+
+    def __init__(self, item, gracefully=True):
+        self.item = item
+        self.gracefully = gracefully
+
+    def perform_action(self):
+        self.item.remove(self.gracefully)
+
+
+

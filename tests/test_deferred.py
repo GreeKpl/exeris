@@ -14,7 +14,7 @@ def inc(a):
     return a + 1
 
 
-class PassageTest(TestCase):
+class DeferredTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
