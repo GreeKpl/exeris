@@ -1,9 +1,10 @@
+import base64
 import pickle
 
 
 def call(function_to_call):
-    if type(function_to_call) is bytes:
-        function_to_call = pickle.loads(function_to_call)
+    if type(function_to_call) is str:
+        function_to_call = pickle.loads(base64.decodebytes(function_to_call.encode("ascii")))
 
     if type(function_to_call) is tuple:
 
@@ -16,7 +17,7 @@ def call(function_to_call):
 
 
 def dumps(function_call):
-    return pickle.dumps(function_call)
+    return base64.encodebytes(pickle.dumps(function_call)).decode("ascii")
 
 
 def _call_or_pass(arg):

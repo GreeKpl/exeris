@@ -65,12 +65,16 @@ class ActionOnItemAndCharacter(Action):
 class CreateItemAction(AbstractAction):
 
     def __init__(self, item_type, source_activity, properties):
+        print(item_type.id)
+        print(source_activity)
+        print(properties)
         self.item_type = item_type
         self.source_activity = source_activity
         self.properties = properties
 
     def perform_action(self):
-        item = models.Item(self.item_type, self.source_activity.being_in, self.item_type.unit_weight)
+        item = models.Item(self.item_type, self.source_activity.being_in.being_in, 1312)
+        print("TUZ TUZ", item.id, item)
         db.session.add(item)
 
         for property_name in self.properties:

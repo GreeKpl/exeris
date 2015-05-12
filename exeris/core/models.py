@@ -247,6 +247,9 @@ class Character(Entity):
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))
 
+    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"))
+    activity = sql.orm.relationship("Activity", uselist=False, foreign_keys=[activity_id])
+
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
         return from_shape(spawn_position)
@@ -334,9 +337,10 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, requirements, result_actions, ticks_needed, ticks_left):
+    def __init__(self, being_in, requirements, ticks_needed, ticks_left):
+
+        self.being_in = being_in
         self.requirements = requirements
-        self.result_actions = result_actions
         self.ticks_needed = ticks_needed
         self.ticks_left = ticks_left
 
