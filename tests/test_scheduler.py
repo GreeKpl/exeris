@@ -14,6 +14,9 @@ class SchedulerTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
+    def test_serializable(self):
+        pass
+
     def test_travel_process(self):
         pass
 
@@ -38,7 +41,7 @@ class SchedulerTest(TestCase):
         activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1, 1)
         db.session.add(activity)
         db.session.flush()
-        result = deferred.dumps((CreateItemAction, (ItemType.by_id, hammer_type.id), (Activity.by_id, activity.id), {"Edible": False}))
+        result = deferred.dumps(CreateItemAction, hammer_type.id, activity.id, {"Edible": False})
         activity.result_actions = [result]
 
         worker.activity = activity

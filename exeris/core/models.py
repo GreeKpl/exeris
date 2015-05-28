@@ -9,6 +9,7 @@ from exeris.core import properties
 from exeris.core.main import db
 from sqlalchemy.orm import validates
 from exeris.core.properties import P
+from exeris.core import deferred
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -337,12 +338,12 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, requirements, ticks_needed, ticks_left):
+    def __init__(self, being_in, requirements, ticks_needed):
 
         self.being_in = being_in
         self.requirements = requirements
         self.ticks_needed = ticks_needed
-        self.ticks_left = ticks_left
+        self.ticks_left = ticks_needed
 
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
@@ -588,6 +589,24 @@ class Passage(Entity):
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
     }
+
+
+class ScheduledTask(db.Model):
+    __tablename__ = "scheduled_tasks"
+
+    id = sql.Column(sql.Integer, primary_key=True)
+
+    process_data = sql.Column(sql.String)
+    execution_game_date = sql.Column(sql.BigInteger)
+    execution_interval = sql.Column(sql.Integer, nullable=True)
+
+    def __init__(self, process, execution_game_date, execution_interval=None):
+        self.process_data = deferred.dumps(*process)
+        self.execution_game_date = execution_game_date
+        self.execution_interval = execution_interval
+
+    def is_repeatable(self):
+        return self.execution_interval is not None
 
 
 class ResourceArea(db.Model):

@@ -1,31 +1,34 @@
 import base64
 import pickle
+from exeris.core.main import db
 
 
 def call(function_to_call):
-    if type(function_to_call) is str:
-        function_to_call = pickle.loads(base64.decodebytes(function_to_call.encode("ascii")))
+    function_to_call = pickle.loads(base64.decodebytes(function_to_call.encode("ascii")))
 
     if type(function_to_call) is tuple:
-
         function = function_to_call[0]
-        args = [_call_or_pass(arg) for arg in function_to_call[1:]]
-
-        return function(*args)
+        return function(*function_to_call[1:])
 
     raise AssertionError("%s cannot be called as a deferred function".format(str(function_to_call)))
 
 
-def dumps(function_call):
+def dumps(*function_call):
+    function_call = tuple(function_call)
     return base64.encodebytes(pickle.dumps(function_call)).decode("ascii")
 
 
-def _call_or_pass(arg):
-    """
-    Tries to call the args if it's a tuple (assuming it's serialized function)
-    or passes it unchanged otherwise (assuming it's a normal function argument)
-    """
-    if type(arg) is tuple:
-        return call(arg)
-    else:
-        return arg
+def expected_types(*fun_types):
+    def inner(f):
+        def g(*args):
+            converted_args = [args[0]]
+            for arg, arg_type in zip(args[1:], fun_types):
+
+                if arg_type is not None and issubclass(arg_type, db.Model) and type(arg) is int:
+                    converted = arg_type.query.get(arg)
+                else:
+                    converted = arg
+                converted_args += [converted]
+            return f(*converted_args)
+        return g
+    return inner

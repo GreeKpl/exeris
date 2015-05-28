@@ -1,3 +1,4 @@
+from exeris.core.deferred import expected_types
 from exeris.core.main import db
 from exeris.core import models
 
@@ -64,6 +65,7 @@ class ActionOnItemAndCharacter(Action):
 
 class CreateItemAction(AbstractAction):
 
+    @expected_types(models.ItemType, models.Activity, None)
     def __init__(self, item_type, source_activity, properties):
         print(item_type.id)
         print(source_activity)
@@ -73,8 +75,8 @@ class CreateItemAction(AbstractAction):
         self.properties = properties
 
     def perform_action(self):
-        item = models.Item(self.item_type, self.source_activity.being_in.being_in, 1312)
-        print("TUZ TUZ", item.id, item)
+        item = models.Item(self.item_type, self.source_activity.being_in.being_in, self.item_type.unit_weight)
+
         db.session.add(item)
 
         for property_name in self.properties:
@@ -83,6 +85,7 @@ class CreateItemAction(AbstractAction):
 
 class RemoveItemAction(AbstractAction):
 
+    @expected_types(models.Item, None)
     def __init__(self, item, gracefully=True):
         self.item = item
         self.gracefully = gracefully

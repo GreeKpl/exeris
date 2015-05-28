@@ -1,7 +1,9 @@
 import logging
 from shapely.geometry import Point
+import time
+from exeris.core.deferred import expected_types
 
-from exeris.core.main import db
+from exeris.core.main import db, create_app
 from exeris.core import models, deferred
 
 
@@ -13,19 +15,17 @@ class Scheduler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-    def check_new_tasks(self):
-        return 0
-
     def pop_task(self):
-        return ActivityProcess()
+        return models.ScheduledTask((ActivityProcess,), 0)
 
     def process_task(self, task):
         db.session.rollback()  # force finishing previous transaction
         tries = 0
+        process = deferred.call(task.process_data)
         while tries < 3:
             try:
                 tries += 1
-                task.run()
+                process.run()
                 db.session.commit()
                 return True
             except Exception as e:
@@ -46,6 +46,10 @@ class Process:
 
 class TravelProcess(Process):
 
+    @expected_types()
+    def __init__(self):
+        pass
+
     def run(self):
         mobile_locs = models.RootLocation.query.filter_by(is_mobile=True).all()
         for loc in mobile_locs:
@@ -55,6 +59,10 @@ class TravelProcess(Process):
 
 
 class ActivityProcess(Process):
+
+    @expected_types()
+    def __init__(self):
+        pass
 
     def run(self):
         activities = models.Activity.query.all()
@@ -98,12 +106,11 @@ class ActivityProcess(Process):
             action.perform()
 
 
-'''
 
 scheduler = Scheduler()
 flask_app = create_app()
 
-
+'''
 with flask_app.app_context():
 
     while True:
@@ -111,11 +118,14 @@ with flask_app.app_context():
             task = scheduler.pop_task()
             if task:
                 scheduler.process_task(task)
-            else:
-                found_tasks = scheduler.check_new_tasks()
 
-                if not found_tasks:
-                    time.sleep(1)
+                if task.is_repeatable(): # it should be kept in the database
+                    task.execution_game_date += task.execution_interval
+                else:
+                    db.delete(task)
+                db.session.commit()
+            else:
+                time.sleep(1)
         except Exception as e:
             print("SOMETHING BAD HAS HAPPENED", e)  # e.g. database connection failed
             print("TRYING AGAIN!!!")
