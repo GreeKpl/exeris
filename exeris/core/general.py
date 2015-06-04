@@ -181,7 +181,7 @@ class EventCreator():
         return models.EventType.query.filter_by(name=name).one()
 
     @classmethod
-    def base(cls, tag_base, doer=None, target=None, rng=None, params=None):
+    def base(cls, tag_base, rng=None, params=None, doer=None, target=None):
 
         tag_doer = tag_base + "_doer"
         tag_target = tag_base + "_target"

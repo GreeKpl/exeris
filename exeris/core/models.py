@@ -288,6 +288,8 @@ class Item(Entity):
     type_id = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
+    visible_constraints = sql.Column(psql.JSON, default=[])  # sorted list of item type ids
+
     _removal_game_date = sql.Column(sql.BigInteger, nullable=True)
 
     @hybrid_property
@@ -600,8 +602,8 @@ class ScheduledTask(db.Model):
     execution_game_date = sql.Column(sql.BigInteger)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
-    def __init__(self, process, execution_game_date, execution_interval=None):
-        self.process_data = deferred.dumps(*process)
+    def __init__(self, process_tuple, execution_game_date, execution_interval=None):
+        self.process_data = deferred.dumps(*process_tuple)
         self.execution_game_date = execution_game_date
         self.execution_interval = execution_interval
 

@@ -2,7 +2,7 @@ from exeris.core.deferred import expected_types
 from exeris.core.main import db
 from exeris.core import models
 
-from exeris.core.general import SameLocationRange
+from exeris.core.general import SameLocationRange, EventCreator
 
 __author__ = 'alek'
 
@@ -63,6 +63,10 @@ class ActionOnItemAndCharacter(Action):
         self.rng = rng
 
 
+####################
+# ABSTRACT ACTIONS #
+####################
+
 class CreateItemAction(AbstractAction):
 
     @expected_types(models.ItemType, models.Activity, None)
@@ -94,4 +98,18 @@ class RemoveItemAction(AbstractAction):
         self.item.remove(self.gracefully)
 
 
+##############################
+# CHARACTER-SPECIFIC ACTIONS #
+##############################
+
+
+class DropItemAction(ActionOnItem):
+
+    def __init__(self, executor, item):
+        super().__init__(executor, item)
+
+    def perform_action(self):
+        self.item.being_in = self.executor.being_in
+
+        EventCreator.base("event_drop_item", self.rng, {"item_name": self.item.type.name}, self.executor)
 
