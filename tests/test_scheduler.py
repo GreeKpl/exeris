@@ -38,7 +38,7 @@ class SchedulerTest(TestCase):
         db.session.add(hammer)
         db.session.flush()
 
-        activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1, 1)
+        activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1)
         db.session.add(activity)
         db.session.flush()
         result = deferred.dumps(CreateItemAction, hammer_type.id, activity.id, {"Edible": False})

@@ -441,7 +441,7 @@ class EntityProperty(db.Model):
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
-    def __init__(self, entity, name, data):
+    def __init__(self, entity, name, data=True):
         self.entity = entity
         self.name = name
         self.data = data

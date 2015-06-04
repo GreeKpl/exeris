@@ -20,7 +20,7 @@ class GameDateTest(TestCase):
         last_checkpoint_timestamp = 1000
         checkpoint = GameDateCheckpoint(game_date=100, real_date=last_checkpoint_timestamp)
         db.session.add(checkpoint)
-        with patch("exeris.core.main.GameDate._get_timestamp", new=lambda: 1100):
+        with patch("exeris.core.general.GameDate._get_timestamp", new=lambda: 1100):
             now = GameDate.now()
             self.assertAlmostEqual(200, now.game_timestamp)
 
