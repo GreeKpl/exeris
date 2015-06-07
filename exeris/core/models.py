@@ -28,6 +28,7 @@ ENTITY_PASSAGE = 6
 ENTITY_CHARACTER = 7
 ENTITY_ACTIVITY = 8
 ENTITY_TERRAIN_AREA = 9
+ENTITY_GROUP = 10
 
 
 class Player(db.Model):
@@ -67,12 +68,16 @@ class EntityType(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    name = sql.Column(sql.String(32))  # no spaces allowed
+    name = sql.Column(sql.String(32), unique=True)  # no spaces allowed
 
     def __init__(self, name):
         self.name = name
 
     type = sql.Column(sql.SmallInteger)  # discriminator
+
+    @hybrid_property
+    def parent_groups(self):
+        return [parent_group.parent for parent_group in self._parent_groups_junction]
 
     @classmethod
     def by_id(cls, entity_id):
@@ -82,6 +87,18 @@ class EntityType(db.Model):
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": type,
     }
+
+
+class EntityGroupElement(db.Model):
+    __tablename__ = "entity_group_elements"
+
+    def __init__(self, child):
+        self.child = child
+
+    parent_id = sql.Column(sql.Integer, sql.ForeignKey('entity_groups.id'), primary_key=True)
+    parent = sql.orm.relationship("EntityGroup", foreign_keys=[parent_id], backref="_children_junction")
+    child_id = sql.Column(sql.Integer, sql.ForeignKey('entity_types.id'), primary_key=True)
+    child = sql.orm.relationship("EntityType", foreign_keys=[child_id], backref="_parent_groups_junction")
 
 
 class ItemType(EntityType):
@@ -98,6 +115,35 @@ class ItemType(EntityType):
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
+    }
+
+
+class EntityGroup(EntityType):
+    __tablename__ = "entity_groups"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+
+    @hybrid_property
+    def children(self):
+        return [group_element.child for group_element in self._children_junction]
+
+    def add_to_group(self, child):
+        self._children_junction.append(EntityGroupElement(child))
+
+    def remove_from_group(self, child):
+        self._children_junction.remove(EntityGroupElement.query.filter_by(parent=self, child=child).one())
+
+    def contains(self, entity_type):
+        if entity_type in self.children:
+            return True
+        child_groups = filter(lambda group: type(group) == EntityGroup, self.children)  # TODO, disgusting
+        return any([child.contains(entity_type) for child in child_groups])
+
+    def __init__(self, name):
+        super().__init__(name)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_GROUP,
     }
 
 
@@ -562,9 +608,11 @@ class Passage(Entity):
         self.being_in = None
         self.left_location = left_location
         self.right_location = right_location
-        pt = EntityType("door")  # TODO
-        db.session.add(pt)
-        self.type = pt
+        door = EntityType.query.filter_by(name="door").first()
+        if not door:
+            door = EntityType("door")  # TODO
+            db.session.add(door)
+        self.type = door
 
 
     @hybrid_method

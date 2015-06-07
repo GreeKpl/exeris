@@ -6,7 +6,7 @@ from exeris.core.main import db
 from exeris.core.general import GameDate
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage
+    ItemType, Passage, EntityGroup, EntityGroupElement
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException, P
 from tests import util
@@ -153,5 +153,71 @@ class PassageTest(TestCase):
 
         self.assertTrue(passage1.is_accessible())
         self.assertFalse(passage2.is_accessible())
+
+    tearDown = util.tear_down_rollback
+
+
+class GroupTest(TestCase):
+
+    create_app = util.set_up_app_with_database
+
+    def test_group_direct_modification(self):
+
+        self._setup_hammers()
+
+        hammers = EntityGroup("group_hammers")
+
+        hammers._children_junction.append(EntityGroupElement(self.stone_hammer))
+        hammers._children_junction.append(EntityGroupElement(self.iron_hammer))
+        hammers._children_junction.append(EntityGroupElement(self.marble_hammer))
+
+        db.session.add(hammers)
+
+        self.assertCountEqual([self.stone_hammer, self.iron_hammer, self.marble_hammer], hammers.children)
+
+    def test_group_modification(self):
+
+        self._setup_hammers()
+
+        tools = EntityGroup("group_tools")
+        hammers = EntityGroup("group_hammers")
+
+        hammers.add_to_group(self.stone_hammer)
+        hammers.add_to_group(self.iron_hammer)
+        hammers.add_to_group(self.marble_hammer)
+
+        tools.add_to_group(hammers)
+
+        db.session.add_all([hammers, tools])
+
+        self.assertCountEqual([self.stone_hammer, self.iron_hammer, self.marble_hammer], hammers.children)
+
+        self.assertEqual([hammers], self.stone_hammer.parent_groups)
+        self.assertEqual([tools], hammers.parent_groups)
+
+    def test_containment(self):
+
+        useful = EntityGroup("group_useful")
+        tools = EntityGroup("group_tools")
+        hammers = EntityGroup("group_hammers")
+        cookies = EntityGroup("group_cookies")
+
+        useful.add_to_group(tools)
+        tools.add_to_group(hammers)
+
+        db.session.add_all([useful, tools, hammers, cookies])
+
+        self.assertTrue(tools.contains(hammers))
+        self.assertTrue(useful.contains(hammers))
+        self.assertFalse(tools.contains(cookies))
+        self.assertFalse(hammers.contains(tools))
+
+    def _setup_hammers(self):
+        self.stone_hammer = ItemType("stone_hammer")
+        self.iron_hammer = ItemType("iron_hammer")
+        self.marble_hammer = ItemType("marble_hammer")
+
+        db.session.add_all([self.stone_hammer, self.iron_hammer, self.marble_hammer])
+
 
     tearDown = util.tear_down_rollback
