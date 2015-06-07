@@ -27,40 +27,50 @@ class ActionOnSelf(Action):
 
 class ActionOnItem(Action):
 
-    def __init__(self, executor, item, rng=SameLocationRange):
+    def __init__(self, executor, item, rng=None):
         super().__init__(executor)
         self.item = item
         self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 class ActionOnLocation(Action):
-    def __init__(self, executor, location, rng=SameLocationRange):
+    def __init__(self, executor, location, rng=None):
         super().__init__(executor)
         self.location = location
         self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 class ActionOnActivity(Action):
-    def __init__(self, executor, activity, rng=SameLocationRange):
+    def __init__(self, executor, activity, rng=None):
         super().__init__(executor)
         self.activity = activity
         self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 class ActionOnItemAndActivity(Action):
-    def __init__(self, executor, item, activity, rng=SameLocationRange):
+    def __init__(self, executor, item, activity, rng=None):
         super().__init__(executor)
         self.item = item
         self.activity = activity
         self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 class ActionOnItemAndCharacter(Action):
-    def __init__(self, executor, item, character, rng=SameLocationRange):
+    def __init__(self, executor, item, character, rng=None):
         super().__init__(executor)
         self.item = item
         self.character = character
         self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 ####################
@@ -71,9 +81,6 @@ class CreateItemAction(AbstractAction):
 
     @expected_types(models.ItemType, models.Activity, None)
     def __init__(self, item_type, source_activity, properties):
-        print(item_type.id)
-        print(source_activity)
-        print(properties)
         self.item_type = item_type
         self.source_activity = source_activity
         self.properties = properties
@@ -102,14 +109,46 @@ class RemoveItemAction(AbstractAction):
 # CHARACTER-SPECIFIC ACTIONS #
 ##############################
 
+class ItemManipulation():
 
-class DropItemAction(ActionOnItem):
+    def move_stackable_resource(self, source, goal):
+        # remove from the source
+        if self.item.weight == self.weight:
+            db.session.delete(self.item)
+        else:
+            self.item.weight -= self.weight
 
-    def __init__(self, executor, item):
+        # add to the goal
+        existing_pile = models.Item.query.filter_by(type=self.item.type).\
+            filter(models.Item.is_in(goal)).first()
+
+        if existing_pile:
+            existing_pile.weight += self.weight
+        else:
+            new_pile = models.Item(self.item.type, goal, self.weight)
+            db.session.add(new_pile)
+
+
+class DropItemAction(ActionOnItem, ItemManipulation):
+
+    def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
+        if self.item.type.stackable:
+            self.weight = amount * self.item.type.unit_weight
+        else:
+            self.weight = self.item.weight
 
     def perform_action(self):
-        self.item.being_in = self.executor.being_in
+        if self.item.being_in != self.executor:
+            raise Exception
+
+        if self.weight > self.item.weight:
+            raise Exception
+
+        if self.item.type.stackable:
+            self.move_stackable_resource(self.item.being_in, self.executor.being_in)
+        else:
+            self.item.being_in = self.executor.being_in
 
         EventCreator.base("event_drop_item", self.rng, {"item_name": self.item.type.name}, self.executor)
 

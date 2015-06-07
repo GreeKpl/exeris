@@ -177,7 +177,8 @@ class TraversabilityBasedRange(RangeSpec):
 
 class EventCreator():
 
-    def get_event_type_by_name(self, name):
+    @classmethod
+    def get_event_type_by_name(cls, name):
         return models.EventType.query.filter_by(name=name).one()
 
     @classmethod
@@ -186,9 +187,10 @@ class EventCreator():
         tag_doer = tag_base + "_doer"
         tag_target = tag_base + "_target"
         tag_observer = tag_base + "_observer"
-        return EventCreator(rng, tag_doer, tag_target, tag_observer, params, doer, target)
+        EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target)
 
-    def __init__(self, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
+    @classmethod
+    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
         """
         Either tag_base or tag_doer should be specified. If tag_base is specified then event
         for doer and observers (based on specified range) are emitted.
@@ -203,7 +205,7 @@ class EventCreator():
             params = {}
 
         if tag_doer and doer:
-            event_doer = models.Event(self.get_event_type_by_name(tag_doer), params)
+            event_doer = models.Event(cls.get_event_type_by_name(tag_doer), params)
             db.session.add(event_doer)
             db.session.add(models.EventObserver(event_doer, doer))
         if target and tag_target:

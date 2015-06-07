@@ -1,9 +1,10 @@
+import base64
 import logging
 from shapely.geometry import Point
 import time
 from exeris.core.deferred import expected_types
 
-from exeris.core.main import db, create_app
+from exeris.core.main import db
 from exeris.core import models, deferred
 
 
@@ -21,7 +22,7 @@ class Scheduler:
     def process_task(self, task):
         #db.session.rollback()  # force finishing previous transaction
         tries = 0
-        print(task.process_data)
+        self.logger.info("Trying to run task process: %s", base64.decodebytes(task.process_data))
         process = deferred.call(task.process_data)
         while tries < 3:
             try:
@@ -30,12 +31,9 @@ class Scheduler:
                 #db.session.commit()
                 return True
             except Exception as e:
-                print(e)
-                raise
+                self.logger.warn("Failed to run process for the %s time: %s,", tries, base64.decodebytes(task.process_data), exc_info=True)
                 #db.session.rollback()
-        if tries > 1:
-            print("SEND WARNING")
-        print("SEND EMAIL WITH ERROR")
+        self.logger.error("UNABLE TO COMPLETE PROCESS %s", base64.decodebytes(task.process_data))
         return False
 
     def run(self):
@@ -56,9 +54,7 @@ class Scheduler:
             else:
                 time.sleep(1)
         except Exception as e:
-            print("SOMETHING BAD HAS HAPPENED", e)  # e.g. database connection failed
-            print("TRYING AGAIN!!!")
-            raise
+            self.logger.error("Unable to complete task. Running another iteration", e)
 
 
 class Process:
