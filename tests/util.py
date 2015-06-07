@@ -2,7 +2,7 @@ import datetime
 from shapely.geometry import Point
 from exeris.core.main import create_app, db
 from exeris.core import general
-from exeris.core.models import Player, Character, GameDateCheckpoint
+from exeris.core.models import Player, Character, GameDateCheckpoint, init_database_contents
 
 __author__ = 'alek'
 
@@ -12,6 +12,8 @@ def set_up_app_with_database(self):
     app = create_app(config_object_module="config.TestingConfig", database=db)
     with app.app_context():
         db.create_all()
+
+        init_database_contents()
 
     return app
 

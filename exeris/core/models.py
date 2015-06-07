@@ -83,6 +83,10 @@ class EntityType(db.Model):
     def by_id(cls, entity_id):
         return cls.query.get(entity_id)
 
+    @classmethod
+    def by_name(cls, type_name):
+        return cls.query.filter_by(name=type_name).first()
+
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": type,
@@ -608,10 +612,8 @@ class Passage(Entity):
         self.being_in = None
         self.left_location = left_location
         self.right_location = right_location
-        door = EntityType.query.filter_by(name="door").first()
-        if not door:
-            door = EntityType("door")  # TODO
-            db.session.add(door)
+        door = EntityType.by_name("door")
+        db.session.add(door)
         self.type = door
 
 
@@ -786,6 +788,11 @@ class ResultantPropertyArea:  # no overlays
     def area(self, value):
         self._area = from_shape(value)
 
+
+def init_database_contents():
+    if not EntityType.by_name("door"):
+        db.session.add(EntityType("door"))
+    db.session.commit()
 
 def delete_all(seq):
     for element in seq:
