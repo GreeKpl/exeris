@@ -49,8 +49,8 @@ class SchedulerTest(TestCase):
         scheduler.run_iteration()
 
     def _before_activity_process(self):
-        hammer_type = ItemType("hammer")
-        result_type = ItemType("result")
+        hammer_type = ItemType("hammer", 300)
+        result_type = ItemType("result", 200)
         db.session.add_all([hammer_type, result_type])
 
         rt = RootLocation(Point(1, 1), False, 134)

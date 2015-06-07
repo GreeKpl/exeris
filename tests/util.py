@@ -14,6 +14,7 @@ def set_up_app_with_database(self):
         db.create_all()
 
         init_database_contents()
+        db.session.commit()
 
     return app
 

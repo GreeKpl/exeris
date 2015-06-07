@@ -110,8 +110,11 @@ class ItemType(EntityType):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
 
-    def __init__(self, name):
+    def __init__(self, name, unit_weight, portable=True, stackable=False):
         super().__init__(name)
+        self.unit_weight = unit_weight
+        self.portable = portable
+        self.stackable = stackable
 
     unit_weight = sql.Column(sql.Integer)
     stackable = sql.Column(sql.Boolean)
@@ -218,10 +221,21 @@ class Entity(db.Model):
             except AttributeError:
                 raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__, item))
 
+    def get_property(self, name):
+        type_property = EntityTypeProperty.query.filter_by(type=self.type, name=name).first()
+        props = {}
+        if type_property:
+            props.update(type_property.data)
+
+        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
+        if entity_property:
+            props.update(entity_property.data)
+
+        return props
+
     def has_property(self, name, data_kv=None):
         if data_kv is None:
             entities_count = EntityProperty.query.filter_by(entity=self, name=name).count()
-
             if entities_count > 0:
                 return True
 
@@ -232,10 +246,12 @@ class Entity(db.Model):
         else:
             assert len(data_kv) == 1
             key, value = next(iter(data_kv.items()))
+
             entities_count = EntityProperty.query.filter_by(entity=self, name=name).\
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
             if entities_count > 0:
                 return True
+
             entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name).\
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
             if entities_count > 0:
@@ -328,10 +344,13 @@ class Character(Entity):
 class Item(Entity):
     __tablename__ = "items"
 
-    def __init__(self, type, being_in, weight):
+    def __init__(self, type, being_in, weight=None):
         self.type = type
         self.being_in = being_in
-        self.weight = weight
+        if weight is None:
+            self.weight = type.unit_weight
+        else:
+            self.weight = weight
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
@@ -434,7 +453,7 @@ class EventType(db.Model):
     group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"), nullable=True)
     group = sql.orm.relationship(EventTypeGroup, uselist=False)
 
-    def __init__(self, name, severity, group=None):
+    def __init__(self, name, severity=NORMAL, group=None):
         self.name = name
         self.severity = severity
         self.group = group
@@ -480,6 +499,11 @@ class EventObserver(db.Model):
 class EntityTypeProperty(db.Model):
     __tablename__ = "entity_type_properties"
 
+    def __init__(self, type, name, data=None):
+        self.type = type
+        self.name = name
+        self.data = data if data is not None else {}
+
     type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id), primary_key=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
@@ -493,24 +517,16 @@ class EntityProperty(db.Model):
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
-    def __init__(self, entity, name, data=True):
+    def __init__(self, entity, name, data=None):
         self.entity = entity
         self.name = name
-        self.data = data
+        self.data = data if data is not None else {}
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
 
-    type = sql.Column(sql.SmallInteger)
-
     def __repr__(self):
         return "Property(entity: {}, name: {}, data {}".format(self.entity.id, self.name, self.data)
-
-
-    __mapper_args__ = {
-        "polymorphic_identity": ENTITY_BASE,
-        "polymorphic_on": type,
-    }
 
 
 class PassageToNeighbour:
@@ -790,9 +806,12 @@ class ResultantPropertyArea:  # no overlays
 
 
 def init_database_contents():
+
     if not EntityType.by_name("door"):
         db.session.add(EntityType("door"))
-    db.session.commit()
+        db.session.add(EventType("event_drop_item_doer"))
+        db.session.add(EventType("event_drop_item_observer"))
+    db.session.flush()
 
 def delete_all(seq):
     for element in seq:

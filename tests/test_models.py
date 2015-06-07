@@ -3,7 +3,6 @@ from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
 from exeris.core.main import db
-from exeris.core.general import GameDate
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, EntityGroup, EntityGroupElement
@@ -76,7 +75,7 @@ class LocationTest(TestCase):
         db.session.add_all([root_loc, loc])
 
         # items
-        type1 = ItemType("sword")
+        type1 = ItemType("sword", 1000)
         db.session.add(type1)
 
         item1 = Item(type1, loc, 200)
@@ -112,7 +111,7 @@ class EntityTest(TestCase):
             def be_happy(self):
                 pass
 
-        item_type = ItemType("sickle")
+        item_type = ItemType("sickle", 500)
 
         item = Item(item_type, None, 100)
         prop = EntityProperty(entity=item, name="Happy", data={})
@@ -124,11 +123,30 @@ class EntityTest(TestCase):
         type_prop = EntityTypeProperty(type=item_type, name="Happy", data={})
         db.session.add(type_prop)
 
-        item2.be_happy()  # item has property enabling the method, so it should be possible to call it
+        item2.be_happy()  # item type has property enabling the method, so it should be possible to call it
 
         db.session.delete(type_prop)
 
         self.assertRaises(EntityPropertyException, item2.be_happy)
+
+    def test_has_property(self):
+
+        @properties.property_class
+        class SadPropertyType(properties.PropertyType):
+            __property__ = "Sad"
+            @properties.property_method
+            def be_sad(self):
+                pass
+
+        item_type = ItemType("potato", 1, stackable=True)
+
+        item = Item(item_type, None, 100)
+        type_prop = EntityTypeProperty(item_type, "Sad", {"very": False, "cookies": 0})
+        prop = EntityProperty(item, "Sad", {"very": True, "feel": "blue"})
+
+        db.session.add_all([item_type, item, prop, type_prop])
+
+        self.assertDictEqual({"very": True, "feel": "blue", "cookies": 0}, item.get_property("Sad"))
 
     tearDown = util.tear_down_rollback
 
@@ -213,9 +231,9 @@ class GroupTest(TestCase):
         self.assertFalse(hammers.contains(tools))
 
     def _setup_hammers(self):
-        self.stone_hammer = ItemType("stone_hammer")
-        self.iron_hammer = ItemType("iron_hammer")
-        self.marble_hammer = ItemType("marble_hammer")
+        self.stone_hammer = ItemType("stone_hammer", 200)
+        self.iron_hammer = ItemType("iron_hammer", 300)
+        self.marble_hammer = ItemType("marble_hammer", 500)
 
         db.session.add_all([self.stone_hammer, self.iron_hammer, self.marble_hammer])
 

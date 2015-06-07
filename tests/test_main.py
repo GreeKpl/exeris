@@ -78,7 +78,7 @@ class RangeSpecTest(TestCase):
         oloc1 = Location(orl, 231)
         db.session.add_all([rl, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
 
-        knife_type = ItemType("knife")
+        knife_type = ItemType("knife", 300)
         db.session.add(knife_type)
 
         irl_1 = Item(knife_type, rl, 381)
@@ -143,7 +143,6 @@ class RangeSpecTest(TestCase):
         items = rng.items_near()
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
-
 
     tearDown = util.tear_down_rollback
 
