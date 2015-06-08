@@ -122,5 +122,31 @@ class ActionsTest(TestCase):
         self.assertTrue(sql.inspect(potatoes).deleted)  # check whether the object is deleted
         self.assertEqual(200, potatoes_on_ground.weight)
 
+    def test_drop_action_failure(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1,1), False, 111)
+        plr = util.create_player("aaa")
+        char = util.create_character("John", rl, plr)
+
+        hammer_type = ItemType("stone_hammer", 200)
+
+        # hammer is already on the ground
+        hammer = Item(hammer_type, rl, 200)
+
+        db.session.add_all([rl, hammer_type, hammer])
+
+        action = DropItemAction(char, hammer)
+        self.assertRaises(Exception, action.perform)  # TODO
+
+        # there are too little potatoes
+        potatoes_type = ItemType("potatoes", 1, stackable=True)
+        potatoes = Item(potatoes_type, char, 200)
+
+        db.session.add_all([potatoes_type, potatoes])
+
+        action = DropItemAction(char, potatoes, 201)
+        self.assertRaises(Exception, action.perform)  # TODO
+
 
     tearDown = util.tear_down_rollback

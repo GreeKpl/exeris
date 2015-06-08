@@ -808,9 +808,17 @@ class ResultantPropertyArea:  # no overlays
 def init_database_contents():
 
     if not EntityType.by_name("door"):
-        db.session.add(EntityType("door"))
-        db.session.add(EventType("event_drop_item_doer"))
-        db.session.add(EventType("event_drop_item_observer"))
+        db.session.merge(EntityType("door"))
+
+    db.session.merge(EventType("event_drop_item_doer"))
+    db.session.merge(EventType("event_drop_item_observer"))
+    db.session.merge(EventType("event_drop_part_of_item_doer"))
+    db.session.merge(EventType("event_drop_part_of_item_observer"))
+    db.session.merge(EventType("event_take_item_doer"))
+    db.session.merge(EventType("event_take_item_observer"))
+    db.session.merge(EventType("event_take_part_of_item_doer"))
+    db.session.merge(EventType("event_take_part_of_item_observer"))
+
     db.session.flush()
 
 def delete_all(seq):

@@ -109,8 +109,7 @@ class RemoveItemAction(AbstractAction):
 # CHARACTER-SPECIFIC ACTIONS #
 ##############################
 
-class ItemManipulation():
-
+class StackableItemTransferMixin():
     def move_stackable_resource(self, source, goal):
         # remove from the source
         if self.item.weight == self.weight:
@@ -129,7 +128,7 @@ class ItemManipulation():
             db.session.add(new_pile)
 
 
-class DropItemAction(ActionOnItem, ItemManipulation):
+class DropItemAction(ActionOnItem, StackableItemTransferMixin):
 
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
@@ -147,8 +146,33 @@ class DropItemAction(ActionOnItem, ItemManipulation):
 
         if self.item.type.stackable:
             self.move_stackable_resource(self.item.being_in, self.executor.being_in)
+            EventCreator.base("event_drop_part_of_item", self.rng, {"item_name": self.item.type.name}, self.executor)
         else:
             self.item.being_in = self.executor.being_in
+            EventCreator.base("event_drop_item", self.rng, {"item_name": self.item.type.name}, self.executor)
 
-        EventCreator.base("event_drop_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+
+class TakeItemAction(ActionOnItem, StackableItemTransferMixin):
+    def __init__(self, executor, item, amount=1):
+        super().__init__(executor, item)
+        if self.item.type.stackable:
+            self.weight = amount * self.item.type.unit_weight
+        else:
+            self.weight = self.item.weight
+
+    def perform_action(self):
+        if self.item.being_in != self.executor.being_in:
+            raise Exception
+
+        if self.weight > self.item.weight:
+            raise Exception
+
+        if self.item.type.stackable:
+            self.move_stackable_resource(self.item.being_in, self.executor.being_in)
+            EventCreator.base("event_take_part_of_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+        else:
+            self.item.being_in = self.executor.being_in
+            EventCreator.base("event_take_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+
+
 
