@@ -1,23 +1,19 @@
 from PIL import ImageDraw
 from shapely.geometry import Polygon, Point
-from util.create_db import create_db
 
 __author__ = 'aleksander'
 
 from PIL import Image
-from exeris.core.main import db, create_app
+from exeris.core.main import db
 from exeris.core import models
 
 MAP_PER_PX = 100
 
 VIEW_SIZE = 500
 
-app = create_app()
-create_db()
-
 COLORS = ["red", "green", "yellow", "brown"]
 
-with app.app_context():
+def get_map():
     tt1 = models.TerrainType("grass", 1)
     tt2 = models.TerrainType("water", 2)
     road_type = models.TerrainType("road", 3)
@@ -68,5 +64,4 @@ with app.app_context():
         draw.pieslice([low, upp], 0, 360, fill="black")
 
     del draw
-    print("saving")
-    im.save("hehe.png")
+    return im
