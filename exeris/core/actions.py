@@ -119,12 +119,13 @@ class StackableItemTransferMixin():
 
         # add to the goal
         existing_pile = models.Item.query.filter_by(type=self.item.type).\
-            filter(models.Item.is_in(goal)).first()
+            filter(models.Item.is_in(goal)).filter_by(visible_parts=self.item.visible_parts).first()
 
         if existing_pile:
             existing_pile.weight += self.weight
         else:
             new_pile = models.Item(self.item.type, goal, self.weight)
+            new_pile.visible_parts = self.item.visible_parts
             db.session.add(new_pile)
 
 

@@ -122,6 +122,45 @@ class ActionsTest(TestCase):
         self.assertTrue(sql.inspect(potatoes).deleted)  # check whether the object is deleted
         self.assertEqual(200, potatoes_on_ground.weight)
 
+        strawberries_type = ItemType("strawberries", 5, stackable=True)
+        grapes_type = ItemType("grapes", 3, stackable=True)
+        cake_type = ItemType("cake", 100, stackable=True)
+
+        # check multipart resources
+        cake = Item(cake_type, char, 300)
+        cake_ground = Item(cake_type, rl, 300)
+        other_cake_ground = Item(cake_type, rl, 300)
+
+        db.session.add_all([strawberries_type, grapes_type, cake_type, cake, cake_ground, other_cake_ground])
+        db.session.flush()
+
+        cake.visible_parts = [strawberries_type.id, grapes_type.id]
+        cake_ground.visible_parts = [strawberries_type.id, grapes_type.id]
+
+        other_cake_ground.visible_parts = [strawberries_type.id, potatoes_type.id]
+
+        db.session.flush()
+
+        action = DropItemAction(char, cake, 1)
+        action.perform()
+
+        self.assertEqual(200, cake.weight)
+        self.assertEqual(400, cake_ground.weight)
+        self.assertEqual(300, other_cake_ground.weight)
+
+        db.session.delete(cake_ground)  # remove it!
+
+        action = DropItemAction(char, cake, 1)
+        action.perform()
+
+        self.assertEqual(100, cake.weight)
+        self.assertEqual(300, other_cake_ground.weight)
+
+        new_ground_cake = Item.query.filter(Item.is_in(rl)).filter_by(type=cake_type).\
+            filter_by(visible_parts=[strawberries_type.id, grapes_type.id]).one()
+        self.assertEqual(100, new_ground_cake.weight)
+        self.assertEqual([strawberries_type.id, grapes_type.id], new_ground_cake.visible_parts)
+
     def test_drop_action_failure(self):
         util.initialize_date()
 
@@ -140,13 +179,16 @@ class ActionsTest(TestCase):
         self.assertRaises(Exception, action.perform)  # TODO
 
         # there are too little potatoes
-        potatoes_type = ItemType("potatoes", 1, stackable=True)
+        potatoes_type = ItemType("potatoes", 20, stackable=True)
+
         potatoes = Item(potatoes_type, char, 200)
 
         db.session.add_all([potatoes_type, potatoes])
+        db.session.flush()
 
         action = DropItemAction(char, potatoes, 201)
         self.assertRaises(Exception, action.perform)  # TODO
+
 
 
     tearDown = util.tear_down_rollback

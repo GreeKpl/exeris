@@ -218,5 +218,3 @@ class EventCreator():
                          if char not in (doer, target)]
 
             db.session.add_all(event_obs)
-
-

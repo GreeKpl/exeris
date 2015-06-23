@@ -3,8 +3,12 @@ import pickle
 from exeris.core.main import db
 
 
+def loads(function_to_call):
+    return pickle.loads(base64.decodebytes(function_to_call.encode("ascii")))
+
 def call(function_to_call):
-    function_to_call = pickle.loads(base64.decodebytes(function_to_call.encode("ascii")))
+    function_to_call = loads(function_to_call)
+
 
     if type(function_to_call) is tuple:
         function = function_to_call[0]

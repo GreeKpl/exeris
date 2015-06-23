@@ -2,10 +2,11 @@ from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
+from exeris.core.recipes import ActivityFactory
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage, EntityGroup, EntityGroupElement
+    ItemType, Passage, EntityGroup, EntityGroupElement, EntityRecipe, BuildMenuCategory
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException, P
 from tests import util
@@ -236,6 +237,54 @@ class GroupTest(TestCase):
         self.marble_hammer = ItemType("marble_hammer", 500)
 
         db.session.add_all([self.stone_hammer, self.iron_hammer, self.marble_hammer])
+
+    def test_create_activity_from_recipe(self):
+
+        stone_type = ItemType("stone", 50, stackable=True)
+        hammer_type = ItemType("hammer", 100)
+
+        tools_category = BuildMenuCategory("tools")
+        rl = RootLocation(Point(1, 1), True, 32)
+        db.session.add_all([rl, hammer_type, stone_type, tools_category])
+        db.session.flush()
+
+        recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"input": {stone_type.id: 20.0}}, 11,
+                              tools_category, result_entity=hammer_type)
+
+        db.session.add(recipe)
+
+        factory = ActivityFactory()
+
+        activity = factory.create_from_recipe(recipe, rl, 3)
+
+        self.assertCountEqual({"input": {stone_type.id: 60.0}}, activity.requirements)
+        self.assertEqual(33, activity.ticks_left)
+
+    def test_build_menu_categories(self):
+
+        buildings = BuildMenuCategory("buildings")
+        wooden_buildings = BuildMenuCategory("wooden_buildings", buildings)
+        stone_buildings = BuildMenuCategory("stone_buildings", buildings)
+        tools = BuildMenuCategory("tools")
+        steel_tools = BuildMenuCategory("steel_tools", tools)
+        bone_tools = BuildMenuCategory("bone_tools", tools)
+
+        db.session.add_all([buildings, wooden_buildings, stone_buildings, tools, steel_tools, bone_tools])
+
+        steel_hammer = EntityRecipe("project_manu", {"name": "steel_hammer"}, {}, 11, steel_tools)
+        steel_needle = EntityRecipe("project_manu", {"name": "steel_needle"}, {}, 5, steel_tools)
+        stone_hut = EntityRecipe("project_build", {"name": "stone_hut"}, {}, 11, stone_buildings)
+
+        db.session.add_all([steel_hammer, steel_needle, stone_hut])
+
+        # buildings build menu structure
+        self.assertCountEqual([stone_buildings, wooden_buildings], buildings.child_categories)
+        self.assertCountEqual([stone_hut], stone_buildings.get_recipes())
+
+        # tools build menu structure
+        self.assertCountEqual([steel_tools, bone_tools], tools.child_categories)
+        self.assertCountEqual([steel_hammer, steel_needle], steel_tools.get_recipes())
+
 
 
     tearDown = util.tear_down_rollback

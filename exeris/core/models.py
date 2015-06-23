@@ -357,7 +357,7 @@ class Item(Entity):
     type_id = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
-    visible_constraints = sql.Column(psql.JSON, default=[])  # sorted list of item type ids
+    visible_parts = sql.Column(psql.JSONB, default=[])  # sorted list of item type ids
 
     _removal_game_date = sql.Column(sql.BigInteger, nullable=True)
 
@@ -675,6 +675,59 @@ class ScheduledTask(db.Model):
 
     def is_repeatable(self):
         return self.execution_interval is not None
+
+
+class EntityRecipe(db.Model):
+    __tablename__ = "entity_recipes"
+
+    id = sql.Column(sql.Integer, primary_key=True)
+
+    def __init__(self, name_tag, name_parameters, requirements, ticks_needed, build_menu_category,
+                 result=None, result_entity=None):
+        self.name_tag = name_tag
+        self.name_parameters = name_parameters
+        self.requirements = requirements
+        self.ticks_needed = ticks_needed
+        self.build_menu_category = build_menu_category
+        self.result = result if result else []
+        self.result_entity = result_entity
+
+    name_tag = sql.Column(sql.String)
+    name_parameters = sql.Column(psql.JSON)
+
+    requirements = sql.Column(psql.JSON)
+    ticks_needed = sql.Column(sql.Float)
+    result = sql.Column(psql.JSON)  # a list of serialized Action constructors
+    result_entity_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id),
+                                  nullable=True)  # EntityType being default result of the project
+    result_entity = sql.orm.relationship(EntityType, uselist=False)
+
+    build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"))
+    build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)
+
+
+class BuildMenuCategory(db.Model):
+    __tablename__ = "build_menu_categories"
+
+    id = sql.Column(sql.Integer, primary_key=True)
+
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.parent = parent
+
+    name = sql.Column(sql.String)
+    parent_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), nullable=True)
+    parent = sql.orm.relationship("BuildMenuCategory", primaryjoin=parent_id == id,
+                                  foreign_keys=parent_id, remote_side=id, backref="child_categories", uselist=False)
+
+    @classmethod
+    def get_root_categories(cls):
+        return cls.query.filter_by(parent=None).all()
+
+    def get_recipes(self):
+        return EntityRecipe.query.filter_by(build_menu_category=self).all()
+
+
 
 
 class ResourceArea(db.Model):
