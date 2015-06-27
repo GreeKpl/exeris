@@ -78,9 +78,12 @@ class ActionOnItemAndCharacter(Action):
 ####################
 
 class CreateItemAction(AbstractAction):
+    #@form_input(item_name=NameInput)
+    #@convert(item_type=models.ItemType)#, item_location=ResultReference)
 
     @expected_types(models.ItemType, models.Activity, None)
-    def __init__(self, item_type, source_activity, properties):
+    def __init__(self, item_type, source_activity, properties, ctx, container_ctx_offset):
+        #self.item_location = ctx[container_ctx_offset]
         self.item_type = item_type
         self.source_activity = source_activity
         self.properties = properties
