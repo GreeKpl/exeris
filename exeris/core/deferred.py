@@ -36,3 +36,6 @@ def convert(**fun_types):
         return g
     return inner
 
+
+class NameInput:
+    pass

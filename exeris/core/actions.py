@@ -1,4 +1,5 @@
 from exeris.core.deferred import convert
+from exeris.core import deferred
 from exeris.core.main import db
 from exeris.core import models
 
@@ -81,13 +82,16 @@ class ActivityAction(AbstractAction):
     pass
 
 
-def form_input(item_name):
-    pass
+def on_setup_form(**kwargs):  # adds a field "_form_input" to a class so it can be later used
+    def f(clazz):
+        clazz._form_input = kwargs
+        return clazz
+    return f
 
 
+@on_setup_form(item_name=deferred.NameInput)
 class CreateItemAction(ActivityAction):
 
-    #@form_input(item_name=NameInput)
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, **injected_args):
         self.item_type = item_type

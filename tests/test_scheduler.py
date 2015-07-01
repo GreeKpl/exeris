@@ -14,9 +14,6 @@ class SchedulerTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
-    def test_serializable(self):
-        pass
-
     def test_travel_process(self):
         pass
 
