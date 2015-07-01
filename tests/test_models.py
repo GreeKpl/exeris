@@ -239,7 +239,6 @@ class GroupTest(TestCase):
         db.session.add_all([self.stone_hammer, self.iron_hammer, self.marble_hammer])
 
     def test_create_activity_from_recipe(self):
-
         stone_type = ItemType("stone", 50, stackable=True)
         hammer_type = ItemType("hammer", 100)
 
@@ -255,7 +254,7 @@ class GroupTest(TestCase):
 
         factory = ActivityFactory()
 
-        activity = factory.create_from_recipe(recipe, rl, 3)
+        activity = factory.create_from_recipe(recipe, rl, 3, user_input={"item_name": "mloteczek"})
 
         self.assertCountEqual({"input": {stone_type.id: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)

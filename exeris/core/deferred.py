@@ -19,6 +19,8 @@ def call(json_to_call, **injected_args):
         kwargs.update(injected_args)
         return func(**kwargs)
 
+    raise AssertionError("'{}' is not a list to be called".format(json_to_call))
+
 
 def convert(**fun_types):
     def inner(f):

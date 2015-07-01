@@ -82,14 +82,14 @@ class ActivityAction(AbstractAction):
     pass
 
 
-def on_setup_form(**kwargs):  # adds a field "_form_input" to a class so it can be later used
+def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can be later used
     def f(clazz):
-        clazz._form_input = kwargs
+        clazz._form_inputs = kwargs
         return clazz
     return f
 
 
-@on_setup_form(item_name=deferred.NameInput)
+@form_on_setup(item_name=deferred.NameInput)
 class CreateItemAction(ActivityAction):
 
     @convert(item_type=models.ItemType)
