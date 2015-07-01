@@ -1,4 +1,4 @@
-from exeris.core.deferred import expected_types
+from exeris.core.deferred import convert
 from exeris.core.main import db
 from exeris.core import models
 
@@ -74,22 +74,28 @@ class ActionOnItemAndCharacter(Action):
 
 
 ####################
-# ABSTRACT ACTIONS #
+# ACTIVITY ACTIONS #
 ####################
 
-class CreateItemAction(AbstractAction):
-    #@form_input(item_name=NameInput)
-    #@convert(item_type=models.ItemType)#, item_location=ResultReference)
+class ActivityAction(AbstractAction):
+    pass
 
-    @expected_types(models.ItemType, models.Activity, None)
-    def __init__(self, item_type, source_activity, properties, ctx, container_ctx_offset):
-        #self.item_location = ctx[container_ctx_offset]
+
+def form_input(item_name):
+    pass
+
+
+class CreateItemAction(ActivityAction):
+
+    #@form_input(item_name=NameInput)
+    @convert(item_type=models.ItemType)
+    def __init__(self, *, item_type, properties, **injected_args):
         self.item_type = item_type
-        self.source_activity = source_activity
+        self.activity = injected_args["activity"]
         self.properties = properties
 
     def perform_action(self):
-        item = models.Item(self.item_type, self.source_activity.being_in.being_in, self.item_type.unit_weight)
+        item = models.Item(self.item_type, self.activity.being_in.being_in, self.item_type.unit_weight)
 
         db.session.add(item)
 
@@ -97,9 +103,9 @@ class CreateItemAction(AbstractAction):
             db.session.add(models.EntityProperty(item, property_name, self.properties[property_name]))
 
 
-class RemoveItemAction(AbstractAction):
+class RemoveItemAction(ActivityAction):
 
-    @expected_types(models.Item, None)
+    @convert(item=models.Item)
     def __init__(self, item, gracefully=True):
         self.item = item
         self.gracefully = gracefully

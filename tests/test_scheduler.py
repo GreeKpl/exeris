@@ -40,7 +40,7 @@ class SchedulerTest(TestCase):
         util.initialize_date()
         self._before_activity_process()
 
-        task = ScheduledTask((ActivityProcess,), 0)
+        task = ScheduledTask(["exeris.core.ActivityProcess", {}], 0)
         db.session.add(task)
 
         db.session.flush()
@@ -67,7 +67,8 @@ class SchedulerTest(TestCase):
         activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1)
         db.session.add(activity)
         db.session.flush()
-        result = deferred.dumps(CreateItemAction, result_type.id, activity.id, {"Edible": True})
+        result = ["exeris.core.actions.CreateItemAction",
+                  {"item_type": result_type.id, "properties": {"Edible": True}}]
         activity.result_actions = [result]
 
         worker.activity = activity

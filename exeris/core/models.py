@@ -416,6 +416,9 @@ class Activity(Entity):
         self.ticks_needed = ticks_needed
         self.ticks_left = ticks_needed
 
+    initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
+    initiator = sql.orm.relationship("Character", uselist=False, foreign_keys=[initiator_id])
+
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
     ticks_needed = sql.Column(sql.Float)
@@ -664,12 +667,13 @@ class ScheduledTask(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    process_data = sql.Column(sql.String)
+    process_data = sql.Column(psql.JSON)
     execution_game_date = sql.Column(sql.BigInteger)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
-    def __init__(self, process_tuple, execution_game_date, execution_interval=None):
-        self.process_data = deferred.dumps(*process_tuple)
+    def __init__(self, process_json, execution_game_date, execution_interval=None):
+
+        self.process_data = process_json
         self.execution_game_date = execution_game_date
         self.execution_interval = execution_interval
 

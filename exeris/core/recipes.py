@@ -32,4 +32,4 @@ class ActivityFactory:
         if entity_type is None:
             return []
         elif type(entity_type) is models.ItemType:
-            return [deferred.dumps(actions.CreateItemAction, entity_type, activity, {})]
+            return [["exeris.core.actions.CreateItemAction", {"item_type": entity_type, "properties": {}}]]

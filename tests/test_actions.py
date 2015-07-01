@@ -1,14 +1,16 @@
 from unittest.mock import patch
+
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
+import sqlalchemy as sql
+
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction
 from exeris.core.main import db
 from exeris.core.general import GameDate
-from exeris.core.models import ItemType, Activity, Item, RootLocation, EventType, sqlalchemy
+from exeris.core.models import ItemType, Activity, Item, RootLocation
 from tests import util
-import sqlalchemy as sql
-import sqlalchemy.orm as orm
+
 
 __author__ = 'alek'
 
@@ -33,7 +35,7 @@ class ActionsTest(TestCase):
         hammer_activity = Activity(container, {"input": "potatoes"}, 100)
         db.session.add(hammer_activity)
 
-        action = CreateItemAction(item_type, hammer_activity, {"Edible": True})
+        action = CreateItemAction(item_type=item_type, properties={"Edible": True}, activity=hammer_activity)
         action.perform()
 
         items = Item.query.filter_by(type=item_type).all()
@@ -70,10 +72,10 @@ class ActionsTest(TestCase):
         db.session.add(hammer_activity)
 
         db.session.flush()
-        d = deferred.dumps(CreateItemAction, item_type.id, hammer_activity.id, {"Edible": True})
+        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.id, "properties": {"Edible": True}}]
 
         # dump it, then read and run the deferred function
-        action = deferred.call(d)
+        action = deferred.call(d, activity=hammer_activity)
 
         action.perform()
 

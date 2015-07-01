@@ -1,8 +1,8 @@
 import base64
 import logging
-from shapely.geometry import Point
 import time
-from exeris.core.deferred import expected_types
+
+from shapely.geometry import Point
 
 from exeris.core.main import db
 from exeris.core import models, deferred
@@ -65,7 +65,6 @@ class Process:
 
 class TravelProcess(Process):
 
-    @expected_types()
     def __init__(self):
         pass
 
@@ -79,7 +78,6 @@ class TravelProcess(Process):
 
 class ActivityProcess(Process):
 
-    @expected_types()
     def __init__(self):
         pass
 
@@ -122,18 +120,5 @@ class ActivityProcess(Process):
     def finish_activity(self, activity):
         print("finishing activity")
         for serialized_action in activity.result_actions:
-            action = deferred.call(serialized_action)
+            action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
             action.perform()
-
-
-
-#scheduler = Scheduler()
-#flask_app = create_app()
-
-
-
-
-#with flask_app.app_context():
-#    scheduler.run()
-
-
