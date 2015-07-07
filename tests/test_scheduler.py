@@ -30,7 +30,7 @@ class SchedulerTest(TestCase):
         result_item = Item.query.filter_by(type=result_type).one()
         rt = RootLocation.query.one()
 
-        self.assertEqual(rt, result_item.being_in)
+        self.assertEqual(self.worker, result_item.being_in)
         self.assertEqual("result", result_item.type.name)
 
     def test_scheduler(self):
@@ -55,20 +55,20 @@ class SchedulerTest(TestCase):
         hammer_worked_on = Item(hammer_type, rt, 100)
         db.session.add(hammer_worked_on)
 
-        worker = util.create_character("John", rt, util.create_player("ABC"))
+        self.worker = util.create_character("John", rt, util.create_player("ABC"))
 
-        hammer = Item(hammer_type, worker, 111)
+        hammer = Item(hammer_type, self.worker, 111)
         db.session.add(hammer)
         db.session.flush()
 
-        activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1)
+        activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1, self.worker)
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
                   {"item_type": result_type.id, "properties": {"Edible": True}}]
         activity.result_actions = [result]
 
-        worker.activity = activity
+        self.worker.activity = activity
 
     tearDown = util.tear_down_rollback
 

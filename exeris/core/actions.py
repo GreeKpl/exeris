@@ -89,17 +89,21 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
     return f
 
 
-@form_on_setup(item_name=deferred.NameInput)
 class CreateItemAction(ActivityAction):
 
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, **injected_args):
         self.item_type = item_type
         self.activity = injected_args["activity"]
+        self.initiator = injected_args["initiator"]
         self.properties = properties
 
     def perform_action(self):
-        item = models.Item(self.item_type, self.activity.being_in.being_in, self.item_type.unit_weight)
+
+        result_loc = self.activity.being_in.being_in
+        if self.initiator.being_in == result_loc and self.item_type.portable:  # if being in the same location then go to inventory
+            result_loc = self.initiator
+        item = models.Item(self.item_type, result_loc, self.item_type.unit_weight)
 
         db.session.add(item)
 
@@ -117,6 +121,12 @@ class RemoveItemAction(ActivityAction):
     def perform_action(self):
         self.item.remove(self.gracefully)
 
+@form_on_setup(item_name=deferred.NameInput)
+class AddNameToItemAction(ActivityAction):
+
+    @convert(item=models.Item)
+    def __init__(self, *, item, item_name):
+        pass
 
 ##############################
 # CHARACTER-SPECIFIC ACTIONS #

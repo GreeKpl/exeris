@@ -3,6 +3,7 @@ import collections
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.sql import or_
 from exeris.core import properties
@@ -295,13 +296,25 @@ class LocationType(EntityType):
 class Character(Entity):
     __tablename__ = "characters"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
-
     SEX_MALE = "m"
     SEX_FEMALE = "f"
 
     STATE_ALIVE = 1
     STATE_DEAD = 2
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    def __init__(self, name, sex, player, spawn_date, spawn_position, being_in):
+        super().__init__()
+        self.being_in = being_in
+        self.name = name
+        self.sex = sex
+        self.player = player
+
+        self.state = Character.STATE_ALIVE
+
+        self.spawn_position = spawn_position
+        self.spawn_date = spawn_date
 
     name = sql.Column(sql.String)
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
@@ -314,8 +327,8 @@ class Character(Entity):
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))
 
-    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"))
-    activity = sql.orm.relationship("Activity", uselist=False, foreign_keys=[activity_id])
+    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"), nullable=True)
+    activity = sql.orm.relationship("Activity", primaryjoin="Character.activity_id == Activity.id", uselist=False)
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
@@ -324,17 +337,6 @@ class Character(Entity):
     @validates("spawn_date")
     def validate_spawn_date(self, key, spawn_date):
         return spawn_date.game_timestamp
-
-    def __init__(self, name, sex, player, spawn_date, spawn_position, being_in):
-        self.being_in = being_in
-        self.name = name
-        self.sex = sex
-        self.player = player
-
-        self.state = Character.STATE_ALIVE
-
-        self.spawn_position = spawn_position
-        self.spawn_date = spawn_date
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
@@ -394,7 +396,7 @@ class Item(Entity):
     }
 
 
-class ActivityType(EntityType):
+class ActivityType(EntityType):   # TODO!!! Is it needed at all? Activities will be property-based
     __tablename__ = "activity_types"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
@@ -409,15 +411,16 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, requirements, ticks_needed):
+    def __init__(self, being_in, requirements, ticks_needed, initiator):
 
         self.being_in = being_in
         self.requirements = requirements
         self.ticks_needed = ticks_needed
         self.ticks_left = ticks_needed
+        self.initiator = initiator
 
     initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
-    initiator = sql.orm.relationship("Character", uselist=False, foreign_keys=[initiator_id])
+    initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id", post_update=True)
 
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction

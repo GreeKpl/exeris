@@ -252,9 +252,11 @@ class GroupTest(TestCase):
 
         db.session.add(recipe)
 
+        initiator = util.create_character("John", rl, util.create_player("AAA"))
+
         factory = ActivityFactory()
 
-        activity = factory.create_from_recipe(recipe, rl, 3, user_input={"item_name": "mloteczek"})
+        activity = factory.create_from_recipe(recipe, rl, initiator, 3, user_input={"item_name": "mloteczek"})
 
         self.assertCountEqual({"input": {stone_type.id: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)

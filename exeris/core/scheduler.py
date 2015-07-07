@@ -88,7 +88,7 @@ class ActivityProcess(Process):
 
     def make_progress(self, activity):
         print("progress of ", activity)
-        workers = models.Character.query.filter_by(activity=activity).all()
+        workers = models.Character.query.filter(models.Character.activity==activity).all()
         for worker in workers:
             print("worker ", worker)
             if "tools" in activity.requirements:

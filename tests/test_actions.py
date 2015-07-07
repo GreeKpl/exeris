@@ -21,21 +21,20 @@ class ActionsTest(TestCase):
 
     def test_simple_create_item_action(self):
         item_type = ItemType("hammer", 200)
-        db.session.add(item_type)
-
         schema_type = ItemType("schema", 0)
-        db.session.add(schema_type)
-
         rl = RootLocation(Point(1, 2), False, 123)
-        db.session.add(rl)
+        db.session.add_all([item_type, schema_type, rl])
 
         container = Item(schema_type, rl, 111)
         db.session.add(container)
 
-        hammer_activity = Activity(container, {"input": "potatoes"}, 100)
+        initiator = util.create_character("ABC", rl, util.create_player("janko"))
+
+        hammer_activity = Activity(container, {"input": "potatoes"}, 100, initiator)
         db.session.add(hammer_activity)
 
-        action = CreateItemAction(item_type=item_type, properties={"Edible": True}, activity=hammer_activity)
+        action = CreateItemAction(item_type=item_type, properties={"Edible": True},
+                                  activity=hammer_activity, initiator=initiator)
         action.perform()
 
         items = Item.query.filter_by(type=item_type).all()
@@ -57,25 +56,23 @@ class ActionsTest(TestCase):
         util.initialize_date()
 
         item_type = ItemType("hammer", 200)
-        db.session.add(item_type)
-
         schema_type = ItemType("schema", 0)
-        db.session.add(schema_type)
-
         rl = RootLocation(Point(1, 2), False, 123)
-        db.session.add(rl)
+        db.session.add_all([item_type, schema_type, rl])
 
         container = Item(schema_type, rl, 111)
         db.session.add(container)
 
-        hammer_activity = Activity(rl, {}, 100)
+        initiator = util.create_character("ABC", rl, util.create_player("janko"))
+
+        hammer_activity = Activity(rl, {}, 100, initiator)
         db.session.add(hammer_activity)
 
         db.session.flush()
         d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.id, "properties": {"Edible": True}}]
 
         # dump it, then read and run the deferred function
-        action = deferred.call(d, activity=hammer_activity)
+        action = deferred.call(d, activity=hammer_activity, initiator=initiator)
 
         action.perform()
 
