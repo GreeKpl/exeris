@@ -346,6 +346,8 @@ class Character(Entity):
 class Item(Entity):
     __tablename__ = "items"
 
+    DAMAGED_LB = 0.7
+
     def __init__(self, type, being_in, weight=None):
         self.type = type
         self.being_in = being_in
@@ -360,6 +362,19 @@ class Item(Entity):
     type = sql.orm.relationship(ItemType, uselist=False)
 
     visible_parts = sql.Column(psql.JSONB, default=[])  # sorted list of item type ids
+
+    @validates("visible_parts")
+    def validate_visible_parts(self, key, visible_parts):
+        # turn (optional) item types into ids
+        visible_parts = [part if type(part) is int else part.id for part in visible_parts]
+
+        return sorted(visible_parts)
+
+    damage = sql.Column(sql.Float, default=0)
+
+    @validates("damage")
+    def validate_damage(self, key, damage):
+        return max(0.0, min(1.0, damage))  # in range [0, 1]
 
     _removal_game_date = sql.Column(sql.BigInteger, nullable=True)
 
