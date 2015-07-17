@@ -24,38 +24,77 @@ data = {
     "entity_carrot#b": {
         "pl": "marchewką",
     },
+    "entity_carrot#u": {
+        "en": "carrots",
+        "pl": "marchewki",
+    },
+    "entity_carrot#ub": {
+        "pl": "marchewkami",
+    },
     "entity_apple": {
         "en": "apple",
         "pl": "jabłko",
     },
-    "entity_apple#b": {
-        "pl": "jabłkiem",
+    "entity_apple#u": {
+        "en": "apples",
+        "pl": "jabłkami",
+    },
+    "entity_apple#ub": {
+        "pl": "jabłkami",
     },
     "entity_berries": {
+        "en": "handful of berries",
+        "pl": "garść jagód",
+    },
+    "entity_berries#p": {
+        "en": "handfuls of berries",
+        "pl": "garści jagód",
+    },
+    "entity_berries#u": {
         "en": "berries",
         "pl": "jagody",
+    },
+    "entity_berries#ub": {
+        "pl": "jagodami",
     },
     "entity_shirt": {
         "en": "shirt",
         "pl": ["koszula", "f"],
     },
     "entity_hemp_cloth": {
+        "en": "bale of hemp cloth",
+        "pl": "bela tkaniny konopnej",
+    },
+    "entity_hemp_cloth#w": {
+        "pl": "bele tkaniny konopnej",
+    },
+    "entity_hemp_cloth#p": {
+        "en": "bales of hemp cloth",
+        "pl": "bel tkaniny konopnej",
+    },
+    "entity_hemp_cloth#u": {
         "en": "hemp cloth",
         "pl": "tkanina konopna",
+    },
+    "entity_hemp_cloth#ub": {
+        "pl": "tkaniną konopną",
     },
     "entity_hemp_cloth_adj": {
         "en": "hemp",
         "pl": "konopn%{tag_v:m?y|f?a|n?e}",
     },
-    "entity_berries#b": {
-        "pl": "jagodami",
-    },
     "entity_cake": {
         "en": "cake",
         "pl": "ciasto",
     },
+    "entity_cake#u": {
+        "pl": "ciasto",
+    },
+    "entity_cake#ub": {
+        "pl": "ciastami",
+    },
     "tp_item_info": {
-        "en": "%{damage}%{main_material}%{item_name}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{item_name}%{parts}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",
@@ -67,7 +106,7 @@ data = {
     "tp_parts": {
         "en": "%{last}",
     },
-    "tp_parts#y": {
+    "tp_parts#p": {
         "en": "%{most} and %{last}",
         "pl": "%{most} i %{last}",
     },
@@ -123,11 +162,11 @@ class TranslationTest(TestCase):
         cake.visible_parts = [carrot_type, apple_type, berries_type]
 
         # test visible parts
-        self.assertEqual("cake with carrot, apple and berries", pyslate.t("item_info", item=cake))
+        self.assertEqual("cake with carrots, apples and berries", pyslate.t("item_info", item=cake))
 
         # test visible parts in Polish
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("ciasto z marchewką, jabłkiem i jagodami", pyslate.t("item_info", item=cake))
+        self.assertEqual("ciasto z marchewkami, jabłkami i jagodami", pyslate.t("item_info", item=cake))
 
     def test_damaged_item(self):
 
@@ -167,6 +206,33 @@ class TranslationTest(TestCase):
 
         pyslate = create_pyslate("pl", data=data)
         self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", item=shirt))
+
+    def test_stackable(self):
+        pyslate_en = create_pyslate("en", data=data)
+        pyslate_pl = create_pyslate("pl", data=data)
+
+        rl = RootLocation(Point(1, 1), True, 111)
+        hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
+        hemp_cloth = Item(hemp_cloth_type, rl, 5)
+
+        db.session.add_all([rl, hemp_cloth_type, hemp_cloth])
+        db.session.flush()
+
+        self.assertEqual("1 bale of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
+        self.assertEqual("1 bela tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+
+        hemp_cloth.weight = 15
+
+        self.assertEqual("3 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
+        self.assertEqual("3 bele tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+
+        hemp_cloth.weight = 30
+
+        self.assertEqual("6 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
+        self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+
+
+
 
     tearDown = util.tear_down_rollback
 

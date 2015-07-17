@@ -367,7 +367,6 @@ class Item(Entity):
     def validate_visible_parts(self, key, visible_parts):
         # turn (optional) item types into ids
         visible_parts = [part if type(part) is int else part.id for part in visible_parts]
-
         return sorted(visible_parts)
 
     damage = sql.Column(sql.Float, default=0)
@@ -394,8 +393,13 @@ class Item(Entity):
             return cls._removal_game_date
     '''
 
-    def remove(self, move_contents=True):
+    @hybrid_property
+    def amount(self):
+        if not self.type.stackable:
+            return 1
+        return int(self.weight / self.type.unit_weight)
 
+    def remove(self, move_contents=True):
         if move_contents:
             items_inside = Item.query.filter(Item.is_in(self)).all()
 
