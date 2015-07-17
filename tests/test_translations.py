@@ -2,7 +2,8 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
-from exeris.core.models import Item, ItemType, RootLocation
+from exeris.core.models import Item, ItemType, RootLocation, EntityProperty
+from exeris.core.properties import P
 from pyslate.pyslate import Pyslate
 from tests import util
 
@@ -34,6 +35,18 @@ data = {
         "en": "berries",
         "pl": "jagody",
     },
+    "entity_shirt": {
+        "en": "shirt",
+        "pl": ["koszula", "f"],
+    },
+    "entity_hemp_cloth": {
+        "en": "hemp cloth",
+        "pl": "tkanina konopna",
+    },
+    "entity_hemp_cloth_adj": {
+        "en": "hemp",
+        "pl": "konopn%{tag_v:m?y|f?a|n?e}",
+    },
     "entity_berries#b": {
         "pl": "jagodami",
     },
@@ -41,9 +54,15 @@ data = {
         "en": "cake",
         "pl": "ciasto",
     },
-    "tp_item_with_parts": {
-        "en": "%{item_name} with ${_parts}",
-        "pl": "%{item_name} z ${_parts}",
+    "tp_item_info": {
+        "en": "%{damage}%{main_material}%{item_name}%{parts}",
+    },
+    "tp_item_parts": {
+        "en": "with ${_parts}",
+        "pl": "z ${_parts}",
+    },
+    "tp_item_main_material": {
+        "en": "${entity_%{material_name}_adj#%{item_form}}",
     },
     "tp_parts": {
         "en": "%{last}",
@@ -53,8 +72,8 @@ data = {
         "pl": "%{most} i %{last}",
     },
     "tp_item_damaged": {
-        "en": "damaged %{item_name}",
-        "pl": "zniszczon%{item_form:m?y|f?a|n?e} %{item_name}",
+        "en": "damaged",
+        "pl": "uszkodzon%{item_form:m?y|f?a|n?e}",
     },
     "any": {
         "en": "%{contents}",
@@ -125,7 +144,29 @@ class TranslationTest(TestCase):
         self.assertEqual("damaged sword", pyslate.t("item_info", item=sword))
 
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("zniszczony miecz", pyslate.t("item_info", item=sword))
+        self.assertEqual("uszkodzony miecz", pyslate.t("item_info", item=sword))
+
+    def test_main_material(self):
+
+        pyslate = create_pyslate("en", data=data)
+
+        rl = RootLocation(Point(1, 1), True, 111)
+        shirt_type = ItemType("shirt", 100)
+        hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
+        shirt = Item(shirt_type, rl)
+        shirt.damage = 0.8
+
+        db.session.add_all([rl, shirt_type, shirt, hemp_cloth_type])
+        db.session.flush()
+
+        main_material_prop = EntityProperty(shirt, P.VISIBLE_MATERIAL, data={"main": hemp_cloth_type.id})
+        db.session.add(main_material_prop)
+        db.session.flush()
+
+        self.assertEqual("damaged hemp shirt", pyslate.t("item_info", item=shirt))
+
+        pyslate = create_pyslate("pl", data=data)
+        self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", item=shirt))
 
     tearDown = util.tear_down_rollback
 

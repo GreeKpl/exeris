@@ -3,10 +3,16 @@ import inspect
 __author__ = 'Aleksander Chrabąszcz'
 
 
+# property
 class P:
+    VISIBLE_MATERIAL = "VisibleMaterial"
     WINDOW = "Window"
     OPEN_PASSAGE = "OpenPassage"
 
+
+# type property
+class TP:
+    pass
 
 __registry = {}
 
