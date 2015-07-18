@@ -380,7 +380,7 @@ class Item(Entity):
 
     DAMAGED_LB = 0.7
 
-    def __init__(self, item_type, parent_entity, weight=None, role_being_in=True):
+    def __init__(self, item_type, parent_entity, weight=None, role_being_in=True, amount=None):
         self.type = item_type
 
         if role_being_in:
@@ -388,10 +388,13 @@ class Item(Entity):
         else:
             self.used_for = parent_entity
 
-        if weight is None:
-            self.weight = item_type.unit_weight
-        else:
+        if weight is not None:
             self.weight = weight
+        elif amount is not None:
+            self.weight = amount * item_type.unit_weight
+        else:
+            self.weight = item_type.unit_weight
+
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 

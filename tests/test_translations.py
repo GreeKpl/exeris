@@ -87,6 +87,10 @@ data = {
         "en": "cake",
         "pl": "ciasto",
     },
+    "entity_cake#p": {
+        "en": "cakes",
+        "pl": "ciasta",
+    },
     "entity_cake#u": {
         "pl": "ciasto",
     },
@@ -113,9 +117,6 @@ data = {
     "tp_item_damaged": {
         "en": "damaged",
         "pl": "uszkodzon%{item_form:m?y|f?a|n?e}",
-    },
-    "any": {
-        "en": "%{contents}",
     },
 }
 

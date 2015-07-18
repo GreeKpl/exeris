@@ -125,8 +125,8 @@ class CreateItemAction(ActivityAction):
                     req_input = self.activity.requirements["input"]
                     for req_material_id in req_input:  # forall requirements
                         req_used_type_id = req_input[req_material_id]["used_type"]
-                        if req_used_type_id == material_type_id:  # req is fulfilled by material
-                            real_material_type = models.ItemType.by_id(material_type_id)
+                        if req_material_id == material_type_id:  # req is fulfilled by material
+                            real_material_type = models.ItemType.by_id(req_used_type_id)
                             required_material_type = models.EntityType.by_id(req_material_id)
 
                             amount = required_material_type.multiplier(real_material_type) *\

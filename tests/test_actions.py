@@ -8,7 +8,8 @@ from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction
 from exeris.core.main import db
 from exeris.core.general import GameDate
-from exeris.core.models import ItemType, Activity, Item, RootLocation
+from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup
+from exeris.core.properties import P
 from tests import util
 
 
@@ -84,10 +85,18 @@ class ActionsTest(TestCase):
         self.assertTrue(items[0].has_property("Edible"))
 
     def test_complicated_create_item_action(self):
+        """
+        Create a lock and a key in an activity made of iron (for lock) and hard metal group (for key - we use steel)
+        For key 'steel' should be "main" in visible_material property
+        :return:
+        """
         util.initialize_date()
 
         iron_type = ItemType("iron", 4, stackable=True)
+        hard_metal_group = TypeGroup("group_hard_metal")
         steel_type = ItemType("steel", 5, stackable=True)
+
+        hard_metal_group.add_to_group(steel_type, multiplier=2.0)
 
         lock_type = ItemType("iron_lock", 200, portable=False)
         key_type = ItemType("key", 10)
@@ -96,14 +105,14 @@ class ActionsTest(TestCase):
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
 
-        db.session.add_all([iron_type, steel_type, lock_type, key_type, rl, initiator])
+        db.session.add_all([iron_type, steel_type, hard_metal_group, lock_type, key_type, rl, initiator])
         db.session.flush()
 
         activity = Activity(rl, {"input": {
             iron_type.id: {
                 "needed": 50, "left": 0, "used_type": iron_type.id,
             },
-            steel_type.id: {
+            hard_metal_group.id: {
                 "needed": 1, "left": 0, "used_type": steel_type.id,
             }}}, 1, initiator)
         create_lock_action_args = {"item_type": lock_type.id, "properties": {},
@@ -111,12 +120,12 @@ class ActionsTest(TestCase):
         create_lock_action = ["exeris.core.actions.CreateItemAction", create_lock_action_args]
 
         create_key_action_args = {"item_type": key_type.id, "properties": {},
-                                  "used_materials": {steel_type.id: 1}}
+                                  "used_materials": {hard_metal_group.id: 1}, "visible_material": {"main": hard_metal_group.id}}
         create_key_action = ["exeris.core.actions.CreateItemAction", create_key_action_args]
         activity.result_actions = [create_lock_action, create_key_action]
 
-        iron = Item(iron_type, activity, 50 * iron_type.unit_weight, role_being_in=False)
-        steel = Item(steel_type, activity, 20 * steel_type.unit_weight, role_being_in=False)
+        iron = Item(iron_type, activity, amount=50, role_being_in=False)
+        steel = Item(steel_type, activity, amount=20, role_being_in=False)
 
         db.session.add_all([iron, steel])
         db.session.flush()
@@ -131,13 +140,16 @@ class ActionsTest(TestCase):
         self.assertEqual(200, used_iron.weight)
 
         iron_piles_left = Item.query.filter_by(type=iron_type).filter(Item.is_in(rl)).count()
-        self.assertEqual(0, iron_piles_left)
+        self.assertEqual(0, iron_piles_left)  # no pile of iron, everything was used
 
         new_key = Item.query.filter_by(type=key_type).one()
         used_steel = Item.query.filter(Item.is_used_for(new_key)).one()
-        self.assertEqual(1, used_steel.amount)
-        self.assertEqual(5, used_steel.weight)
-        self.assertEqual(19, steel.amount)
+        self.assertEqual(2, used_steel.amount)
+        self.assertEqual(10, used_steel.weight)
+        self.assertEqual(18, steel.amount)
+
+        visible_material_prop = EntityProperty.query.filter_by(entity=new_key, name=P.VISIBLE_MATERIAL).one()
+        self.assertEqual({"main": steel_type.id}, visible_material_prop.data)  # steel is visible
 
 
 
