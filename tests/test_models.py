@@ -6,7 +6,7 @@ from exeris.core.recipes import ActivityFactory
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage, EntityGroup, EntityGroupElement, EntityRecipe, BuildMenuCategory
+    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException, P
 from tests import util
@@ -184,11 +184,11 @@ class GroupTest(TestCase):
 
         self._setup_hammers()
 
-        hammers = EntityGroup("group_hammers")
+        hammers = TypeGroup("group_hammers")
 
-        hammers._children_junction.append(EntityGroupElement(self.stone_hammer))
-        hammers._children_junction.append(EntityGroupElement(self.iron_hammer))
-        hammers._children_junction.append(EntityGroupElement(self.marble_hammer))
+        hammers._children_junction.append(TypeGroupElement(self.stone_hammer))
+        hammers._children_junction.append(TypeGroupElement(self.iron_hammer))
+        hammers._children_junction.append(TypeGroupElement(self.marble_hammer))
 
         db.session.add(hammers)
 
@@ -198,8 +198,8 @@ class GroupTest(TestCase):
 
         self._setup_hammers()
 
-        tools = EntityGroup("group_tools")
-        hammers = EntityGroup("group_hammers")
+        tools = TypeGroup("group_tools")
+        hammers = TypeGroup("group_hammers")
 
         hammers.add_to_group(self.stone_hammer)
         hammers.add_to_group(self.iron_hammer)
@@ -214,12 +214,12 @@ class GroupTest(TestCase):
         self.assertEqual([hammers], self.stone_hammer.parent_groups)
         self.assertEqual([tools], hammers.parent_groups)
 
-    def test_containment(self):
+    def test_groups(self):
 
-        useful = EntityGroup("group_useful")
-        tools = EntityGroup("group_tools")
-        hammers = EntityGroup("group_hammers")
-        cookies = EntityGroup("group_cookies")
+        useful = TypeGroup("group_useful")
+        tools = TypeGroup("group_tools")
+        hammers = TypeGroup("group_hammers")
+        cookies = TypeGroup("group_cookies")
 
         useful.add_to_group(tools)
         tools.add_to_group(hammers)
@@ -230,6 +230,24 @@ class GroupTest(TestCase):
         self.assertTrue(useful.contains(hammers))
         self.assertFalse(tools.contains(cookies))
         self.assertFalse(hammers.contains(tools))
+
+        self.assertEqual([useful, tools, hammers], useful.get_group_path(hammers))
+
+        fuel = TypeGroup("group_fuel")
+        wood = TypeGroup("group_wood")
+        pine_wood = TypeGroup("group_pine_wood")
+        old_pine_wood = ItemType("old_pine_wood", 50, stackable=True)
+        fine_oak_wood = ItemType("fine_oak_wood", 70, stackable=True)
+
+        fuel.add_to_group(wood, multiplier=2.0)
+        wood.add_to_group(pine_wood, multiplier=0.75)
+        pine_wood.add_to_group(old_pine_wood, multiplier=1.5)
+        wood.add_to_group(fine_oak_wood)
+
+        db.session.add_all([fuel, wood, pine_wood, old_pine_wood, fine_oak_wood])
+
+        self.assertEqual(2.0, fuel.multiplier(fine_oak_wood))
+        self.assertEqual(2.25, fuel.multiplier(old_pine_wood))
 
     def _setup_hammers(self):
         self.stone_hammer = ItemType("stone_hammer", 200)

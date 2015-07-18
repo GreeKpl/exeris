@@ -65,7 +65,7 @@ class SchedulerTest(TestCase):
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
-                  {"item_type": result_type.id, "properties": {"Edible": True}}]
+                  {"item_type": result_type.id, "properties": {"Edible": True}, "used_materials": "all"}]
         activity.result_actions = [result]
 
         self.worker.activity = activity

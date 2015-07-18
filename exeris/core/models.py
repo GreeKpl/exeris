@@ -94,16 +94,18 @@ class EntityType(db.Model):
     }
 
 
-class EntityGroupElement(db.Model):
+class TypeGroupElement(db.Model):
     __tablename__ = "entity_group_elements"
 
-    def __init__(self, child):
+    def __init__(self, child, multiplier=1.0):
         self.child = child
+        self.multiplier = multiplier
 
-    parent_id = sql.Column(sql.Integer, sql.ForeignKey('entity_groups.id'), primary_key=True)
-    parent = sql.orm.relationship("EntityGroup", foreign_keys=[parent_id], backref="_children_junction")
+    parent_id = sql.Column(sql.Integer, sql.ForeignKey('entity_type_groups.id'), primary_key=True)
+    parent = sql.orm.relationship("TypeGroup", foreign_keys=[parent_id], backref="_children_junction")
     child_id = sql.Column(sql.Integer, sql.ForeignKey('entity_types.id'), primary_key=True)
     child = sql.orm.relationship("EntityType", foreign_keys=[child_id], backref="_parent_groups_junction")
+    multiplier = sql.Column(sql.Float, default=1.0, nullable=False)  # how many of child is 1 unit of parent group
 
 
 class ItemType(EntityType):
@@ -121,13 +123,18 @@ class ItemType(EntityType):
     stackable = sql.Column(sql.Boolean)
     portable = sql.Column(sql.Boolean)
 
+    def multiplier(self, entity_type):  # quack quack
+        if entity_type == self:
+            return 1.0
+        raise Exception  # TODO!!! NEED A BETTER EXCEPTION
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
 
 
-class EntityGroup(EntityType):
-    __tablename__ = "entity_groups"
+class TypeGroup(EntityType):
+    __tablename__ = "entity_type_groups"
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
 
@@ -135,17 +142,32 @@ class EntityGroup(EntityType):
     def children(self):
         return [group_element.child for group_element in self._children_junction]
 
-    def add_to_group(self, child):
-        self._children_junction.append(EntityGroupElement(child))
+    def add_to_group(self, child, multiplier=1.0):
+        self._children_junction.append(TypeGroupElement(child, multiplier))
 
     def remove_from_group(self, child):
-        self._children_junction.remove(EntityGroupElement.query.filter_by(parent=self, child=child).one())
+        self._children_junction.remove(TypeGroupElement.query.filter_by(parent=self, child=child).one())
 
     def contains(self, entity_type):
+        return not not self.get_group_path(entity_type)
+
+    def get_group_path(self, entity_type):
         if entity_type in self.children:
-            return True
-        child_groups = filter(lambda group: type(group) == EntityGroup, self.children)  # TODO, disgusting
-        return any([child.contains(entity_type) for child in child_groups])
+            return [self, entity_type]
+        child_groups = filter(lambda group: type(group) == TypeGroup, self.children)  # TODO, disgusting
+        for group in child_groups:
+            path = group.get_group_path(entity_type)
+            if path:
+                return [self] + path
+        return []
+
+    def multiplier(self, entity_type):
+        lst = self.get_group_path(entity_type)
+        pairs = zip(lst[:-1], lst[1:])
+        multiplier = 1.0
+        for pair in pairs:
+            multiplier *= TypeGroupElement.query.filter_by(parent=pair[0], child=pair[1]).one().multiplier
+        return multiplier
 
     def __init__(self, name):
         super().__init__(name)
@@ -153,6 +175,9 @@ class EntityGroup(EntityType):
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_GROUP,
     }
+
+    def __repr__(self):
+        return "{TypeGroup, name: " + self.name + "}"
 
 
 class Entity(db.Model):
@@ -162,7 +187,7 @@ class Entity(db.Model):
     __tablename__ = "entities"
 
     ROLE_BEING_IN = 1
-    ROLE_MADE_OF = 2
+    ROLE_USED_FOR = 2
 
     id = sql.Column(sql.Integer, primary_key=True)
     weight = sql.Column(sql.Integer)
@@ -201,16 +226,23 @@ class Entity(db.Model):
         db.session.flush()  # todo might require more
         return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_BEING_IN)
 
+    @hybrid_method
+    def is_used_for(self, parents):
+        if not isinstance(parents, collections.Iterable):
+            parents = [parents]
+        db.session.flush()  # todo might require more
+        return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_USED_FOR)
+
     @hybrid_property
-    def made_of(self):
+    def used_for(self):
         if self.role == Entity.ROLE_BEING_IN:
             return None
         return self.parent_entity
 
-    @made_of.setter
-    def made_of(self, parent_entity):
+    @used_for.setter
+    def used_for(self, parent_entity):
         self.parent_entity = parent_entity
-        self.role = Entity.ROLE_MADE_OF
+        self.role = Entity.ROLE_USED_FOR
 
     def __getattr__(self, item):
         try:
@@ -348,11 +380,16 @@ class Item(Entity):
 
     DAMAGED_LB = 0.7
 
-    def __init__(self, type, being_in, weight=None):
-        self.type = type
-        self.being_in = being_in
+    def __init__(self, item_type, parent_entity, weight=None, role_being_in=True):
+        self.type = item_type
+
+        if role_being_in:
+            self.being_in = parent_entity
+        else:
+            self.used_for = parent_entity
+
         if weight is None:
-            self.weight = type.unit_weight
+            self.weight = item_type.unit_weight
         else:
             self.weight = weight
 

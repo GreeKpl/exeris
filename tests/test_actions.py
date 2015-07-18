@@ -34,7 +34,7 @@ class ActionsTest(TestCase):
         db.session.add(hammer_activity)
 
         action = CreateItemAction(item_type=item_type, properties={"Edible": True},
-                                  activity=hammer_activity, initiator=initiator)
+                                  activity=hammer_activity, initiator=initiator, used_materials="all")
         action.perform()
 
         items = Item.query.filter_by(type=item_type).all()
@@ -69,7 +69,8 @@ class ActionsTest(TestCase):
         db.session.add(hammer_activity)
 
         db.session.flush()
-        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.id, "properties": {"Edible": True}}]
+        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.id, "properties": {"Edible": True},
+                                                      "used_materials": "all"}]
 
         # dump it, then read and run the deferred function
         action = deferred.call(d, activity=hammer_activity, initiator=initiator)
@@ -81,6 +82,69 @@ class ActionsTest(TestCase):
         self.assertEqual(1, len(items))
         self.assertEqual(item_type, items[0].type)
         self.assertTrue(items[0].has_property("Edible"))
+
+    def test_complicated_create_item_action(self):
+        util.initialize_date()
+
+        iron_type = ItemType("iron", 4, stackable=True)
+        steel_type = ItemType("steel", 5, stackable=True)
+
+        lock_type = ItemType("iron_lock", 200, portable=False)
+        key_type = ItemType("key", 10)
+
+        rl = RootLocation(Point(1, 1), False, 213)
+
+        initiator = util.create_character("ABC", rl, util.create_player("janko"))
+
+        db.session.add_all([iron_type, steel_type, lock_type, key_type, rl, initiator])
+        db.session.flush()
+
+        activity = Activity(rl, {"input": {
+            iron_type.id: {
+                "needed": 50, "left": 0, "used_type": iron_type.id,
+            },
+            steel_type.id: {
+                "needed": 1, "left": 0, "used_type": steel_type.id,
+            }}}, 1, initiator)
+        create_lock_action_args = {"item_type": lock_type.id, "properties": {},
+                                   "used_materials": {iron_type.id: 50}}
+        create_lock_action = ["exeris.core.actions.CreateItemAction", create_lock_action_args]
+
+        create_key_action_args = {"item_type": key_type.id, "properties": {},
+                                  "used_materials": {steel_type.id: 1}}
+        create_key_action = ["exeris.core.actions.CreateItemAction", create_key_action_args]
+        activity.result_actions = [create_lock_action, create_key_action]
+
+        iron = Item(iron_type, activity, 50 * iron_type.unit_weight, role_being_in=False)
+        steel = Item(steel_type, activity, 20 * steel_type.unit_weight, role_being_in=False)
+
+        db.session.add_all([iron, steel])
+        db.session.flush()
+
+        for serialized_action in activity.result_actions:
+            action = deferred.call(serialized_action, activity=activity, initiator=initiator)
+            action.perform()
+
+        new_lock = Item.query.filter_by(type=lock_type).one()
+        used_iron = Item.query.filter(Item.is_used_for(new_lock)).one()
+        self.assertEqual(50, used_iron.amount)
+        self.assertEqual(200, used_iron.weight)
+
+        iron_piles_left = Item.query.filter_by(type=iron_type).filter(Item.is_in(rl)).count()
+        self.assertEqual(0, iron_piles_left)
+
+        new_key = Item.query.filter_by(type=key_type).one()
+        used_steel = Item.query.filter(Item.is_used_for(new_key)).one()
+        self.assertEqual(1, used_steel.amount)
+        self.assertEqual(5, used_steel.weight)
+        self.assertEqual(19, steel.amount)
+
+
+
+
+
+
+
 
     def test_drop_action(self):
         util.initialize_date()
@@ -118,7 +182,10 @@ class ActionsTest(TestCase):
         action.perform()
 
         db.session.flush()  # to correctly check deletion
-        self.assertTrue(sql.inspect(potatoes).deleted)  # check whether the object is deleted
+        self.assertIsNone(potatoes.being_in)  # check whether the object is deleted
+        self.assertIsNone(potatoes.used_for)
+        self.assertIsNotNone(potatoes.removal_game_date)
+
         self.assertEqual(200, potatoes_on_ground.weight)
 
         strawberries_type = ItemType("strawberries", 5, stackable=True)

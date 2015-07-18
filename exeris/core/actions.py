@@ -4,6 +4,7 @@ from exeris.core.main import db
 from exeris.core import models
 
 from exeris.core.general import SameLocationRange, EventCreator
+from exeris.core.properties import P
 
 __author__ = 'alek'
 
@@ -92,23 +93,57 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
 class CreateItemAction(ActivityAction):
 
     @convert(item_type=models.ItemType)
-    def __init__(self, *, item_type, properties, **injected_args):
+    def __init__(self, *, item_type, properties, used_materials, visible_material=None, **injected_args):
         self.item_type = item_type
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
+        self.used_materials = used_materials
+        self.kwargs = injected_args
         self.properties = properties
+        self.visible_material = visible_material if visible_material else {}
 
     def perform_action(self):
 
         result_loc = self.activity.being_in.being_in
-        if self.initiator.being_in == result_loc and self.item_type.portable:  # if being in the same location then go to inventory
+        if self.item_type.portable and self.initiator.being_in == result_loc:  # if being in the same location then go to inventory
             result_loc = self.initiator
-        item = models.Item(self.item_type, result_loc, self.item_type.unit_weight)
+        new_item = models.Item(self.item_type, result_loc, self.item_type.unit_weight)
 
-        db.session.add(item)
+        db.session.add(new_item)
 
         for property_name in self.properties:
-            db.session.add(models.EntityProperty(item, property_name, self.properties[property_name]))
+            db.session.add(models.EntityProperty(new_item, property_name, self.properties[property_name]))
+
+        # all the materials used for an activity were set to build this item
+
+        if self.used_materials == "all":
+            for material_type_id in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
+                material_type_id.used_for = new_item
+        else:  # otherwise it's a dict  # TODO NEEDS URGENT REFACTORING
+            for material_type_id in self.used_materials:
+                if "input" in self.activity.requirements:
+                    req_input = self.activity.requirements["input"]
+                    for req_material_id in req_input:  # forall requirements
+                        req_used_type_id = req_input[req_material_id]["used_type"]
+                        if req_used_type_id == material_type_id:  # req is fulfilled by material
+                            real_material_type = models.ItemType.by_id(material_type_id)
+                            required_material_type = models.EntityType.by_id(req_material_id)
+
+                            amount = required_material_type.multiplier(real_material_type) *\
+                                     req_input[req_material_id]["needed"]
+                            item = models.Item.query.filter_by(type=real_material_type).one()
+                            move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
+
+        if self.visible_material:
+            visible_material_property = {}
+            for place_to_show in self.visible_material:
+                group_id = self.visible_material[place_to_show]
+                req_input = self.activity.requirements["input"]
+                for req_material_id in req_input:  # forall requirements
+                    real_used_type_id = req_input[req_material_id]["used_type"]
+                    if group_id == req_material_id:  # this group is going to be shown by our visible material
+                        visible_material_property[place_to_show] = real_used_type_id
+            db.session.add(models.EntityProperty(new_item, P.VISIBLE_MATERIAL, visible_material_property))  # TODO
 
 
 class RemoveItemAction(ActivityAction):
@@ -132,22 +167,44 @@ class AddNameToItemAction(ActivityAction):
 # CHARACTER-SPECIFIC ACTIONS #
 ##############################
 
+
+def move_between_entities(item, source, destination, amount, to_be_used_for=False):
+
+    if item.parent_entity == source:
+        if item.type.stackable:
+            x = StackableItemTransferMixin()
+            x.weight = amount * item.type.unit_weight
+            x.item = item
+            x.move_stackable_resource(source, destination, to_be_used_for)
+        elif to_be_used_for:
+            item.used_for = destination
+        else:
+            item.being_in = destination
+    else:
+        raise Exception
+
+
 class StackableItemTransferMixin():
-    def move_stackable_resource(self, source, goal):
+
+    def move_stackable_resource(self, source, goal, to_be_used_for=False):
         # remove from the source
         if self.item.weight == self.weight:
-            db.session.delete(self.item)
+            self.item.remove()
         else:
             self.item.weight -= self.weight
 
         # add to the goal
-        existing_pile = models.Item.query.filter_by(type=self.item.type).\
-            filter(models.Item.is_in(goal)).filter_by(visible_parts=self.item.visible_parts).first()
+        if to_be_used_for:
+            existing_pile = models.Item.query.filter_by(type=self.item.type).\
+                filter(models.Item.is_used_for(goal)).filter_by(visible_parts=self.item.visible_parts).first()
+        else:
+            existing_pile = models.Item.query.filter_by(type=self.item.type).\
+                filter(models.Item.is_in(goal)).filter_by(visible_parts=self.item.visible_parts).first()
 
         if existing_pile:
             existing_pile.weight += self.weight
         else:
-            new_pile = models.Item(self.item.type, goal, self.weight)
+            new_pile = models.Item(self.item.type, goal, self.weight, role_being_in=not to_be_used_for)
             new_pile.visible_parts = self.item.visible_parts
             db.session.add(new_pile)
 

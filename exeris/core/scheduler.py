@@ -96,6 +96,10 @@ class ActivityProcess(Process):
                     print("TOOLS OK")
             if self.check_proximity(worker, activity):
                 print("PROXIMITY OK")
+            if "input" in activity.requirements:
+                for material in activity.requirements["input"]:
+                    if material["left"] > 0:
+                        print("fail input req")
 
             activity.ticks_left -= 1
 
