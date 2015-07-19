@@ -26,7 +26,7 @@ class ActionsTest(TestCase):
         rl = RootLocation(Point(1, 2), False, 123)
         db.session.add_all([item_type, schema_type, rl])
 
-        container = Item(schema_type, rl, 111)
+        container = Item(schema_type, rl, weight=111)
         db.session.add(container)
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
@@ -61,7 +61,7 @@ class ActionsTest(TestCase):
         rl = RootLocation(Point(1, 2), False, 123)
         db.session.add_all([item_type, schema_type, rl])
 
-        container = Item(schema_type, rl, 111)
+        container = Item(schema_type, rl, weight=111)
         db.session.add(container)
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
@@ -167,7 +167,7 @@ class ActionsTest(TestCase):
         char = util.create_character("John", rl, plr)
 
         hammer_type = ItemType("stone_hammer", 200)
-        hammer = Item(hammer_type, char, 200)
+        hammer = Item(hammer_type, char, weight=200)
 
         db.session.add_all([rl, hammer_type, hammer])
 
@@ -179,7 +179,7 @@ class ActionsTest(TestCase):
         self.assertEqual(rl, hammer.being_in)
 
         potatoes_type = ItemType("potatoes", 1, stackable=True)
-        potatoes = Item(potatoes_type, char, 200)
+        potatoes = Item(potatoes_type, char, weight=200)
 
         db.session.add_all([potatoes_type, potatoes])
 
@@ -205,9 +205,9 @@ class ActionsTest(TestCase):
         cake_type = ItemType("cake", 100, stackable=True)
 
         # check multipart resources
-        cake = Item(cake_type, char, 300)
-        cake_ground = Item(cake_type, rl, 300)
-        other_cake_ground = Item(cake_type, rl, 300)
+        cake = Item(cake_type, char, weight=300)
+        cake_ground = Item(cake_type, rl, weight=300)
+        other_cake_ground = Item(cake_type, rl, weight=300)
 
         db.session.add_all([strawberries_type, grapes_type, cake_type, cake, cake_ground, other_cake_ground])
         db.session.flush()
@@ -249,7 +249,7 @@ class ActionsTest(TestCase):
         hammer_type = ItemType("stone_hammer", 200)
 
         # hammer is already on the ground
-        hammer = Item(hammer_type, rl, 200)
+        hammer = Item(hammer_type, rl, weight=200)
 
         db.session.add_all([rl, hammer_type, hammer])
 
@@ -259,7 +259,7 @@ class ActionsTest(TestCase):
         # there are too little potatoes
         potatoes_type = ItemType("potatoes", 20, stackable=True)
 
-        potatoes = Item(potatoes_type, char, 200)
+        potatoes = Item(potatoes_type, char, amount=10)
 
         db.session.add_all([potatoes_type, potatoes])
         db.session.flush()

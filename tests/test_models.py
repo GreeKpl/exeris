@@ -79,8 +79,8 @@ class LocationTest(TestCase):
         type1 = ItemType("sword", 1000)
         db.session.add(type1)
 
-        item1 = Item(type1, loc, 200)
-        item2 = Item(type1, loc, 300)
+        item1 = Item(type1, loc, weight=200)
+        item2 = Item(type1, loc, weight=300)
 
         db.session.add_all([item1, item2])
 
@@ -114,13 +114,13 @@ class EntityTest(TestCase):
 
         item_type = ItemType("sickle", 500)
 
-        item = Item(item_type, None, 100)
+        item = Item(item_type, None, weight=100)
         prop = EntityProperty(entity=item, name="Happy", data={})
         db.session.add(prop)
 
         item.be_happy()  # item has property enabling the method, so it should be possible to call it
 
-        item2 = Item(item_type, None, 200)
+        item2 = Item(item_type, None, weight=200)
         type_prop = EntityTypeProperty(type=item_type, name="Happy", data={})
         db.session.add(type_prop)
 
@@ -141,7 +141,7 @@ class EntityTest(TestCase):
 
         item_type = ItemType("potato", 1, stackable=True)
 
-        item = Item(item_type, None, 100)
+        item = Item(item_type, None, weight=100)
         type_prop = EntityTypeProperty(item_type, "Sad", {"very": False, "cookies": 0})
         prop = EntityProperty(item, "Sad", {"very": True, "feel": "blue"})
 

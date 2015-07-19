@@ -214,7 +214,7 @@ class TranslationTest(TestCase):
 
         rl = RootLocation(Point(1, 1), True, 111)
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
-        hemp_cloth = Item(hemp_cloth_type, rl, 5)
+        hemp_cloth = Item(hemp_cloth_type, rl, amount=1)
 
         db.session.add_all([rl, hemp_cloth_type, hemp_cloth])
         db.session.flush()
@@ -222,13 +222,11 @@ class TranslationTest(TestCase):
         self.assertEqual("1 bale of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
         self.assertEqual("1 bela tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
 
-        hemp_cloth.weight = 15
-
+        hemp_cloth.amount = 3
         self.assertEqual("3 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
         self.assertEqual("3 bele tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
 
-        hemp_cloth.weight = 30
-
+        hemp_cloth.amount = 6
         self.assertEqual("6 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
         self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
 

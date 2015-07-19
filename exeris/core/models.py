@@ -380,7 +380,7 @@ class Item(Entity):
 
     DAMAGED_LB = 0.7
 
-    def __init__(self, item_type, parent_entity, weight=None, role_being_in=True, amount=None):
+    def __init__(self, item_type, parent_entity, *, weight=None, role_being_in=True, amount=None):
         self.type = item_type
 
         if role_being_in:
@@ -438,6 +438,12 @@ class Item(Entity):
         if not self.type.stackable:
             return 1
         return int(self.weight / self.type.unit_weight)
+
+    @amount.setter
+    def amount(self, new_amount):
+        if not self.type.stackable:
+            raise Exception  # TODO EXCEPTION HANDLING
+        self.weight = new_amount * self.type.unit_weight
 
     def remove(self, move_contents=True):
         if move_contents:

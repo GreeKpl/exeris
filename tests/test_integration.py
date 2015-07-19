@@ -26,7 +26,7 @@ class ProductionIntegrationTest(TestCase):
         worker = util.create_character("John", rt, util.create_player("ABC"))
         tools_category = BuildMenuCategory("category_tools")
 
-        anvil = Item(anvil_type, rt, 100)
+        anvil = Item(anvil_type, rt, weight=100)
         db.session.add(anvil)
 
         db.session.flush()

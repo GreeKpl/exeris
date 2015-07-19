@@ -93,10 +93,11 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
 class CreateItemAction(ActivityAction):
 
     @convert(item_type=models.ItemType)
-    def __init__(self, *, item_type, properties, used_materials, visible_material=None, **injected_args):
+    def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
         self.item_type = item_type
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
+        self.amount = amount
         self.used_materials = used_materials
         self.kwargs = injected_args
         self.properties = properties
@@ -107,7 +108,9 @@ class CreateItemAction(ActivityAction):
         result_loc = self.activity.being_in.being_in
         if self.item_type.portable and self.initiator.being_in == result_loc:  # if being in the same location then go to inventory
             result_loc = self.initiator
-        new_item = models.Item(self.item_type, result_loc, self.item_type.unit_weight)
+
+        new_item_weight = self.amount * self.item_type.unit_weight
+        new_item = models.Item(self.item_type, result_loc, weight=new_item_weight)
 
         db.session.add(new_item)
 
@@ -172,10 +175,8 @@ def move_between_entities(item, source, destination, amount, to_be_used_for=Fals
 
     if item.parent_entity == source:
         if item.type.stackable:
-            x = StackableItemTransferMixin()
-            x.weight = amount * item.type.unit_weight
-            x.item = item
-            x.move_stackable_resource(source, destination, to_be_used_for)
+            weight = amount * item.type.unit_weight
+            move_stackable_resource(item, source, destination, weight, to_be_used_for)
         elif to_be_used_for:
             item.used_for = destination
         else:
@@ -184,76 +185,68 @@ def move_between_entities(item, source, destination, amount, to_be_used_for=Fals
         raise Exception
 
 
-class StackableItemTransferMixin():
+def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
+    # remove from the source
+    if item.weight == weight:
+        item.remove()
+    else:
+        item.weight -= weight
 
-    def move_stackable_resource(self, source, goal, to_be_used_for=False):
-        # remove from the source
-        if self.item.weight == self.weight:
-            self.item.remove()
-        else:
-            self.item.weight -= self.weight
+    # add to the goal
+    if to_be_used_for:
+        existing_pile = models.Item.query.filter_by(type=item.type).\
+            filter(models.Item.is_used_for(goal)).filter_by(visible_parts=item.visible_parts).first()
+    else:
+        existing_pile = models.Item.query.filter_by(type=item.type).\
+            filter(models.Item.is_in(goal)).filter_by(visible_parts=item.visible_parts).first()
 
-        # add to the goal
-        if to_be_used_for:
-            existing_pile = models.Item.query.filter_by(type=self.item.type).\
-                filter(models.Item.is_used_for(goal)).filter_by(visible_parts=self.item.visible_parts).first()
-        else:
-            existing_pile = models.Item.query.filter_by(type=self.item.type).\
-                filter(models.Item.is_in(goal)).filter_by(visible_parts=self.item.visible_parts).first()
-
-        if existing_pile:
-            existing_pile.weight += self.weight
-        else:
-            new_pile = models.Item(self.item.type, goal, self.weight, role_being_in=not to_be_used_for)
-            new_pile.visible_parts = self.item.visible_parts
-            db.session.add(new_pile)
+    if existing_pile:
+        existing_pile.weight += weight
+    else:
+        new_pile = models.Item(item.type, goal, weight=weight, role_being_in=not to_be_used_for)
+        new_pile.visible_parts = item.visible_parts
+        db.session.add(new_pile)
 
 
-class DropItemAction(ActionOnItem, StackableItemTransferMixin):
+class DropItemAction(ActionOnItem):
 
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
-        if self.item.type.stackable:
-            self.weight = amount * self.item.type.unit_weight
-        else:
-            self.weight = self.item.weight
+        self.amount = amount
 
     def perform_action(self):
         if self.item.being_in != self.executor:
             raise Exception
 
-        if self.weight > self.item.weight:
+        if self.amount > self.item.amount:
             raise Exception
 
+        move_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
+
         if self.item.type.stackable:
-            self.move_stackable_resource(self.item.being_in, self.executor.being_in)
-            EventCreator.base("event_drop_part_of_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_drop_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
         else:
-            self.item.being_in = self.executor.being_in
-            EventCreator.base("event_drop_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_drop_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
 
 
-class TakeItemAction(ActionOnItem, StackableItemTransferMixin):
+class TakeItemAction(ActionOnItem):
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
-        if self.item.type.stackable:
-            self.weight = amount * self.item.type.unit_weight
-        else:
-            self.weight = self.item.weight
+        self.amount = amount
 
     def perform_action(self):
         if self.item.being_in != self.executor.being_in:
             raise Exception
 
-        if self.weight > self.item.weight:
+        if self.amount > self.item.amount:
             raise Exception
 
+        move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
+
         if self.item.type.stackable:
-            self.move_stackable_resource(self.item.being_in, self.executor.being_in)
-            EventCreator.base("event_take_part_of_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_take_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
         else:
-            self.item.being_in = self.executor.being_in
-            EventCreator.base("event_take_item", self.rng, {"item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_take_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
 
 
 

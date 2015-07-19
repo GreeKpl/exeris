@@ -81,22 +81,22 @@ class RangeSpecTest(TestCase):
         knife_type = ItemType("knife", 300)
         db.session.add(knife_type)
 
-        irl_1 = Item(knife_type, rl, 381)
+        irl_1 = Item(knife_type, rl, weight=381)
 
-        i2_1 = Item(knife_type, loc2, 100)
-        i2_2 = Item(knife_type, loc2, 130)
+        i2_1 = Item(knife_type, loc2, weight=100)
+        i2_2 = Item(knife_type, loc2, weight=130)
 
-        i22_1 = Item(knife_type, loc22, 130)
+        i22_1 = Item(knife_type, loc22, weight=130)
 
-        i11_1 = Item(knife_type, loc11, 100)
-        i11_2 = Item(knife_type, loc11, 100)
+        i11_1 = Item(knife_type, loc11, weight=100)
+        i11_2 = Item(knife_type, loc11, weight=100)
 
-        i21_1 = Item(knife_type, loc21, 100)
+        i21_1 = Item(knife_type, loc21, weight=100)
 
-        i221_1 = Item(knife_type, loc221, 123)
+        i221_1 = Item(knife_type, loc221, weight=123)
 
-        iorl_1 = Item(knife_type, orl, 123)
-        io1_1 = Item(knife_type, oloc1, 123)
+        iorl_1 = Item(knife_type, orl, weight=123)
+        io1_1 = Item(knife_type, oloc1, weight=123)
 
         db.session.add_all([irl_1, i2_1, i2_2, i11_1, i11_2, i21_1, i22_1, i221_1, iorl_1, io1_1])
 

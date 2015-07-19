@@ -52,12 +52,12 @@ class SchedulerTest(TestCase):
 
         rt = RootLocation(Point(1, 1), False, 134)
         db.session.add(rt)
-        hammer_worked_on = Item(hammer_type, rt, 100)
+        hammer_worked_on = Item(hammer_type, rt, weight=100)
         db.session.add(hammer_worked_on)
 
         self.worker = util.create_character("John", rt, util.create_player("ABC"))
 
-        hammer = Item(hammer_type, self.worker, 111)
+        hammer = Item(hammer_type, self.worker, weight=111)
         db.session.add(hammer)
         db.session.flush()
 
