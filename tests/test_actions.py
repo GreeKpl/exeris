@@ -5,7 +5,7 @@ from shapely.geometry import Point
 import sqlalchemy as sql
 
 from exeris.core import deferred
-from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction
+from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivity
 from exeris.core.main import db
 from exeris.core.general import GameDate
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup
@@ -242,9 +242,8 @@ class ActionsTest(TestCase):
     def test_drop_action_failure(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1,1), False, 111)
-        plr = util.create_player("aaa")
-        char = util.create_character("John", rl, plr)
+        rl = RootLocation(Point(1, 1), False, 111)
+        char = util.create_character("John", rl, util.create_player("aaa"))
 
         hammer_type = ItemType("stone_hammer", 200)
 
@@ -267,6 +266,40 @@ class ActionsTest(TestCase):
         action = DropItemAction(char, potatoes, 201)
         self.assertRaises(Exception, action.perform)  # TODO
 
+    def test_add_item_to_activity_action(self):
+        util.initialize_date()
 
+        rl = RootLocation(Point(1, 1), False, 111)
+        initiator = util.create_character("John", rl, util.create_player("aaa"))
+
+        anvil_type = ItemType("anvil", 400, portable=False)
+        anvil = Item(anvil_type, rl)
+        metal_group = TypeGroup("group_metal")
+        iron_type = ItemType("iron", 10, stackable=True)
+        metal_group.add_to_group(iron_type, multiplier=2.0)
+
+        iron = Item(iron_type, initiator, amount=20)
+
+        db.session.add_all([rl, initiator, anvil_type, anvil, metal_group, iron_type, iron])
+        db.session.flush()
+
+        activity = Activity(anvil, {
+            "input": {
+                metal_group.id: {"needed": 10, "left": 10}
+            }
+        }, 1, initiator)
+
+        action = AddItemToActivity(initiator, iron, activity, 4)
+        action.perform()
+
+        self.assertEqual({metal_group.id: {"needed": 10, "left": 8, "used_type": iron_type.id}}, activity.requirements["input"])
+        self.assertEqual(16, iron.amount)
+
+        action = AddItemToActivity(initiator, iron, activity, 16)
+        action.perform()
+
+        self.assertEqual({metal_group.id: {"needed": 10, "left": 0, "used_type": iron_type.id}}, activity.requirements["input"])
+        self.assertIsNone(iron.parent_entity)
+        self.assertIsNotNone(iron.removal_game_date)
 
     tearDown = util.tear_down_rollback

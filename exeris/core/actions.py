@@ -124,18 +124,16 @@ class CreateItemAction(ActivityAction):
                 material_type_id.used_for = new_item
         else:  # otherwise it's a dict  # TODO NEEDS URGENT REFACTORING
             for material_type_id in self.used_materials:
-                if "input" in self.activity.requirements:
-                    req_input = self.activity.requirements["input"]
-                    for req_material_id in req_input:  # forall requirements
-                        req_used_type_id = req_input[req_material_id]["used_type"]
-                        if req_material_id == material_type_id:  # req is fulfilled by material
-                            real_material_type = models.ItemType.by_id(req_used_type_id)
-                            required_material_type = models.EntityType.by_id(req_material_id)
+                for req_material_id, requirement_params in self.activity.requirements.get("input", {}).items():  # forall requirements
+                    req_used_type_id = requirement_params["used_type"]
+                    if req_material_id == material_type_id:  # req is fulfilled by material
+                        real_material_type = models.ItemType.by_id(req_used_type_id)
+                        required_material_type = models.EntityType.by_id(req_material_id)
 
-                            amount = required_material_type.multiplier(real_material_type) *\
-                                     req_input[req_material_id]["needed"]
-                            item = models.Item.query.filter_by(type=real_material_type).one()
-                            move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
+                        amount = required_material_type.multiplier(real_material_type) *\
+                            requirement_params["needed"]
+                        item = models.Item.query.filter_by(type=real_material_type).one()
+                        move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
         if self.visible_material:
             visible_material_property = {}
@@ -249,4 +247,36 @@ class TakeItemAction(ActionOnItem):
             EventCreator.base("event_take_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
 
 
+class AddItemToActivity(ActionOnItemAndActivity):
 
+    def __init__(self, executor, item, activity, amount):
+        super().__init__(executor, item, activity)
+        self.amount = amount
+
+    def perform_action(self):
+
+        if self.amount > self.item.amount:
+            raise Exception
+
+        req = self.activity.requirements
+        if "input" in req:
+            for required_group_id, required_group_params in req["input"].items():
+                required_group = models.EntityType.by_id(required_group_id)
+                if "used_type" in required_group_params:
+                        if required_group_params["used_type"] != self.item.type.id:  # must be exactly the same type
+                            raise Exception("must be exactly type " + str(required_group_params["used_type"]))
+                if not required_group.contains(self.item.type):
+                    raise Exception
+                group_to_type_multiplier = required_group.multiplier(self.item.type)
+                max_to_be_added = required_group_params["left"] * group_to_type_multiplier
+                amount_to_add = min(self.amount, max_to_be_added)
+                move_between_entities(self.item, self.executor, self.activity, amount_to_add, to_be_used_for=True)
+
+                material_left_reduction = amount_to_add / group_to_type_multiplier
+
+                required_group_params["left"] -= material_left_reduction
+                required_group_params["used_type"] = self.item.type.id
+
+        # self.activity.requirements = req
+
+        db.session.flush()
