@@ -1,11 +1,11 @@
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
-from exeris.core import deferred
-from exeris.core.actions import CreateItemAction
+
 from exeris.core.main import db
-from exeris.core.models import Activity, ItemType, RootLocation, Item, Entity, ScheduledTask
+from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask
 from exeris.core.scheduler import ActivityProcess, Scheduler
 from tests import util
+
 
 __author__ = 'alek'
 
@@ -61,11 +61,11 @@ class SchedulerTest(TestCase):
         db.session.add(hammer)
         db.session.flush()
 
-        activity = Activity(hammer_worked_on, {"tools": [hammer_type.id]}, 1, self.worker)
+        activity = Activity(hammer_worked_on, {"tools": [hammer_type.name]}, 1, self.worker)
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
-                  {"item_type": result_type.id, "properties": {"Edible": True}, "used_materials": "all"}]
+                  {"item_type": result_type.name, "properties": {"Edible": True}, "used_materials": "all"}]
         activity.result_actions = [result]
 
         self.worker.activity = activity

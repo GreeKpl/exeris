@@ -51,5 +51,5 @@ class ActivityFactory:
             return []
         elif type(entity_type) is models.ItemType:
             standard_actions = [["exeris.core.actions.CreateItemAction",
-                                 {"item_type": entity_type.id, "properties": {}, "used_materials": "all"}]]
+                                 {"item_type": entity_type.name, "properties": {}, "used_materials": "all"}]]
             return cls._enhance_actions(standard_actions, user_input)  # TODO

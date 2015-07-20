@@ -239,15 +239,15 @@ class GroupTest(TestCase):
         old_pine_wood = ItemType("old_pine_wood", 50, stackable=True)
         fine_oak_wood = ItemType("fine_oak_wood", 70, stackable=True)
 
-        fuel.add_to_group(wood, multiplier=2.0)
-        wood.add_to_group(pine_wood, multiplier=0.75)
-        pine_wood.add_to_group(old_pine_wood, multiplier=1.5)
+        fuel.add_to_group(wood, efficiency=0.5)
+        wood.add_to_group(pine_wood, efficiency=1.5)
+        pine_wood.add_to_group(old_pine_wood, efficiency=0.75)
         wood.add_to_group(fine_oak_wood)
 
         db.session.add_all([fuel, wood, pine_wood, old_pine_wood, fine_oak_wood])
 
-        self.assertEqual(2.0, fuel.multiplier(fine_oak_wood))
-        self.assertEqual(2.25, fuel.multiplier(old_pine_wood))
+        self.assertEqual(0.5, fuel.efficiency(fine_oak_wood))
+        self.assertEqual(0.5625, fuel.efficiency(old_pine_wood))
 
     def _setup_hammers(self):
         self.stone_hammer = ItemType("stone_hammer", 200)
@@ -265,7 +265,7 @@ class GroupTest(TestCase):
         db.session.add_all([rl, hammer_type, stone_type, tools_category])
         db.session.flush()
 
-        recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"input": {stone_type.id: 20.0}}, 11,
+        recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"input": {stone_type.name: 20.0}}, 11,
                               tools_category, result_entity=hammer_type)
 
         db.session.add(recipe)
@@ -276,7 +276,7 @@ class GroupTest(TestCase):
 
         activity = factory.create_from_recipe(recipe, rl, initiator, 3, user_input={"item_name": "mloteczek"})
 
-        self.assertCountEqual({"input": {stone_type.id: 60.0}}, activity.requirements)
+        self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
 
     def test_build_menu_categories(self):

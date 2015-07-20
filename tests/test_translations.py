@@ -1,11 +1,12 @@
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
+
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty
 from exeris.core.properties import P
-from pyslate.pyslate import Pyslate
 from tests import util
+
 
 __author__ = 'alek'
 
@@ -163,11 +164,11 @@ class TranslationTest(TestCase):
         cake.visible_parts = [carrot_type, apple_type, berries_type]
 
         # test visible parts
-        self.assertEqual("cake with carrots, apples and berries", pyslate.t("item_info", item=cake))
+        self.assertEqual("cake with apples, berries and carrots", pyslate.t("item_info", item=cake))
 
         # test visible parts in Polish
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("ciasto z marchewkami, jabłkami i jagodami", pyslate.t("item_info", item=cake))
+        self.assertEqual("ciasto z jabłkami, jagodami i marchewkami", pyslate.t("item_info", item=cake))
 
     def test_damaged_item(self):
 
@@ -199,7 +200,7 @@ class TranslationTest(TestCase):
         db.session.add_all([rl, shirt_type, shirt, hemp_cloth_type])
         db.session.flush()
 
-        main_material_prop = EntityProperty(shirt, P.VISIBLE_MATERIAL, data={"main": hemp_cloth_type.id})
+        main_material_prop = EntityProperty(shirt, P.VISIBLE_MATERIAL, data={"main": hemp_cloth_type.name})
         db.session.add(main_material_prop)
         db.session.flush()
 

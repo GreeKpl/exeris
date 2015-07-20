@@ -29,7 +29,7 @@ def convert(**fun_types):
             for arg_name, arg_value in kwargs.items():
 
                 if arg_name in fun_types and fun_types[arg_name] is not None \
-                        and issubclass(fun_types[arg_name], db.Model) and type(arg_value) is int:
+                        and issubclass(fun_types[arg_name], db.Model) and type(arg_value) in (int, str):
                     converted_args[arg_name] = fun_types[arg_name].query.get(arg_value)
                 else:
                     converted_args[arg_name] = arg_value

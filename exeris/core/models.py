@@ -32,6 +32,8 @@ ENTITY_TERRAIN_AREA = 9
 ENTITY_GROUP = 10
 
 
+TYPE_NAME_MAXLEN = 32
+
 class Player(db.Model):
     __tablename__ = "players"
 
@@ -67,9 +69,7 @@ class Player(db.Model):
 class EntityType(db.Model):
     __tablename__ = "entity_types"
 
-    id = sql.Column(sql.Integer, primary_key=True)
-
-    name = sql.Column(sql.String(32), unique=True)  # no spaces allowed
+    name = sql.Column(sql.String(32), primary_key=True)  # no spaces allowed
 
     def __init__(self, name):
         self.name = name
@@ -81,12 +81,9 @@ class EntityType(db.Model):
         return [parent_group.parent for parent_group in self._parent_groups_junction]
 
     @classmethod
-    def by_id(cls, entity_id):
-        return cls.query.get(entity_id)
-
-    @classmethod
     def by_name(cls, type_name):
-        return cls.query.filter_by(name=type_name).first()
+        return cls.query.get(type_name)
+
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -97,21 +94,21 @@ class EntityType(db.Model):
 class TypeGroupElement(db.Model):
     __tablename__ = "entity_group_elements"
 
-    def __init__(self, child, multiplier=1.0):
+    def __init__(self, child, efficiency=1.0):
         self.child = child
-        self.multiplier = multiplier
+        self.efficiency = efficiency
 
-    parent_id = sql.Column(sql.Integer, sql.ForeignKey('entity_type_groups.id'), primary_key=True)
-    parent = sql.orm.relationship("TypeGroup", foreign_keys=[parent_id], backref="_children_junction")
-    child_id = sql.Column(sql.Integer, sql.ForeignKey('entity_types.id'), primary_key=True)
-    child = sql.orm.relationship("EntityType", foreign_keys=[child_id], backref="_parent_groups_junction")
-    multiplier = sql.Column(sql.Float, default=1.0, nullable=False)  # how many of child is 1 unit of parent group
+    parent_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey('entity_type_groups.name'), primary_key=True)
+    parent = sql.orm.relationship("TypeGroup", foreign_keys=[parent_name], backref="_children_junction")
+    child_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey('entity_types.name'), primary_key=True)
+    child = sql.orm.relationship("EntityType", foreign_keys=[child_name], backref="_parent_groups_junction")
+    efficiency = sql.Column(sql.Float, default=1.0, nullable=False)  # how many of child is 1 unit of parent group
 
 
 class ItemType(EntityType):
     __tablename__ = "item_types"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+    name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
     def __init__(self, name, unit_weight, portable=True, stackable=False):
         super().__init__(name)
@@ -123,7 +120,7 @@ class ItemType(EntityType):
     stackable = sql.Column(sql.Boolean)
     portable = sql.Column(sql.Boolean)
 
-    def multiplier(self, entity_type):  # quack quack
+    def efficiency(self, entity_type):  # quack quack
         if entity_type == self:
             return 1.0
         raise Exception  # TODO!!! NEED A BETTER EXCEPTION
@@ -136,14 +133,14 @@ class ItemType(EntityType):
 class TypeGroup(EntityType):
     __tablename__ = "entity_type_groups"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+    name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
     @hybrid_property
     def children(self):
         return [group_element.child for group_element in self._children_junction]
 
-    def add_to_group(self, child, multiplier=1.0):
-        self._children_junction.append(TypeGroupElement(child, multiplier))
+    def add_to_group(self, child, efficiency=1.0):
+        self._children_junction.append(TypeGroupElement(child, efficiency))
 
     def remove_from_group(self, child):
         self._children_junction.remove(TypeGroupElement.query.filter_by(parent=self, child=child).one())
@@ -161,13 +158,13 @@ class TypeGroup(EntityType):
                 return [self] + path
         return []
 
-    def multiplier(self, entity_type):
+    def efficiency(self, entity_type):
         lst = self.get_group_path(entity_type)
         pairs = zip(lst[:-1], lst[1:])
-        multiplier = 1.0
+        efficiency = 1.0
         for pair in pairs:
-            multiplier *= TypeGroupElement.query.filter_by(parent=pair[0], child=pair[1]).one().multiplier
-        return multiplier
+            efficiency *= TypeGroupElement.query.filter_by(parent=pair[0], child=pair[1]).one().efficiency
+        return efficiency
 
     def __init__(self, name):
         super().__init__(name)
@@ -195,7 +192,7 @@ class Entity(db.Model):
     parent_entity_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)
     parent_entity = sql.orm.relationship(lambda: Entity, primaryjoin=parent_entity_id == id,
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
-    role = sql.id = sql.Column(sql.SmallInteger, nullable=True)
+    role = sql.Column(sql.SmallInteger, nullable=True)
 
     properties = sql.orm.relationship("EntityProperty", back_populates="entity")
 
@@ -318,7 +315,7 @@ class Entity(db.Model):
 class LocationType(EntityType):
     __tablename__ = "location_types"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+    name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -380,7 +377,7 @@ class Item(Entity):
 
     DAMAGED_LB = 0.7
 
-    def __init__(self, item_type, parent_entity, *, weight=None, role_being_in=True, amount=None):
+    def __init__(self, item_type, parent_entity, *, weight=None, amount=None, role_being_in=True):
         self.type = item_type
 
         if role_being_in:
@@ -395,18 +392,17 @@ class Item(Entity):
         else:
             self.weight = item_type.unit_weight
 
-
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    type_id = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
-    visible_parts = sql.Column(psql.JSONB, default=[])  # sorted list of item type ids
+    visible_parts = sql.Column(psql.JSONB, default=[])  # sorted list of item type names
 
     @validates("visible_parts")
     def validate_visible_parts(self, key, visible_parts):
-        # turn (optional) item types into ids
-        visible_parts = [part if type(part) is int else part.id for part in visible_parts]
+        # turn (optional) item types into names
+        visible_parts = [part if type(part) is str else part.name for part in visible_parts]
         return sorted(visible_parts)
 
     damage = sql.Column(sql.Float, default=0)
@@ -458,16 +454,6 @@ class Item(Entity):
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
-    }
-
-
-class ActivityType(EntityType):   # TODO!!! Is it needed at all? Activities will be property-based
-    __tablename__ = "activity_types"
-
-    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
-
-    __mapper_args__ = {
-        'polymorphic_identity': ENTITY_ACTIVITY,
     }
 
 
@@ -575,7 +561,7 @@ class EntityTypeProperty(db.Model):
         self.name = name
         self.data = data if data is not None else {}
 
-    type_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id), primary_key=True)
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name), primary_key=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
     name = sql.Column(sql.String, primary_key=True)
@@ -714,7 +700,7 @@ class Passage(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    type_id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
     left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
@@ -770,7 +756,7 @@ class EntityRecipe(db.Model):
     requirements = sql.Column(psql.JSON)
     ticks_needed = sql.Column(sql.Float)
     result = sql.Column(psql.JSON)  # a list of serialized Action constructors
-    result_entity_id = sql.Column(sql.Integer, sql.ForeignKey(EntityType.id),
+    result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
 
@@ -807,7 +793,7 @@ class ResourceArea(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    resource_type = sql.Column(sql.Integer, sql.ForeignKey("item_types.id"))
+    resource_type = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
 
     area = sql.Column(gis.Geometry("POLYGON"))
 
@@ -822,7 +808,7 @@ class ResourceArea(db.Model):
 class TerrainType(EntityType):
     __tablename__ = "terrain_types"
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entity_types.id"), primary_key=True)
+    name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
     def __init__(self, name, color):
         super().__init__(name)
@@ -849,7 +835,7 @@ class TerrainArea(Entity):
 
     _terrain = sql.Column(gis.Geometry("POLYGON"))
     priority = sql.Column(sql.SmallInteger)
-    terrain_type_id = sql.Column(sql.Integer, sql.ForeignKey("terrain_types.id"))
+    terrain_type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("terrain_types.name"))
     terrain_type = sql.orm.relationship(TerrainType, uselist=False)
 
 

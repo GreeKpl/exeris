@@ -70,7 +70,7 @@ class ActionsTest(TestCase):
         db.session.add(hammer_activity)
 
         db.session.flush()
-        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.id, "properties": {"Edible": True},
+        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.name, "properties": {"Edible": True},
                                                       "used_materials": "all"}]
 
         # dump it, then read and run the deferred function
@@ -96,7 +96,7 @@ class ActionsTest(TestCase):
         hard_metal_group = TypeGroup("group_hard_metal")
         steel_type = ItemType("steel", 5, stackable=True)
 
-        hard_metal_group.add_to_group(steel_type, multiplier=2.0)
+        hard_metal_group.add_to_group(steel_type, efficiency=0.5)
 
         lock_type = ItemType("iron_lock", 200, portable=False)
         key_type = ItemType("key", 10)
@@ -109,18 +109,18 @@ class ActionsTest(TestCase):
         db.session.flush()
 
         activity = Activity(rl, {"input": {
-            iron_type.id: {
-                "needed": 50, "left": 0, "used_type": iron_type.id,
+            iron_type.name: {
+                "needed": 50, "left": 0, "used_type": iron_type.name,
             },
-            hard_metal_group.id: {
-                "needed": 1, "left": 0, "used_type": steel_type.id,
+            hard_metal_group.name: {
+                "needed": 1, "left": 0, "used_type": steel_type.name,
             }}}, 1, initiator)
-        create_lock_action_args = {"item_type": lock_type.id, "properties": {},
-                                   "used_materials": {iron_type.id: 50}}
+        create_lock_action_args = {"item_type": lock_type.name, "properties": {},
+                                   "used_materials": {iron_type.name: 50}}
         create_lock_action = ["exeris.core.actions.CreateItemAction", create_lock_action_args]
 
-        create_key_action_args = {"item_type": key_type.id, "properties": {},
-                                  "used_materials": {hard_metal_group.id: 1}, "visible_material": {"main": hard_metal_group.id}}
+        create_key_action_args = {"item_type": key_type.name, "properties": {},
+                                  "used_materials": {hard_metal_group.name: 1}, "visible_material": {"main": hard_metal_group.name}}
         create_key_action = ["exeris.core.actions.CreateItemAction", create_key_action_args]
         activity.result_actions = [create_lock_action, create_key_action]
 
@@ -149,7 +149,7 @@ class ActionsTest(TestCase):
         self.assertEqual(18, steel.amount)
 
         visible_material_prop = EntityProperty.query.filter_by(entity=new_key, name=P.VISIBLE_MATERIAL).one()
-        self.assertEqual({"main": steel_type.id}, visible_material_prop.data)  # steel is visible
+        self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
 
 
 
@@ -212,10 +212,10 @@ class ActionsTest(TestCase):
         db.session.add_all([strawberries_type, grapes_type, cake_type, cake, cake_ground, other_cake_ground])
         db.session.flush()
 
-        cake.visible_parts = [strawberries_type.id, grapes_type.id]
-        cake_ground.visible_parts = [strawberries_type.id, grapes_type.id]
+        cake.visible_parts = [grapes_type.name, strawberries_type.name]
+        cake_ground.visible_parts = [grapes_type.name, strawberries_type.name]
 
-        other_cake_ground.visible_parts = [strawberries_type.id, potatoes_type.id]
+        other_cake_ground.visible_parts = [strawberries_type.name, potatoes_type.name]
 
         db.session.flush()
 
@@ -235,9 +235,9 @@ class ActionsTest(TestCase):
         self.assertEqual(300, other_cake_ground.weight)
 
         new_ground_cake = Item.query.filter(Item.is_in(rl)).filter_by(type=cake_type).\
-            filter_by(visible_parts=[strawberries_type.id, grapes_type.id]).one()
+            filter_by(visible_parts=[grapes_type.name, strawberries_type.name]).one()
         self.assertEqual(100, new_ground_cake.weight)
-        self.assertEqual([strawberries_type.id, grapes_type.id], new_ground_cake.visible_parts)
+        self.assertEqual([grapes_type.name, strawberries_type.name], new_ground_cake.visible_parts)
 
     def test_drop_action_failure(self):
         util.initialize_date()
@@ -276,7 +276,7 @@ class ActionsTest(TestCase):
         anvil = Item(anvil_type, rl)
         metal_group = TypeGroup("group_metal")
         iron_type = ItemType("iron", 10, stackable=True)
-        metal_group.add_to_group(iron_type, multiplier=2.0)
+        metal_group.add_to_group(iron_type, efficiency=0.5)
 
         iron = Item(iron_type, initiator, amount=20)
 
@@ -285,20 +285,20 @@ class ActionsTest(TestCase):
 
         activity = Activity(anvil, {
             "input": {
-                metal_group.id: {"needed": 10, "left": 10}
+                metal_group.name: {"needed": 10, "left": 10}
             }
         }, 1, initiator)
 
         action = AddItemToActivity(initiator, iron, activity, 4)
         action.perform()
 
-        self.assertEqual({metal_group.id: {"needed": 10, "left": 8, "used_type": iron_type.id}}, activity.requirements["input"])
+        self.assertEqual({metal_group.name: {"needed": 10, "left": 8, "used_type": iron_type.name}}, activity.requirements["input"])
         self.assertEqual(16, iron.amount)
 
         action = AddItemToActivity(initiator, iron, activity, 16)
         action.perform()
 
-        self.assertEqual({metal_group.id: {"needed": 10, "left": 0, "used_type": iron_type.id}}, activity.requirements["input"])
+        self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}}, activity.requirements["input"])
         self.assertIsNone(iron.parent_entity)
         self.assertIsNotNone(iron.removal_game_date)
 

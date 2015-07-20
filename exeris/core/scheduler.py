@@ -107,8 +107,8 @@ class ActivityProcess(Process):
             self.finish_activity(activity)
 
     def check_tool_requirements(self, worker, tools):
-        for tool_type_id in tools:
-            item_type = models.ItemType.by_id(tool_type_id)
+        for tool_type_name in tools:
+            item_type = models.ItemType.by_name(tool_type_name)
 
             if not models.Item.query.filter_by(type=item_type).filter(models.Item.is_in(worker)).count():
                 return False

@@ -117,34 +117,36 @@ class CreateItemAction(ActivityAction):
         for property_name in self.properties:
             db.session.add(models.EntityProperty(new_item, property_name, self.properties[property_name]))
 
-        # all the materials used for an activity were set to build this item
-
-        if self.used_materials == "all":
-            for material_type_id in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
-                material_type_id.used_for = new_item
-        else:  # otherwise it's a dict  # TODO NEEDS URGENT REFACTORING
-            for material_type_id in self.used_materials:
-                for req_material_id, requirement_params in self.activity.requirements.get("input", {}).items():  # forall requirements
-                    req_used_type_id = requirement_params["used_type"]
-                    if req_material_id == material_type_id:  # req is fulfilled by material
-                        real_material_type = models.ItemType.by_id(req_used_type_id)
-                        required_material_type = models.EntityType.by_id(req_material_id)
-
-                        amount = required_material_type.multiplier(real_material_type) *\
-                            requirement_params["needed"]
-                        item = models.Item.query.filter_by(type=real_material_type).one()
-                        move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
+        if self.used_materials == "all": # all the materials used for an activity were set to build this item
+            for material_type in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
+                material_type.used_for = new_item
+        else:  # otherwise it's a dict and we need to look into it
+            for material_type_name in self.used_materials:
+                self.extract_used_material(material_type_name, new_item)
 
         if self.visible_material:
             visible_material_property = {}
             for place_to_show in self.visible_material:
-                group_id = self.visible_material[place_to_show]
+                group_name = self.visible_material[place_to_show]
                 req_input = self.activity.requirements["input"]
-                for req_material_id in req_input:  # forall requirements
-                    real_used_type_id = req_input[req_material_id]["used_type"]
-                    if group_id == req_material_id:  # this group is going to be shown by our visible material
-                        visible_material_property[place_to_show] = real_used_type_id
-            db.session.add(models.EntityProperty(new_item, P.VISIBLE_MATERIAL, visible_material_property))  # TODO
+                for req_material_name, req_material in req_input.items():  # forall requirements
+                    real_used_type_name = req_material["used_type"]
+                    if group_name == req_material_name:  # this group is going to be shown by our visible material
+                        visible_material_property[place_to_show] = real_used_type_name
+            db.session.add(models.EntityProperty(new_item, P.VISIBLE_MATERIAL, visible_material_property))
+
+    def extract_used_material(self, material_type_name, new_item):
+        for req_material_name, requirement_params in self.activity.requirements.get("input",
+                {}).items():  # forall requirements
+            req_used_type_name = requirement_params["used_type"]
+            if req_material_name == material_type_name:  # req is fulfilled by material
+                real_material_type = models.ItemType.by_name(req_used_type_name)
+                required_material_type = models.EntityType.by_name(req_material_name)
+
+                amount = requirement_params["needed"] / required_material_type.efficiency(real_material_type)
+
+                item = models.Item.query.filter_by(type=real_material_type).one()
+                move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
 
 class RemoveItemAction(ActivityAction):
@@ -260,22 +262,22 @@ class AddItemToActivity(ActionOnItemAndActivity):
 
         req = self.activity.requirements
         if "input" in req:
-            for required_group_id, required_group_params in req["input"].items():
-                required_group = models.EntityType.by_id(required_group_id)
+            for required_group_name, required_group_params in req["input"].items():
+                required_group = models.EntityType.by_name(required_group_name)
                 if "used_type" in required_group_params:
-                        if required_group_params["used_type"] != self.item.type.id:  # must be exactly the same type
+                        if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type
                             raise Exception("must be exactly type " + str(required_group_params["used_type"]))
                 if not required_group.contains(self.item.type):
                     raise Exception
-                group_to_type_multiplier = required_group.multiplier(self.item.type)
-                max_to_be_added = required_group_params["left"] * group_to_type_multiplier
+                type_efficiency_ratio = required_group.efficiency(self.item.type)
+                max_to_be_added = required_group_params["left"] / type_efficiency_ratio
                 amount_to_add = min(self.amount, max_to_be_added)
                 move_between_entities(self.item, self.executor, self.activity, amount_to_add, to_be_used_for=True)
 
-                material_left_reduction = amount_to_add / group_to_type_multiplier
+                material_left_reduction = amount_to_add * type_efficiency_ratio
 
                 required_group_params["left"] -= material_left_reduction
-                required_group_params["used_type"] = self.item.type.id
+                required_group_params["used_type"] = self.item.type_name
 
         # self.activity.requirements = req
 

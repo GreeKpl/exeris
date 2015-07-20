@@ -42,8 +42,8 @@ def create_pyslate(language, data=None, **kwargs):
 
         material_prop = item.get_property(P.VISIBLE_MATERIAL)
         if material_prop and "main" in material_prop:
-            main_material_type = models.ItemType.by_id(material_prop["main"])
-            material_text = helper.translation("tp_item_main_material", material_name=main_material_type.name, item_form=form)
+            main_material_type_name = material_prop["main"]
+            material_text = helper.translation("tp_item_main_material", material_name=main_material_type_name, item_form=form)
             material_text += " "
 
         if item.damage > models.Item.DAMAGED_LB:
@@ -62,8 +62,7 @@ def create_pyslate(language, data=None, **kwargs):
     def func_parts(helper, tag_name, params):
 
         parts = []
-        for part in params["parts"]:
-            part_name = models.ItemType.by_id(part).name
+        for part_name in params["parts"]:
             parts += [helper.translation("entity_" + part_name + "#u")]
 
         if len(parts) > 1:
@@ -76,8 +75,7 @@ def create_pyslate(language, data=None, **kwargs):
     def func_parts_pl(helper, tag_name, params):
 
         parts = []
-        for part in params["parts"]:
-            part_name = models.ItemType.by_id(part).name
+        for part_name in params["parts"]:
             parts += [helper.translation("entity_" + part_name + "#ub")]  # "#b" is Polish only
 
         if len(parts) > 1:
