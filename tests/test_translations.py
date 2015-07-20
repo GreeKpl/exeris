@@ -99,7 +99,7 @@ data = {
         "pl": "ciastami",
     },
     "tp_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{item_name}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{parts}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",

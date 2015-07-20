@@ -28,6 +28,7 @@ def create_pyslate(language, data=None, **kwargs):
         parts_text = ""
         material_text = ""
         damage_text = ""
+        title_text = ""
 
         number = item.amount
         if item.type.stackable:
@@ -51,7 +52,7 @@ def create_pyslate(language, data=None, **kwargs):
             damage_text += " "
 
         return helper.translation("tp_item_info", damage=damage_text, main_material=material_text, amount=number_text,
-                                  item_name=transl_name, parts=parts_text).strip()  # TODO strip is weak
+                                  item_name=transl_name, parts=parts_text, title=title_text).strip()  # TODO strip is weak
 
     pyslate.register_function("item_info", func_item_info)
 

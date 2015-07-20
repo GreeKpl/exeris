@@ -244,9 +244,32 @@ class TakeItemAction(ActionOnItem):
         move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
 
         if self.item.type.stackable:
-            EventCreator.base("event_take_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_take_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
         else:
-            EventCreator.base("event_take_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
+            EventCreator.base("event_take_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
+
+
+class GiveItemAction(ActionOnItemAndCharacter):
+    def __init__(self, executor, item, receiver, amount=1):
+        super().__init__(executor, item, receiver)
+        self.amount = amount
+
+    def perform_action(self):
+        if self.item.being_in != self.executor.being_in:
+            raise Exception
+
+        if self.amount > self.item.amount:
+            raise Exception
+
+        if not self.character:  # has not enough space in inventory
+            raise Exception
+
+        move_between_entities(self.item, self.executor, self.character, self.amount)
+
+        if self.item.type.stackable:
+            EventCreator.base("event_give_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
+        else:
+            EventCreator.base("event_give_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
 
 
 class AddItemToActivity(ActionOnItemAndActivity):

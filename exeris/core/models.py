@@ -929,6 +929,12 @@ def init_database_contents():
     db.session.merge(EventType("event_take_item_observer"))
     db.session.merge(EventType("event_take_part_of_item_doer"))
     db.session.merge(EventType("event_take_part_of_item_observer"))
+    db.session.merge(EventType("event_give_item_doer"))
+    db.session.merge(EventType("event_give_item_observer"))
+    db.session.merge(EventType("event_give_item_target"))
+    db.session.merge(EventType("event_give_part_of_item_doer"))
+    db.session.merge(EventType("event_give_part_of_item_target"))
+    db.session.merge(EventType("event_give_part_of_item_observer"))
 
     db.session.flush()
 
