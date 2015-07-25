@@ -1,16 +1,17 @@
 import types
 import collections
+
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.sql import or_
-from exeris.core import properties
-from exeris.core.main import db
+
 from sqlalchemy.orm import validates
+
+from exeris.core import properties
+from exeris.core.main import db, Types, Events
 from exeris.core.properties import P
-from exeris.core import deferred
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -33,6 +34,8 @@ ENTITY_GROUP = 10
 
 
 TYPE_NAME_MAXLEN = 32
+TAG_NAME_MAXLEN = 32
+
 
 class Player(db.Model):
     __tablename__ = "players"
@@ -74,7 +77,7 @@ class EntityType(db.Model):
     def __init__(self, name):
         self.name = name
 
-    type = sql.Column(sql.SmallInteger)  # discriminator
+    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
     @hybrid_property
     def parent_groups(self):
@@ -87,7 +90,7 @@ class EntityType(db.Model):
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
-        "polymorphic_on": type,
+        "polymorphic_on": discriminator_type,
     }
 
 
@@ -462,13 +465,20 @@ class Activity(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, requirements, ticks_needed, initiator):
+    def __init__(self, being_in, name_tag, name_params, requirements, ticks_needed, initiator):
 
         self.being_in = being_in
+
+        self.name_tag = name_tag
+        self.name_params = name_params
+
         self.requirements = requirements
         self.ticks_needed = ticks_needed
         self.ticks_left = ticks_needed
         self.initiator = initiator
+
+    name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
+    name_params = sql.Column(psql.JSON)
 
     initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
     initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id", post_update=True)
@@ -527,12 +537,14 @@ class Event(db.Model):
 
     def __init__(self, event_type, parameters):
         if type(event_type) is str:
-            print(event_type)
-            event_type = EventType.query.filter_by(name=event_type).one()
+            event_type = EventType.query.get(event_type)
         self.type = event_type
         self.parameters = parameters
         from exeris.core import general
         self.date = general.GameDate.now().game_timestamp
+
+    def __repr__(self):
+        return "{Event, type=" + self.type_name + ", parameters=" + str(self.parameters) + "}"
 
 
 class EventObserver(db.Model):
@@ -540,8 +552,8 @@ class EventObserver(db.Model):
 
     observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False)
-    event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id), primary_key=True)
-    event = sql.orm.relationship(Event, uselist=False)
+    event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id, ondelete='CASCADE'), primary_key=True)
+    event = sql.orm.relationship(Event, uselist=False, backref=sql.orm.backref("event_observers", cascade="all,delete-orphan", passive_deletes=True))
     times_seen = sql.Column(sql.Integer)
 
     def __init__(self, event, observer):
@@ -601,12 +613,16 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, weight):
+    def __init__(self, being_in, location_type, weight):
         self.being_in = being_in
         self.weight = weight
+        self.type = location_type
 
         if self.being_in is not None:
             db.session.add(Passage(self.being_in, self))
+
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(LocationType.name))
+    type = sql.orm.relationship(LocationType, uselist=False)
 
     @hybrid_property
     def neighbours(self):
@@ -641,7 +657,7 @@ class RootLocation(Location):
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, is_mobile, direction):
-        super().__init__(None, 0)
+        super().__init__(None, LocationType.by_name(Types.OUTSIDE), 0)
         self.position = position
         self.is_mobile = is_mobile
         self.direction = direction
@@ -685,10 +701,9 @@ class Passage(Entity):
         self.being_in = None
         self.left_location = left_location
         self.right_location = right_location
-        door = EntityType.by_name("door")
+        door = EntityType.by_name(Types.DOOR)
         db.session.add(door)
         self.type = door
-
 
     @hybrid_method
     def between(self, first_loc, second_loc):
@@ -740,10 +755,10 @@ class EntityRecipe(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, name_tag, name_parameters, requirements, ticks_needed, build_menu_category,
+    def __init__(self, name_tag, name_params, requirements, ticks_needed, build_menu_category,
                  result=None, result_entity=None):
         self.name_tag = name_tag
-        self.name_parameters = name_parameters
+        self.name_params = name_params
         self.requirements = requirements
         self.ticks_needed = ticks_needed
         self.build_menu_category = build_menu_category
@@ -751,7 +766,7 @@ class EntityRecipe(db.Model):
         self.result_entity = result_entity
 
     name_tag = sql.Column(sql.String)
-    name_parameters = sql.Column(psql.JSON)
+    name_params = sql.Column(psql.JSON)
 
     requirements = sql.Column(psql.JSON)
     ticks_needed = sql.Column(sql.Float)
@@ -829,15 +844,14 @@ class TerrainArea(Entity):
     def __init__(self, terrain_poly, terrain_type, priority=1):
         self.terrain = terrain_poly
         self.priority = priority
-        self.terrain_type = terrain_type
+        self.type = terrain_type
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     _terrain = sql.Column(gis.Geometry("POLYGON"))
     priority = sql.Column(sql.SmallInteger)
-    terrain_type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("terrain_types.name"))
-    terrain_type = sql.orm.relationship(TerrainType, uselist=False)
-
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("terrain_types.name"))
+    type = sql.orm.relationship(TerrainType, uselist=False)
 
     @hybrid_property
     def terrain(self):
@@ -918,25 +932,18 @@ class ResultantPropertyArea:  # no overlays
 
 def init_database_contents():
 
-    if not EntityType.by_name("door"):
-        db.session.merge(EntityType("door"))
+    event_types = [type_name for key_name, type_name in Events.__dict__.items() if not key_name.startswith("__")]
 
-    db.session.merge(EventType("event_drop_item_doer"))
-    db.session.merge(EventType("event_drop_item_observer"))
-    db.session.merge(EventType("event_drop_part_of_item_doer"))
-    db.session.merge(EventType("event_drop_part_of_item_observer"))
-    db.session.merge(EventType("event_take_item_doer"))
-    db.session.merge(EventType("event_take_item_observer"))
-    db.session.merge(EventType("event_take_part_of_item_doer"))
-    db.session.merge(EventType("event_take_part_of_item_observer"))
-    db.session.merge(EventType("event_give_item_doer"))
-    db.session.merge(EventType("event_give_item_observer"))
-    db.session.merge(EventType("event_give_item_target"))
-    db.session.merge(EventType("event_give_part_of_item_doer"))
-    db.session.merge(EventType("event_give_part_of_item_target"))
-    db.session.merge(EventType("event_give_part_of_item_observer"))
+    for type_name in event_types:
+        db.session.merge(EventType(type_name + "_doer"))
+        db.session.merge(EventType(type_name + "_observer"))
+        db.session.merge(EventType(type_name + "_target"))
+
+    db.session.merge(EntityType(Types.DOOR))
+    db.session.merge(LocationType(Types.OUTSIDE))
 
     db.session.flush()
+
 
 def delete_all(seq):
     for element in seq:

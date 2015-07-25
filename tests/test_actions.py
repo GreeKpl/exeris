@@ -2,13 +2,12 @@ from unittest.mock import patch
 
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
-import sqlalchemy as sql
 
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivity
 from exeris.core.main import db
 from exeris.core.general import GameDate
-from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup
+from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event
 from exeris.core.properties import P
 from tests import util
 
@@ -31,7 +30,7 @@ class ActionsTest(TestCase):
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
 
-        hammer_activity = Activity(container, {"input": "potatoes"}, 100, initiator)
+        hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": "potatoes"}, 100, initiator)
         db.session.add(hammer_activity)
 
         action = CreateItemAction(item_type=item_type, properties={"Edible": True},
@@ -66,7 +65,7 @@ class ActionsTest(TestCase):
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
 
-        hammer_activity = Activity(rl, {}, 100, initiator)
+        hammer_activity = Activity(rl, "dummy_activity_name", {}, {}, 100, initiator)
         db.session.add(hammer_activity)
 
         db.session.flush()
@@ -108,7 +107,7 @@ class ActionsTest(TestCase):
         db.session.add_all([iron_type, steel_type, hard_metal_group, lock_type, key_type, rl, initiator])
         db.session.flush()
 
-        activity = Activity(rl, {"input": {
+        activity = Activity(rl, "dummy_activity_name", {}, {"input": {
             iron_type.name: {
                 "needed": 50, "left": 0, "used_type": iron_type.name,
             },
@@ -158,18 +157,20 @@ class ActionsTest(TestCase):
 
 
 
-    def test_drop_action(self):
+    def test_drop_item_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1,1), False, 111)
+        rl = RootLocation(Point(1, 1), False, 111)
 
         plr = util.create_player("aaa")
         char = util.create_character("John", rl, plr)
+        obs = util.create_character("obs", rl, plr)
 
         hammer_type = ItemType("stone_hammer", 200)
         hammer = Item(hammer_type, char, weight=200)
 
         db.session.add_all([rl, hammer_type, hammer])
+        db.session.flush()
 
         action = DropItemAction(char, hammer)
 
@@ -178,13 +179,28 @@ class ActionsTest(TestCase):
         self.assertEqual(rl, char.being_in)
         self.assertEqual(rl, hammer.being_in)
 
+        # test events
+        event_drop_doer = Event.query.filter_by(type_name="event_drop_item_doer").one()
+        self.assertEqual({"item_name": hammer.type_name, "item_id": hammer.id}, event_drop_doer.parameters)
+        event_drop_obs = Event.query.filter_by(type_name="event_drop_item_observer").one()
+        self.assertEqual({"item_name": hammer.type_name, "item_id": hammer.id, "doer": char.id}, event_drop_obs.parameters)
+        Event.query.delete()
+
         potatoes_type = ItemType("potatoes", 1, stackable=True)
         potatoes = Item(potatoes_type, char, weight=200)
 
         db.session.add_all([potatoes_type, potatoes])
 
-        action = DropItemAction(char, potatoes, 50)
+        amount = 50
+        action = DropItemAction(char, potatoes, amount)
         action.perform()
+
+        # test events
+        event_drop_doer = Event.query.filter_by(type_name="event_drop_item_doer").one()
+        self.assertEqual({"item_name": potatoes.type_name, "item_id": potatoes.id, "item_amount": amount}, event_drop_doer.parameters)
+        event_drop_obs = Event.query.filter_by(type_name="event_drop_item_observer").one()
+        self.assertEqual({"item_name": potatoes.type_name, "item_id": potatoes.id, "doer": char.id, "item_amount": amount}, event_drop_obs.parameters)
+        Event.query.delete()
 
         self.assertEqual(150, potatoes.weight)  # 50 was dropped
         potatoes_on_ground = Item.query.filter(Item.is_in(rl)).filter_by(type=potatoes_type).one()
@@ -283,7 +299,7 @@ class ActionsTest(TestCase):
         db.session.add_all([rl, initiator, anvil_type, anvil, metal_group, iron_type, iron])
         db.session.flush()
 
-        activity = Activity(anvil, {
+        activity = Activity(anvil, "dummy_activity_name", {}, {
             "input": {
                 metal_group.name: {"needed": 10, "left": 10}
             }

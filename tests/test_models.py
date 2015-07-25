@@ -6,7 +6,7 @@ from exeris.core.recipes import ActivityFactory
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory
+    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType
 from exeris.core import properties
 from exeris.core.properties import EntityPropertyException, P
 from tests import util
@@ -55,25 +55,30 @@ class LocationTest(TestCase):
     def test_find_root(self):
         pos = Point(10, 20)
         root_loc = RootLocation(pos, False, 100)  # the simplest
-        db.session.add(root_loc)
 
-        farmyard = Location(root_loc, 0)
+        building_type = LocationType("building")
+        farmyard_type = LocationType("farmyard")
+
+        db.session.add_all([root_loc, building_type, farmyard_type])
+
+        farmyard = Location(root_loc, farmyard_type, 0)
         db.session.add(farmyard)
 
-        building = Location(farmyard, 0)
+        building = Location(farmyard, building_type, 0)
         db.session.add(building)
 
-        room = Location(building, 0)
+        room = Location(building, building_type, 0)
         db.session.add(room)
 
         self.assertEqual(root_loc, room.get_root())
 
-    def test_methods__get_inside(self):
+    def test_methods_get_inside(self):
 
         root_loc = RootLocation(Point(20, 20), False, 100)
-        loc = Location(root_loc, 100)
+        building_type = LocationType("building")
+        loc = Location(root_loc, building_type, 100)
 
-        db.session.add_all([root_loc, loc])
+        db.session.add_all([building_type, root_loc, loc])
 
         # items
         type1 = ItemType("sword", 1000)
@@ -158,13 +163,14 @@ class PassageTest(TestCase):
 
     def test_accessibility(self):
 
-        rt = RootLocation(Point(10, 20), False, 213)
-        loc1 = Location(rt, 100)
-        loc2 = Location(rt, 133)
+        building_type = LocationType("building")
+        rl = RootLocation(Point(10, 20), False, 213)
+        loc1 = Location(rl, building_type, 100)
+        loc2 = Location(rl, building_type, 133)
 
-        db.session.add_all([rt, loc1, loc2])
-        passage1 = Passage.query.filter(Passage.between(rt, loc1)).first()
-        passage2 = Passage.query.filter(Passage.between(rt, loc2)).first()
+        db.session.add_all([rl, building_type, loc1, loc2])
+        passage1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+        passage2 = Passage.query.filter(Passage.between(rl, loc2)).first()
 
         open_window = EntityProperty(entity=passage1, name=P.WINDOW, data={"open": True})
         closed_window = EntityProperty(entity=passage2, name=P.WINDOW, data={"open": False})

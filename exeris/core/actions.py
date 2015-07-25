@@ -1,6 +1,7 @@
 from exeris.core.deferred import convert
 from exeris.core import deferred
-from exeris.core.main import db
+from exeris.core import main
+from exeris.core.main import db, Events
 from exeris.core import models
 
 from exeris.core.general import SameLocationRange, EventCreator
@@ -159,6 +160,7 @@ class RemoveItemAction(ActivityAction):
     def perform_action(self):
         self.item.remove(self.gracefully)
 
+
 @form_on_setup(item_name=deferred.NameInput)
 class AddNameToItemAction(ActivityAction):
 
@@ -194,8 +196,8 @@ def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
 
     # add to the goal
     if to_be_used_for:
-        existing_pile = models.Item.query.filter_by(type=item.type).\
-            filter(models.Item.is_used_for(goal)).filter_by(visible_parts=item.visible_parts).first()
+        existing_pile = models.Item.query.filter_by(type=item.type)\
+            .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=item.visible_parts).first()
     else:
         existing_pile = models.Item.query.filter_by(type=item.type).\
             filter(models.Item.is_in(goal)).filter_by(visible_parts=item.visible_parts).first()
@@ -216,17 +218,14 @@ class DropItemAction(ActionOnItem):
 
     def perform_action(self):
         if self.item.being_in != self.executor:
-            raise Exception
+            raise main.EntityNotInInventoryException(entity=self.item)
 
         if self.amount > self.item.amount:
-            raise Exception
+            raise main.InvalidAmountException(amount=self.amount)
 
         move_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
 
-        if self.item.type.stackable:
-            EventCreator.base("event_drop_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
-        else:
-            EventCreator.base("event_drop_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type.name}, self.executor)
+        EventCreator.base(Events.DROP_ITEM, self.rng, {"item": self.item, "item_amount": self.amount}, self.executor)
 
 
 class TakeItemAction(ActionOnItem):
@@ -236,17 +235,13 @@ class TakeItemAction(ActionOnItem):
 
     def perform_action(self):
         if self.item.being_in != self.executor.being_in:
-            raise Exception
+            raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.amount > self.item.amount:
             raise Exception
 
         move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
-
-        if self.item.type.stackable:
-            EventCreator.base("event_take_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
-        else:
-            EventCreator.base("event_take_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
+        EventCreator.base(Events.TAKE_ITEM, self.rng, {"item": self.item, "amount": self.amount}, self.executor)
 
 
 class GiveItemAction(ActionOnItemAndCharacter):
@@ -256,20 +251,17 @@ class GiveItemAction(ActionOnItemAndCharacter):
 
     def perform_action(self):
         if self.item.being_in != self.executor.being_in:
-            raise Exception
+            raise main.EntityNotInInventoryException(entity=self.item)
 
         if self.amount > self.item.amount:
-            raise Exception
+            raise main.InvalidAmountException(amount=self.amount)
 
         if not self.character:  # has not enough space in inventory
-            raise Exception
+            raise main.OwnInventoryExceededException()
 
         move_between_entities(self.item, self.executor, self.character, self.amount)
-
-        if self.item.type.stackable:
-            EventCreator.base("event_give_part_of_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
-        else:
-            EventCreator.base("event_give_item", self.rng, {"item_id": self.item.id, "item_name": self.item.type_name}, self.executor)
+        EventCreator.base(Events.GIVE_ITEM, self.rng, {"item": self.item, "amount": self.amount},
+                          self.executor, self.character)
 
 
 class AddItemToActivity(ActionOnItemAndActivity):
@@ -280,8 +272,11 @@ class AddItemToActivity(ActionOnItemAndActivity):
 
     def perform_action(self):
 
+        if self.item.being_in != self.executor:
+            raise main.EntityNotInInventoryException(entity=self.item)
+
         if self.amount > self.item.amount:
-            raise Exception
+            raise main.InvalidAmountException(amount=self.amount)
 
         req = self.activity.requirements
         if "input" in req:
@@ -301,7 +296,3 @@ class AddItemToActivity(ActionOnItemAndActivity):
 
                 required_group_params["left"] -= material_left_reduction
                 required_group_params["used_type"] = self.item.type_name
-
-        # self.activity.requirements = req
-
-        db.session.flush()

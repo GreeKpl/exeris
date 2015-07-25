@@ -204,6 +204,17 @@ class EventCreator():
         if not params:
             params = {}
 
+        for param_key, param_value in list(params.items()):  # TODO move it somewhere else to be reused
+            if type(param_value) is models.Item:
+                del params[param_key]
+                params[param_key + "_id"] = param_value.id
+                params[param_key + "_name"] = param_value.type_name
+
+                if not param_value.type.stackable:
+                    params.pop(param_key + "_amount", None)
+                elif not param_key + "_amount" in params:
+                    params[param_key + "_amount"] = param_value.amount
+
         if tag_doer and doer:
             event_doer = models.Event(cls.get_event_type_by_name(tag_doer), params)
             db.session.add(event_doer)
@@ -213,7 +224,10 @@ class EventCreator():
             db.session.add(event_target)
             db.session.add(models.EventObserver(event_target, doer))
         if rng and tag_observer:
-            event_observer = models.Event(tag_observer, params)
+            obs_params = dict(params)
+            if doer:
+                obs_params["doer"] = doer.id
+            event_observer = models.Event(tag_observer, obs_params)
             event_obs = [models.EventObserver(event_observer, char) for char in rng.characters_near()
                          if char not in (doer, target)]
 

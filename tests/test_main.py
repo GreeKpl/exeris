@@ -7,7 +7,7 @@ from exeris.core.main import db
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     TraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
-    EventType, EventObserver
+    EventType, EventObserver, LocationType
 from exeris.core.properties import P
 from tests import util
 
@@ -64,19 +64,21 @@ class RangeSpecTest(TestCase):
     def test_entities_near(self):
         self.maxDiff = None
 
-        rl = RootLocation(Point(10, 20), False, 122)
-        loc1 = Location(rl, 100)
-        loc2 = Location(rl, 100)
-        loc11 = Location(loc1, 200)
-        loc12 = Location(loc1, 200)
-        loc21 = Location(loc2, 300)
-        loc22 = Location(loc2, 300)
+        loc_type = LocationType("building")
 
-        loc221 = Location(loc22, 300)
+        rl = RootLocation(Point(10, 20), False, 122)
+        loc1 = Location(rl, loc_type, 100)
+        loc2 = Location(rl, loc_type, 100)
+        loc11 = Location(loc1, loc_type, 200)
+        loc12 = Location(loc1, loc_type, 200)
+        loc21 = Location(loc2, loc_type, 300)
+        loc22 = Location(loc2, loc_type, 300)
+
+        loc221 = Location(loc22, loc_type, 300)
 
         orl = RootLocation(Point(20, 20), False, 100)
-        oloc1 = Location(orl, 231)
-        db.session.add_all([rl, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
+        oloc1 = Location(orl, loc_type, 231)
+        db.session.add_all([rl, loc_type, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
 
         knife_type = ItemType("knife", 300)
         db.session.add(knife_type)
@@ -160,19 +162,20 @@ class EventCreatorTest(TestCase):
         et3 = EventType("slap_observer", EventType.NORMAL)
         db.session.add_all([et1, et2, et3])
 
-        rt = RootLocation(Point(10, 10), False, 103)
-        loc1 = Location(rt, 132)
-        loc2 = Location(rt, 132)
+        rl = RootLocation(Point(10, 10), False, 103)
+        loc_type = LocationType("building")
+        loc1 = Location(rl, loc_type, 132)
+        loc2 = Location(rl, loc_type, 132)
 
         plr = util.create_player("plr1")
         ch1 = util.create_character("Janusz", loc1, plr)
         ch2 = util.create_character("Edek", loc2, plr)
         ch3 = util.create_character("Dzidek", loc2, plr)
 
-        db.session.add_all([ch1, ch2, ch3])
+        db.session.add_all([rl, loc_type, loc1, loc2, ch1, ch2, ch3])
 
-        psg1 = Passage.query.filter(Passage.between(rt, loc1)).first()
-        psg2 = Passage.query.filter(Passage.between(rt, loc2)).first()
+        psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+        psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
         db.session.add(EntityProperty(entity=psg1, name=P.OPEN_PASSAGE, data={}))
         db.session.add(EntityProperty(entity=psg2, name=P.OPEN_PASSAGE, data={}))
 
@@ -183,6 +186,6 @@ class EventCreatorTest(TestCase):
 
         self.assertEqual(1, len(seen_events))
         self.assertEqual(et3, seen_events[0].event.type)
-        self.assertEqual({"hi": "hehe"}, seen_events[0].event.parameters)
+        self.assertEqual({"hi": "hehe", "doer": ch1.id}, seen_events[0].event.parameters)
 
     tearDown = util.tear_down_rollback

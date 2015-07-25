@@ -61,7 +61,7 @@ class SchedulerTest(TestCase):
         db.session.add(hammer)
         db.session.flush()
 
-        activity = Activity(hammer_worked_on, {"tools": [hammer_type.name]}, 1, self.worker)
+        activity = Activity(hammer_worked_on, "dummy_activity_name", {}, {"tools": [hammer_type.name]}, 1, self.worker)
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
