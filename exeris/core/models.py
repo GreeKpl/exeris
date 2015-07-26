@@ -323,6 +323,12 @@ class LocationType(EntityType):
 
     name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
+    def __init__(self, name, base_weight):
+        super().__init__(name)
+        self.base_weight = base_weight
+
+    base_weight = sql.Column(sql.Integer)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
     }
@@ -551,19 +557,23 @@ class Event(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     type_name = sql.Column(sql.String, sql.ForeignKey("event_types.name"))
     type = sql.orm.relationship(EventType, uselist=False)
-    parameters = sql.Column(psql.JSON)
+    params = sql.Column(psql.JSON)
     date = sql.Column(sql.BigInteger)
 
-    def __init__(self, event_type, parameters):
+    def __init__(self, event_type, params):
         if type(event_type) is str:
             event_type = EventType.query.get(event_type)
         self.type = event_type
-        self.parameters = parameters
+        self.params = params
         from exeris.core import general
         self.date = general.GameDate.now().game_timestamp
 
+    @hybrid_property
+    def observers(self):
+        return [junction.observer for junction in self.observers_junction]
+
     def __repr__(self):
-        return "{Event, type=" + self.type_name + ", parameters=" + str(self.parameters) + "}"
+        return "{Event, type=" + self.type_name + ", params=" + str(self.params) + "}"
 
 
 class EventObserver(db.Model):
@@ -572,7 +582,7 @@ class EventObserver(db.Model):
     observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False)
     event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id, ondelete='CASCADE'), primary_key=True)
-    event = sql.orm.relationship(Event, uselist=False, backref=sql.orm.backref("event_observers", cascade="all,delete-orphan", passive_deletes=True))
+    event = sql.orm.relationship(Event, uselist=False, backref=sql.orm.backref("observers_junction", cascade="all,delete-orphan", passive_deletes=True))
     times_seen = sql.Column(sql.Integer)
 
     def __init__(self, event, observer):
@@ -632,9 +642,11 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, location_type, weight):
+    def __init__(self, being_in, location_type, weight=None):
         self.being_in = being_in
         self.weight = weight
+        if not weight:
+            self.weight = location_type.base_weight
         self.type = location_type
 
         if self.being_in is not None:
@@ -964,7 +976,7 @@ def init_database_contents():
         db.session.merge(EventType(type_name + "_target"))
 
     db.session.merge(EntityType(Types.DOOR))
-    db.session.merge(LocationType(Types.OUTSIDE))
+    db.session.merge(LocationType(Types.OUTSIDE, 0))
 
     db.session.flush()
 

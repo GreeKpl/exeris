@@ -229,7 +229,7 @@ class EventCreator():
         if rng and tag_observer:
             obs_params = dict(params)
             if doer:
-                obs_params["doer"] = doer.id
+                obs_params["doer_id"] = doer.id
 
             event_observer = models.Event(tag_observer, obs_params)
             event_obs = [models.EventObserver(event_observer, char) for char in rng.characters_near()

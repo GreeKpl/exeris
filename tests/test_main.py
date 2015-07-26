@@ -186,6 +186,6 @@ class EventCreatorTest(TestCase):
 
         self.assertEqual(1, len(seen_events))
         self.assertEqual(et3, seen_events[0].event.type)
-        self.assertEqual({"hi": "hehe", "doer": ch1.id}, seen_events[0].event.parameters)
+        self.assertEqual({"hi": "hehe", "doer_id": ch1.id}, seen_events[0].event.params)
 
     tearDown = util.tear_down_rollback

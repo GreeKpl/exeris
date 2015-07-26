@@ -4,11 +4,13 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core import deferred
-from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction
+from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction, \
+    SayAloudAction
 from exeris.core.main import db, Events
 from exeris.core.general import GameDate
 from exeris.core import models
-from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event
+from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
+    LocationType, Passage
 from exeris.core.properties import P
 from tests import util
 
@@ -183,9 +185,9 @@ class ActionsTest(TestCase):
         # test events
         event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
 
-        self.assertEqual(hammer.pyslatize(), event_drop_doer.parameters)
+        self.assertEqual(hammer.pyslatize(), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
-        self.assertEqual(hammer.pyslatize(doer=char.id), event_drop_obs.parameters)
+        self.assertEqual(hammer.pyslatize(doer_id=char.id), event_drop_obs.params)
         Event.query.delete()
 
         potatoes_type = ItemType("potatoes", 1, stackable=True)
@@ -199,9 +201,9 @@ class ActionsTest(TestCase):
 
         # test events
         event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
-        self.assertEqual(potatoes.pyslatize(item_amount=amount), event_drop_doer.parameters)
+        self.assertEqual(potatoes.pyslatize(item_amount=amount), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
-        self.assertEqual(potatoes.pyslatize(item_amount=amount, doer=char.id), event_drop_obs.parameters)
+        self.assertEqual(potatoes.pyslatize(item_amount=amount, doer_id=char.id), event_drop_obs.params)
         Event.query.delete()
 
         self.assertEqual(150, potatoes.weight)  # 50 was dropped
@@ -363,7 +365,7 @@ class ActionsTest(TestCase):
                 "item_amount": 10,
             },
             "activity": activity.pyslatize(),
-        }}, event_add_doer.parameters)
+        }}, event_add_doer.params)
 
         event_add_obs = Event.query.filter_by(type_name=Events.ADD_TO_ACTIVITY + "_observer").one()
         self.assertEqual({
@@ -377,8 +379,8 @@ class ActionsTest(TestCase):
                 },
                 "activity": activity.pyslatize(),
             },
-            "doer": initiator.id,
-        }, event_add_obs.parameters)
+            "doer_id": initiator.id,
+        }, event_add_obs.params)
         Event.query.delete()
 
         action = AddItemToActivityAction(initiator, oak, activity, 10)

@@ -163,10 +163,10 @@ class PassageTest(TestCase):
 
     def test_accessibility(self):
 
-        building_type = LocationType("building")
+        building_type = LocationType("building", 200)
         rl = RootLocation(Point(10, 20), False, 213)
-        loc1 = Location(rl, building_type, 100)
-        loc2 = Location(rl, building_type, 133)
+        loc1 = Location(rl, building_type)
+        loc2 = Location(rl, building_type)
 
         db.session.add_all([rl, building_type, loc1, loc2])
         passage1 = Passage.query.filter(Passage.between(rl, loc1)).first()

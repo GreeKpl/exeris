@@ -4,7 +4,7 @@ from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core import models
 
-from exeris.core.general import SameLocationRange, EventCreator
+from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.properties import P
 
 __author__ = 'alek'
@@ -24,8 +24,11 @@ class Action(AbstractAction):  # top level character action, where we only know 
 
 # rich collection of pre-configured actions
 class ActionOnSelf(Action):
-    def __init__(self, executor):
+    def __init__(self, executor, rng=None):
         super().__init__(executor)
+        self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange(executor.being_in)
 
 
 class ActionOnItem(Action):
