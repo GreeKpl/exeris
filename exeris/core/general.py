@@ -1,5 +1,6 @@
 from collections import deque
 import collections
+import copy
 
 __author__ = 'alek'
 
@@ -176,7 +177,7 @@ class TraversabilityBasedRange(RangeSpec):
         return locs
 
 
-class EventCreator():
+class EventCreator:
 
     @classmethod
     def get_event_type_by_name(cls, name):
@@ -216,23 +217,35 @@ class EventCreator():
                     args[param_key] = replace_dict_values(param_value)
             return args
 
-        params = replace_dict_values(params)
+        base_params = replace_dict_values(params)
 
         if tag_doer and doer:
-            event_doer = models.Event(cls.get_event_type_by_name(tag_doer), params)
-            db.session.add(event_doer)
-            db.session.add(models.EventObserver(event_doer, doer))
-        if target and tag_target:
-            event_target = models.Event(tag_target, params)
-            db.session.add(event_target)
-            db.session.add(models.EventObserver(event_target, doer))
-        if rng and tag_observer:
-            obs_params = dict(params)
-            if doer:
-                obs_params["doer_id"] = doer.id
+            doer_params = copy.deepcopy(base_params)
+            if target:
+                doer_params.setdefault("groups", {})["target"] = target.pyslatize()
 
-            event_observer = models.Event(tag_observer, obs_params)
-            event_obs = [models.EventObserver(event_observer, char) for char in rng.characters_near()
+            event_for_doer = models.Event(tag_doer, doer_params)
+            event_obs_doer = models.EventObserver(event_for_doer, doer)
+            db.session.add_all([event_for_doer, event_obs_doer])
+        if target and tag_target:
+            target_params = copy.deepcopy(base_params)
+            if doer:
+                target_params.setdefault("groups", {})["doer"] = doer.pyslatize()
+
+            event_for_target = models.Event(tag_target, target_params)
+            event_obs_target = models.EventObserver(event_for_target, target)
+            db.session.add_all([event_for_target, event_obs_target])
+
+        if rng and tag_observer:
+            obs_params = copy.deepcopy(base_params)
+            if doer:
+                obs_params.setdefault("groups", {})["doer"] = doer.pyslatize()
+            if target:
+                obs_params.setdefault("groups", {})["target"] = target.pyslatize()
+
+            event_for_observer = models.Event(tag_observer, obs_params)
+            db.session.add(event_for_observer)
+            event_obs = [models.EventObserver(event_for_observer, char) for char in rng.characters_near()
                          if char not in (doer, target)]
 
             db.session.add_all(event_obs)

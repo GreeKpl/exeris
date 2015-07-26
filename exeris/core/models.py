@@ -382,6 +382,9 @@ class Character(Entity):
     def pyslatize(self, **overwrites):
         return dict(dict(entity_type=ENTITY_CHARACTER, character_id=self.id), **overwrites)
 
+    def __repr__(self):
+        return "{{Character name={},player={},activity={}}}".format(self.name, self.player_id, self.activity_id)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
     }

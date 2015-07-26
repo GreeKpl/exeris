@@ -64,20 +64,20 @@ class RangeSpecTest(TestCase):
     def test_entities_near(self):
         self.maxDiff = None
 
-        loc_type = LocationType("building")
+        loc_type = LocationType("building", 300)
 
         rl = RootLocation(Point(10, 20), False, 122)
-        loc1 = Location(rl, loc_type, 100)
-        loc2 = Location(rl, loc_type, 100)
-        loc11 = Location(loc1, loc_type, 200)
-        loc12 = Location(loc1, loc_type, 200)
-        loc21 = Location(loc2, loc_type, 300)
-        loc22 = Location(loc2, loc_type, 300)
+        loc1 = Location(rl, loc_type)
+        loc2 = Location(rl, loc_type)
+        loc11 = Location(loc1, loc_type)
+        loc12 = Location(loc1, loc_type)
+        loc21 = Location(loc2, loc_type)
+        loc22 = Location(loc2, loc_type)
 
-        loc221 = Location(loc22, loc_type, 300)
+        loc221 = Location(loc22, loc_type)
 
         orl = RootLocation(Point(20, 20), False, 100)
-        oloc1 = Location(orl, loc_type, 231)
+        oloc1 = Location(orl, loc_type)
         db.session.add_all([rl, loc_type, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
 
         knife_type = ItemType("knife", 300)
@@ -163,29 +163,42 @@ class EventCreatorTest(TestCase):
         db.session.add_all([et1, et2, et3])
 
         rl = RootLocation(Point(10, 10), False, 103)
-        loc_type = LocationType("building")
-        loc1 = Location(rl, loc_type, 132)
-        loc2 = Location(rl, loc_type, 132)
+        loc_type = LocationType("building", 200)
+        loc1 = Location(rl, loc_type)
+        loc2 = Location(rl, loc_type)
 
         plr = util.create_player("plr1")
-        ch1 = util.create_character("Janusz", loc1, plr)
-        ch2 = util.create_character("Edek", loc2, plr)
-        ch3 = util.create_character("Dzidek", loc2, plr)
+        doer = util.create_character("doer", loc1, plr)
+        target = util.create_character("target", loc2, plr)
+        observer = util.create_character("observer", loc2, plr)
 
-        db.session.add_all([rl, loc_type, loc1, loc2, ch1, ch2, ch3])
+        db.session.add_all([rl, loc_type, loc1, loc2, doer, target, observer])
 
         psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
         psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
         db.session.add(EntityProperty(entity=psg1, name=P.OPEN_PASSAGE, data={}))
         db.session.add(EntityProperty(entity=psg2, name=P.OPEN_PASSAGE, data={}))
 
-        EventCreator.base("slap", doer=ch1, target=ch2,
-                          rng=VisibilityBasedRange(ch1.being_in, 100), params={"hi": "hehe"})
+        EventCreator.base("slap", doer=doer, target=target,
+                          rng=VisibilityBasedRange(doer.being_in, 100), params={"hi": "hehe"})
 
-        seen_events = EventObserver.query.filter_by(observer=ch3).all()
+        event_doer = EventObserver.query.filter_by(observer=doer).one()
+        self.assertEqual(et1, event_doer.event.type)
+        self.assertEqual({"hi": "hehe", "groups": {
+            "target": target.pyslatize()
+        }}, event_doer.event.params)
 
-        self.assertEqual(1, len(seen_events))
-        self.assertEqual(et3, seen_events[0].event.type)
-        self.assertEqual({"hi": "hehe", "doer_id": ch1.id}, seen_events[0].event.params)
+        event_target = EventObserver.query.filter_by(observer=target).one()
+        self.assertEqual(et2, event_target.event.type)
+        self.assertEqual({"hi": "hehe", "groups": {
+            "doer": doer.pyslatize()
+        }}, event_target.event.params)
+
+        event_obs = EventObserver.query.filter_by(observer=observer).one()
+        self.assertEqual(et3, event_obs.event.type)
+        self.assertEqual({"hi": "hehe", "groups": {
+            "doer": doer.pyslatize(),
+            "target": target.pyslatize()
+        }}, event_obs.event.params)
 
     tearDown = util.tear_down_rollback

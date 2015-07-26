@@ -56,18 +56,18 @@ class LocationTest(TestCase):
         pos = Point(10, 20)
         root_loc = RootLocation(pos, False, 100)  # the simplest
 
-        building_type = LocationType("building")
-        farmyard_type = LocationType("farmyard")
+        building_type = LocationType("building", 2000)
+        farmyard_type = LocationType("farmyard", 0)
 
         db.session.add_all([root_loc, building_type, farmyard_type])
 
-        farmyard = Location(root_loc, farmyard_type, 0)
+        farmyard = Location(root_loc, farmyard_type)
         db.session.add(farmyard)
 
-        building = Location(farmyard, building_type, 0)
+        building = Location(farmyard, building_type)
         db.session.add(building)
 
-        room = Location(building, building_type, 0)
+        room = Location(building, building_type)
         db.session.add(room)
 
         self.assertEqual(root_loc, room.get_root())
@@ -75,8 +75,8 @@ class LocationTest(TestCase):
     def test_methods_get_inside(self):
 
         root_loc = RootLocation(Point(20, 20), False, 100)
-        building_type = LocationType("building")
-        loc = Location(root_loc, building_type, 100)
+        building_type = LocationType("building", 2000)
+        loc = Location(root_loc, building_type)
 
         db.session.add_all([building_type, root_loc, loc])
 
@@ -113,6 +113,7 @@ class EntityTest(TestCase):
         @properties.property_class
         class HappyPropertyType(properties.PropertyType):
             __property__ = "Happy"
+
             @properties.property_method
             def be_happy(self):
                 pass

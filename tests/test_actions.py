@@ -166,20 +166,20 @@ class ActionsTest(TestCase):
         rl = RootLocation(Point(1, 1), False, 111)
 
         plr = util.create_player("aaa")
-        char = util.create_character("John", rl, plr)
+        doer = util.create_character("John", rl, plr)
         obs = util.create_character("obs", rl, plr)
 
         hammer_type = ItemType("stone_hammer", 200)
-        hammer = Item(hammer_type, char, weight=200)
+        hammer = Item(hammer_type, doer, weight=200)
 
         db.session.add_all([rl, hammer_type, hammer])
         db.session.flush()
 
-        action = DropItemAction(char, hammer)
+        action = DropItemAction(doer, hammer)
 
         action.perform()
 
-        self.assertEqual(rl, char.being_in)
+        self.assertEqual(rl, doer.being_in)
         self.assertEqual(rl, hammer.being_in)
 
         # test events
@@ -187,30 +187,30 @@ class ActionsTest(TestCase):
 
         self.assertEqual(hammer.pyslatize(), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
-        self.assertEqual(hammer.pyslatize(doer_id=char.id), event_drop_obs.params)
+        self.assertEqual(dict(hammer.pyslatize(), groups={"doer": doer.pyslatize()}), event_drop_obs.params)
         Event.query.delete()
 
         potatoes_type = ItemType("potatoes", 1, stackable=True)
-        potatoes = Item(potatoes_type, char, weight=200)
+        potatoes = Item(potatoes_type, doer, weight=200)
 
         db.session.add_all([potatoes_type, potatoes])
 
         amount = 50
-        action = DropItemAction(char, potatoes, amount)
+        action = DropItemAction(doer, potatoes, amount)
         action.perform()
 
         # test events
         event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
         self.assertEqual(potatoes.pyslatize(item_amount=amount), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
-        self.assertEqual(potatoes.pyslatize(item_amount=amount, doer_id=char.id), event_drop_obs.params)
+        self.assertEqual(dict(potatoes.pyslatize(item_amount=amount), groups={"doer": doer.pyslatize()}), event_drop_obs.params)
         Event.query.delete()
 
         self.assertEqual(150, potatoes.weight)  # 50 was dropped
         potatoes_on_ground = Item.query.filter(Item.is_in(rl)).filter_by(type=potatoes_type).one()
         self.assertEqual(50, potatoes_on_ground.weight)
 
-        action = DropItemAction(char, potatoes, 150)
+        action = DropItemAction(doer, potatoes, 150)
         action.perform()
 
         db.session.flush()  # to correctly check deletion
@@ -225,7 +225,7 @@ class ActionsTest(TestCase):
         cake_type = ItemType("cake", 100, stackable=True)
 
         # check multipart resources
-        cake = Item(cake_type, char, weight=300)
+        cake = Item(cake_type, doer, weight=300)
         cake_ground = Item(cake_type, rl, weight=300)
         other_cake_ground = Item(cake_type, rl, weight=300)
 
@@ -239,7 +239,7 @@ class ActionsTest(TestCase):
 
         db.session.flush()
 
-        action = DropItemAction(char, cake, 1)
+        action = DropItemAction(doer, cake, 1)
         action.perform()
 
         self.assertEqual(200, cake.weight)
@@ -248,7 +248,7 @@ class ActionsTest(TestCase):
 
         db.session.delete(cake_ground)  # remove it!
 
-        action = DropItemAction(char, cake, 1)
+        action = DropItemAction(doer, cake, 1)
         action.perform()
 
         self.assertEqual(100, cake.weight)
@@ -355,15 +355,10 @@ class ActionsTest(TestCase):
             wood_group.name: {"needed": 10, "left": 10},
         }, activity.requirements["input"])
 
+        self.maxDiff = None
         event_add_doer = Event.query.filter_by(type_name=Events.ADD_TO_ACTIVITY + "_doer").one()
         self.assertEqual({"groups": {
-            "item": {
-                "entity_type": models.ENTITY_ITEM,
-                "item_name": oak.type_name,
-                "item_id": oak.id,
-                "item_damage": 0.0,
-                "item_amount": 10,
-            },
+            "item": oak.pyslatize(item_amount=10),
             "activity": activity.pyslatize(),
         }}, event_add_doer.params)
 
@@ -378,8 +373,8 @@ class ActionsTest(TestCase):
                     "item_amount": 10,
                 },
                 "activity": activity.pyslatize(),
-            },
-            "doer_id": initiator.id,
+                "doer": initiator.pyslatize(),
+            }
         }, event_add_obs.params)
         Event.query.delete()
 
@@ -418,7 +413,7 @@ class ActionsTest(TestCase):
         self.assertCountEqual([doer], event_say_doer.observers)
 
         event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
-        self.assertEquals({"doer_id": doer.id, "message": message_text}, event_say_observer.params)
+        self.assertEquals({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc], event_say_observer.observers)
 
         door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
@@ -438,7 +433,7 @@ class ActionsTest(TestCase):
         self.assertCountEqual([doer], event_say_doer.observers)
 
         event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
-        self.assertEquals({"doer_id": doer.id, "message": message_text}, event_say_observer.params)
+        self.assertEquals({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc, obs_near_loc], event_say_observer.observers)
 
     tearDown = util.tear_down_rollback
