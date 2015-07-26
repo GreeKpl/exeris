@@ -24,6 +24,7 @@ class Types:
 
 
 class Events:
+    ADD_TO_ACTIVITY = "event_add_to_activity"
     DROP_ITEM = "event_drop_item"
     TAKE_ITEM = "event_take_item"
     GIVE_ITEM = "event_give_item"
@@ -98,3 +99,19 @@ class EntityNotInInventoryException(GameException):
     def __init__(self, *, entity):
         super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **entity.pyslatize())
 
+
+class OnlySpecificTypeForGroupException(GameException):
+    def __init__(self, *, type_name, group_name):
+        params = dict(item_name=type_name, group_name=group_name)  # TODO? PYSLATIZE GROUP?
+        super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **params)
+
+
+class ItemNotApplicableForActivityException(GameException):
+    def __init__(self, *, item, activity):
+        params = dict(item.pyslatize(), **activity.pyslatize())
+        super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **params)
+
+
+class InvalidInitialLocationException(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_TOO_FAR_AWAY, **entity.pyslatize())

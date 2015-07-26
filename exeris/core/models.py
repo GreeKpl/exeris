@@ -300,6 +300,9 @@ class Entity(db.Model):
         else:
             return self.being_in.get_root()
 
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_BASE, entity_id=self.id), **overwrites)
+
     discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
     __mapper_args__ = {
@@ -370,6 +373,9 @@ class Character(Entity):
     def validate_spawn_date(self, key, spawn_date):
         return spawn_date.game_timestamp
 
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_CHARACTER, character_id=self.id), **overwrites)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
     }
@@ -404,6 +410,8 @@ class Item(Entity):
 
     @validates("visible_parts")
     def validate_visible_parts(self, key, visible_parts):
+        if visible_parts is None:
+            visible_parts = []
         # turn (optional) item types into names
         visible_parts = [part if type(part) is str else part.name for part in visible_parts]
         return sorted(visible_parts)
@@ -455,6 +463,13 @@ class Item(Entity):
         from exeris.core import general
         self.removal_game_date = general.GameDate.now()
 
+    def pyslatize(self, **overwrites):
+        pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
+                          item_damage=self.damage)
+        if self.type.stackable:
+            pyslatized["item_amount"] = self.amount
+        return dict(pyslatized, **overwrites)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
@@ -487,6 +502,10 @@ class Activity(Entity):
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
+
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
+                    activity_name=self.name_tag, activity_params=self.name_params), **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ACTIVITY,
@@ -642,6 +661,10 @@ class Location(Entity):
     def get_items_inside(self):
         return Item.query.filter(Item.is_in(self)).all()
 
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_LOCATION, location_id=self.id,
+                    location_name=self.type_name), **overwrites)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
     }
@@ -726,6 +749,9 @@ class Passage(Entity):
     right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
                                           backref="right_passages", uselist=False)
 
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.name_tag), **overwrites)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
     }
@@ -799,8 +825,6 @@ class BuildMenuCategory(db.Model):
 
     def get_recipes(self):
         return EntityRecipe.query.filter_by(build_menu_category=self).all()
-
-
 
 
 class ResourceArea(db.Model):

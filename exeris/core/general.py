@@ -1,4 +1,5 @@
 from collections import deque
+import collections
 
 __author__ = 'alek'
 
@@ -204,16 +205,18 @@ class EventCreator():
         if not params:
             params = {}
 
-        for param_key, param_value in list(params.items()):  # TODO move it somewhere else to be reused
-            if type(param_value) is models.Item:
-                del params[param_key]
-                params[param_key + "_id"] = param_value.id
-                params[param_key + "_name"] = param_value.type_name
+        def replace_dict_values(args):
+            for param_key, param_value in list(args.items()):
+                if isinstance(param_value, models.Entity):
+                    pyslatized = param_value.pyslatize()
+                    pyslatized.update(args)
+                    del pyslatized[param_key]
+                    args = pyslatized
+                if isinstance(param_value, collections.Mapping):  # recursive for other dicts
+                    args[param_key] = replace_dict_values(param_value)
+            return args
 
-                if not param_value.type.stackable:
-                    params.pop(param_key + "_amount", None)
-                elif not param_key + "_amount" in params:
-                    params[param_key + "_amount"] = param_value.amount
+        params = replace_dict_values(params)
 
         if tag_doer and doer:
             event_doer = models.Event(cls.get_event_type_by_name(tag_doer), params)
@@ -227,6 +230,7 @@ class EventCreator():
             obs_params = dict(params)
             if doer:
                 obs_params["doer"] = doer.id
+
             event_observer = models.Event(tag_observer, obs_params)
             event_obs = [models.EventObserver(event_observer, char) for char in rng.characters_near()
                          if char not in (doer, target)]

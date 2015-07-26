@@ -24,7 +24,7 @@ def tear_down_rollback(self):
 
 
 def create_player(login, save=True):
-    plr = Player(login="jan", email="aa@gmail.com", register_date=datetime.datetime.now(),
+    plr = Player(login=login, email=login + "aa@gmail.com", register_date=datetime.datetime.now(),
                  register_game_date=general.GameDate(1000), sex=Player.SEX_MALE, password="ala123")
     if save:
         db.session.add(plr)

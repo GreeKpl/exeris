@@ -99,7 +99,7 @@ data = {
         "pl": "ciastami",
     },
     "tp_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{states}%{parts}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",
@@ -144,7 +144,7 @@ class TranslationTest(TestCase):
         self.assertEqual("axe", pyslate.t("item_info", item_name="axe"))
 
         # accessible both by specifying item or its id
-        self.assertEqual("sword", pyslate.t("item_info", item=sword))
+        self.assertEqual("sword", pyslate.t("item_info", **sword.pyslatize()))
         self.assertEqual("sword", pyslate.t("item_info", item_id=sword.id))
 
     def test_item_visible_parts_en_pl(self):
@@ -164,11 +164,11 @@ class TranslationTest(TestCase):
         cake.visible_parts = [carrot_type, apple_type, berries_type]
 
         # test visible parts
-        self.assertEqual("cake with apples, berries and carrots", pyslate.t("item_info", item=cake))
+        self.assertEqual("cake with apples, berries and carrots", pyslate.t("item_info", **cake.pyslatize()))
 
         # test visible parts in Polish
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("ciasto z jabłkami, jagodami i marchewkami", pyslate.t("item_info", item=cake))
+        self.assertEqual("ciasto z jabłkami, jagodami i marchewkami", pyslate.t("item_info", **cake.pyslatize()))
 
     def test_damaged_item(self):
 
@@ -182,10 +182,10 @@ class TranslationTest(TestCase):
         db.session.add_all([rl, sword_type, sword])
         db.session.flush()
 
-        self.assertEqual("damaged sword", pyslate.t("item_info", item=sword))
+        self.assertEqual("damaged sword", pyslate.t("item_info", **sword.pyslatize()))
 
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("uszkodzony miecz", pyslate.t("item_info", item=sword))
+        self.assertEqual("uszkodzony miecz", pyslate.t("item_info", **sword.pyslatize()))
 
     def test_main_material(self):
 
@@ -204,10 +204,10 @@ class TranslationTest(TestCase):
         db.session.add(main_material_prop)
         db.session.flush()
 
-        self.assertEqual("damaged hemp shirt", pyslate.t("item_info", item=shirt))
+        self.assertEqual("damaged hemp shirt", pyslate.t("item_info", **shirt.pyslatize()))
 
         pyslate = create_pyslate("pl", data=data)
-        self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", item=shirt))
+        self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", **shirt.pyslatize()))
 
     def test_stackable(self):
         pyslate_en = create_pyslate("en", data=data)
@@ -220,16 +220,20 @@ class TranslationTest(TestCase):
         db.session.add_all([rl, hemp_cloth_type, hemp_cloth])
         db.session.flush()
 
-        self.assertEqual("1 bale of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
-        self.assertEqual("1 bela tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+        self.assertEqual("1 bale of hemp cloth", pyslate_en.t("item_info", **hemp_cloth.pyslatize()))
+        self.assertEqual("1 bela tkaniny konopnej", pyslate_pl.t("item_info", **hemp_cloth.pyslatize()))
 
         hemp_cloth.amount = 3
-        self.assertEqual("3 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
-        self.assertEqual("3 bele tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+        self.assertEqual("3 bales of hemp cloth", pyslate_en.t("item_info", **hemp_cloth.pyslatize()))
+        self.assertEqual("3 bele tkaniny konopnej", pyslate_pl.t("item_info", **hemp_cloth.pyslatize()))
 
         hemp_cloth.amount = 6
-        self.assertEqual("6 bales of hemp cloth", pyslate_en.t("item_info", item=hemp_cloth))
-        self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("item_info", item=hemp_cloth))
+        self.assertEqual("6 bales of hemp cloth", pyslate_en.t("item_info", **hemp_cloth.pyslatize()))
+        self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("item_info", **hemp_cloth.pyslatize()))
+
+        # check if entity_info gives the same
+        self.assertEqual("6 bales of hemp cloth", pyslate_en.t("entity_info", **hemp_cloth.pyslatize()))
+        self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("entity_info", **hemp_cloth.pyslatize()))
 
 
 

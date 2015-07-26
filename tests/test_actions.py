@@ -4,9 +4,10 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core import deferred
-from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivity
-from exeris.core.main import db
+from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction
+from exeris.core.main import db, Events
 from exeris.core.general import GameDate
+from exeris.core import models
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event
 from exeris.core.properties import P
 from tests import util
@@ -180,10 +181,11 @@ class ActionsTest(TestCase):
         self.assertEqual(rl, hammer.being_in)
 
         # test events
-        event_drop_doer = Event.query.filter_by(type_name="event_drop_item_doer").one()
-        self.assertEqual({"item_name": hammer.type_name, "item_id": hammer.id}, event_drop_doer.parameters)
-        event_drop_obs = Event.query.filter_by(type_name="event_drop_item_observer").one()
-        self.assertEqual({"item_name": hammer.type_name, "item_id": hammer.id, "doer": char.id}, event_drop_obs.parameters)
+        event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
+
+        self.assertEqual(hammer.pyslatize(), event_drop_doer.parameters)
+        event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
+        self.assertEqual(hammer.pyslatize(doer=char.id), event_drop_obs.parameters)
         Event.query.delete()
 
         potatoes_type = ItemType("potatoes", 1, stackable=True)
@@ -196,10 +198,10 @@ class ActionsTest(TestCase):
         action.perform()
 
         # test events
-        event_drop_doer = Event.query.filter_by(type_name="event_drop_item_doer").one()
-        self.assertEqual({"item_name": potatoes.type_name, "item_id": potatoes.id, "item_amount": amount}, event_drop_doer.parameters)
-        event_drop_obs = Event.query.filter_by(type_name="event_drop_item_observer").one()
-        self.assertEqual({"item_name": potatoes.type_name, "item_id": potatoes.id, "doer": char.id, "item_amount": amount}, event_drop_obs.parameters)
+        event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
+        self.assertEqual(potatoes.pyslatize(item_amount=amount), event_drop_doer.parameters)
+        event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
+        self.assertEqual(potatoes.pyslatize(item_amount=amount, doer=char.id), event_drop_obs.parameters)
         Event.query.delete()
 
         self.assertEqual(150, potatoes.weight)  # 50 was dropped
@@ -287,6 +289,7 @@ class ActionsTest(TestCase):
 
         rl = RootLocation(Point(1, 1), False, 111)
         initiator = util.create_character("John", rl, util.create_player("aaa"))
+        observer = util.create_character("obs", rl, util.create_player("abc"))
 
         anvil_type = ItemType("anvil", 400, portable=False)
         anvil = Item(anvil_type, rl)
@@ -305,17 +308,87 @@ class ActionsTest(TestCase):
             }
         }, 1, initiator)
 
-        action = AddItemToActivity(initiator, iron, activity, 4)
+        action = AddItemToActivityAction(initiator, iron, activity, 4)
         action.perform()
 
         self.assertEqual({metal_group.name: {"needed": 10, "left": 8, "used_type": iron_type.name}}, activity.requirements["input"])
         self.assertEqual(16, iron.amount)
 
-        action = AddItemToActivity(initiator, iron, activity, 16)
+        action = AddItemToActivityAction(initiator, iron, activity, 16)
         action.perform()
 
         self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}}, activity.requirements["input"])
         self.assertIsNone(iron.parent_entity)
         self.assertIsNotNone(iron.removal_game_date)
+        Event.query.delete()
+
+        # TEST TYPE MATCHING MULTIPLE REQUIREMENT GROUPS
+
+        wood_group = TypeGroup("group_wood")
+        fuel_group = TypeGroup("group_fuel")
+        oak_type = ItemType("oak", 50, stackable=True)
+        wood_group.add_to_group(oak_type)
+        fuel_group.add_to_group(oak_type)
+
+        oak = Item(oak_type, initiator, amount=20)
+        db.session.add_all([wood_group, oak_type, fuel_group, oak])
+
+        activity = Activity(anvil, "dummy_activity_name", {}, {
+            "input": {
+                metal_group.name: {"needed": 10, "left": 10},
+                fuel_group.name: {"needed": 10, "left": 10},
+                wood_group.name: {"needed": 10, "left": 10},
+            }
+        }, 1, initiator)
+        db.session.add(activity)
+
+        action = AddItemToActivityAction(initiator, oak, activity, 20)  # added as the first material from the list
+        action.perform()
+
+        # in this case oak should be added as fuel, because material groups are sorted and applied alphabetically
+        # always exactly one group can be fulfilled at once
+        self.assertEqual({
+            metal_group.name: {"needed": 10, "left": 10},
+            fuel_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
+            wood_group.name: {"needed": 10, "left": 10},
+        }, activity.requirements["input"])
+
+        event_add_doer = Event.query.filter_by(type_name=Events.ADD_TO_ACTIVITY + "_doer").one()
+        self.assertEqual({"groups": {
+            "item": {
+                "entity_type": models.ENTITY_ITEM,
+                "item_name": oak.type_name,
+                "item_id": oak.id,
+                "item_damage": 0.0,
+                "item_amount": 10,
+            },
+            "activity": activity.pyslatize(),
+        }}, event_add_doer.parameters)
+
+        event_add_obs = Event.query.filter_by(type_name=Events.ADD_TO_ACTIVITY + "_observer").one()
+        self.assertEqual({
+            "groups": {
+                "item": {
+                    "entity_type": models.ENTITY_ITEM,
+                    "item_name": oak.type_name,
+                    "item_id": oak.id,
+                    "item_damage": 0.0,
+                    "item_amount": 10,
+                },
+                "activity": activity.pyslatize(),
+            },
+            "doer": initiator.id,
+        }, event_add_obs.parameters)
+        Event.query.delete()
+
+        action = AddItemToActivityAction(initiator, oak, activity, 10)
+        action.perform()  # add materials to another group
+
+        self.assertEqual({
+            metal_group.name: {"needed": 10, "left": 10},
+            fuel_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
+            wood_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
+        }, activity.requirements["input"])
+        self.assertIsNotNone(oak.removal_game_date)
 
     tearDown = util.tear_down_rollback

@@ -184,7 +184,7 @@ def move_between_entities(item, source, destination, amount, to_be_used_for=Fals
         else:
             item.being_in = destination
     else:
-        raise Exception
+        raise main.InvalidInitialLocationException(entity=item)
 
 
 def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
@@ -210,6 +210,12 @@ def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
         db.session.add(new_pile)
 
 
+def overwrite_item_amount(item, amount):
+    if item.type.stackable:
+        return dict(item_amount=amount)
+    return {}
+
+
 class DropItemAction(ActionOnItem):
 
     def __init__(self, executor, item, amount=1):
@@ -225,7 +231,9 @@ class DropItemAction(ActionOnItem):
 
         move_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
 
-        EventCreator.base(Events.DROP_ITEM, self.rng, {"item": self.item, "item_amount": self.amount}, self.executor)
+        event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
+        print(event_args)
+        EventCreator.base(Events.DROP_ITEM, self.rng, event_args, self.executor)
 
 
 class TakeItemAction(ActionOnItem):
@@ -241,7 +249,9 @@ class TakeItemAction(ActionOnItem):
             raise Exception
 
         move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
-        EventCreator.base(Events.TAKE_ITEM, self.rng, {"item": self.item, "amount": self.amount}, self.executor)
+
+        event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
+        EventCreator.base(Events.TAKE_ITEM, self.rng, event_args, self.executor)
 
 
 class GiveItemAction(ActionOnItemAndCharacter):
@@ -260,11 +270,13 @@ class GiveItemAction(ActionOnItemAndCharacter):
             raise main.OwnInventoryExceededException()
 
         move_between_entities(self.item, self.executor, self.character, self.amount)
-        EventCreator.base(Events.GIVE_ITEM, self.rng, {"item": self.item, "amount": self.amount},
+
+        event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
+        EventCreator.base(Events.GIVE_ITEM, self.rng, event_args,
                           self.executor, self.character)
 
 
-class AddItemToActivity(ActionOnItemAndActivity):
+class AddItemToActivityAction(ActionOnItemAndActivity):
 
     def __init__(self, executor, item, activity, amount):
         super().__init__(executor, item, activity)
@@ -279,20 +291,37 @@ class AddItemToActivity(ActionOnItemAndActivity):
             raise main.InvalidAmountException(amount=self.amount)
 
         req = self.activity.requirements
-        if "input" in req:
-            for required_group_name, required_group_params in req["input"].items():
-                required_group = models.EntityType.by_name(required_group_name)
-                if "used_type" in required_group_params:
-                        if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type
-                            raise Exception("must be exactly type " + str(required_group_params["used_type"]))
-                if not required_group.contains(self.item.type):
-                    raise Exception
-                type_efficiency_ratio = required_group.efficiency(self.item.type)
-                max_to_be_added = required_group_params["left"] / type_efficiency_ratio
-                amount_to_add = min(self.amount, max_to_be_added)
-                move_between_entities(self.item, self.executor, self.activity, amount_to_add, to_be_used_for=True)
 
-                material_left_reduction = amount_to_add * type_efficiency_ratio
+        for required_group_name, required_group_params in sorted(req.get("input", {}).items()):
+            required_group = models.EntityType.by_name(required_group_name)
+            if "used_type" in required_group_params:
+                    if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type
+                        raise main.OnlySpecificTypeForGroupException(
+                            type_name=required_group_params["used_type"], group_name=required_group_name)
+            if required_group_params["left"] == 0:  # this requirement is fulfilled
+                continue
+            if not required_group.contains(self.item.type):  # requirement cannot be fulfilled by this type
+                continue
+            type_efficiency_ratio = required_group.efficiency(self.item.type)
+            max_to_be_added = required_group_params["left"] / type_efficiency_ratio
+            amount_to_add = min(self.amount, max_to_be_added)
+            move_between_entities(self.item, self.executor, self.activity, amount_to_add, to_be_used_for=True)
 
-                required_group_params["left"] -= material_left_reduction
-                required_group_params["used_type"] = self.item.type_name
+            material_left_reduction = amount_to_add * type_efficiency_ratio
+
+            required_group_params["left"] -= material_left_reduction
+            required_group_params["used_type"] = self.item.type_name
+
+            overwrites = {}
+            if self.item.type.stackable:
+                overwrites["item_amount"] = amount_to_add
+
+            item_info = self.item.pyslatize(**overwrite_item_amount(self.item, amount_to_add))
+            event_args = {"groups": {
+                "item": item_info,
+                "activity": self.activity.pyslatize()
+            }}
+            EventCreator.base(Events.ADD_TO_ACTIVITY, self.rng, event_args, doer=self.executor)
+            return
+
+        raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
