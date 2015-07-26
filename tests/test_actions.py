@@ -393,4 +393,53 @@ class ActionsTest(TestCase):
         }, activity.requirements["input"])
         self.assertIsNotNone(oak.removal_game_date)
 
+    def test_say_aloud_action(self):
+        util.initialize_date()
+
+        rl1 = RootLocation(Point(0, 0), False, 123)
+        rl2 = RootLocation(Point(0, 11), False, 123)
+        rl3 = RootLocation(Point(0, 21), False, 123)
+        building_type = LocationType("building", 200)
+        building = Location(rl1, building_type)
+        plr = util.create_player("eee")
+        doer = util.create_character("doer", building, plr)
+        obs_same_loc = util.create_character("obs_same_loc", building, plr)
+        obs_near_loc = util.create_character("obs_near_loc", rl2, plr)
+        obs_far_loc = util.create_character("obs_far_loc", rl3, plr)
+        db.session.add_all([rl1, rl2, rl3, building_type, building, doer])
+
+        # no window in building -> nobody but obs_same_loc can hear it
+        message_text = "Hello!"
+        action = SayAloudAction(doer, message_text)
+        action.perform()
+
+        event_say_doer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_doer").one()
+        self.assertEquals({"message": message_text}, event_say_doer.params)
+        self.assertCountEqual([doer], event_say_doer.observers)
+
+        event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
+        self.assertEquals({"doer_id": doer.id, "message": message_text}, event_say_observer.params)
+        self.assertCountEqual([obs_same_loc], event_say_observer.observers)
+
+        door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
+
+        db.session.add(EntityProperty(door_to_building, P.WINDOW, {"open": True}))
+
+        # now there will be open connection between rl1 and building
+
+        # clean up the events
+        Event.query.delete()
+
+        action = SayAloudAction(doer, message_text)
+        action.perform()
+
+        event_say_doer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_doer").one()
+        self.assertEquals({"message": message_text}, event_say_doer.params)
+        self.assertCountEqual([doer], event_say_doer.observers)
+
+        event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
+        self.assertEquals({"doer_id": doer.id, "message": message_text}, event_say_observer.params)
+        self.assertCountEqual([obs_same_loc, obs_near_loc], event_say_observer.observers)
+
     tearDown = util.tear_down_rollback
+

@@ -328,3 +328,14 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
             return
 
         raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
+
+
+class SayAloudAction(ActionOnSelf):
+
+    def __init__(self, executor, message):
+        super().__init__(executor, rng=VisibilityBasedRange(executor.being_in, 20))
+        self.message = message
+
+    def perform_action(self):
+
+        EventCreator.base(Events.SAY_ALOUD, self.rng, {"message": self.message}, doer=self.executor)
