@@ -9,9 +9,9 @@ from sqlalchemy.sql import or_
 
 from sqlalchemy.orm import validates
 
-from exeris.core import properties
+from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
-from exeris.core.properties import P
+from exeris.core.properties_base import P
 
 __author__ = 'Aleksander Chrabąszcz'
 
@@ -246,7 +246,7 @@ class Entity(db.Model):
 
     def __getattr__(self, item):
         try:
-            method = properties.get_method(item)
+            method = properties_base.get_method(item)
             return types.MethodType(method, self)  # return method type with updated self
         except KeyError:
             try:
@@ -770,6 +770,22 @@ class Passage(Entity):
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
     }
+
+
+class ObservedName(db.Model):
+
+    observer_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)  # TODO!!!
+    observer = sql.orm.relationship(Character, uselist=False, foreign_keys=[observer_id])
+
+    target_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+    target = sql.orm.relationship(Entity, uselist=False, foreign_keys=[target_id])
+
+    name = sql.Column(sql.String)
+
+    def __init__(self, observer, target, name):
+        self.observer = observer
+        self.target = target
+        self.name = name
 
 
 class ScheduledTask(db.Model):

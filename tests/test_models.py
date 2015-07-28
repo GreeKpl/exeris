@@ -7,8 +7,8 @@ from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType
-from exeris.core import properties
-from exeris.core.properties import EntityPropertyException, P
+from exeris.core import properties_base
+from exeris.core.properties_base import EntityPropertyException, P
 from tests import util
 
 
@@ -110,11 +110,11 @@ class EntityTest(TestCase):
 
     def test_property_call_by_property(self):
 
-        @properties.property_class
-        class HappyPropertyType(properties.PropertyType):
+        @properties_base.property_class
+        class HappyPropertyType(properties_base.PropertyType):
             __property__ = "Happy"
 
-            @properties.property_method
+            @properties_base.property_method
             def be_happy(self):
                 pass
 
@@ -138,10 +138,11 @@ class EntityTest(TestCase):
 
     def test_has_property(self):
 
-        @properties.property_class
-        class SadPropertyType(properties.PropertyType):
+        @properties_base.property_class
+        class SadPropertyType(properties_base.PropertyType):
             __property__ = "Sad"
-            @properties.property_method
+
+            @properties_base.property_method
             def be_sad(self):
                 pass
 
