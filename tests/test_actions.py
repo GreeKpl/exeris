@@ -8,7 +8,6 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     SayAloudAction
 from exeris.core.main import db, Events
 from exeris.core.general import GameDate
-from exeris.core import models
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage
 from exeris.core.properties import P
@@ -365,13 +364,7 @@ class ActionsTest(TestCase):
         event_add_obs = Event.query.filter_by(type_name=Events.ADD_TO_ACTIVITY + "_observer").one()
         self.assertEqual({
             "groups": {
-                "item": {
-                    "entity_type": models.ENTITY_ITEM,
-                    "item_name": oak.type_name,
-                    "item_id": oak.id,
-                    "item_damage": 0.0,
-                    "item_amount": 10,
-                },
+                "item": oak.pyslatize(item_amount=10),
                 "activity": activity.pyslatize(),
                 "doer": initiator.pyslatize(),
             }

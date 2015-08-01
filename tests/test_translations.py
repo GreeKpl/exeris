@@ -3,7 +3,7 @@ from shapely.geometry import Point
 
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
-from exeris.core.models import Item, ItemType, RootLocation, EntityProperty
+from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName
 from exeris.core.properties import P
 from tests import util
 
@@ -17,6 +17,10 @@ data = {
     },
     "entity_axe": {
         "en": "axe",
+    },
+    "entity_book": {
+        "en": "book",
+        "pl": "książka",
     },
     "entity_carrot": {
         "en": "carrot",
@@ -108,6 +112,14 @@ data = {
     "tp_item_main_material": {
         "en": "${entity_%{material_name}_adj#%{item_form}}",
     },
+    "tp_item_title": {
+        "en": "'%{title}'",
+        "pl": "„%{title}”",
+    },
+    "tp_location_title": {
+        "en": "'%{title}'",
+        "pl": "„%{title}”",
+    },
     "tp_parts": {
         "en": "%{last}",
     },
@@ -118,6 +130,18 @@ data = {
     "tp_item_damaged": {
         "en": "damaged",
         "pl": "uszkodzon%{item_form:m?y|f?a|n?e}",
+    },
+    "entity_character": {
+        "en": "human",
+        "pl": "człowiek",
+    },
+    "entity_character#m": {
+        "en": "man",
+        "pl": "mężczyzna",
+    },
+    "entity_character#f": {
+        "en": "woman",
+        "pl": "kobieta",
     },
 }
 
@@ -186,6 +210,50 @@ class TranslationTest(TestCase):
 
         pyslate = create_pyslate("pl", data=data)
         self.assertEqual("uszkodzony miecz", pyslate.t("item_info", **sword.pyslatize()))
+
+    def test_title(self):
+        rl = RootLocation(Point(1,1), True, 111)
+        book_type = ItemType("book", 100)
+        book = Item(book_type, rl)
+        book.title = "How to make a good translation system"
+        db.session.add_all([rl, book_type, book])
+        db.session.flush()
+
+        pyslate_en = create_pyslate("en", data=data)
+        self.assertEquals("book 'How to make a good translation system'", pyslate_en.t("item_info", **book.pyslatize()))
+
+        pyslate_pl = create_pyslate("pl", data=data)
+        self.assertEquals("książka „How to make a good translation system”", pyslate_pl.t("item_info", **book.pyslatize()))
+
+    def test_character_name(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1,1), True, 111)
+
+        plr = util.create_player("adwdas")
+        man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
+        woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
+        obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
+        obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
+
+        # not testing property DynamicNamable, just translation system
+        man_obs2_name = ObservedName(obs2, man, "John")
+        woman_obs2_name = ObservedName(obs2, woman, "Judith")
+
+        db.session.add_all([man_obs2_name, woman_obs2_name, rl])
+        db.session.flush()
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs1})
+        self.assertEquals("woman", pyslate_en.t("character_info", **woman.pyslatize()))
+        self.assertEquals("man", pyslate_en.t("character_info", **man.pyslatize()))
+
+        pyslate_pl = create_pyslate("pl", data=data, context={"observer": obs1})
+        self.assertEquals("kobieta", pyslate_pl.t("character_info", **woman.pyslatize()))
+        self.assertEquals("mężczyzna", pyslate_pl.t("character_info", **man.pyslatize()))
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs2})
+        self.assertEquals("Judith", pyslate_en.t("character_info", **woman.pyslatize()))
+        self.assertEquals("John", pyslate_en.t("character_info", **man.pyslatize()))
 
     def test_main_material(self):
 

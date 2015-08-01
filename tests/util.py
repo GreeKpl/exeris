@@ -31,8 +31,8 @@ def create_player(login, save=True):
     return plr
 
 
-def create_character(name, being_in, player, save=True):
-    char = Character(name, Character.SEX_MALE, player, general.GameDate(1200), Point(10, 20), being_in)
+def create_character(name, being_in, player, save=True, sex=Character.SEX_MALE):
+    char = Character(name, sex, player, general.GameDate(1200), Point(10, 20), being_in)
     if save:
         db.session.add(char)
     return char

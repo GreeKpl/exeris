@@ -16,17 +16,18 @@ def create_pyslate(language, data=None, **kwargs):
 
     def func_item_info(helper, tag_name, params):
 
+        detailed = params.get("detail", False)
+
         item = None
         if "item" in params:
             item = params["item"]
         elif "item_id" in params:
             item = models.Item.by_id(params["item_id"])
+            params = dict(item.pyslatize(), **params)
 
+        item_name = params["item_name"]  # TODO!!! IT CAN GET BETTER (AMOUNT, etc)
         if not item:  # fallback
-            item_name = params["item_name"]
             return helper.translation("entity_" + item_name)  # this is all
-
-        item_name = item.type_name
 
         number_text = ""
         parts_text = ""
@@ -35,8 +36,9 @@ def create_pyslate(language, data=None, **kwargs):
         title_text = ""
         states_text = ""
 
-        number = item.amount
-        if item.type.stackable:
+        number = 1
+        if params.get("item_amount", None):
+            number = params["item_amount"]
             number_text = str(number) + " "
 
         transl_name, form = helper.translation_and_form("entity_" + item_name, number=number)
@@ -52,9 +54,13 @@ def create_pyslate(language, data=None, **kwargs):
             material_text = helper.translation("tp_item_main_material", material_name=main_material_type_name, item_form=form)
             material_text += " "
 
-        if item.damage > models.Item.DAMAGED_LB:
+        if params["item_damage"] > models.Item.DAMAGED_LB:
             damage_text = helper.translation("tp_item_damaged", item_name=transl_name, item_form=form)
             damage_text += " "
+
+        if params.get("item_title", None):
+            title_text = helper.translation("tp_item_title", title=params["item_title"])
+            title_text += " "
 
         return helper.translation("tp_item_info", damage=damage_text, main_material=material_text, amount=number_text,
                                   item_name=transl_name, parts=parts_text, title=title_text, states=states_text).strip()  # TODO strip is weak
@@ -109,11 +115,46 @@ def create_pyslate(language, data=None, **kwargs):
 
     def func_location_info(helper, tag_name, params):
         location_name = params["location_name"]
-        text, form = helper.translation_and_form("entity_" + location_name)  # this is all
-        helper.return_form(form)
-        return text
+        if "location_title" in params:
+            return helper.translation("tp_location_title", title=params["location_title"])
+
+        if "observer" in params and "location_id" in params:
+            observer = params["observer"]
+            location_id = params["location_id"]
+            observed_name = models.ObservedName.query.filter_by(observer=observer, target_id=location_id).first()
+            if observed_name:
+                return observed_name.name
+
+        return helper.translation("entity_" + location_name)  # this is all
 
     pyslate.register_function("location_info", func_location_info)
+
+    ##################
+    # CHARACTER INFO #
+    ##################
+
+    def func_character_info(helper, tag_name, params):
+        character_gen = params["character_gen"]
+        helper.return_form(character_gen)
+
+        if "character_title" in params:
+            return helper.translation("tp_location_title", title=params["location_title"])
+
+        if "observer" in params and "character_id" in params:
+            observer = params["observer"]
+            character_id = params["character_id"]
+
+            observed_name = models.ObservedName.query.filter_by(observer=observer, target_id=character_id).first()
+            if observed_name:
+                return observed_name.name
+
+        return helper.translation("entity_character#" + character_gen)
+
+    pyslate.register_function("character_info", func_character_info)
+
+    ##################
+    #  PASSAGE INFO  #
+    ##################
 
     def func_passage_info(helper, tag_name, params):
         passage_name = params["passage_name"]
