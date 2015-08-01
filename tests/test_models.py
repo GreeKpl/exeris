@@ -1,12 +1,13 @@
 from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
+from exeris.core.general import GameDate
 
 from exeris.core.recipes import ActivityFactory
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType
+    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character
 from exeris.core import properties_base
 from exeris.core.properties_base import EntityPropertyException, P
 from tests import util
@@ -156,6 +157,23 @@ class EntityTest(TestCase):
 
         self.assertDictEqual({"very": True, "feel": "blue", "cookies": 0}, item.get_property("Sad"))
 
+    def test_change_character_name(self):
+        util.initialize_date()
+
+        plr = util.create_player("jdiajw")
+        rl = RootLocation(Point(1, 1), True, 123)
+
+        char = Character("John", Character.SEX_MALE, plr, GameDate(120), Point(1, 1), rl)
+        self.assertEquals("John", char.name)
+
+        char.name = "Eddy"
+        self.assertEquals("Eddy", char.name)
+
+        db.session.flush()
+
+        char.name = "James"
+        self.assertEquals("James", char.name)
+
     tearDown = util.tear_down_rollback
 
 
@@ -286,6 +304,7 @@ class GroupTest(TestCase):
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
+
 
     def test_build_menu_categories(self):
 

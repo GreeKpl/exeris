@@ -197,6 +197,7 @@ class Entity(db.Model):
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.Column(sql.SmallInteger, nullable=True)
 
+    title = sql.Column(sql.String)
     properties = sql.orm.relationship("EntityProperty", back_populates="entity")
 
     @hybrid_property
@@ -357,7 +358,6 @@ class Character(Entity):
         self.spawn_position = spawn_position
         self.spawn_date = spawn_date
 
-    name = sql.Column(sql.String)
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
     state = sql.Column(sql.SmallInteger)
@@ -371,6 +371,19 @@ class Character(Entity):
     activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"), nullable=True)
     activity = sql.orm.relationship("Activity", primaryjoin="Character.activity_id == Activity.id", uselist=False)
 
+    @hybrid_property
+    def name(self):
+        return ObservedName.query.filter_by(target=self, observer=self).one().name
+
+    @name.setter
+    def name(self, value):
+        if self.id is not None:
+            observed_name = ObservedName.query.filter_by(target=self, observer=self).first()
+            if observed_name:
+                observed_name.name = value
+                return
+        db.session.add(ObservedName(self, self, value))
+
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
         return from_shape(spawn_position)
@@ -380,7 +393,7 @@ class Character(Entity):
         return spawn_date.game_timestamp
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_CHARACTER, character_id=self.id), **overwrites)
+        return dict(dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex), **overwrites)
 
     def __repr__(self):
         return "{{Character name={},player={},activity={}}}".format(self.name, self.player_id, self.activity_id)
@@ -474,7 +487,7 @@ class Item(Entity):
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
-                          item_damage=self.damage)
+                          item_damage=self.damage, item_title=self.title)
         if self.type.stackable:
             pyslatized["item_amount"] = self.amount
         return dict(pyslatized, **overwrites)
@@ -787,6 +800,8 @@ class ObservedName(db.Model):
         self.target = target
         self.name = name
 
+    def __repr__(self):
+        return "{{ObservedName target={}, by={}, name={}}}".format(self.target, self.observer, self.name)
 
 class ScheduledTask(db.Model):
     __tablename__ = "scheduled_tasks"
