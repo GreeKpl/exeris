@@ -5,7 +5,7 @@ from shapely.geometry import Point
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
-    LocationType, TerrainArea, TerrainType, Passage
+    LocationType, TerrainArea, TerrainType, Passage, Activity
 from exeris.core.properties import P
 from tests import util
 
@@ -14,7 +14,7 @@ __author__ = 'alek'
 data = {
     "entity_sword": {
         "en": "sword",
-        "pl": ["miecz", "m"],
+        "pl": ["miecz%{tag_v:x?|g?a}", "m"],
     },
     "entity_axe": {
         "en": "axe",
@@ -161,6 +161,10 @@ data = {
     "terrain_grass": {
         "en": "grassland",
         "pl": "łąka",
+    },
+    "activity_manufacturing": {
+        "en": "manufacturing ${result:entity_info@article}",
+        "pl": "produkcja ${result:entity_info#g}",  # TODO!!!
     },
 }
 
@@ -376,6 +380,25 @@ class CharacterAndLocationTranslationTest(TestCase):
         passage = Passage.query.filter(Passage.between(loc, rl)).one()
 
         pyslate_en = create_pyslate("en", data=data)
-        self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))  # no TerrainArea for this pos, so sea
+        self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))
+
+    def test_activity_translation(self):
+
+        rl = RootLocation(Point(1, 1), True, 213)
+        initiator = util.create_character("initiator", rl, util.create_player("abc"))
+
+        sword_type = ItemType("sword", 100, portable=True)
+        sword = Item(sword_type, rl)
+        db.session.add_all([rl, sword_type, sword])
+        db.session.flush()
+
+        activity = Activity(sword, "activity_manufacturing", {"groups": {"result": sword.pyslatize()}}, {}, 1, initiator)
+
+        pyslate_en = create_pyslate("en", data=data)
+        self.assertEqual("manufacturing a sword", pyslate_en.t(activity.name_tag, **activity.name_params))
+
+        pyslate_pl = create_pyslate("pl", data=data)
+        self.assertEqual("produkcja miecza", pyslate_pl.t(activity.name_tag, **activity.name_params))
+
 
     tearDown = util.tear_down_rollback

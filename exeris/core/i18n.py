@@ -41,7 +41,7 @@ def create_pyslate(language, data=None, **kwargs):
             number = params["item_amount"]
             number_text = str(number) + " "
 
-        transl_name, form = helper.translation_and_form("entity_" + item_name, number=number)
+        transl_name, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
         transl_name += " "  # TODO THIS IS WEAK
 
         if item.visible_parts:
@@ -67,9 +67,7 @@ def create_pyslate(language, data=None, **kwargs):
 
     pyslate.register_function("item_info", func_item_info)
 
-
-
-
+    #
 
     def func_parts(helper, tag_name, params):
 
@@ -187,7 +185,8 @@ def create_pyslate(language, data=None, **kwargs):
         else:
             tag_to_call = None
 
-        text, form = helper.translation_and_form(tag_to_call, **params)  # pass to correct custom function
+        # pass the tag (with the same suffix) to the correct "*_info" custom function
+        text, form = helper.translation_and_form(tag_to_call + helper.pass_the_suffix(tag_name), **params)
         helper.return_form(form)
         return text
 

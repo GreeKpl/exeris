@@ -486,9 +486,11 @@ class Item(Entity):
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
-                          item_damage=self.damage, item_title=self.title)
+                          item_damage=self.damage)
         if self.type.stackable:
             pyslatized["item_amount"] = self.amount
+        if self.title:
+            pyslatized["item_title"] = self.title
         return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {
@@ -691,11 +693,11 @@ class Location(Entity):
         return Item.query.filter(Item.is_in(self)).all()
 
     def pyslatize(self, **overwrites):
-        translation_dict = dict(entity_type=ENTITY_LOCATION, location_id=self.id,
-                                location_name=self.type_name)
+        pyslatized = dict(entity_type=ENTITY_LOCATION, location_id=self.id,
+                          location_name=self.type_name)
         if self.title:
-            translation_dict["location_title"] = self.title
-        return dict(translation_dict, **overwrites)
+            pyslatized["location_title"] = self.title
+        return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
