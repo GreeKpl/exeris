@@ -6,7 +6,6 @@ from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.sql import or_
-
 from sqlalchemy.orm import validates
 
 from exeris.core import properties_base
@@ -658,7 +657,7 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, location_type, weight=None):
+    def __init__(self, being_in, location_type, weight=None, title=None):
         self.being_in = being_in
         self.weight = weight
         if not weight:
@@ -667,6 +666,8 @@ class Location(Entity):
 
         if self.being_in is not None:
             db.session.add(Passage(self.being_in, self))
+
+        self.title = title
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(LocationType.name))
     type = sql.orm.relationship(LocationType, uselist=False)
@@ -690,8 +691,11 @@ class Location(Entity):
         return Item.query.filter(Item.is_in(self)).all()
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_LOCATION, location_id=self.id,
-                    location_name=self.type_name), **overwrites)
+        translation_dict = dict(entity_type=ENTITY_LOCATION, location_id=self.id,
+                                location_name=self.type_name)
+        if self.title:
+            translation_dict["location_title"] = self.title
+        return dict(translation_dict, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
@@ -738,6 +742,16 @@ class RootLocation(Location):
     def position(cls):
         return cls._position
 
+    def get_terrain_type(self):
+        top_terrain = TerrainArea.query.filter(sql.func.ST_CoveredBy(from_shape(self.position), TerrainArea._terrain)).\
+            order_by(TerrainArea.priority.desc()).first()
+        if not top_terrain:
+            return TerrainType.by_name(Types.SEA)
+        return top_terrain.type
+
+    def pyslatize(self, **overwrites):
+        return dict(dict(entity_type=ENTITY_LOCATION, location_id=self.id,
+                    location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
@@ -778,7 +792,7 @@ class Passage(Entity):
                                           backref="right_passages", uselist=False)
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.name_tag), **overwrites)
+        return dict(dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name), **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
@@ -895,13 +909,11 @@ class TerrainType(EntityType):
 
     name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
-    def __init__(self, name, color):
+    def __init__(self, name):
         super().__init__(name)
-        self.color = color
 
     visibility = sql.Column(sql.Float)
     traversability = sql.Column(sql.Float)
-    color = sql.Column(sql.SmallInteger)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_TERRAIN_AREA,
@@ -960,6 +972,9 @@ AREA_KIND_TRAVERSABILITY = 2
 
 
 class PropertyArea:
+    """
+    For example traversability or visibility
+    """
     __tablename__ = "property_areas"
 
     id = sql.Column(sql.Integer)
@@ -1011,6 +1026,7 @@ def init_database_contents():
 
     db.session.merge(EntityType(Types.DOOR))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
+    db.session.merge(TerrainType("sea"))
 
     db.session.flush()
 

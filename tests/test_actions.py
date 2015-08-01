@@ -402,11 +402,11 @@ class ActionsTest(TestCase):
         action.perform()
 
         event_say_doer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_doer").one()
-        self.assertEquals({"message": message_text}, event_say_doer.params)
+        self.assertEqual({"message": message_text}, event_say_doer.params)
         self.assertCountEqual([doer], event_say_doer.observers)
 
         event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
-        self.assertEquals({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
+        self.assertEqual({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc], event_say_observer.observers)
 
         door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
@@ -422,11 +422,11 @@ class ActionsTest(TestCase):
         action.perform()
 
         event_say_doer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_doer").one()
-        self.assertEquals({"message": message_text}, event_say_doer.params)
+        self.assertEqual({"message": message_text}, event_say_doer.params)
         self.assertCountEqual([doer], event_say_doer.observers)
 
         event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
-        self.assertEquals({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
+        self.assertEqual({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc, obs_near_loc], event_say_observer.observers)
 
     tearDown = util.tear_down_rollback

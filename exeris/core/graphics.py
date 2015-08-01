@@ -11,12 +11,12 @@ MAP_PER_PX = 100
 
 VIEW_SIZE = 500
 
-COLORS = ["red", "green", "yellow", "brown"]
+COLORS = {"grass": "green", "water": "blue", "sea": "blue", "road": "brown"}
 
 def get_map():
-    tt1 = models.TerrainType("grass", 1)
-    tt2 = models.TerrainType("water", 2)
-    road_type = models.TerrainType("road", 3)
+    tt1 = models.TerrainType("grass")
+    tt2 = models.TerrainType("water")
+    road_type = models.TerrainType("road")
     db.session.add_all([tt1, tt2])
 
     poly1 = Polygon([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)])
@@ -50,8 +50,8 @@ def get_map():
     for t in terrains:
         coords = t.terrain.exterior.coords[:-1]
         coords = [(c * MAP_PER_PX, d * MAP_PER_PX) for c, d in coords]
-        print(coords, COLORS[t.terrain_type.color])
-        draw.polygon(coords, fill=COLORS[t.terrain_type.color])
+        print(coords, COLORS[t.type_name])
+        draw.polygon(coords, fill=COLORS[t.type_name])
         # im.paste(black, (int(pos[0] * MAP_PER_PX), int(pos[1] * MAP_PER_PX)))
 
     root_locs = models.RootLocation.query.all()

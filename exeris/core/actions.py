@@ -32,7 +32,6 @@ class ActionOnSelf(Action):
 
 
 class ActionOnItem(Action):
-
     def __init__(self, executor, item, rng=None):
         super().__init__(executor)
         self.item = item

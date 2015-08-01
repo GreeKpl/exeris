@@ -164,15 +164,15 @@ class EntityTest(TestCase):
         rl = RootLocation(Point(1, 1), True, 123)
 
         char = Character("John", Character.SEX_MALE, plr, GameDate(120), Point(1, 1), rl)
-        self.assertEquals("John", char.name)
+        self.assertEqual("John", char.name)
 
         char.name = "Eddy"
-        self.assertEquals("Eddy", char.name)
+        self.assertEqual("Eddy", char.name)
 
         db.session.flush()
 
         char.name = "James"
-        self.assertEquals("James", char.name)
+        self.assertEqual("James", char.name)
 
     tearDown = util.tear_down_rollback
 
@@ -304,7 +304,6 @@ class GroupTest(TestCase):
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
-
 
     def test_build_menu_categories(self):
 

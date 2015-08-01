@@ -114,9 +114,6 @@ def create_pyslate(language, data=None, **kwargs):
     #################
 
     def func_location_info(helper, tag_name, params):
-        location_name = params["location_name"]
-        if "location_title" in params:
-            return helper.translation("tp_location_title", title=params["location_title"])
 
         if "observer" in params and "location_id" in params:
             observer = params["observer"]
@@ -125,7 +122,15 @@ def create_pyslate(language, data=None, **kwargs):
             if observed_name:
                 return observed_name.name
 
-        return helper.translation("entity_" + location_name)  # this is all
+        if "location_title" in params:
+            return helper.translation("tp_location_title", title=params["location_title"])
+
+        if "location_terrain" in params:
+            location_terrain = params["location_terrain"]
+            return helper.translation("terrain_" + location_terrain)
+
+        location_name = params["location_name"]
+        return helper.translation("entity_" + location_name)
 
     pyslate.register_function("location_info", func_location_info)
 

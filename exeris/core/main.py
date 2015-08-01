@@ -19,6 +19,7 @@ class Errors:
 
 
 class Types:
+    SEA = "sea"
     DOOR = "door"
     OUTSIDE = "outside"
 

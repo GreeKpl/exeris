@@ -1,12 +1,13 @@
 from flask.ext.testing import TestCase
+from shapely import geometry
 from shapely.geometry import Point
 
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
-from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName
+from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
+    LocationType, TerrainArea, TerrainType, Passage
 from exeris.core.properties import P
 from tests import util
-
 
 __author__ = 'alek'
 
@@ -21,6 +22,9 @@ data = {
     "entity_book": {
         "en": "book",
         "pl": "książka",
+    },
+    "entity_building": {
+        "en": "building",
     },
     "entity_carrot": {
         "en": "carrot",
@@ -65,6 +69,9 @@ data = {
     "entity_shirt": {
         "en": "shirt",
         "pl": ["koszula", "f"],
+    },
+    "entity_door": {
+        "en": "door",
     },
     "entity_hemp_cloth": {
         "en": "bale of hemp cloth",
@@ -143,10 +150,22 @@ data = {
         "en": "woman",
         "pl": "kobieta",
     },
+    "entity_outside": {
+        "en": "outside",
+        "pl": "na zewnątrz",
+    },
+    "terrain_sea": {
+        "en": "sea",
+        "pl": "morze",
+    },
+    "terrain_grass": {
+        "en": "grassland",
+        "pl": "łąka",
+    },
 }
 
 
-class TranslationTest(TestCase):
+class ItemTranslationTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
@@ -220,40 +239,10 @@ class TranslationTest(TestCase):
         db.session.flush()
 
         pyslate_en = create_pyslate("en", data=data)
-        self.assertEquals("book 'How to make a good translation system'", pyslate_en.t("item_info", **book.pyslatize()))
+        self.assertEqual("book 'How to make a good translation system'", pyslate_en.t("item_info", **book.pyslatize()))
 
         pyslate_pl = create_pyslate("pl", data=data)
-        self.assertEquals("książka „How to make a good translation system”", pyslate_pl.t("item_info", **book.pyslatize()))
-
-    def test_character_name(self):
-        util.initialize_date()
-
-        rl = RootLocation(Point(1,1), True, 111)
-
-        plr = util.create_player("adwdas")
-        man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
-        woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
-        obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
-        obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
-
-        # not testing property DynamicNamable, just translation system
-        man_obs2_name = ObservedName(obs2, man, "John")
-        woman_obs2_name = ObservedName(obs2, woman, "Judith")
-
-        db.session.add_all([man_obs2_name, woman_obs2_name, rl])
-        db.session.flush()
-
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs1})
-        self.assertEquals("woman", pyslate_en.t("character_info", **woman.pyslatize()))
-        self.assertEquals("man", pyslate_en.t("character_info", **man.pyslatize()))
-
-        pyslate_pl = create_pyslate("pl", data=data, context={"observer": obs1})
-        self.assertEquals("kobieta", pyslate_pl.t("character_info", **woman.pyslatize()))
-        self.assertEquals("mężczyzna", pyslate_pl.t("character_info", **man.pyslatize()))
-
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs2})
-        self.assertEquals("Judith", pyslate_en.t("character_info", **woman.pyslatize()))
-        self.assertEquals("John", pyslate_en.t("character_info", **man.pyslatize()))
+        self.assertEqual("książka „How to make a good translation system”", pyslate_pl.t("item_info", **book.pyslatize()))
 
     def test_main_material(self):
 
@@ -303,8 +292,90 @@ class TranslationTest(TestCase):
         self.assertEqual("6 bales of hemp cloth", pyslate_en.t("entity_info", **hemp_cloth.pyslatize()))
         self.assertEqual("6 bel tkaniny konopnej", pyslate_pl.t("entity_info", **hemp_cloth.pyslatize()))
 
-
-
-
     tearDown = util.tear_down_rollback
 
+
+class CharacterAndLocationTranslationTest(TestCase):
+
+    create_app = util.set_up_app_with_database
+
+    def test_character_name(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1,1), True, 111)
+
+        plr = util.create_player("adwdas")
+        man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
+        woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
+        obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
+        obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
+
+        # not testing property DynamicNamable, just translation system
+        man_obs2_name = ObservedName(obs2, man, "John")
+        woman_obs2_name = ObservedName(obs2, woman, "Judith")
+
+        db.session.add_all([man_obs2_name, woman_obs2_name, rl])
+        db.session.flush()
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs1})
+        self.assertEqual("woman", pyslate_en.t("character_info", **woman.pyslatize()))
+        self.assertEqual("man", pyslate_en.t("character_info", **man.pyslatize()))
+
+        pyslate_pl = create_pyslate("pl", data=data, context={"observer": obs1})
+        self.assertEqual("kobieta", pyslate_pl.t("character_info", **woman.pyslatize()))
+        self.assertEqual("mężczyzna", pyslate_pl.t("character_info", **man.pyslatize()))
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs2})
+        self.assertEqual("Judith", pyslate_en.t("character_info", **woman.pyslatize()))
+        self.assertEqual("John", pyslate_en.t("character_info", **man.pyslatize()))
+
+    def test_location_name(self):
+
+        rl = RootLocation(Point(1, 1), True, 213)
+        plr = util.create_player("dawdasdawdasw")
+        obs = util.create_character("obs1", rl, plr)
+
+        building_type = LocationType("building", 200)
+        loc = Location(rl, building_type)
+
+        db.session.add_all([rl, building_type, loc])
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs})
+        self.assertEqual("building", pyslate_en.t("location_info", **loc.pyslatize()))
+
+        loc.title = "Workshop"
+        self.assertEqual("'Workshop'", pyslate_en.t("location_info", **loc.pyslatize()))
+
+    def test_root_location_name(self):
+
+        rl = RootLocation(Point(1, 1), True, 213)
+        plr = util.create_player("dawdasdawdasw")
+        obs = util.create_character("obs1", rl, plr)
+
+        pyslate_en = create_pyslate("en", data=data, context={"observer": obs})
+        self.assertEqual("sea", pyslate_en.t("location_info", **rl.pyslatize()))  # no TerrainArea for this pos, so sea
+
+        grass_type = TerrainType("grass")
+        big_area = geometry.Polygon([[0, 0], [0, 2], [2, 2], [2, 0], [0, 0]])
+        grass_area = TerrainArea(big_area, grass_type)  # TerrainArea says rl is now grassland
+        db.session.add_all([rl, grass_type, grass_area])
+
+        self.assertEqual("grassland", pyslate_en.t("location_info", **rl.pyslatize()))
+
+        rl_observed_name = ObservedName(obs, rl, "Wonderland")
+        db.session.add(rl_observed_name)
+        self.assertEqual("Wonderland", pyslate_en.t("location_info", **rl.pyslatize()))
+
+    def test_passage_translation(self):
+
+        rl = RootLocation(Point(1, 1), True, 213)
+
+        building_type = LocationType("building", 200)
+        loc = Location(rl, building_type)
+
+        passage = Passage.query.filter(Passage.between(loc, rl)).one()
+
+        pyslate_en = create_pyslate("en", data=data)
+        self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))  # no TerrainArea for this pos, so sea
+
+    tearDown = util.tear_down_rollback
