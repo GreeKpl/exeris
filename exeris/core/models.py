@@ -491,6 +491,11 @@ class Item(Entity):
             pyslatized["item_amount"] = self.amount
         if self.title:
             pyslatized["item_title"] = self.title
+        if self.visible_parts:
+            pyslatized["item_parts"] = self.visible_parts
+        prop = self.get_property(P.VISIBLE_MATERIAL)
+        if prop:
+            pyslatized["item_material"] = prop
         return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {

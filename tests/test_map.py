@@ -13,7 +13,7 @@ class PassageTest(TestCase):
 
     def test_terrain_representation(self):
 
-        tt = TerrainType("grassland", 1)
+        tt = TerrainType("grassland")
         db.session.add(tt)
 
         coords = ((0, 0), (2, 0), (3, 2), (1, 1), (0, 0))

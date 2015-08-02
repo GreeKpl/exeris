@@ -16,18 +16,7 @@ def create_pyslate(language, data=None, **kwargs):
 
     def func_item_info(helper, tag_name, params):
 
-        detailed = params.get("detail", False)
-
-        item = None
-        if "item" in params:
-            item = params["item"]
-        elif "item_id" in params:
-            item = models.Item.by_id(params["item_id"])
-            params = dict(item.pyslatize(), **params)
-
-        item_name = params["item_name"]  # TODO!!! IT CAN GET BETTER (AMOUNT, etc)
-        if not item:  # fallback
-            return helper.translation("entity_" + item_name)  # this is all
+        detailed = params.get("detailed", False)
 
         number_text = ""
         parts_text = ""
@@ -41,20 +30,24 @@ def create_pyslate(language, data=None, **kwargs):
             number = params["item_amount"]
             number_text = str(number) + " "
 
-        transl_name, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
+        item_name = params["item_name"]
+        if detailed:
+            transl_name, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
+        else:
+            transl_name, form = helper.translation_and_form("entity_" + item_name + "#u" + helper.get_suffix(tag_name))
         transl_name += " "  # TODO THIS IS WEAK
 
-        if item.visible_parts:
-            parts_text = helper.translation("tp_item_parts", parts=item.visible_parts, item_form=form)
+        if "item_parts" in params:
+            parts_text = helper.translation("tp_item_parts", parts=params["item_parts"], item_form=form)
             parts_text += " "
 
-        material_prop = item.get_property(P.VISIBLE_MATERIAL)
-        if material_prop and "main" in material_prop:
+        material_prop = params.get("item_material", {})
+        if "main" in material_prop:
             main_material_type_name = material_prop["main"]
             material_text = helper.translation("tp_item_main_material", material_name=main_material_type_name, item_form=form)
             material_text += " "
 
-        if params["item_damage"] > models.Item.DAMAGED_LB:
+        if params.get("item_damage", 0) > models.Item.DAMAGED_LB:
             damage_text = helper.translation("tp_item_damaged", item_name=transl_name, item_form=form)
             damage_text += " "
 
@@ -62,8 +55,15 @@ def create_pyslate(language, data=None, **kwargs):
             title_text = helper.translation("tp_item_title", title=params["item_title"])
             title_text += " "
 
-        return helper.translation("tp_item_info", damage=damage_text, main_material=material_text, amount=number_text,
-                                  item_name=transl_name, parts=parts_text, title=title_text, states=states_text).strip()  # TODO strip is weak
+        if detailed:
+            return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
+                                      amount=number_text, item_name=transl_name, parts=parts_text,
+                                      title=title_text, states=states_text).strip()  # TODO strip is weak
+        else:
+            return helper.translation("tp_item_info", main_material=material_text,
+                                      item_name=transl_name, parts=parts_text).strip()  # TODO strip is weak
+
+
 
     pyslate.register_function("item_info", func_item_info)
 
