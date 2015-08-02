@@ -31,6 +31,18 @@ ENTITY_ACTIVITY = 8
 ENTITY_TERRAIN_AREA = 9
 ENTITY_GROUP = 10
 
+NAMES = {
+    ENTITY_BASE: "base",
+    ENTITY_ITEM: "item",
+    ENTITY_LOCATION: "location",
+    ENTITY_ROOT_LOCATION: "location",
+    ENTITY_PASSAGE: "passage",
+    ENTITY_CHARACTER: "character",
+    ENTITY_ACTIVITY: "activity",
+    ENTITY_TERRAIN_AREA: "terrain_area",
+    ENTITY_GROUP: "group",
+}
+
 
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32

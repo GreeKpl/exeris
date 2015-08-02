@@ -4,8 +4,9 @@ from exeris.core.properties_base import property_class, PropertyType, property_m
 
 __author__ = 'Aleksander Chrabąszcz'
 
+
 @property_class
-class DynamicNamePropertyType(PropertyType):
+class DynamicNameablePropertyType(PropertyType):
     __property__ = P.DYNAMIC_NAMEABLE
 
     @property_method

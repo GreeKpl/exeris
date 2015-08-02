@@ -1,4 +1,3 @@
-from exeris.core.properties import P
 from pyslate.backends import json_backend
 from pyslate.pyslate import Pyslate
 from exeris.core import models
@@ -8,12 +7,25 @@ __author__ = 'alek'
 
 def create_pyslate(language, data=None, **kwargs):
 
+    def htmlize(f):
+        def g(helper, tag_name, params):
+            print(params)
+            result_text = f(helper, tag_name, params)
+            if not params.get("html", False):
+                return result_text
+            entity_type_name = models.NAMES[params["entity_type"]]
+            entity_id = params.get(entity_type_name + "_id", 0)
+            return '''<span class="entity {} id_{}">{}</span>'''.format(entity_type_name, entity_id, result_text)
+
+        return g
+
     pyslate = Pyslate(language, backend=json_backend.JsonBackend(json_data=data), **kwargs)
 
     #################
     #   ITEM_INFO   #
     #################
 
+    @htmlize
     def func_item_info(helper, tag_name, params):
 
         detailed = params.get("detailed", False)
@@ -32,10 +44,10 @@ def create_pyslate(language, data=None, **kwargs):
 
         item_name = params["item_name"]
         if detailed:
-            transl_name, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
+            item_text, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
         else:
-            transl_name, form = helper.translation_and_form("entity_" + item_name + "#u" + helper.get_suffix(tag_name))
-        transl_name += " "  # TODO THIS IS WEAK
+            item_text, form = helper.translation_and_form("entity_" + item_name + "#u" + helper.get_suffix(tag_name))
+        item_text += " "
 
         if "item_parts" in params:
             parts_text = helper.translation("tp_item_parts", parts=params["item_parts"], item_form=form)
@@ -48,7 +60,7 @@ def create_pyslate(language, data=None, **kwargs):
             material_text += " "
 
         if params.get("item_damage", 0) > models.Item.DAMAGED_LB:
-            damage_text = helper.translation("tp_item_damaged", item_name=transl_name, item_form=form)
+            damage_text = helper.translation("tp_item_damaged", item_name=item_text, item_form=form)
             damage_text += " "
 
         if params.get("item_title", None):
@@ -57,13 +69,11 @@ def create_pyslate(language, data=None, **kwargs):
 
         if detailed:
             return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
-                                      amount=number_text, item_name=transl_name, parts=parts_text,
+                                      amount=number_text, item_name=item_text, parts=parts_text,
                                       title=title_text, states=states_text).strip()  # TODO strip is weak
         else:
             return helper.translation("tp_item_info", main_material=material_text,
-                                      item_name=transl_name, parts=parts_text).strip()  # TODO strip is weak
-
-
+                                      item_name=item_text, parts=parts_text).strip()  # TODO strip is weak
 
     pyslate.register_function("item_info", func_item_info)
 
@@ -99,6 +109,7 @@ def create_pyslate(language, data=None, **kwargs):
     # ACTIVITY_INFO #
     #################
 
+    @htmlize
     def func_activity_info(helper, tag_name, params):
         activity_name = params["activity_name"]
         text, form = helper.translation_and_form("activity_" + activity_name, **params["activity_params"])  # this is all
@@ -111,6 +122,7 @@ def create_pyslate(language, data=None, **kwargs):
     # LOCATION_INFO #
     #################
 
+    @htmlize
     def func_location_info(helper, tag_name, params):
 
         if "observer" in params and "location_id" in params:
@@ -136,6 +148,7 @@ def create_pyslate(language, data=None, **kwargs):
     # CHARACTER INFO #
     ##################
 
+    @htmlize
     def func_character_info(helper, tag_name, params):
         character_gen = params["character_gen"]
         helper.return_form(character_gen)
@@ -159,13 +172,25 @@ def create_pyslate(language, data=None, **kwargs):
     #  PASSAGE INFO  #
     ##################
 
+    @htmlize
     def func_passage_info(helper, tag_name, params):
+        detailed = params.get("detailed", False)
         passage_name = params["passage_name"]
-        text, form = helper.translation_and_form("entity_" + passage_name)  # this is all
+
+        passage_text, form = helper.translation_and_form("entity_" + passage_name + helper.pass_the_suffix(tag_name))
         helper.return_form(form)
-        return text
+
+        if not detailed:
+            return passage_name
+
+        states_text = ""
+        return helper.translation("tp_detailed_passage_info", passage_name=passage_text, states=states_text)
 
     pyslate.register_function("passage_info", func_passage_info)
+
+    ###################
+    #   ENTITY INFO   #
+    ###################
 
     def func_entity_info(helper, tag_name, params):
         entity_type = params["entity_type"]

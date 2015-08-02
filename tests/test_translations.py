@@ -319,6 +319,10 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("11 carrots", pyslate_en.t("entity_info", **carrots.pyslatize(detailed=True)))
         self.assertEqual("11 marchewek", pyslate_pl.t("entity_info", **carrots.pyslatize(detailed=True)))
 
+        # embedded in HTML tag
+        translated_html_text = pyslate_pl.t("entity_info", **carrots.pyslatize(detailed=True, html=True))
+        self.assertEqual("""<span class="entity item id_{}">11 marchewek</span>""".format(carrots.id), translated_html_text)
+
     tearDown = util.tear_down_rollback
 
 
@@ -356,6 +360,9 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("Judith", pyslate_en.t("character_info", **woman.pyslatize()))
         self.assertEqual("John", pyslate_en.t("character_info", **man.pyslatize()))
 
+        translated_html_text = pyslate_en.t("character_info", **man.pyslatize(html=True))
+        self.assertEqual("""<span class="entity character id_{}">John</span>""".format(man.id), translated_html_text)
+
     def test_location_name(self):
 
         rl = RootLocation(Point(1, 1), True, 213)
@@ -372,6 +379,10 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         loc.title = "Workshop"
         self.assertEqual("'Workshop'", pyslate_en.t("location_info", **loc.pyslatize()))
+
+        # test embedding in HTML tag
+        translated_html_text = pyslate_en.t("location_info", **loc.pyslatize(html=True))
+        self.assertEqual("""<span class="entity location id_{}">'Workshop'</span>""".format(loc.id), translated_html_text)
 
     def test_root_location_name(self):
 
