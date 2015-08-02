@@ -3,7 +3,8 @@ from shapely.geometry import Point
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask
-from exeris.core.scheduler import ActivityProcess, Scheduler
+from exeris.core.actions import ActivityProcess
+from exeris.core.scheduler import Scheduler
 from tests import util
 
 
@@ -21,23 +22,24 @@ class SchedulerTest(TestCase):
     def test_activity_process(self):
 
         self._before_activity_process()
-        process = ActivityProcess()
 
-        process.run()
+        process = ActivityProcess()
+        process.perform()
 
         result_type = ItemType.query.filter_by(name="result").one()
-
         result_item = Item.query.filter_by(type=result_type).one()
-        rt = RootLocation.query.one()
 
         self.assertEqual(self.worker, result_item.being_in)
         self.assertEqual("result", result_item.type.name)
 
     def test_scheduler(self):
+        """
+        Test the same like test_activity_process, but testing if ScheduledTask is found correctly
+        """
         util.initialize_date()
         self._before_activity_process()
 
-        task = ScheduledTask(["exeris.core.ActivityProcess", {}], 0)
+        task = ScheduledTask(["exeris.core.actions.ActivityProcess", {}], 0)
         db.session.add(task)
 
         db.session.flush()
@@ -45,7 +47,17 @@ class SchedulerTest(TestCase):
         scheduler = Scheduler()
         scheduler.run_iteration()
 
+        result_type = ItemType.query.filter_by(name="result").one()
+        result_item = Item.query.filter_by(type=result_type).one()
+
+        self.assertEqual(self.worker, result_item.being_in)
+        self.assertEqual("result", result_item.type.name)
+
     def _before_activity_process(self):
+        """
+        Prepares environment for unit tests. Requires a tool called "hammer". Takes 1 tick.
+        Creates an activity which results in CreateItemAction which creates an item of type "result"
+        """
         hammer_type = ItemType("hammer", 300)
         result_type = ItemType("result", 200)
         db.session.add_all([hammer_type, result_type])
@@ -71,4 +83,3 @@ class SchedulerTest(TestCase):
         self.worker.activity = activity
 
     tearDown = util.tear_down_rollback
-

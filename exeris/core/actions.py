@@ -1,3 +1,4 @@
+from shapely.geometry import Point
 from exeris.core.deferred import convert
 from exeris.core import deferred
 from exeris.core import main
@@ -14,6 +15,9 @@ class AbstractAction:  # top level, we don't assume anything
 
     def perform(self):
         self.perform_action()
+
+    def perform_action(self):
+        pass
 
 
 class Action(AbstractAction):  # top level character action, where we only know that it's done by a character
@@ -171,9 +175,83 @@ class AddNameToItemAction(ActivityAction):
         pass
 
 ##############################
-# CHARACTER-SPECIFIC ACTIONS #
+#      SCHEDULER ACTIONS     #
 ##############################
 
+
+class ProcessAction(AbstractAction):
+    pass
+
+
+class TravelProcess(ProcessAction):
+
+    def __init__(self):
+        pass
+
+    def perform_action(self):
+        mobile_locs = models.RootLocation.query.filter_by(is_mobile=True).all()
+        for loc in mobile_locs:
+            pos = loc.position
+            point = Point(pos.x + 1, pos.y + 1)
+            loc.position = point
+
+
+class ActivityProcess(ProcessAction):
+
+    def __init__(self):
+        pass
+
+    def perform_action(self):
+        activities = models.Activity.query.all()
+        for activity in activities:
+            self.make_progress(activity)
+
+    def make_progress(self, activity):
+        print("progress of ", activity)
+        workers = models.Character.query.filter(models.Character.activity==activity).all()
+        for worker in workers:
+            print("worker ", worker)
+            if "tools" in activity.requirements:
+                if self.check_tool_requirements(worker, activity.requirements["tools"]):
+                    print("TOOLS OK")
+            if self.check_proximity(worker, activity):
+                print("PROXIMITY OK")
+            if "input" in activity.requirements:
+                for material in activity.requirements["input"]:
+                    if material["left"] > 0:
+                        print("fail input req")
+
+            activity.ticks_left -= 1
+
+        if activity.ticks_left <= 0:
+            self.finish_activity(activity)
+
+    def check_tool_requirements(self, worker, tools):
+        for tool_type_name in tools:
+            item_type = models.ItemType.by_name(tool_type_name)
+
+            if not models.Item.query.filter_by(type=item_type).filter(models.Item.is_in(worker)).count():
+                return False
+            return True
+
+    def check_proximity(self, worker, activity):
+        print(worker.being_in)
+        print(activity.being_in)
+        if worker.being_in != activity.being_in.being_in:
+            return False
+        return True
+
+    def finish_activity(self, activity):
+        print("finishing activity")
+        for serialized_action in activity.result_actions:
+            action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
+            action.perform()
+
+#
+
+##############################
+# CHARACTER-SPECIFIC ACTIONS #
+##############################
 
 def move_between_entities(item, source, destination, amount, to_be_used_for=False):
 

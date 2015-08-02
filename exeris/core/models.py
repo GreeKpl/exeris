@@ -540,6 +540,8 @@ class Activity(Entity):
 
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
+    quality_sum = sql.Column(sql.Float, default=0.0)
+    quality_ticks = sql.Column(sql.Integer, default=0)
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
 
