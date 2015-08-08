@@ -275,6 +275,27 @@ class GroupTest(TestCase):
         self.assertEqual(0.5, fuel.efficiency(fine_oak_wood))
         self.assertEqual(0.5625, fuel.efficiency(old_pine_wood))
 
+    def test_group_get_descending_types(self):
+        tools = TypeGroup("group_tools")
+        hammers = TypeGroup("group_hammer")
+        axes = TypeGroup("group_axes")
+
+        stone_axe = ItemType("stone_axe", 100)
+        bone_axe = ItemType("bone_axe", 200)
+        copper_hammer = ItemType("copper_hammer", 300)
+
+        db.session.add_all([tools, hammers, axes, stone_axe, bone_axe, copper_hammer])
+
+        tools.add_to_group(hammers)
+        tools.add_to_group(axes, efficiency=2.0)
+
+        axes.add_to_group(stone_axe, efficiency=2.0)
+        axes.add_to_group(bone_axe, efficiency=0.5)
+        hammers.add_to_group(copper_hammer, efficiency=10.0)
+
+        self.assertCountEqual([(stone_axe, 4.0), (bone_axe, 1.0), (copper_hammer, 10.0)], tools.get_descending_types())
+
+
     def _setup_hammers(self):
         self.stone_hammer = ItemType("stone_hammer", 200)
         self.iron_hammer = ItemType("iron_hammer", 300)

@@ -3,7 +3,7 @@ from shapely.geometry import Point
 from exeris.core.main import db
 from exeris.core.models import Activity, Item, RootLocation, ItemType, EntityRecipe, BuildMenuCategory
 from exeris.core.recipes import ActivityFactory
-from exeris.core.scheduler import ActivityProcess
+from exeris.core.actions import ActivityProgressProcess
 from tests import util
 
 __author__ = 'alek'
@@ -43,9 +43,9 @@ class ProductionIntegrationTest(TestCase):
 
         db.session.add(activity)
 
-        process = ActivityProcess()
-        process.run()
-        process.run()
+        process = ActivityProgressProcess(activity)
+        process.perform()
+        process.perform()
 
         new_axe = Item.query.filter_by(type=axe_type).one()
         self.assertEqual(worker, new_axe.being_in)

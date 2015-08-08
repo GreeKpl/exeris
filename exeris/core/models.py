@@ -139,6 +139,9 @@ class ItemType(EntityType):
             return 1.0
         raise Exception  # TODO!!! NEED A BETTER EXCEPTION
 
+    def get_descending_types(self):
+        return [(self, 1.0)]
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
@@ -162,7 +165,26 @@ class TypeGroup(EntityType):
     def contains(self, entity_type):
         return not not self.get_group_path(entity_type)
 
+    def get_descending_types(self):
+        """
+        Returns a list of tuples which represent all concrete EntityTypes contained by this group.
+        The first element of the pair is EntityType, the second element is float representing its overall efficiency
+        """
+        result = []
+        for type_group_element in self._children_junction:
+            if isinstance(type_group_element.child, TypeGroup):
+                pairs = type_group_element.child.get_descending_types()
+                result += [(type, efficiency * type_group_element.efficiency) for type, efficiency in pairs]
+            else:
+                result.append((type_group_element.child, type_group_element.efficiency))
+        return result
+
     def get_group_path(self, entity_type):
+        """
+        Recursively searching for entity_type in groups' children.
+        If found, it returns a list of nodes which need to be visited to get from 'self' to 'entity_type'
+        If not found, returns an empty list
+        """
         if entity_type in self.children:
             return [self, entity_type]
         child_groups = filter(lambda group: type(group) == TypeGroup, self.children)  # TODO, disgusting
@@ -231,12 +253,20 @@ class Entity(db.Model):
         #return select([cls.parent_entity]).where(cls.role == Entity.ROLE_BEING_IN).as_scalar()
         #return func.IF(cls.role == Entity.ROLE_BEING_IN, Entity.parent_entity, None)
 
+
+
     @hybrid_method
     def is_in(self, parents):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
+        return self.role == Entity.ROLE_BEING_IN and (self.parent_entity in parents)
+
+    @is_in.expression
+    def is_in(self, parents):
+        if not isinstance(parents, collections.Iterable):
+            parents = [parents]
         db.session.flush()  # todo might require more
-        return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_BEING_IN)
+        return (self.role == Entity.ROLE_BEING_IN) & (self.parent_entity_id.in_([p.id for p in parents]))
 
     @hybrid_method
     def is_used_for(self, parents):

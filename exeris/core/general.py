@@ -77,6 +77,9 @@ class GameDate:
 
 class RangeSpec:
 
+    def get_locations_near(self):
+        pass
+
     def characters_near(self):
         locs = self.get_locations_near()
         return models.Character.query.filter(models.Character.is_in(locs)).all()
@@ -175,6 +178,29 @@ class TraversabilityBasedRange(RangeSpec):
                 locs.update(visit_subgraph(other_loc))
 
         return locs
+
+
+class ProximityChecker:
+
+    def __init__(self, entity, rng_class, distance=None):  # TODO entity cannot be a Passage
+        self.entity = entity
+        self.rng_class = rng_class
+        self.rng_kwargs = {}
+        if distance:
+            self.rng_kwargs["distance"] = distance
+
+    def is_near(self, other_entity):
+        entity_loc = self.entity.being_in
+        if entity_loc is None:
+            return False
+
+        rng = self.rng_class(entity_loc, **self.rng_kwargs)  # construct a valid rng object
+        locations = rng.locations_near()
+
+        if isinstance(other_entity, models.Passage):
+            return other_entity.left_location in locations or other_entity.right_location in locations
+        else:
+            return other_entity.is_in(locations)
 
 
 class EventCreator:
