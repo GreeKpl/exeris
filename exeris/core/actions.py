@@ -1,10 +1,11 @@
+import traceback
 from shapely.geometry import Point
 from exeris.core.deferred import convert
 from exeris.core import deferred
 from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core import models
-
+from exeris.core import general
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.properties import P
 
@@ -196,7 +197,7 @@ class TravelProcess(ProcessAction):
             loc.position = point
 
 
-class ActivityProcess(ProcessAction):
+class ActivitiesProgressProcess(ProcessAction):
 
     def __init__(self):
         pass
@@ -204,48 +205,91 @@ class ActivityProcess(ProcessAction):
     def perform_action(self):
         activities = models.Activity.query.all()
         for activity in activities:
-            self.make_progress(activity)
+            activity_progress = ActivityProgressProcess(activity)
+            activity_progress.perform()
 
-    def make_progress(self, activity):
-        print("progress of ", activity)
-        workers = models.Character.query.filter(models.Character.activity==activity).all()
+
+class ActivityProgressProcess(ProcessAction):
+
+    def __init__(self, activity):
+        self.activity = activity
+
+    def perform_action(self):
+        print("progress of ", self.activity)
+        workers = models.Character.query.filter_by(activity=self.activity).all()
         for worker in workers:
             print("worker ", worker)
-            if "tools" in activity.requirements:
-                if self.check_tool_requirements(worker, activity.requirements["tools"]):
-                    print("TOOLS OK")
-            if self.check_proximity(worker, activity):
-                print("PROXIMITY OK")
-            if "input" in activity.requirements:
-                for material in activity.requirements["input"]:
-                    if material["left"] > 0:
-                        print("fail input req")
+            req = self.activity.requirements
+            try:
+                self.check_proximity(worker)
 
-            activity.ticks_left -= 1
+                if "input" in req:
+                    self.check_input_requirements(req["input"])
 
-        if activity.ticks_left <= 0:
-            self.finish_activity(activity)
+                if "mandatory_tools" in req:
+                    self.check_mandatory_tools(worker, req["mandatory_tools"])
 
-    def check_tool_requirements(self, worker, tools):
+                if "optional_tools" in req:
+                    pass
+
+                if "mandatory_machines" in req:
+                    self.check_mandatory_machines(req["mandatory_machines"])
+
+                if "optional_machines" in req:
+                    pass
+
+                if "target" in req:
+                    pass
+
+                if "target_with_properties" in req:
+                    pass
+
+                if "skill" in req:
+                    pass
+
+                if "max_people" in req:
+                    pass
+
+                if "min_people" in req:
+                    pass
+
+                self.activity.ticks_left -= 1
+            except Exception as e:
+                print(traceback.format_exc())
+
+        if self.activity.ticks_left <= 0:
+            self.finish_activity(self.activity)
+
+    def check_proximity(self, worker):
+        # todo ProximityChecker might need to understand Activities
+        checker = general.ProximityChecker(self.activity.being_in, general.SameLocationRange)
+        if not checker.is_near(worker):
+            raise main.TooFarFromActivityException(activity=self.activity)
+
+    def check_input_requirements(self, materials):
+        for name, material in materials.items():
+            if material["left"] > 0:
+                raise main.NoInputMaterialException(item_type=models.EntityType.by_name(name))
+
+    def check_mandatory_tools(self, worker, tools):
         for tool_type_name in tools:
-            item_type = models.ItemType.by_name(tool_type_name)
+            group = models.EntityType.by_name(tool_type_name)
+            type_eff_pairs = group.get_descending_types()
+            allowed_types = [pair[0] for pair in type_eff_pairs]
+            allowed_type_names = [o.name for o in allowed_types]
 
-            if not models.Item.query.filter_by(type=item_type).filter(models.Item.is_in(worker)).count():
-                return False
-            return True
-
-    def check_proximity(self, worker, activity):
-        print(worker.being_in)
-        print(activity.being_in)
-        if worker.being_in != activity.being_in.being_in:
-            return False
-        return True
+            if not models.Item.query.filter(models.Item.type_name.in_(allowed_type_names)).filter(models.Item.is_in(worker)).count():
+                raise main.NoToolForActivityException(tool_name=group.name)  # TODO name or object
 
     def finish_activity(self, activity):
         print("finishing activity")
         for serialized_action in activity.result_actions:
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
             action.perform()
+
+    def check_mandatory_machines(self, param):
+        pass
+
 
 #
 
