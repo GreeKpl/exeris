@@ -77,45 +77,52 @@ class GameDate:
 
 class RangeSpec:
 
-    def get_locations_near(self):
-        pass
-
-    def characters_near(self):
-        locs = self.get_locations_near()
+    def characters_near(self, entity):
+        locs = self.locations_near(self._locationize(entity))
         return models.Character.query.filter(models.Character.is_in(locs)).all()
 
-    def items_near(self):
-        locs = self.get_locations_near()
+    def items_near(self, entity):
+        locs = self.locations_near(self._locationize(entity))
         return models.Item.query.filter(models.Item.is_in(locs)).all()
 
-    def locations_near(self):
-        locs = self.get_locations_near()
-        return locs
+    def root_locations_near(self, entity):
+        locs = self.locations_near(self._locationize(entity))
+        return [loc for loc in locs if isinstance(loc, models.RootLocation)]
 
-    def root_locations_near(self):
-        locs = self.get_locations_near()
-        return [loc for loc in locs if type(loc) is models.RootLocation]
+    def locations_near(self, entity):
+        raise NotImplementedError  # abstract
+
+    def is_near(self, entity_a, entity_b):
+        locations_near_a = self.locations_near(entity_a)
+        return self._locationize(entity_b) in locations_near_a
+
+    def _locationize(self, entity):
+        """
+        Gets entity's location or returns itself it entity is a location
+        :param entity: entity whose direct location needs to be found
+        :return: a location
+        """
+        if isinstance(entity, models.Location):
+            return entity
+        return self._locationize(entity.being_in)
 
 
 class SameLocationRange(RangeSpec):
-    def __init__(self, center):
-        self.center = center
 
-    def get_locations_near(self):
-        return self.center
+    def locations_near(self, entity):
+        if isinstance(entity, models.Location):
+            return [entity]
+        return [entity.being_in]
 
 
 class NeighbouringLocationsRange(RangeSpec):
 
-    def __init__(self, center):
-        self.center = center
+    def locations_near(self, entity):
 
-    def get_locations_near(self):
-
-        passages = self.center.passages_to_neighbours
+        passages = entity.passages_to_neighbours
         accessible_sides = [psg.other_side for psg in passages if psg.passage.is_accessible()]
 
-        accessible_sides += [self.center]
+        accessible_sides += [entity]
 
         return accessible_sides
 
@@ -136,13 +143,12 @@ def visit_subgraph(node):
 
 class VisibilityBasedRange(RangeSpec):
 
-    def __init__(self, center, distance):
-        self.center = center
+    def __init__(self, distance):
         self.distance = distance
 
-    def get_locations_near(self):
+    def locations_near(self, entity):
 
-        locs = visit_subgraph(self.center)
+        locs = visit_subgraph(entity)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -159,13 +165,12 @@ class VisibilityBasedRange(RangeSpec):
 
 class TraversabilityBasedRange(RangeSpec):
 
-    def __init__(self, center, distance):
-        self.center = center
+    def __init__(self, distance):
         self.distance = distance
 
-    def get_locations_near(self):
+    def locations_near(self, entity):
 
-        locs = visit_subgraph(self.center)
+        locs = visit_subgraph(entity)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -194,8 +199,8 @@ class ProximityChecker:
         if entity_loc is None:
             return False
 
-        rng = self.rng_class(entity_loc, **self.rng_kwargs)  # construct a valid rng object
-        locations = rng.locations_near()
+        rng = self.rng_class(**self.rng_kwargs)  # construct a valid rng object
+        locations = rng.locations_near(entity_loc)
 
         if isinstance(other_entity, models.Passage):
             return other_entity.left_location in locations or other_entity.right_location in locations
@@ -271,7 +276,7 @@ class EventCreator:
 
             event_for_observer = models.Event(tag_observer, obs_params)
             db.session.add(event_for_observer)
-            event_obs = [models.EventObserver(event_for_observer, char) for char in rng.characters_near()
+            event_obs = [models.EventObserver(event_for_observer, char) for char in rng.characters_near(doer)
                          if char not in (doer, target)]
 
             db.session.add_all(event_obs)

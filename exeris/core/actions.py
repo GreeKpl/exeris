@@ -33,7 +33,7 @@ class ActionOnSelf(Action):
         super().__init__(executor)
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 class ActionOnItem(Action):
@@ -42,7 +42,7 @@ class ActionOnItem(Action):
         self.item = item
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 class ActionOnLocation(Action):
@@ -51,7 +51,7 @@ class ActionOnLocation(Action):
         self.location = location
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 class ActionOnActivity(Action):
@@ -60,7 +60,7 @@ class ActionOnActivity(Action):
         self.activity = activity
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 class ActionOnItemAndActivity(Action):
@@ -70,7 +70,7 @@ class ActionOnItemAndActivity(Action):
         self.activity = activity
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 class ActionOnItemAndCharacter(Action):
@@ -80,7 +80,7 @@ class ActionOnItemAndCharacter(Action):
         self.character = character
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange(executor.being_in)
+            self.rng = SameLocationRange()
 
 
 ####################
@@ -221,7 +221,7 @@ class ActivityProgressProcess(ProcessAction):
             print("worker ", worker)
             req = self.activity.requirements
             try:
-                self.check_proximity(worker)
+                self.check_proximity(self.activity, worker)
 
                 if "input" in req:
                     self.check_input_requirements(req["input"])
@@ -260,11 +260,12 @@ class ActivityProgressProcess(ProcessAction):
         if self.activity.ticks_left <= 0:
             self.finish_activity(self.activity)
 
-    def check_proximity(self, worker):
+    def check_proximity(self, activity, worker):
         # todo ProximityChecker might need to understand Activities
-        checker = general.ProximityChecker(self.activity.being_in, general.SameLocationRange)
-        if not checker.is_near(worker):
-            raise main.TooFarFromActivityException(activity=self.activity)
+        rng = general.SameLocationRange()
+
+        if not rng.is_near(worker, activity):
+            raise main.TooFarFromActivityException(activity=activity)
 
     def check_input_requirements(self, materials):
         for name, material in materials.items():
@@ -454,7 +455,7 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
 class SayAloudAction(ActionOnSelf):
 
     def __init__(self, executor, message):
-        super().__init__(executor, rng=VisibilityBasedRange(executor.being_in, 20))
+        super().__init__(executor, rng=VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):

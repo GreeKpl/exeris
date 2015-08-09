@@ -119,30 +119,30 @@ class RangeSpecTest(TestCase):
                             ])
 
         # items in the same location
-        rng = SameLocationRange(loc2)
-        items = rng.items_near()
+        rng = SameLocationRange()
+        items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2], items)
 
         # items in the same and neighbouring locations
 
-        rng = NeighbouringLocationsRange(loc2)
-        items = rng.items_near()
+        rng = NeighbouringLocationsRange()
+        items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1], items)
 
-        rng = VisibilityBasedRange(loc2, 100)
-        items = rng.items_near()
+        rng = VisibilityBasedRange(100)
+        items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
 
-        rng = VisibilityBasedRange(loc2, 5)
-        items = rng.items_near()
+        rng = VisibilityBasedRange(5)
+        items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
 
-        rng = TraversabilityBasedRange(loc2, 100)
-        items = rng.items_near()
+        rng = TraversabilityBasedRange(100)
+        items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
 
@@ -180,7 +180,7 @@ class EventCreatorTest(TestCase):
         db.session.add(EntityProperty(entity=psg2, name=P.OPEN_PASSAGE, data={}))
 
         EventCreator.base("slap", doer=doer, target=target,
-                          rng=VisibilityBasedRange(doer.being_in, 100), params={"hi": "hehe"})
+                          rng=VisibilityBasedRange(100), params={"hi": "hehe"})
 
         event_doer = EventObserver.query.filter_by(observer=doer).one()
         self.assertEqual(et1, event_doer.event.type)
