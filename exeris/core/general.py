@@ -78,33 +78,60 @@ class GameDate:
 class RangeSpec:
 
     def characters_near(self, entity):
-        locs = self.locations_near(self._locationize(entity))
+        locs = []
+        for loc in self._locationize(entity):
+            locs += self.locations_near(loc)
         return models.Character.query.filter(models.Character.is_in(locs)).all()
 
     def items_near(self, entity):
-        locs = self.locations_near(self._locationize(entity))
+        locs = []
+        for loc in self._locationize(entity):
+            locs += self.locations_near(loc)
         return models.Item.query.filter(models.Item.is_in(locs)).all()
 
     def root_locations_near(self, entity):
-        locs = self.locations_near(self._locationize(entity))
+        locs = []
+        for loc in self._locationize(entity):
+            locs += self.locations_near(loc)
         return [loc for loc in locs if isinstance(loc, models.RootLocation)]
 
     def locations_near(self, entity):
         raise NotImplementedError  # abstract
 
-    def is_near(self, entity_a, entity_b):
-        locations_near_a = self.locations_near(entity_a)
-        return self._locationize(entity_b) in locations_near_a
+    def is_near(self, entity_a, entity_b, strict=True):
+        for a in self._locationize(entity_a):
+            locations_near_a = self.locations_near(a)
+            return any([True for b in self._locationize(entity_b) if b in locations_near_a])
 
     def _locationize(self, entity):
         """
-        Gets entity's location or returns itself it entity is a location
-        :param entity: entity whose direct location needs to be found
-        :return: a location
+        Gets entity's location or returns itself if entity is a location
+        :param entity: entity whose direct location(s) need to be found
+        :return: list of locations
         """
-        if isinstance(entity, models.Location):
-            return entity
-        return self._locationize(entity.being_in)
+        if isinstance(entity, models.Activity):
+            entity = entity.being_in
+        if isinstance(entity, models.Passage):
+            return [entity.left_location, entity.right_location]
+
+        if not isinstance(entity, models.Location):
+            return [entity.being_in]
+        return [entity]
+
+
+class InsideRange(RangeSpec):
+
+    def locations_near(self, entity):
+        return []
+
+    def characters_near(self, entity):
+        return []
+
+    def items_near(self, entity):
+        return models.Item.query.filter(models.Item.is_in(entity)).all()  # will be recursive
+
+    def is_near(self, entity_a, entity_b, strict=True):
+        return entity_b.being_in == entity_a
 
 
 class SameLocationRange(RangeSpec):
@@ -185,27 +212,18 @@ class TraversabilityBasedRange(RangeSpec):
         return locs
 
 
-class ProximityChecker:
+class ItemQueryHelper:
 
-    def __init__(self, entity, rng_class, distance=None):  # TODO entity cannot be a Passage
-        self.entity = entity
-        self.rng_class = rng_class
-        self.rng_kwargs = {}
-        if distance:
-            self.rng_kwargs["distance"] = distance
-
-    def is_near(self, other_entity):
-        entity_loc = self.entity.being_in
-        if entity_loc is None:
-            return False
-
-        rng = self.rng_class(**self.rng_kwargs)  # construct a valid rng object
-        locations = rng.locations_near(entity_loc)
-
-        if isinstance(other_entity, models.Passage):
-            return other_entity.left_location in locations or other_entity.right_location in locations
-        else:
-            return other_entity.is_in(locations)
+    @staticmethod
+    def all_of_types_in(types, being_in):
+        """
+        Return pre-prepared query which will filter Item query to specified types and "being_in" property
+        :param types: list of ItemType instances or ItemType.type_name identifiers
+        :param being_in: where should these items be located
+        :return: query with two filters applied
+        """
+        type_names = [entry if entry is str else entry.name for entry in types]
+        return models.Item.query.filter(models.Item.type_name.in_(type_names)).filter(models.Item.is_in(being_in))
 
 
 class EventCreator:

@@ -213,14 +213,38 @@ class ActivityProgressProcess(ProcessAction):
 
     def __init__(self, activity):
         self.activity = activity
+        self.entity_worked_on = self.activity.being_in
+        self.affect_quality_sum = 0.0
+        self.affect_quality_ticks = 0
+        self.progress_ratio = 1.0
 
     def perform_action(self):
         print("progress of ", self.activity)
         workers = models.Character.query.filter_by(activity=self.activity).all()
-        for worker in workers:
-            print("worker ", worker)
+
+        try:
             req = self.activity.requirements
-            try:
+
+            if "max_people" in req:
+                pass
+
+            if "min_people" in req:
+                pass
+
+            if "mandatory_machines" in req:
+                self.check_mandatory_machines(req["mandatory_machines"])
+
+            if "optional_machines" in req:
+                pass
+
+            if "target" in req:
+                pass
+
+            if "target_with_properties" in req:
+                pass
+
+            for worker in workers:
+                print("worker ", worker)
                 self.check_proximity(self.activity, worker)
 
                 if "input" in req:
@@ -230,41 +254,27 @@ class ActivityProgressProcess(ProcessAction):
                     self.check_mandatory_tools(worker, req["mandatory_tools"])
 
                 if "optional_tools" in req:
-                    pass
-
-                if "mandatory_machines" in req:
-                    self.check_mandatory_machines(req["mandatory_machines"])
-
-                if "optional_machines" in req:
-                    pass
-
-                if "target" in req:
-                    pass
-
-                if "target_with_properties" in req:
-                    pass
+                    self.check_optional_tools(worker, req["optional_tools"])
 
                 if "skill" in req:
                     pass
 
-                if "max_people" in req:
-                    pass
-
-                if "min_people" in req:
-                    pass
-
                 self.activity.ticks_left -= 1
-            except Exception as e:
-                print(traceback.format_exc())
+
+            self.activity.quality_sum += self.affect_quality_sum  # todo it does add quality of chars which have only part of mandatory tools
+            self.activity.quality_ticks += self.affect_quality_ticks
+
+
+        except Exception as e:
+            print(traceback.format_exc())
 
         if self.activity.ticks_left <= 0:
             self.finish_activity(self.activity)
 
     def check_proximity(self, activity, worker):
-        # todo ProximityChecker might need to understand Activities
         rng = general.SameLocationRange()
 
-        if not rng.is_near(worker, activity):
+        if not worker.has_access(activity, rng=rng):
             raise main.TooFarFromActivityException(activity=activity)
 
     def check_input_requirements(self, materials):
@@ -277,19 +287,51 @@ class ActivityProgressProcess(ProcessAction):
             group = models.EntityType.by_name(tool_type_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
-            allowed_type_names = [o.name for o in allowed_types]
+            type_efficiency = {pair[0]: pair[1] for pair in type_eff_pairs}
 
-            if not models.Item.query.filter(models.Item.type_name.in_(allowed_type_names)).filter(models.Item.is_in(worker)).count():
+            tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
+            if not tools:
                 raise main.NoToolForActivityException(tool_name=group.name)  # TODO name or object
+
+            sorted_by_quality = sorted(tools, key=lambda item: type_efficiency[item.type] * item.quality, reverse=True)
+
+            self.affect_quality_sum += type_efficiency[sorted_by_quality[0].type] * sorted_by_quality[0].quality
+            self.affect_quality_ticks += 1
+
+    def check_optional_tools(self, worker, tools_progress_bonus):
+        for tool_type_name in tools_progress_bonus:
+            print(tool_type_name)
+            group = models.EntityType.by_name(tool_type_name)
+            type_eff_pairs = group.get_descending_types()
+            allowed_types = [pair[0] for pair in type_eff_pairs]
+            type_efficiency = {pair[0]: pair[1] for pair in type_eff_pairs}
+
+            tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
+            if not tools:
+                continue
+
+            sorted_by_quality = sorted(tools, key=lambda item: type_efficiency[item.type] * item.quality, reverse=True)
+            self.affect_quality_sum += type_efficiency[sorted_by_quality[0].type] * sorted_by_quality[0].quality
+            self.affect_quality_ticks += 1
+
+            # TODO should quality affect also progress? or maybe only progress, so worse optional tool won't harm the result quality?
+            self.progress_ratio += tools_progress_bonus[tool_type_name]
+
+
+    def check_mandatory_machines(self, machines):
+        for machine_name in machines:
+            group = models.EntityType.by_name(machine_name)
+            type_eff_pairs = group.get_descending_types()
+            allowed_types = [pair[0] for pair in type_eff_pairs]
+
+            if not general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).count():
+                raise main.NoMachineForActivityException(machine_name=group.name)  # TODO name or object
 
     def finish_activity(self, activity):
         print("finishing activity")
         for serialized_action in activity.result_actions:
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
             action.perform()
-
-    def check_mandatory_machines(self, param):
-        pass
 
 
 #
@@ -357,7 +399,7 @@ class DropItemAction(ActionOnItem):
         move_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
-        print(event_args)
+
         EventCreator.base(Events.DROP_ITEM, self.rng, event_args, self.executor)
 
 

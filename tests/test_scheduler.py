@@ -83,7 +83,7 @@ class SchedulerTest(TestCase):
 
         self.worker.activity = activity
 
-    def test_check_mandatory_items(self):
+    def test_check_mandatory_tools(self):
         rl = RootLocation(Point(1, 1), False, 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
@@ -94,22 +94,83 @@ class SchedulerTest(TestCase):
         stone_axe = ItemType("stone_axe", 300)
 
         hammers_group = TypeGroup("group_hammers")
-        hammers_group.add_to_group(bone_hammer)
+        hammers_group.add_to_group(bone_hammer, efficiency=2.0)
 
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
 
         self.assertRaises(main.NoToolForActivityException,
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
-        hammer_in_inv = Item(bone_hammer, worker)
+        # recreate the process
+        process = ActivityProgressProcess(activity)
+
+        hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
         self.assertRaises(main.NoToolForActivityException,
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
-        axe_in_inv = Item(stone_axe, worker)
+        # recreate the process
+        process = ActivityProgressProcess(activity)
+
+        axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
 
         # should return without raising an exception
         process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"])
+
+        # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
+        self.assertEqual(3.75, process.affect_quality_sum)
+        self.assertEqual(2, process.affect_quality_ticks)
+
+    def test_check_optional_tools(self):
+        rl = RootLocation(Point(1, 1), False, 123)
+        worker = util.create_character("John", rl, util.create_player("ABC"))
+
+        activity = Activity(rl, "name", {}, {"optional_tools": {"group_hammers": 0.2, "group_axes": 1.0}}, 1, worker)
+        process = ActivityProgressProcess(activity)
+
+        bone_hammer = ItemType("bone_hammer", 200)
+        stone_axe = ItemType("stone_axe", 300)
+
+        hammers_group = TypeGroup("group_hammers")
+        hammers_group.add_to_group(bone_hammer, efficiency=2.0)
+
+        db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
+
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+
+        self.assertEqual(1.0, process.progress_ratio)  # no tools = no bonus
+
+        # nothing affecting quality
+        self.assertEqual(0.0, process.affect_quality_sum)
+        self.assertEqual(0, process.affect_quality_ticks)
+
+        # recreate the process
+        process = ActivityProgressProcess(activity)
+
+        hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
+        db.session.add(hammer_in_inv)
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+
+        self.assertEqual(1.2, process.progress_ratio)  # hammer = 0.2 bonus
+
+        # check quality change for an activity. It'd add 3 for bone hammer
+        self.assertEqual(3.0, process.affect_quality_sum)
+        self.assertEqual(1, process.affect_quality_ticks)
+
+        # recreate the process
+        process = ActivityProgressProcess(activity)
+
+        axe_in_inv = Item(stone_axe, worker, quality=0.75)
+        db.session.add(axe_in_inv)
+
+        # should return without raising an exception
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+
+        self.assertEqual(2.2, process.progress_ratio)  # both tools
+
+        # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
+        self.assertEqual(3.75, process.affect_quality_sum)
+        self.assertEqual(2, process.affect_quality_ticks)
 
     tearDown = util.tear_down_rollback

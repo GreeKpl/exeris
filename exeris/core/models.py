@@ -425,6 +425,12 @@ class Character(Entity):
                 return
         db.session.add(ObservedName(self, self, value))
 
+    def has_access(self, entity, rng=None):
+        from exeris.core import general
+        if not rng:
+            rng = general.InsideRange()
+        return rng.is_near(self, entity)
+
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
         return from_shape(spawn_position)
@@ -449,7 +455,7 @@ class Item(Entity):
 
     DAMAGED_LB = 0.7
 
-    def __init__(self, item_type, parent_entity, *, weight=None, amount=None, role_being_in=True):
+    def __init__(self, item_type, parent_entity, *, weight=None, amount=None, role_being_in=True, quality=1.0):
         self.type = item_type
 
         if role_being_in:
@@ -463,6 +469,7 @@ class Item(Entity):
             self.weight = amount * item_type.unit_weight
         else:
             self.weight = item_type.unit_weight
+        self.quality = quality
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
@@ -495,6 +502,8 @@ class Item(Entity):
     @removal_game_date.setter
     def removal_game_date(self, game_date):
         self._removal_game_date = game_date.game_timestamp
+
+    quality = sql.Column(sql.Float, default=1.0)
 
     # TODO
     '''
