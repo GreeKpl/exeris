@@ -226,27 +226,21 @@ class ActivityProgressProcess(ProcessAction):
         try:
             req = self.activity.requirements
 
-            if "max_people" in req:
-                pass
-
-            if "min_people" in req:
-                pass
-
             if "mandatory_machines" in req:
                 self.check_mandatory_machines(req["mandatory_machines"])
 
             if "optional_machines" in req:
                 self.check_optional_machines(req["optional_machines"])
 
-            if "target" in req:
-                pass
+            if "targets" in req:
+                self.check_target_proximity(req["targets"])
 
             if "target_with_properties" in req:
                 pass
 
             for worker in workers:
                 print("worker ", worker)
-                self.check_proximity(self.activity, worker)
+                self.check_worker_proximity(self.activity, worker)
 
                 if "input" in req:
                     self.check_input_requirements(req["input"])
@@ -262,6 +256,13 @@ class ActivityProgressProcess(ProcessAction):
 
                 self.activity.ticks_left -= 1
 
+            if "max_people" in req:
+                pass
+
+            if "min_people" in req:
+                pass
+
+
             if len(self.tool_based_quality):
                 self.activity.quality_sum += mean(self.tool_based_quality)
                 self.activity.quality_ticks += 1
@@ -270,17 +271,13 @@ class ActivityProgressProcess(ProcessAction):
                 self.activity.quality_sum += mean(self.machine_based_quality)
                 self.activity.quality_ticks += 1
 
-
-
-
-
         except Exception as e:
             print(traceback.format_exc())
 
         if self.activity.ticks_left <= 0:
             self.finish_activity(self.activity)
 
-    def check_proximity(self, activity, worker):
+    def check_worker_proximity(self, activity, worker):
         rng = general.SameLocationRange()
 
         if not worker.has_access(activity, rng=rng):
@@ -335,7 +332,7 @@ class ActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.all_of_types_near(allowed_types, self.entity_worked_on.being_in).all()
             if not machines:
                 raise main.NoMachineForActivityException(machine_name=group.name)
 
@@ -350,7 +347,7 @@ class ActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.all_of_types_near(allowed_types, self.entity_worked_on.being_in).all()
             if not machines:
                 continue
 
@@ -364,6 +361,14 @@ class ActivityProgressProcess(ProcessAction):
         for serialized_action in activity.result_actions:
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
             action.perform()
+
+    def check_target_proximity(self, target_ids):
+        targets = models.Entity.query.filter(models.Entity.id.in_(target_ids)).all()
+        for target in targets:
+            print(target)
+            rng = SameLocationRange()
+            if not rng.is_near(self.entity_worked_on, target):
+                raise main.ActivityTargetTooFarAwayException(entity=target)
 
 
 #

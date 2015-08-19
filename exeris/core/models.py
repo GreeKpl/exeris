@@ -549,6 +549,10 @@ class Item(Entity):
             pyslatized["item_material"] = prop
         return dict(pyslatized, **overwrites)
 
+    def __repr__(self):
+        return "{{Item id={}, type={}, parent={}, parent_type={}}}"\
+            .format(self.id, self.type_name, self.parent_entity.id, self.parent_entity.discriminator_type)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }

@@ -114,9 +114,14 @@ class RangeSpec:
         if isinstance(entity, models.Passage):
             return [entity.left_location, entity.right_location]
 
-        if not isinstance(entity, models.Location):
-            return [entity.being_in]
-        return [entity]
+        if isinstance(entity, models.Location):
+            return [entity]
+
+        entity = entity.being_in
+
+        if isinstance(entity, models.Location):
+            return [entity]
+        return [entity.being_in]
 
 
 class InsideRange(RangeSpec):
@@ -224,6 +229,26 @@ class ItemQueryHelper:
         """
         type_names = [entry if entry is str else entry.name for entry in types]
         return models.Item.query.filter(models.Item.type_name.in_(type_names)).filter(models.Item.is_in(being_in))
+
+    @staticmethod
+    def all_of_types_near(types, being_in):
+        """
+        Return pre-prepared query which will filter Item query to specified types and "being_in" property
+        :param types: list of ItemType instances or ItemType.type_name identifiers
+        :param being_in: list of places where items should be located in their being_in
+        :return: query with two filters applied
+        """
+        type_names = [entry if entry is str else entry.name for entry in types]
+
+        places = []
+        if isinstance(being_in, collections.Iterable):
+            places += being_in
+        else:
+            places.append(being_in)
+
+        entities = models.Entity.query.filter(models.Item.is_in(being_in)).all()
+        places += entities
+        return models.Item.query.filter(models.Item.type_name.in_(type_names)).filter(models.Item.is_in(places))
 
 
 class EventCreator:
