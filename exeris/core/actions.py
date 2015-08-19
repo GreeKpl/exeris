@@ -1,3 +1,4 @@
+from statistics import mean
 import traceback
 from shapely.geometry import Point
 from exeris.core.deferred import convert
@@ -214,8 +215,8 @@ class ActivityProgressProcess(ProcessAction):
     def __init__(self, activity):
         self.activity = activity
         self.entity_worked_on = self.activity.being_in
-        self.affect_quality_sum = 0.0
-        self.affect_quality_ticks = 0
+        self.tool_based_quality = []
+        self.machine_based_quality = []
         self.progress_ratio = 1.0
 
     def perform_action(self):
@@ -235,7 +236,7 @@ class ActivityProgressProcess(ProcessAction):
                 self.check_mandatory_machines(req["mandatory_machines"])
 
             if "optional_machines" in req:
-                pass
+                self.check_optional_machines(req["optional_machines"])
 
             if "target" in req:
                 pass
@@ -261,8 +262,16 @@ class ActivityProgressProcess(ProcessAction):
 
                 self.activity.ticks_left -= 1
 
-            self.activity.quality_sum += self.affect_quality_sum  # todo it does add quality of chars which have only part of mandatory tools
-            self.activity.quality_ticks += self.affect_quality_ticks
+            if len(self.tool_based_quality):
+                self.activity.quality_sum += mean(self.tool_based_quality)
+                self.activity.quality_ticks += 1
+
+            if len(self.machine_based_quality):
+                self.activity.quality_sum += mean(self.machine_based_quality)
+                self.activity.quality_ticks += 1
+
+
+
 
 
         except Exception as e:
@@ -287,36 +296,38 @@ class ActivityProgressProcess(ProcessAction):
             group = models.EntityType.by_name(tool_type_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
-            type_efficiency = {pair[0]: pair[1] for pair in type_eff_pairs}
 
             tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
             if not tools:
-                raise main.NoToolForActivityException(tool_name=group.name)  # TODO name or object
+                raise main.NoToolForActivityException(tool_name=group.name)
 
-            sorted_by_quality = sorted(tools, key=lambda item: type_efficiency[item.type] * item.quality, reverse=True)
+            tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
-            self.affect_quality_sum += type_efficiency[sorted_by_quality[0].type] * sorted_by_quality[0].quality
-            self.affect_quality_ticks += 1
+            # tool quality affects quality of activity result
+            self.tool_based_quality += [tool_best_relative_quality]
 
     def check_optional_tools(self, worker, tools_progress_bonus):
         for tool_type_name in tools_progress_bonus:
-            print(tool_type_name)
             group = models.EntityType.by_name(tool_type_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
-            type_efficiency = {pair[0]: pair[1] for pair in type_eff_pairs}
 
             tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
             if not tools:
                 continue
 
-            sorted_by_quality = sorted(tools, key=lambda item: type_efficiency[item.type] * item.quality, reverse=True)
-            self.affect_quality_sum += type_efficiency[sorted_by_quality[0].type] * sorted_by_quality[0].quality
-            self.affect_quality_ticks += 1
+            tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
-            # TODO should quality affect also progress? or maybe only progress, so worse optional tool won't harm the result quality?
-            self.progress_ratio += tools_progress_bonus[tool_type_name]
+            # quality affects only progress ratio increased
+            self.progress_ratio += tools_progress_bonus[tool_type_name] * tool_best_relative_quality
 
+    def _get_most_efficient_item_relative_quality(self, tools, type_eff_pairs):
+        efficiency_of_type = {pair[0]: pair[1] for pair in type_eff_pairs}
+        relative_quality = lambda item: efficiency_of_type[item.type] * item.quality
+
+        sorted_by_quality = sorted(tools, key=relative_quality, reverse=True)
+        most_efficient_tool = sorted_by_quality[0]
+        return relative_quality(most_efficient_tool)
 
     def check_mandatory_machines(self, machines):
         for machine_name in machines:
@@ -324,8 +335,29 @@ class ActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            if not general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).count():
-                raise main.NoMachineForActivityException(machine_name=group.name)  # TODO name or object
+            machines = general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).all()
+            if not machines:
+                raise main.NoMachineForActivityException(machine_name=group.name)
+
+            machine_best_relative_quality = self._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+
+            # machine quality affects quality of activity result
+            self.machine_based_quality += [machine_best_relative_quality]
+
+    def check_optional_machines(self, machine_progress_bonus):
+        for machine_type_name in machine_progress_bonus:
+            group = models.EntityType.by_name(machine_type_name)
+            type_eff_pairs = group.get_descending_types()
+            allowed_types = [pair[0] for pair in type_eff_pairs]
+
+            machines = general.ItemQueryHelper.all_of_types_in(allowed_types, self.entity_worked_on.being_in).all()
+            if not machines:
+                continue
+
+            machine_best_relative_quality = self._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+
+            # quality affects only progress ratio increased
+            self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
 
     def finish_activity(self, activity):
         print("finishing activity")

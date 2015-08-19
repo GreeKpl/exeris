@@ -119,8 +119,7 @@ class SchedulerTest(TestCase):
         process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"])
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
-        self.assertEqual(3.75, process.affect_quality_sum)
-        self.assertEqual(2, process.affect_quality_ticks)
+        self.assertCountEqual([0.75, 3.0], process.tool_based_quality)
 
     def test_check_optional_tools(self):
         rl = RootLocation(Point(1, 1), False, 123)
@@ -142,8 +141,7 @@ class SchedulerTest(TestCase):
         self.assertEqual(1.0, process.progress_ratio)  # no tools = no bonus
 
         # nothing affecting quality
-        self.assertEqual(0.0, process.affect_quality_sum)
-        self.assertEqual(0, process.affect_quality_ticks)
+        self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
         process = ActivityProgressProcess(activity)
@@ -152,11 +150,11 @@ class SchedulerTest(TestCase):
         db.session.add(hammer_in_inv)
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
-        self.assertEqual(1.2, process.progress_ratio)  # hammer = 0.2 bonus
+        # optional tools DO AFFECT progress ratio bonus
+        self.assertEqual(1.6, process.progress_ratio)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
 
-        # check quality change for an activity. It'd add 3 for bone hammer
-        self.assertEqual(3.0, process.affect_quality_sum)
-        self.assertEqual(1, process.affect_quality_ticks)
+        # check quality change for an activity. Optional tools DON'T AFFECT tool_based_quality
+        self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
         process = ActivityProgressProcess(activity)
@@ -167,10 +165,7 @@ class SchedulerTest(TestCase):
         # should return without raising an exception
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
-        self.assertEqual(2.2, process.progress_ratio)  # both tools
-
-        # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
-        self.assertEqual(3.75, process.affect_quality_sum)
-        self.assertEqual(2, process.affect_quality_ticks)
+        # both tools, hammer => 0.2 * 2 * 1.5, axe = 1.0 * 0.75; so increase by 1.35
+        self.assertEqual(2.35, process.progress_ratio)
 
     tearDown = util.tear_down_rollback
