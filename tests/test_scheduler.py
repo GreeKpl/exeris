@@ -87,7 +87,7 @@ class SchedulerTest(TestCase):
         rl = RootLocation(Point(1, 1), False, 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(rl, "name", {}, {"mandatory_tools": ["group_hammers", "group_axes"]}, 1, worker)
+        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
         process = ActivityProgressProcess(activity)
 
         bone_hammer = ItemType("bone_hammer", 200)
@@ -125,7 +125,7 @@ class SchedulerTest(TestCase):
         rl = RootLocation(Point(1, 1), False, 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(rl, "name", {}, {"optional_tools": {"group_hammers": 0.2, "group_axes": 1.0}}, 1, worker)
+        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
         process = ActivityProgressProcess(activity)
 
         bone_hammer = ItemType("bone_hammer", 200)
@@ -138,7 +138,7 @@ class SchedulerTest(TestCase):
 
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
-        self.assertEqual(1.0, process.progress_ratio)  # no tools = no bonus
+        self.assertEqual(0.0, process.progress_ratio)  # no tools = no bonus
 
         # nothing affecting quality
         self.assertCountEqual([], process.tool_based_quality)
@@ -151,7 +151,7 @@ class SchedulerTest(TestCase):
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
         # optional tools DO AFFECT progress ratio bonus
-        self.assertEqual(1.6, process.progress_ratio)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
+        self.assertAlmostEqual(0.6, process.progress_ratio, places=3)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
 
         # check quality change for an activity. Optional tools DON'T AFFECT tool_based_quality
         self.assertCountEqual([], process.tool_based_quality)
@@ -166,7 +166,7 @@ class SchedulerTest(TestCase):
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
         # both tools, hammer => 0.2 * 2 * 1.5, axe = 1.0 * 0.75; so increase by 1.35
-        self.assertEqual(2.35, process.progress_ratio)
+        self.assertEqual(1.35, process.progress_ratio)
 
     def test_check_mandatory_machines(self):
         rl = RootLocation(Point(1, 1), False, 123)
@@ -174,7 +174,7 @@ class SchedulerTest(TestCase):
         worked_on = Item(worked_on_type, rl)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(worked_on, "name", {}, {"mandatory_machines": ["group_spindles", "bucket"]}, 1, worker)
+        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
         process = ActivityProgressProcess(activity)
 
         bucket_type = ItemType("bucket", 200, portable=False)
@@ -210,6 +210,7 @@ class SchedulerTest(TestCase):
 
     def test_targets(self):
         rl = RootLocation(Point(1, 1), False, 123)
+        far_away = RootLocation(Point(5, 5), False, 123)
         some_item_type = ItemType("some_item", 100)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)
@@ -219,12 +220,43 @@ class SchedulerTest(TestCase):
         target_item1 = Item(some_item_type, rl)
         target_item2 = Item(some_item_type, worker)
 
-        db.session.add_all([rl, worked_on_type, some_item_type, worked_on, target_item1, target_item2])
+        db.session.add_all([rl, far_away, worked_on_type, some_item_type, worked_on, target_item1, target_item2])
         db.session.flush()
 
-        activity = Activity(worked_on, "name", {}, {"targets": [target_item1.id, target_item2.id]}, 1, worker)
+        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
         process = ActivityProgressProcess(activity)
 
         process.check_target_proximity([target_item1.id, target_item2.id])
+
+        # move target_item2 away
+        target_item2.being_in = far_away
+        self.assertRaises(main.ActivityTargetTooFarAwayException,
+                          lambda: process.check_target_proximity([target_item1.id, target_item2.id]))
+
+    def test_number_of_workers(self):
+        rl = RootLocation(Point(1, 1), False, 123)
+        worked_on_type = ItemType("worked_on", 100)
+        worked_on = Item(worked_on_type, rl)
+
+        plr = util.create_player("ABC")
+        worker1 = util.create_character("1", rl, plr)
+        worker2 = util.create_character("2", rl, plr)
+
+        db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2])
+
+        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker1)
+        process = ActivityProgressProcess(activity)
+
+        workers = [worker1, worker2]
+
+        process.check_min_workers(workers, 1)
+        process.check_min_workers(workers, 2)
+        self.assertRaises(main.TooFewParticipantsException,
+                          lambda: process.check_min_workers(workers, 3))
+
+        process.check_max_workers(workers, 3)
+        process.check_max_workers(workers, 2)
+        self.assertRaises(main.TooManyParticipantsException,
+                          lambda: process.check_max_workers(workers, 1))
 
     tearDown = util.tear_down_rollback

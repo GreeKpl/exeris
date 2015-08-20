@@ -127,3 +127,12 @@ class ActivityTargetTooFarAwayException(ActivityException):
     def __init__(self, *, entity):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, **entity.pyslatize())
 
+
+class TooFewParticipantsException(ActivityException):
+    def __init__(self, *, min_number):
+        super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, min_number=min_number)
+
+
+class TooManyParticipantsException(ActivityException):
+    def __init__(self, *, max_number):
+        super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, max_number=max_number)

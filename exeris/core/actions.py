@@ -217,7 +217,7 @@ class ActivityProgressProcess(ProcessAction):
         self.entity_worked_on = self.activity.being_in
         self.tool_based_quality = []
         self.machine_based_quality = []
-        self.progress_ratio = 1.0
+        self.progress_ratio = 0.0
 
     def perform_action(self):
         print("progress of ", self.activity)
@@ -238,8 +238,8 @@ class ActivityProgressProcess(ProcessAction):
             if "target_with_properties" in req:
                 pass
 
+            active_workers = []
             for worker in workers:
-                print("worker ", worker)
                 self.check_worker_proximity(self.activity, worker)
 
                 if "input" in req:
@@ -254,14 +254,16 @@ class ActivityProgressProcess(ProcessAction):
                 if "skill" in req:
                     pass
 
-                self.activity.ticks_left -= 1
+                self.progress_ratio += 1.0
+                active_workers.append(worker)
 
-            if "max_people" in req:
-                pass
+            if "max_workers" in req:
+                self.check_min_workers(active_workers, req["min_workers"])
 
-            if "min_people" in req:
-                pass
+            if "min_workers" in req:
+                self.check_max_workers(active_workers, req["max_workers"])
 
+            self.activity.ticks_left -= self.progress_ratio
 
             if len(self.tool_based_quality):
                 self.activity.quality_sum += mean(self.tool_based_quality)
@@ -365,11 +367,17 @@ class ActivityProgressProcess(ProcessAction):
     def check_target_proximity(self, target_ids):
         targets = models.Entity.query.filter(models.Entity.id.in_(target_ids)).all()
         for target in targets:
-            print(target)
             rng = SameLocationRange()
             if not rng.is_near(self.entity_worked_on, target):
                 raise main.ActivityTargetTooFarAwayException(entity=target)
 
+    def check_min_workers(self, active_workers, min_number):
+        if len(active_workers) < min_number:
+            raise main.TooFewParticipantsException(min_number=min_number)
+
+    def check_max_workers(self, active_workers, max_number):
+        if len(active_workers) > max_number:
+            raise main.TooManyParticipantsException(max_number=max_number)
 
 #
 
