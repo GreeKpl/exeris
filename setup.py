@@ -24,7 +24,8 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy', 'flask', 'flask-sqlalchemy', 'geoalchemy2', 'psycopg2', 'shapely', 'pillow'],
+    install_requires=['sqlalchemy', 'flask', 'flask-sqlalchemy', 'geoalchemy2', 'psycopg2', 'shapely', 'pillow',
+                      'wtforms'],
 
     extras_require = {
         'dev': ['check-manifest'],

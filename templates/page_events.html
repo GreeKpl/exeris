@@ -1,0 +1,98 @@
+{% extends "bootstrap/base.html" %}
+{% block title %} {{ t("title_page_events") }} {% endblock %}
+{% block content %}
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <button type="button" class="btn btn-default navbar-btn">Community</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 1</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 2</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 3</button>
+        </div>
+    </nav>
+    <div class="row">
+        <div class="col-md-6">
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <input type="text" class="form-control" id="message" placeholder="Your message here">
+                </div>
+                <button type="submit" id="say_it" class="btn btn-default">Say it!</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="events_list_view">
+                <div class="no_top_bar"></div>
+                <div class="events_list_view_contents">
+                    <ol>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+{#            <div class="panel panel-default">#}
+{#                <div class="panel-heading">{{ t("tag_slap_list") }}</div>#}
+{#                <div class="list-group">#}
+{#                    {% for id, name in chars %}#}
+{#                        <a href="#" class="slap-char list-group-item" data-target="{{ id }}">{{ name }}</a>#}
+{#                    {% endfor %}#}
+{#                </div>#}
+{#            </div>#}
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{super()}}
+    <script type="text/javascript"
+        src="/static/js/sijax/sijax.js"></script>
+    <script type="text/javascript">
+        {{ g.sijax.get_js()|safe }}</script>
+
+    <script type="text/javascript">
+
+    var a = 0;
+    var _last_event = 0;
+    var EVENTS = {};
+
+    EVENTS.update_events = function(new_events, last_event) {
+        for (var i = 0; i < new_events.length; i++) {
+            new_events[i] = new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>");
+            $(".events_list_view_contents > ol").prepend("<li>" + new_events[i] + "</li>");
+        }
+        _last_event = last_event;
+    };
+
+    $(EVENTS).on("check_new_events", function() {
+        Sijax.request("update_events", [_last_event]);
+    });
+
+    $("#say_it").click(function(event) {
+        event.preventDefault();
+        var message = $("#message");
+        if (message.val()) {
+            Sijax.request("say_message", [message.val(), _last_event]);
+            message.val("");
+        }
+    });
+
+    $(".slap-char").click(function(event) {
+        var id = $(event.target).data("target");
+        Sijax.request("slap", [id]);
+    });
+
+    // generic trigger
+    EVENTS.trigger = function(event_name) {
+        $(EVENTS).trigger(event_name);
+    };
+
+    $(function() {
+        EVENTS.trigger("check_new_events");
+        setInterval(function() {
+            EVENTS.trigger("check_new_events");
+        }, 10000);
+        // $(".top_bar").append("<div style=\"padding:2px;border:1px solid black;text-align:right;\">[_][□]</div>");
+    });
+    </script>
+{% endblock %}
