@@ -7,6 +7,7 @@ from exeris.core.main import db
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
     LocationType, TerrainArea, TerrainType, Passage, Activity
 from exeris.core.properties import P
+from pyslate.backends import json_backend
 from tests import util
 
 __author__ = 'alek'
@@ -184,13 +185,14 @@ class ItemTranslationTest(TestCase):
     create_app = util.set_up_app_with_database
 
     def test_simple_translation(self):
-        pyslate = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate = create_pyslate("en", backend=backend)
 
         self.assertEqual("a sword", pyslate.t("entity_sword@article"))
 
     def test_item_translation(self):
-
-        pyslate = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate = create_pyslate("en", backend=backend)
 
         rl = RootLocation(Point(1,1), True, 111)
         sword_type = ItemType("sword", 100)
@@ -203,8 +205,8 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("sword", pyslate.t("item_info", **sword.pyslatize(detailed=True)))
 
     def test_item_visible_parts_en_pl(self):
-
-        pyslate = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate = create_pyslate("en", backend=backend)
 
         rl = RootLocation(Point(1,1), True, 111)
         carrot_type = ItemType("carrot", 100, stackable=False)
@@ -222,12 +224,12 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("cake with apples, berries and carrots", pyslate.t("item_info", **cake.pyslatize()))
 
         # test visible parts in Polish
-        pyslate = create_pyslate("pl", data=data)
+        pyslate = create_pyslate("pl", backend=backend)
         self.assertEqual("ciasto z jabłkami, jagodami i marchewkami", pyslate.t("item_info", **cake.pyslatize()))
 
     def test_damaged_item(self):
-
-        pyslate = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate = create_pyslate("en", backend=backend)
 
         rl = RootLocation(Point(1,1), True, 111)
         sword_type = ItemType("sword", 100)
@@ -239,7 +241,7 @@ class ItemTranslationTest(TestCase):
 
         self.assertEqual("damaged sword", pyslate.t("item_info", **sword.pyslatize(detailed=True)))
 
-        pyslate = create_pyslate("pl", data=data)
+        pyslate = create_pyslate("pl", backend=backend)
         self.assertEqual("uszkodzony miecz", pyslate.t("item_info", **sword.pyslatize(detailed=True)))
 
     def test_title(self):
@@ -250,15 +252,17 @@ class ItemTranslationTest(TestCase):
         db.session.add_all([rl, book_type, book])
         db.session.flush()
 
-        pyslate_en = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+
+        pyslate_en = create_pyslate("en", backend=backend)
         self.assertEqual("book 'How to make a good translation system'", pyslate_en.t("item_info", **book.pyslatize(detailed=True)))
 
-        pyslate_pl = create_pyslate("pl", data=data)
+        pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("książka „How to make a good translation system”", pyslate_pl.t("item_info", **book.pyslatize(detailed=True)))
 
     def test_main_material(self):
-
-        pyslate = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate = create_pyslate("en", backend=backend)
 
         rl = RootLocation(Point(1, 1), True, 111)
         shirt_type = ItemType("shirt", 100)
@@ -275,12 +279,13 @@ class ItemTranslationTest(TestCase):
 
         self.assertEqual("damaged hemp shirt", pyslate.t("item_info", **shirt.pyslatize(detailed=True)))
 
-        pyslate = create_pyslate("pl", data=data)
+        pyslate = create_pyslate("pl", backend=backend)
         self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", **shirt.pyslatize(detailed=True)))
 
     def test_stackable(self):
-        pyslate_en = create_pyslate("en", data=data)
-        pyslate_pl = create_pyslate("pl", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
+        pyslate_pl = create_pyslate("pl", backend=backend)
 
         rl = RootLocation(Point(1, 1), True, 111)
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
@@ -348,15 +353,17 @@ class CharacterAndLocationTranslationTest(TestCase):
         db.session.add_all([man_obs2_name, woman_obs2_name, rl])
         db.session.flush()
 
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs1})
+        backend = json_backend.JsonBackend(json_data=data)
+
+        pyslate_en = create_pyslate("en", backend=backend, context={"observer": obs1})
         self.assertEqual("woman", pyslate_en.t("character_info", **woman.pyslatize()))
         self.assertEqual("man", pyslate_en.t("character_info", **man.pyslatize()))
 
-        pyslate_pl = create_pyslate("pl", data=data, context={"observer": obs1})
+        pyslate_pl = create_pyslate("pl", backend=backend, context={"observer": obs1})
         self.assertEqual("kobieta", pyslate_pl.t("character_info", **woman.pyslatize()))
         self.assertEqual("mężczyzna", pyslate_pl.t("character_info", **man.pyslatize()))
 
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs2})
+        pyslate_en = create_pyslate("en", backend=backend, context={"observer": obs2})
         self.assertEqual("Judith", pyslate_en.t("character_info", **woman.pyslatize()))
         self.assertEqual("John", pyslate_en.t("character_info", **man.pyslatize()))
 
@@ -373,8 +380,9 @@ class CharacterAndLocationTranslationTest(TestCase):
         loc = Location(rl, building_type)
 
         db.session.add_all([rl, building_type, loc])
+        backend = json_backend.JsonBackend(json_data=data)
 
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs})
+        pyslate_en = create_pyslate("en", backend=backend, context={"observer": obs})
         self.assertEqual("building", pyslate_en.t("location_info", **loc.pyslatize()))
 
         loc.title = "Workshop"
@@ -390,7 +398,8 @@ class CharacterAndLocationTranslationTest(TestCase):
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
 
-        pyslate_en = create_pyslate("en", data=data, context={"observer": obs})
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend, context={"observer": obs})
         self.assertEqual("sea", pyslate_en.t("location_info", **rl.pyslatize()))  # no TerrainArea for this pos, so sea
 
         grassland_type = TerrainType("grassland")
@@ -413,7 +422,8 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         passage = Passage.query.filter(Passage.between(loc, rl)).one()
 
-        pyslate_en = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
         self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))
 
     def test_activity_translation(self):
@@ -428,11 +438,12 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         activity = Activity(sword, "manufacturing", {"groups": {"result": sword.pyslatize()}}, {}, 1, initiator)
 
-        pyslate_en = create_pyslate("en", data=data)
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
         self.assertEqual("manufacturing a sword", pyslate_en.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("manufacturing a sword", pyslate_en.t("activity_info", **activity.pyslatize()))
 
-        pyslate_pl = create_pyslate("pl", data=data)
+        pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_info", **activity.pyslatize()))
 

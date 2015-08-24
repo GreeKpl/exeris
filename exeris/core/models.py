@@ -1,5 +1,7 @@
 import types
 import collections
+from flask.ext.login import UserMixin
+from flask.ext.security import RoleMixin
 
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape
@@ -46,22 +48,34 @@ NAMES = {
 
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
+PLAYER_ID_MAXLEN = 24
+
+roles_users = db.Table('player_roles',
+                       db.Column('player_id', db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id')),
+                       db.Column('role_id', db.Integer, db.ForeignKey('roles.id')))
 
 
-class Player(db.Model):
+class Role(db.Model, RoleMixin):
+    __tablename__ = "roles"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+
+class Player(db.Model, UserMixin):
     __tablename__ = "players"
 
-    id = sql.Column(sql.Integer, primary_key=True)
-
-    SEX_MALE = "m"
-    SEX_FEMALE = "f"
-
-    login = sql.Column(sql.String(24), unique=True)
+    id = sql.Column(sql.String(PLAYER_ID_MAXLEN), primary_key=True)
     email = sql.Column(sql.String(32), unique=True)
+    language = sql.Column(sql.String(2), default="en")
     register_date = sql.Column(sql.DateTime)
     register_game_date = sql.Column(sql.BigInteger)
     password = sql.Column(sql.String)
-    sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))  # used to have correct translations
+
+    active = db.Column(db.Boolean)
+    roles = db.relationship('Role', secondary=roles_users,
+                            backref=db.backref('players', lazy='dynamic'))
+    confirmed_at = sql.Column(sql.DateTime)
 
     @validates("register_game_date")
     def validate_register_game_date(self, key, register_game_date):
@@ -77,8 +91,22 @@ class Player(db.Model):
         return False
 
     def get_id(self):
-        return self.login
+        return self.id
 
+
+class TranslatedText(db.Model):
+    __tablename__ = "translations"
+
+    def __init__(self, name, language, content, form=""):
+        self.name = name
+        self.language = language
+        self.content = content
+        self.form = form
+
+    name = sql.Column(sql.String(32), primary_key=True)
+    language = sql.Column(sql.String(8), primary_key=True)
+    content = sql.Column(sql.String)
+    form = sql.Column(sql.String(8))
 
 class EntityType(db.Model):
     __tablename__ = "entity_types"
@@ -387,13 +415,14 @@ class Character(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, name, sex, player, spawn_date, spawn_position, being_in):
+    def __init__(self, name, sex, player, language, spawn_date, spawn_position, being_in):
         super().__init__()
         self.being_in = being_in
         self.name = name
         self.sex = sex
         self.player = player
 
+        self.language = language
         self.state = Character.STATE_ALIVE
 
         self.spawn_position = spawn_position
@@ -403,8 +432,10 @@ class Character(Entity):
 
     state = sql.Column(sql.SmallInteger)
 
-    player_id = sql.Column(sql.Integer, sql.ForeignKey('players.id'))
+    player_id = sql.Column(sql.String(PLAYER_ID_MAXLEN), sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player, uselist=False)
+
+    language = sql.Column(sql.String(2))
 
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))

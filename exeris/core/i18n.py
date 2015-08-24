@@ -5,7 +5,7 @@ from exeris.core import models
 __author__ = 'alek'
 
 
-def create_pyslate(language, data=None, **kwargs):
+def create_pyslate(language, backend=None, **kwargs):
 
     def htmlize(f):
         def g(helper, tag_name, params):
@@ -19,7 +19,7 @@ def create_pyslate(language, data=None, **kwargs):
 
         return g
 
-    pyslate = Pyslate(language, backend=json_backend.JsonBackend(json_data=data), **kwargs)
+    pyslate = Pyslate(language, backend=backend, **kwargs)
 
     #################
     #   ITEM_INFO   #
