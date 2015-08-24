@@ -163,7 +163,7 @@ class EntityTest(TestCase):
         plr = util.create_player("jdiajw")
         rl = RootLocation(Point(1, 1), True, 123)
 
-        char = Character("John", Character.SEX_MALE, plr, GameDate(120), Point(1, 1), rl)
+        char = Character("John", Character.SEX_MALE, plr, "en", GameDate(120), Point(1, 1), rl)
         self.assertEqual("John", char.name)
 
         char.name = "Eddy"

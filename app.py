@@ -15,8 +15,8 @@ from shapely.geometry import Point
 import flask_sijax
 from wtforms import StringField
 
-from exeris.core import general
-from exeris.core import models
+from exeris.core import general, actions, models
+
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from pyslate.backends import postgres_backend
@@ -43,6 +43,9 @@ security = Security(app, user_datastore, register_form=ExtendedRegisterForm)
 @app.before_first_request
 def create_database():
     db.create_all()
+
+    models.init_database_contents()
+
     if not models.RootLocation.query.count():
         outside_type = models.LocationType(Types.OUTSIDE, 100)
         db.session.add(outside_type)
@@ -52,11 +55,13 @@ def create_database():
     if not models.GameDateCheckpoint.query.count():
         ch_pt = models.GameDateCheckpoint(game_date=0, real_date=datetime.datetime.now().timestamp())
         db.session.add(ch_pt)
+    if not models.Player.query.count():
+        new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
+        db.session.add(new_plr)
 
     from translations import data
     for tag_key in data:
         for language in data[tag_key]:
-            print("ADDING " + tag_key + " for " + language)
             db.session.merge(models.TranslatedText(tag_key, language, data[tag_key][language]))
     db.session.commit()
 
@@ -127,7 +132,7 @@ def page_player():
                                         general.GameDate.now(), Point(1, 1), loc)
             db.session.add(new_char)
             db.session.commit()
-            print("DO IT!!!")
+
             #obj_response.call("EVENTS.update_events", [new_events, last_event_id])
 
     try:
@@ -147,22 +152,32 @@ def page_events():
     class SijaxActions:
 
         @staticmethod
-        def update_events(obj_response, newest_event):
+        def update_events(obj_response, last_event):
             start = time.time()
-            new_events = models.Event.filter(models.Event.id > newest_event)\
-                .filter_by(observer_id=g.player.id).order_by(models.Event.id.asc()).all()
+            events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character)\
+                .filter(models.Event.id > last_event).order_by(models.Event.id.desc()).all()
 
             queried = time.time()
             print("query: ", queried - start)
-            last_event_id = new_events[-1].id if len(new_events) else newest_event
-            new_events = [g.pyslate.t(event.type, gender=g.player.sex, **event.params) for event in new_events]
+            last_event_id = events[0].id if len(events) else last_event
+            events_text = [g.pyslate.t(event.type_name, **event.params) for event in events]
 
             tran = time.time()
             print("translations:", tran - queried)
-            new_events = [html.escape(event) for event in new_events]
+            events_text = [html.escape(event) for event in events_text]
             all = time.time()
             print("esc: ", all - tran)
-            obj_response.call("EVENTS.update_events", [new_events, last_event_id])
+            obj_response.call("EVENTS.update_events", [events_text, last_event_id])
+
+        @staticmethod
+        def say_aloud(obj_response, message):
+
+            action = actions.SayAloudAction(g.character, message)
+            action.perform()
+
+            db.session.commit()
+
+            obj_response.call("EVENTS.trigger", ["check_new_events"])
 
     try:
         if g.sijax.is_sijax_request:
@@ -174,9 +189,10 @@ def page_events():
     except Exception:
         print(traceback.format_exc())
 
+
 @outer_bp.route("/")
 def nic():
-    return "HI"
+    return "OUTER PAGE"
 
 app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)

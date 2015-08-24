@@ -66,6 +66,7 @@ class Player(db.Model, UserMixin):
     __tablename__ = "players"
 
     id = sql.Column(sql.String(PLAYER_ID_MAXLEN), primary_key=True)
+
     email = sql.Column(sql.String(32), unique=True)
     language = sql.Column(sql.String(2), default="en")
     register_date = sql.Column(sql.DateTime)
@@ -76,6 +77,12 @@ class Player(db.Model, UserMixin):
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
+    
+    def __init__(self, plr_id, email, language, password):
+        self.id = plr_id
+        self.email = email
+        self.language = language
+        self.password = password
 
     @validates("register_game_date")
     def validate_register_game_date(self, key, register_game_date):

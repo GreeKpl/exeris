@@ -10,6 +10,9 @@
         </div>
     </nav>
     <div class="row">
+        <br><br><br>
+    </div>
+    <div class="row">
         <div class="col-md-6">
             <form class="form-inline">
                 <div class="form-group">
@@ -72,7 +75,7 @@
         event.preventDefault();
         var message = $("#message");
         if (message.val()) {
-            Sijax.request("say_message", [message.val(), _last_event]);
+            Sijax.request("say_aloud", [message.val()]);
             message.val("");
         }
     });
@@ -92,7 +95,6 @@
         setInterval(function() {
             EVENTS.trigger("check_new_events");
         }, 10000);
-        // $(".top_bar").append("<div style=\"padding:2px;border:1px solid black;text-align:right;\">[_][□]</div>");
     });
     </script>
 {% endblock %}
