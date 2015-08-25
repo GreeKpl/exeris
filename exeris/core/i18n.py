@@ -154,7 +154,7 @@ def create_pyslate(language, backend=None, **kwargs):
         helper.return_form(character_gen)
 
         if "character_title" in params:
-            return helper.translation("tp_location_title", title=params["location_title"])
+            return helper.translation("tp_character_title", title=params["character_title"])
 
         if "observer" in params and "character_id" in params:
             observer = params["observer"]

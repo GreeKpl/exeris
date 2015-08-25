@@ -9,6 +9,18 @@ data = {
         "en": "You say: %{message}",
     },
     "event_say_aloud_observer": {
-        "en": "${doer:char_info} say: %{message}",
+        "en": "${doer:character_info} say: %{message}",
+    },
+    "entity_character#f": {
+        "en": "unknown woman",
+    },
+    "entity_character#m": {
+        "en": "unknown man",
+    },
+    "tp_location_title": {
+        "en": "...",
+    },
+    "tp_character_title": {
+        "en": "...",
     },
 }

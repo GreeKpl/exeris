@@ -78,8 +78,8 @@ class Player(db.Model, UserMixin):
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
     
-    def __init__(self, plr_id, email, language, password):
-        self.id = plr_id
+    def __init__(self, id, email, language, password, active=True):
+        self.id = id
         self.email = email
         self.language = language
         self.password = password

@@ -47,8 +47,6 @@ def create_database():
     models.init_database_contents()
 
     if not models.RootLocation.query.count():
-        outside_type = models.LocationType(Types.OUTSIDE, 100)
-        db.session.add(outside_type)
 
         new_root = models.RootLocation(Point(1, 1), False, 123)
         db.session.add(new_root)
