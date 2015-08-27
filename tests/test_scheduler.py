@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
 from exeris.core import main
@@ -46,7 +47,10 @@ class SchedulerTest(TestCase):
         db.session.flush()
 
         scheduler = Scheduler()
-        scheduler.run_iteration()
+        with patch("exeris.core.scheduler.Scheduler._start_transaction", new=lambda slf: None):
+            with patch("exeris.core.scheduler.Scheduler._commit_transaction", new=lambda slf: None):
+                with patch("exeris.core.scheduler.Scheduler._rollback_transaction", new=lambda slf: None):
+                    scheduler.run_iteration()
 
         result_type = ItemType.query.filter_by(name="result").one()
         result_item = Item.query.filter_by(type=result_type).one()

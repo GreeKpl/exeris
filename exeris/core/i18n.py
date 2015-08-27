@@ -1,4 +1,3 @@
-from pyslate.backends import json_backend
 from pyslate.pyslate import Pyslate
 from exeris.core import models
 

@@ -153,11 +153,11 @@ def page_events():
         def update_events(obj_response, last_event):
             start = time.time()
             events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character)\
-                .filter(models.Event.id > last_event).order_by(models.Event.id.desc()).all()
+                .filter(models.Event.id > last_event).order_by(models.Event.id.asc()).all()
 
             queried = time.time()
             print("query: ", queried - start)
-            last_event_id = events[0].id if len(events) else last_event
+            last_event_id = events[-1].id if len(events) else last_event
             events_text = [g.pyslate.t(event.type_name, **event.params) for event in events]
 
             tran = time.time()
@@ -175,7 +175,7 @@ def page_events():
 
             db.session.commit()
 
-            obj_response.call("EVENTS.trigger", ["check_new_events"])
+            obj_response.call("EVENTS.trigger", ["events_refresh"])
 
     try:
         if g.sijax.is_sijax_request:

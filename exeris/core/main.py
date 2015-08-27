@@ -35,7 +35,7 @@ class Events:
 
 def create_app(database=db, config_object_module="config.DevelopmentConfig"):
     global app
-    app = Flask(__name__, static_folder="../../static")
+    app = Flask(__name__, static_folder="../../static", template_folder="../templates")
     app.config.from_object(config_object_module)
     database.init_app(app)
     return app

@@ -1,8 +1,9 @@
 import types
 import collections
+import datetime
+
 from flask.ext.login import UserMixin
 from flask.ext.security import RoleMixin
-
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
@@ -78,11 +79,17 @@ class Player(db.Model, UserMixin):
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
     
-    def __init__(self, id, email, language, password, active=True):
+    def __init__(self, id, email, language, password, active=True, register_date=None, register_game_date=None):
         self.id = id
         self.email = email
         self.language = language
         self.password = password
+
+        self.active = active
+        self.register_date = register_date if register_date else datetime.datetime.now()
+
+        from exeris.core import general
+        self.register_game_date = register_game_date if register_game_date else general.GameDate.now()
 
     @validates("register_game_date")
     def validate_register_game_date(self, key, register_game_date):

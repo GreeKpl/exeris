@@ -5,6 +5,9 @@ data = {
     "title_page_events": {
         "en": "Events page",
     },
+    "title_page_events_people": {
+        "en": "People near",
+    },
     "event_say_aloud_doer": {
         "en": "You say: %{message}",
     },
@@ -18,9 +21,9 @@ data = {
         "en": "unknown man",
     },
     "tp_location_title": {
-        "en": "...",
+        "en": "'${title}'",
     },
     "tp_character_title": {
-        "en": "...",
+        "en": "'${title}'",
     },
 }
