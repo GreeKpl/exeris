@@ -165,7 +165,7 @@ def page_events():
             events_text = [html.escape(event) for event in events_text]
             all = time.time()
             print("esc: ", all - tran)
-            obj_response.call("EVENTS.update_events", [events_text, last_event_id])
+            obj_response.call("FRAGMENTS.events.update_list", [events_text, last_event_id])
 
         @staticmethod
         def say_aloud(obj_response, message):
@@ -175,7 +175,7 @@ def page_events():
 
             db.session.commit()
 
-            obj_response.call("EVENTS.trigger", ["events_refresh"])
+            obj_response.call("EVENTS.trigger", ["events:refresh_list"])
 
     try:
         if g.sijax.is_sijax_request:
