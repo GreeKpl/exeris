@@ -19,29 +19,19 @@
                     <label for="message">Message</label>
                     <input type="text" class="form-control" id="message" placeholder="Your message here">
                 </div>
-                <button type="submit" id="say_it" class="btn btn-default">Say it!</button>
+                <button type="submit" id="speaking_button" class="btn btn-default">Say it!</button>
             </form>
         </div>
     </div>
     <div class="row">
         <div class="col-md-8">
-            <div class="events_list_view">
-                <div class="no_top_bar"></div>
-                <div class="events_list_view_contents">
-                    <ol>
-                    </ol>
-                </div>
+            <div class="events_list_contents">
+                <ol>
+                </ol>
             </div>
         </div>
-        <div class="col-md-4">
-{#            <div class="panel panel-default">#}
-{#                <div class="panel-heading">{{ t("title_page_events_people") }}</div>#}
-{#                <div class="list-group">#}
-{#                    {% for id, name in chars %}#}
-{#                        <a href="#" class="slap-char list-group-item" data-target="{{ id }}">{{ name }}</a>#}
-{#                    {% endfor %}#}
-{#                </div>#}
-{#            </div>#}
+        <div class="col-md-4" id="people_list_small_dock">
+
         </div>
     </div>
 {% endblock %}
@@ -58,7 +48,7 @@
             Sijax.request("update_events", [_last_event]);
         });
 
-        $(document).on("click", "#say_it", function(event) {
+        $(document).on("click", "#speaking_button", function(event) {
             event.preventDefault();
             var message = $("#message");
             var message_text = message.val().trim();
@@ -69,16 +59,12 @@
         });
 
 
-        setInterval(function() {
-            EVENTS.trigger("events:refresh_list");
-        }, 3000);
-
         return {
             update_list: function(new_events, last_event) {
                 for (var i = 0; i < new_events.length; i++) {
-                    new_events[i] = new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>");
-                    $(".events_list_view_contents > ol").prepend("<li>" + new_events[i] + "</li>");
+                    new_events[i] = "<li>" + new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>") + "</li>";
                 }
+                $(".events_list_contents > ol").prepend(new_events.reverse());
                 _last_event = last_event;
             }
         };
@@ -86,7 +72,13 @@
 
     $(function() {
         EVENTS.trigger("events:refresh_list");
+
+        setInterval(function() {
+            EVENTS.trigger("events:refresh_list");
+        }, 3000);
     });
 
     </script>
+
+    <script type="text/javascript" src="{{ url_for("static", filename="js/fragments/people_list_small.js") }}"></script>
 {% endblock %}

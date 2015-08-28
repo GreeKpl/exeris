@@ -46,6 +46,15 @@ class ActionOnItem(Action):
             self.rng = SameLocationRange()
 
 
+class ActionOnCharacter(Action):
+    def __init__(self, executor, character, rng=None):
+        super().__init__(executor)
+        self.character = character
+        self.rng = rng
+        if not rng:
+            self.rng = SameLocationRange()
+
+
 class ActionOnLocation(Action):
     def __init__(self, executor, location, rng=None):
         super().__init__(executor)
@@ -546,5 +555,18 @@ class SayAloudAction(ActionOnSelf):
         self.message = message
 
     def perform_action(self):
-
         EventCreator.base(Events.SAY_ALOUD, self.rng, {"message": self.message}, doer=self.executor)
+
+
+class SpeakToSomebody(ActionOnCharacter):
+
+    @convert(character=models.Character)
+    def __init__(self, executor, character, message):
+        super().__init__(executor, character, rng=VisibilityBasedRange(20))
+        self.message = message
+
+    def perform_action(self):
+
+        # TODO add range check
+        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor)
+

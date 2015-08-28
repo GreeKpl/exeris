@@ -96,7 +96,8 @@ def character_preprocessor(endpoint, values):
     g.character = models.Character.by_id(character_id)
     g.language = g.character.language
     conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-    g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
+    g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                               context={"observer": g.character})
 
 
 def with_sijax_route(*args, **kwargs):
@@ -147,7 +148,7 @@ def page_player():
 @character_bp.with_sijax_route('/events')
 def page_events():
 
-    class SijaxActions:
+    class EventsSijax:
 
         @staticmethod
         def update_events(obj_response, last_event):
@@ -158,14 +159,14 @@ def page_events():
             queried = time.time()
             print("query: ", queried - start)
             last_event_id = events[-1].id if len(events) else last_event
-            events_text = [g.pyslate.t(event.type_name, **event.params) for event in events]
+            events_texts = [g.pyslate.t(event.type_name, **event.params) for event in events]
 
             tran = time.time()
             print("translations:", tran - queried)
-            events_text = [html.escape(event) for event in events_text]
+            events_texts = [html.escape(event) for event in events_texts]
             all = time.time()
             print("esc: ", all - tran)
-            obj_response.call("FRAGMENTS.events.update_list", [events_text, last_event_id])
+            obj_response.call("FRAGMENTS.events.update_list", [events_texts, last_event_id])
 
         @staticmethod
         def say_aloud(obj_response, message):
@@ -177,12 +178,28 @@ def page_events():
 
             obj_response.call("EVENTS.trigger", ["events:refresh_list"])
 
+        @staticmethod
+        def speak_to_somebody(obj_response, receiver_id, message):
+
+            action = actions.SpeakToSomebody(g.character, receiver_id, message)
+            action.perform()
+
+            db.session.commit()
+
+            obj_response.call("EVENTS.trigger", ["events:refresh_list"])
+
+        @staticmethod
+        def people_list_small_refresh(obj_response):
+            chars = models.Character.query.all()
+            rendered = render_template("fragments/people_list_small.html", chars=chars)
+
+            obj_response.call("FRAGMENTS.people_list_small.build", [rendered])
+
     try:
         if g.sijax.is_sijax_request:
-            g.sijax.register_object(SijaxActions)
+            g.sijax.register_object(EventsSijax)
             return g.sijax.process_request()
 
-        models.Character.query.all()
         return render_template("page_events.html")
     except Exception:
         print(traceback.format_exc())

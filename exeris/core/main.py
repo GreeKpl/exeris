@@ -27,6 +27,8 @@ class Types:
 
 class Events:
     SAY_ALOUD = "event_say_aloud"
+    SPEAK_TO_SOMEBODY = "event_speak_to_somebody"
+    WHISPER = "event_whisper"
     ADD_TO_ACTIVITY = "event_add_to_activity"
     DROP_ITEM = "event_drop_item"
     TAKE_ITEM = "event_take_item"

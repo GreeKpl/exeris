@@ -1,0 +1,8 @@
+<div class="panel panel-default" id="people_list_small">
+    <div class="panel-heading">{{ t("title_people_list_small") }}</div>
+    <div class="list-group">
+        {% for character in chars %}
+            <a href="#" class="slap-char list-group-item" data-target="{{ id }}">{{ t("character_info", **character.pyslatize()) }}</a>
+        {% endfor %}
+    </div>
+</div>
