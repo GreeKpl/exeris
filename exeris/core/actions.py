@@ -444,7 +444,7 @@ class DropItemAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
-        if self.item.being_in != self.executor:
+        if not self.executor.has_access(self.item, rng=general.InsideRange()):
             raise main.EntityNotInInventoryException(entity=self.item)
 
         if self.amount > self.item.amount:

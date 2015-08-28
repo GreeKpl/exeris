@@ -179,7 +179,7 @@ class ItemType(EntityType):
     def efficiency(self, entity_type):  # quack quack
         if entity_type == self:
             return 1.0
-        raise Exception  # TODO!!! NEED A BETTER EXCEPTION
+        raise ValueError
 
     def get_descending_types(self):
         return [(self, 1.0)]
@@ -550,13 +550,6 @@ class Item(Entity):
 
     quality = sql.Column(sql.Float, default=1.0)
 
-    # TODO
-    '''
-        @removal_game_date.expression
-        def position(cls):
-            return cls._removal_game_date
-    '''
-
     @hybrid_property
     def amount(self):
         if not self.type.stackable:
@@ -566,7 +559,7 @@ class Item(Entity):
     @amount.setter
     def amount(self, new_amount):
         if not self.type.stackable:
-            raise Exception  # TODO EXCEPTION HANDLING
+            raise ValueError("it's impossible to alter amount for non-stackable")
         self.weight = new_amount * self.type.unit_weight
 
     def remove(self, move_contents=True):
@@ -910,7 +903,7 @@ class Passage(Entity):
 
 class ObservedName(db.Model):
 
-    observer_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)  # TODO!!!
+    observer_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False, foreign_keys=[observer_id])
 
     target_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)

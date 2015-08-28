@@ -6,6 +6,7 @@ from shapely.geometry import Point
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction, \
     SayAloudAction
+from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core.general import GameDate
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
@@ -272,7 +273,7 @@ class ActionsTest(TestCase):
         db.session.add_all([rl, hammer_type, hammer])
 
         action = DropItemAction(char, hammer)
-        self.assertRaises(Exception, action.perform)  # TODO
+        self.assertRaises(main.EntityNotInInventoryException, action.perform)
 
         # there are too little potatoes
         potatoes_type = ItemType("potatoes", 20, stackable=True)
@@ -283,7 +284,7 @@ class ActionsTest(TestCase):
         db.session.flush()
 
         action = DropItemAction(char, potatoes, 201)
-        self.assertRaises(Exception, action.perform)  # TODO
+        self.assertRaises(main.InvalidAmountException, action.perform)
 
     def test_add_item_to_activity_action(self):
         util.initialize_date()

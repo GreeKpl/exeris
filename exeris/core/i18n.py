@@ -69,10 +69,10 @@ def create_pyslate(language, backend=None, **kwargs):
         if detailed:
             return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
                                       amount=number_text, item_name=item_text, parts=parts_text,
-                                      title=title_text, states=states_text).strip()  # TODO strip is weak
+                                      title=title_text, states=states_text).strip()  # TODO such strip is weak
         else:
             return helper.translation("tp_item_info", main_material=material_text,
-                                      item_name=item_text, parts=parts_text).strip()  # TODO strip is weak
+                                      item_name=item_text, parts=parts_text).strip()  # TODO such strip is weak
 
     pyslate.register_function("item_info", func_item_info)
 
