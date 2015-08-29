@@ -2,15 +2,23 @@
 {% block title %} {{ t("title_page_events") }} {% endblock %}
 {% block content %}
     <nav class="navbar navbar-default navbar-fixed-top">
-        <div class="container">
-            <button type="button" class="btn btn-default navbar-btn">Community</button>
-            <button type="button" class="btn btn-default navbar-btn">Char 1</button>
-            <button type="button" class="btn btn-default navbar-btn">Char 2</button>
-            <button type="button" class="btn btn-default navbar-btn">Char 3</button>
+        <div class="navbar-inner">
+            <div class="row">
+                <button type="button" class="btn btn-default navbar-btn">Community</button>
+                <button type="button" class="btn btn-default navbar-btn">Char 1</button>
+                <button type="button" class="btn btn-default navbar-btn">Char 2</button>
+                <button type="button" class="btn btn-default navbar-btn">Char 3</button>
+            </div>
+            <div class="row">
+                <a href="{{ url_for("character.page_events", character_id=1) }}" class="btn btn-default navbar-btn">Events</a>
+                <a href="{{ url_for("character.page_entities", character_id=1)  }}" class="btn btn-default navbar-btn">Everything</a>
+                <a href="{{ url_for("character.page_actions", character_id=1)  }}" class="btn btn-default navbar-btn">Actions</a>
+                <a href="{{ url_for("character.page_map", character_id=1)  }}" class="btn btn-default navbar-btn">Map</a>
+            </div>
         </div>
     </nav>
     <div class="row">
-        <br><br><br>
+        <br><br><br><br><br><br>
     </div>
     <div class="row">
         <div class="col-md-6">
@@ -40,7 +48,7 @@
     {{ super() }}
     <script type="text/javascript">
 
-    FRAGMENTS.events = (function($, EVENTS) {
+    FRAGMENTS.events = (function($) {
 
         var _last_event = 0; // to jest prywatne
 
@@ -68,14 +76,17 @@
                 _last_event = last_event;
             }
         };
-    })(jQuery, EVENTS);
+    })(jQuery);
 
     $(function() {
-        EVENTS.trigger("events:refresh_list");
 
-        setInterval(function() {
+        var event_refresher = function() {
             EVENTS.trigger("events:refresh_list");
-        }, 3000);
+
+            setTimeout(event_refresher, 23000);
+        };
+
+        event_refresher();
     });
 
     </script>

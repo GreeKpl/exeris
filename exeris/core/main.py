@@ -23,6 +23,7 @@ class Types:
     SEA = "sea"
     DOOR = "door"
     OUTSIDE = "outside"
+    CHARACTER = "character"
 
 
 class Events:

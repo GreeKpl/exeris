@@ -122,6 +122,7 @@ class TranslatedText(db.Model):
     content = sql.Column(sql.String)
     form = sql.Column(sql.String(8))
 
+
 class EntityType(db.Model):
     __tablename__ = "entity_types"
 
@@ -129,6 +130,8 @@ class EntityType(db.Model):
 
     def __init__(self, name):
         self.name = name
+
+    properties = sql.orm.relationship("EntityTypeProperty", back_populates="type")
 
     discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
 
@@ -139,7 +142,6 @@ class EntityType(db.Model):
     @classmethod
     def by_name(cls, type_name):
         return cls.query.get(type_name)
-
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -442,6 +444,8 @@ class Character(Entity):
         self.spawn_position = spawn_position
         self.spawn_date = spawn_date
 
+        self.type = EntityType.by_name(Types.CHARACTER)
+
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
     state = sql.Column(sql.SmallInteger)
@@ -456,6 +460,9 @@ class Character(Entity):
 
     activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"), nullable=True)
     activity = sql.orm.relationship("Activity", primaryjoin="Character.activity_id == Activity.id", uselist=False)
+
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
+    type = sql.orm.relationship(EntityType, uselist=False)
 
     @hybrid_property
     def name(self):
@@ -720,7 +727,7 @@ class EntityTypeProperty(db.Model):
         self.data = data if data is not None else {}
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name), primary_key=True)
-    type = sql.orm.relationship(EntityType, uselist=False)
+    type = sql.orm.relationship(EntityType, uselist=False, back_populates="properties")
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
@@ -1127,6 +1134,7 @@ def init_database_contents():
         db.session.merge(EventType(type_name + "_target"))
 
     db.session.merge(EntityType(Types.DOOR))
+    db.session.merge(EntityType(Types.CHARACTER))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))
 

@@ -19,6 +19,7 @@ from exeris.core import general, actions, models
 
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
+from exeris.core.properties_base import P
 from pyslate.backends import postgres_backend
 import translations
 
@@ -56,6 +57,10 @@ def create_database():
     if not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
+
+    t = models.EntityType.by_name(Types.CHARACTER)
+    if not models.EntityTypeProperty.query.filter_by(type=t, name=P.DYNAMIC_NAMEABLE).count():
+        t.properties.append(models.EntityTypeProperty(t, P.DYNAMIC_NAMEABLE))
 
     from translations import data
     for tag_key in data:
@@ -195,6 +200,14 @@ def page_events():
 
             obj_response.call("FRAGMENTS.people_list_small.build", [rendered])
 
+        @staticmethod
+        def rename_entity(obj_response, character_id, new_name):
+            entity_to_rename = models.Entity.by_id(character_id)
+            entity_to_rename.set_dynamic_name(g.character, new_name)
+            db.session.commit()
+
+            obj_response.call("EVENTS.trigger", ["people_list_small:refresh_list"])
+
     try:
         if g.sijax.is_sijax_request:
             g.sijax.register_object(EventsSijax)
@@ -203,6 +216,21 @@ def page_events():
         return render_template("page_events.html")
     except Exception:
         print(traceback.format_exc())
+
+
+@character_bp.with_sijax_route('/entities')
+def page_entities():
+    pass
+
+
+@character_bp.with_sijax_route('/map')
+def page_map():
+    pass
+
+
+@character_bp.with_sijax_route('/actions')
+def page_actions():
+    pass
 
 
 @outer_bp.route("/")
