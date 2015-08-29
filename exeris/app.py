@@ -203,7 +203,13 @@ def page_events():
             entity_to_rename.set_dynamic_name(g.character, new_name)
             db.session.commit()
 
-            obj_response.call("EVENTS.trigger", ["people_list_small:refresh_list"])
+            obj_response.call("EVENTS.trigger", ["refresh_entity", character_id])
+
+        @staticmethod
+        def get_entity_tag(obj_response, entity_id):
+            entity = models.Entity.by_id(entity_id)
+            text = g.pyslate.t("entity_info", html=True, **entity.pyslatize())
+            obj_response.call("FRAGMENTS.global.alter_entity", [entity_id, text])
 
     try:
         if g.sijax.is_sijax_request:
