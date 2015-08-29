@@ -36,9 +36,9 @@ class Events:
     GIVE_ITEM = "event_give_item"
 
 
-def create_app(database=db, config_object_module="config.DevelopmentConfig"):
+def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
     global app
-    app = Flask(__name__, static_folder="../../static", template_folder="../templates")
+    app = Flask("exeris")
     app.config.from_object(config_object_module)
     database.init_app(app)
     return app

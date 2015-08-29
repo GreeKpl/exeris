@@ -1,6 +1,4 @@
-import json
 import os
-from pyslate.backends import json_backend
 
 _author__ = 'alek'
 

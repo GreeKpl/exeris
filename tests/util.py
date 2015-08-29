@@ -9,7 +9,7 @@ __author__ = 'alek'
 
 def set_up_app_with_database(self):
     global db
-    app = create_app(config_object_module="config.TestingConfig", database=db)
+    app = create_app(config_object_module="exeris.config.TestingConfig", database=db)
     with app.app_context():
         db.create_all()
 

@@ -1,9 +1,8 @@
-import sqlalchemy as sql
-from app import db, create_app
+from exeris.app import db, create_app
 
 __author__ = 'alek'
 
-from config import Config
+from exeris.config import Config
 
 
 def create_db(db_uri_base=Config.SQLALCHEMY_DATABASE_URI_BASE, db_name=Config.SQLALCHEMY_DATABASE_NAME):

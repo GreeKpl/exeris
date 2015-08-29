@@ -2,7 +2,7 @@
 {% block scripts %}
     {{super()}}
     <script type="text/javascript"
-        src="/static/js/sijax/sijax.js"></script>
+        src="{{ url_for("static", filename="js/sijax/sijax.js") }}"></script>
     <script type="text/javascript">
         {{ g.sijax.get_js()|safe }}</script>
     <script type="text/javascript">

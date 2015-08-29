@@ -1,7 +1,6 @@
 from functools import wraps
 import traceback
 import types
-import html
 import datetime
 import time
 
@@ -16,18 +15,16 @@ import flask_sijax
 from wtforms import StringField
 
 from exeris.core import general, actions, models
-
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
 from pyslate.backends import postgres_backend
-import translations
 
 app = create_app()
 
-outer_bp = Blueprint('outer', __name__, template_folder='templates', url_prefix="")
-player_bp = Blueprint("player", __name__, template_folder="templates", url_prefix="/player")
-character_bp = Blueprint('character', __name__, template_folder='templates', url_prefix="/character/<character_id>")
+outer_bp = Blueprint('outer', "exeris", template_folder='templates', url_prefix="")
+player_bp = Blueprint("player", "exeris", template_folder="templates", url_prefix="/player")
+character_bp = Blueprint('character', "exeris", template_folder='templates', url_prefix="/character/<character_id>")
 
 Bootstrap(app)
 flask_sijax.Sijax(app)
@@ -62,7 +59,7 @@ def create_database():
     if not models.EntityTypeProperty.query.filter_by(type=t, name=P.DYNAMIC_NAMEABLE).count():
         t.properties.append(models.EntityTypeProperty(t, P.DYNAMIC_NAMEABLE))
 
-    from translations import data
+    from exeris.translations import data
     for tag_key in data:
         for language in data[tag_key]:
             db.session.merge(models.TranslatedText(tag_key, language, data[tag_key][language]))
@@ -164,11 +161,11 @@ def page_events():
             queried = time.time()
             print("query: ", queried - start)
             last_event_id = events[-1].id if len(events) else last_event
-            events_texts = [g.pyslate.t(event.type_name, **event.params) for event in events]
+            events_texts = [g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
 
             tran = time.time()
             print("translations:", tran - queried)
-            events_texts = [html.escape(event) for event in events_texts]
+            events_texts = [event for event in events_texts]
             all = time.time()
             print("esc: ", all - tran)
             obj_response.call("FRAGMENTS.events.update_list", [events_texts, last_event_id])
@@ -242,8 +239,3 @@ app.register_blueprint(player_bp)
 app.register_blueprint(character_bp)
 
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
-
-
-if __name__ == '__main__':
-    print(app.url_map)
-    app.run()
