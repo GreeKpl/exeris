@@ -1,0 +1,23 @@
+{% extends "page_base.html" %}
+{% block title %} {{ t("title_page_entities") }} {% endblock %}
+{% block content %}
+    {% include "top_bar.html" %}
+
+    <div class="row">
+        <br><br><br><br><br><br>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="entities_list">
+                <ol>
+                </ol>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for("static", filename="js/events/page_entities.js") }}"></script>
+{% endblock %}

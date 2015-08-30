@@ -8,6 +8,9 @@ data = {
     "title_people_short": {
         "en": "People near",
     },
+    "title_page_entities": {
+        "en": "Entities",
+    },
     "event_say_aloud_doer": {
         "en": "You say: %{message@escape_html}",
     },

@@ -40,7 +40,7 @@ def page_events():
 
 @character_bp.with_sijax_route('/entities')
 def page_entities():
-    pass
+    return render_template("entities/page_entities.html")
 
 
 @character_bp.with_sijax_route('/map')

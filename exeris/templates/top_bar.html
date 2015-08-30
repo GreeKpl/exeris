@@ -1,0 +1,16 @@
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="row">
+            <button type="button" class="btn btn-default navbar-btn">Community</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 1</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 2</button>
+            <button type="button" class="btn btn-default navbar-btn">Char 3</button>
+        </div>
+        <div class="row">
+            <a href="{{ url_for("character.page_events", character_id=g.character.id) }}" class="btn btn-default navbar-btn">Events</a>
+            <a href="{{ url_for("character.page_entities", character_id=g.character.id) }}" class="btn btn-default navbar-btn">Entities</a>
+            <a href="{{ url_for("character.page_actions", character_id=g.character.id) }}" class="btn btn-default navbar-btn">Actions</a>
+            <a href="{{ url_for("character.page_map", character_id=g.character.id) }}" class="btn btn-default navbar-btn">Map</a>
+        </div>
+    </div>
+</nav>
