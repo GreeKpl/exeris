@@ -1,5 +1,5 @@
-<div class="panel panel-default" id="people_list_small">
-    <div class="panel-heading">{{ t("title_people_list_small") }}</div>
+<div class="panel panel-default" id="people_short">
+    <div class="panel-heading">{{ t("title_people_short") }}</div>
     <ul class="list-group">
         {% for character in chars %}
             <li class="list-group-item" data-id="{{ character.id }}">{{ t("character_info", html=True, **character.pyslatize())|safe }}

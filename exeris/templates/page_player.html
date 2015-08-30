@@ -1,6 +1,7 @@
-{% extends "bootstrap/base.html" %}
+{% extends "page_base.html" %}
 {% block title %} {{ t("title_page_player") }} {% endblock %}
 {% block content %}
+    Welcome {{ player.id }}! Używasz Microsoft Internet Explorer 5
     <ol>
     {% for ch in chars %}
         <li><a href="{{ url_for("character.page_events", character_id=ch.id) }}">{{ ch.id }} - {{ ch.name }}</a></li>
@@ -11,11 +12,11 @@
 {% endblock %}
 
 {% block scripts %}
-    {{super()}}
+    {{ super() }}
     <script type="text/javascript"
         src="{{ url_for("static", filename="js/sijax/sijax.js") }}"></script>
     <script type="text/javascript">
         {{ g.sijax.get_js()|safe }}</script>
 
-    <script type="text/javascript" src="{{ url_for("static", filename="js/page_player.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("static", filename="js/player/page_player.js") }}"></script>
 {% endblock %}

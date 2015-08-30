@@ -1,8 +1,7 @@
-FRAGMENTS.people_list_small = (function($) {
+FRAGMENTS.people_short = (function($) {
 
-    $.subscribe("people_list_small:refresh_list", function() {
-        console.log(arguments);
-            Sijax.request("people_short_refresh_list", []);
+    $.subscribe("people_short:refresh_list", function() {
+        Sijax.request("people_short_refresh_list", []);
     });
 
     $(document).on("click", ".character", function(event) {
@@ -13,21 +12,21 @@ FRAGMENTS.people_list_small = (function($) {
 
     $(document).on("click", ".select-listener", function(event) {
         var character_id = $(event.target).closest("li").data("id");
-        $.publish("speaking:change_listener", "speak_to", character_id);
+        $.publish("speaking:change_listener", "SAY_TO_SOMEBODY", character_id);
     });
 
     $(document).on("click", ".select-whisper-listener", function(event) {
         var character_id = $(event.target).closest("li").data("id");
-        $.publish("speaking:change_listener", "whisper", character_id);
+        $.publish("speaking:change_listener", "WHISPER", character_id);
     });
 
     $(function() {
-        $.publish("people_list_small:refresh_list");
+        $.publish("people_short:refresh_list");
     });
 
     return {
         after_refresh_list: function(code) {
-            $("#people_list_small_dock").html(code);
+            $("#people_short_dock").html(code);
         }
     };
 })(jQuery);

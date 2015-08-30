@@ -1,0 +1,15 @@
+<form class="form-inline" id="speaking_form">
+    <div class="form-group">
+        <label for="message">Message</label>
+        <input type="text" class="form-control" id="message" placeholder="Your message here">
+    </div>
+    <button type="submit" id="speaking_button" class="btn btn-default">
+        {% if message_type == "PUBLIC" %}
+            {{ t("say_to_all_button") }}
+        {% elif message_type == "SAY_TO_SOMEBODY" %}
+            {{ t("speak_to_somebody_button", html=False, **receiver.pyslatize()) }}
+        {% elif message_type == "WHISPER" %}
+            {{ t("whisper_to_somebody_button", html=False, **receiver.pyslatize()) }}
+        {% endif %}
+    </button>
+</form>

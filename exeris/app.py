@@ -12,7 +12,7 @@ import psycopg2
 from shapely.geometry import Point
 import flask_sijax
 
-from wtforms import StringField
+from wtforms import StringField, SelectField
 
 from exeris.core import models
 from exeris.core.i18n import create_pyslate
@@ -32,6 +32,8 @@ flask_sijax.Sijax(app)
 
 class ExtendedRegisterForm(RegisterForm):
     id = StringField('login', [Required()])
+    language = SelectField('language', [Required()], choices=[("en", "English")])
+
 
 
 user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
@@ -64,7 +66,6 @@ def create_database():
         for language in data[tag_key]:
             db.session.merge(models.TranslatedText(tag_key, language, data[tag_key][language]))
     db.session.commit()
-
 
 
 @outer_bp.url_defaults

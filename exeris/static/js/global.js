@@ -15,18 +15,18 @@ FRAGMENTS.global = (function($) {
         });
     };
 
-
-    /**
+    /*
         It's a very simple event bus
 
-        How to register for CUSTOM_EVENT
+        > How to register for CUSTOM_EVENT
         $.subscribe("CUSTOM_EVENT", function(arg0, arg1) {
             ...
         });
 
-        How to publish CUSTOM_EVENT:
+        > How to publish CUSTOM_EVENT:
         $.publish("CUSTOM_EVENT", arg0, arg1);
-    */
+
+     */
 
     var FRAGMENTS = {};
 
@@ -45,7 +45,10 @@ FRAGMENTS.global = (function($) {
             }
             return null;
         },
-        alter_entity: function(entity_id, new_data) {
+        after_rename_entity: function(entity_id) {
+            $.publish("refresh_entity", entity_id);
+        },
+        after_get_entity_tag: function(entity_id, new_data) {
             $(".id_" + entity_id).replaceWith(new_data);
         }
     };

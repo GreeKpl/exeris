@@ -5,7 +5,7 @@ data = {
     "title_page_events": {
         "en": "Events page",
     },
-    "title_people_list_small": {
+    "title_people_short": {
         "en": "People near",
     },
     "event_say_aloud_doer": {
@@ -32,7 +32,6 @@ data = {
     "event_whisper_target": {
         "en": "${doer:character_info} whispers to you: %{message@escape_html}",
     },
-
     "entity_character#f": {
         "en": "unknown woman",
     },
@@ -44,5 +43,14 @@ data = {
     },
     "tp_character_title": {
         "en": "'${title@escape_html}'",
+    },
+    "say_to_all_button": {
+        "en": "Say to all",
+    },
+    "speak_to_somebody_button": {
+        "en": "Speak to ${character_info}",
+    },
+    "whisper_to_somebody_button": {
+        "en": "Whisper to ${character_info}",
     },
 }
