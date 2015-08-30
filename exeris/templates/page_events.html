@@ -46,50 +46,7 @@
 
 {% block scripts %}
     {{ super() }}
-    <script type="text/javascript">
-
-    FRAGMENTS.events = (function($) {
-
-        var _last_event = 0; // to jest prywatne
-
-        $(EVENTS).on("events:refresh_list", function() {
-            Sijax.request("update_events", [_last_event]);
-        });
-
-        $(document).on("click", "#speaking_button", function(event) {
-            event.preventDefault();
-            var message = $("#message");
-            var message_text = message.val().trim();
-            if (message_text) {
-                Sijax.request("say_aloud", [message_text]);
-                message.val("");
-            }
-        });
-
-
-        return {
-            update_list: function(new_events, last_event) {
-                for (var i = 0; i < new_events.length; i++) {
-                    new_events[i] = "<li>" + new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>") + "</li>";
-                }
-                $(".events_list_contents > ol").prepend(new_events.reverse());
-                _last_event = last_event;
-            }
-        };
-    })(jQuery);
-
-    $(function() {
-
-        var event_refresher = function() {
-            EVENTS.trigger("events:refresh_list");
-
-            setTimeout(event_refresher, 5000);
-        };
-
-        event_refresher();
-    });
-
-    </script>
+    <script type="text/javascript" src="{{ url_for("static", filename="js/page_events.js") }}"></script>
 
     <script type="text/javascript" src="{{ url_for("static", filename="js/fragments/people_list_small.js") }}"></script>
 {% endblock %}

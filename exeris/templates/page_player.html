@@ -17,21 +17,5 @@
     <script type="text/javascript">
         {{ g.sijax.get_js()|safe }}</script>
 
-    <script type="text/javascript">
-
-    var EVENTS = {};
-
-    $(function() {
-        $("#create_character").click(function() {
-            var char_name = $("#char_name").val();
-            Sijax.request("create_character", [char_name]);
-        });
-    });
-
-    // generic trigger
-    EVENTS.trigger = function(event_name) {
-        $(EVENTS).trigger(event_name);
-    };
-
-    </script>
+    <script type="text/javascript" src="{{ url_for("static", filename="js/page_player.js") }}"></script>
 {% endblock %}

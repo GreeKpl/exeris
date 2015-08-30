@@ -9,17 +9,30 @@ data = {
         "en": "People near",
     },
     "event_say_aloud_doer": {
-        "en": "You say: %{message}",
+        "en": "You say: %{message@escape_html}",
     },
     "event_say_aloud_observer": {
-        "en": "${doer:character_info} say: %{message}",
+        "en": "${doer:character_info} say: %{message@escape_html}",
     },
     "event_speak_to_somebody_doer": {
-        "en": "You say to ${target:character_info}: %{message}",
+        "en": "You say to ${target:character_info}: %{message@escape_html}",
     },
     "event_speak_to_somebody_observer": {
-        "en": "${doer:character_info} speaks to ${target:character_info}: %{message}",
+        "en": "${doer:character_info} speaks to ${target:character_info}: %{message@escape_html}",
     },
+    "event_speak_to_somebody_target": {
+        "en": "${doer:character_info} speaks to you: %{message@escape_html}",
+    },
+    "event_whisper_doer": {
+        "en": "You whisper to ${target:character_info}: %{message@escape_html}",
+    },
+    "event_whisper_observer": {
+        "en": "${doer:character_info} whispers to ${target:character_info}.",
+    },
+    "event_whisper_target": {
+        "en": "${doer:character_info} whispers to you: %{message@escape_html}",
+    },
+
     "entity_character#f": {
         "en": "unknown woman",
     },
@@ -27,9 +40,9 @@ data = {
         "en": "unknown man",
     },
     "tp_location_title": {
-        "en": "'${title}'",
+        "en": "'${title@escape_html}'",
     },
     "tp_character_title": {
-        "en": "'${title}'",
+        "en": "'${title@escape_html}'",
     },
 }

@@ -560,13 +560,26 @@ class SayAloudAction(ActionOnSelf):
 
 class SpeakToSomebody(ActionOnCharacter):
 
-    @convert(character=models.Character)
     def __init__(self, executor, character, message):
         super().__init__(executor, character, rng=VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
 
-        # TODO add range check
-        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor)
+        if not self.executor.has_access(self.character, rng=VisibilityBasedRange(20)):
+            raise main.EntityTooFarAwayException(entity=self.character)
 
+        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor, target=self.character)
+
+
+class WhisperToSomebody(ActionOnCharacter):
+
+    def __init__(self, executor, character, message):
+        super().__init__(executor, character, rng=VisibilityBasedRange(20))
+        self.message = message
+
+    def perform_action(self):
+
+        if not self.executor.has_access(self.character, rng=SameLocationRange()):
+            raise main.EntityTooFarAwayException(entity=self.character)
+        EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor, target=self.character)

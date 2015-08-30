@@ -1,3 +1,4 @@
+import html
 from pyslate.pyslate import Pyslate
 from exeris.core import models
 
@@ -19,6 +20,12 @@ def create_pyslate(language, backend=None, **kwargs):
         return g
 
     pyslate = Pyslate(language, backend=backend, **kwargs)
+
+    #################
+    #  DECORATORS   #
+    #################
+
+    pyslate.register_decorator("escape_html", lambda text: html.escape(text))
 
     #################
     #   ITEM_INFO   #

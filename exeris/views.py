@@ -1,3 +1,4 @@
+from exeris import sijax
 from exeris.app import player_bp, character_bp, outer_bp
 
 import traceback
@@ -13,7 +14,7 @@ from exeris.core.main import db
 @player_bp.with_sijax_route("/")
 def page_player():
 
-    class SijaxActions:
+    class PlayerSijax:
 
         @staticmethod
         def create_character(obj_response, char_name):
@@ -24,11 +25,11 @@ def page_player():
             db.session.add(new_char)
             db.session.commit()
 
-            #obj_response.call("EVENTS.update_events", [new_events, last_event_id])
+            obj_response.call("FRAGMENTS.player.after_create_character", [])
 
     try:
         if g.sijax.is_sijax_request:
-            g.sijax.register_object(SijaxActions)
+            g.sijax.register_object(PlayerSijax)
             return g.sijax.process_request()
 
         chars = models.Character.query.filter_by(player=g.player).all()
@@ -40,10 +41,10 @@ def page_player():
 @character_bp.with_sijax_route('/events')
 def page_events():
 
-    class EventsSijax:
+    class EventsSijax(sijax.GlobalMixin):
 
         @staticmethod
-        def update_events(obj_response, last_event):
+        def get_new_events(obj_response, last_event):
             start = time.time()
             events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character)\
                 .filter(models.Event.id > last_event).order_by(models.Event.id.asc()).all()
@@ -67,39 +68,34 @@ def page_events():
             action.perform()
 
             db.session.commit()
-
-            obj_response.call("EVENTS.trigger", ["events:refresh_list"])
+            obj_response.call("FRAGMENTS.events.after_say_aloud", [])
 
         @staticmethod
-        def speak_to_somebody(obj_response, receiver_id, message):
+        def say_to_somebody(obj_response, receiver_id, message):
+            receiver = models.Character.by_id(receiver_id)
 
-            action = actions.SpeakToSomebody(g.character, receiver_id, message)
+            action = actions.SpeakToSomebody(g.character, receiver, message)
             action.perform()
 
             db.session.commit()
-
-            obj_response.call("EVENTS.trigger", ["events:refresh_list"])
+            obj_response.call("FRAGMENTS.events.after_say_to_somebody", [])
 
         @staticmethod
-        def people_list_small_refresh(obj_response):
+        def whisper(obj_response, receiver_id, message):
+            receiver = models.Character.by_id(receiver_id)
+
+            action = actions.WhisperToSomebody(g.character, receiver, message)
+            action.perform()
+
+            db.session.commit()
+            obj_response.call("FRAGMENTS.events.after_whisper", [])
+
+        @staticmethod
+        def people_short_refresh_list(obj_response):
             chars = models.Character.query.all()
             rendered = render_template("fragments/people_list_small.html", chars=chars)
 
-            obj_response.call("FRAGMENTS.people_list_small.build", [rendered])
-
-        @staticmethod
-        def rename_entity(obj_response, character_id, new_name):
-            entity_to_rename = models.Entity.by_id(character_id)
-            entity_to_rename.set_dynamic_name(g.character, new_name)
-            db.session.commit()
-
-            obj_response.call("EVENTS.trigger", ["refresh_entity", character_id])
-
-        @staticmethod
-        def get_entity_tag(obj_response, entity_id):
-            entity = models.Entity.by_id(entity_id)
-            text = g.pyslate.t("entity_info", html=True, **entity.pyslatize())
-            obj_response.call("FRAGMENTS.global.alter_entity", [entity_id, text])
+            obj_response.call("FRAGMENTS.people_list_small.after_refresh_list", [rendered])
 
     try:
         if g.sijax.is_sijax_request:

@@ -119,6 +119,10 @@ outer_bp.with_sijax_route = types.MethodType(with_sijax_route, outer_bp)
 player_bp.with_sijax_route = types.MethodType(with_sijax_route, player_bp)
 character_bp.with_sijax_route = types.MethodType(with_sijax_route, character_bp)
 
+
+# noinspection PyUnresolvedReferences
+import exeris.views
+
 app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)
 app.register_blueprint(character_bp)

@@ -10,30 +10,7 @@
     <script type="text/javascript">
         {{ g.sijax.get_js()|safe }}</script>
     <script type="text/javascript">
-
-    var EVENTS = {};
-
-    EVENTS.trigger = function() {
-        var event_name = arguments[0];
-        var args = Array.prototype.slice.call(arguments, 1);
-        $(EVENTS).trigger(event_name, args);
-    };
-
-    {#
-        // EVENTS object is used as a very simple event bus
-
-        How to register for CUSTOM_EVENT
-        $(EVENTS).on("CUSTOM_EVENT", function(event, arg0, arg1) {
-            ...
-        });
-
-        How to publish (trigger) CUSTOM_EVENT:
-        EVENTS.trigger("CUSTOM_EVENT", arg0, arg1);
-
-    #}
-
     var FRAGMENTS = {};
-
     </script>
     <script type="text/javascript" src="{{ url_for("static", filename="js/global.js") }}"></script>
 {% endblock %}
