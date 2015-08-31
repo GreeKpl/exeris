@@ -22,9 +22,6 @@ from pyslate.backends import postgres_backend
 
 app = create_app()
 
-outer_bp = Blueprint('outer', "exeris", template_folder='templates', url_prefix="")
-player_bp = Blueprint("player", "exeris", template_folder="templates", url_prefix="/player")
-character_bp = Blueprint('character', "exeris", template_folder='templates', url_prefix="/character/<character_id>")
 
 Bootstrap(app)
 flask_sijax.Sijax(app)
@@ -35,9 +32,24 @@ class ExtendedRegisterForm(RegisterForm):
     language = SelectField('language', [Required()], choices=[("en", "English")])
 
 
-
 user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
 security = Security(app, user_datastore, register_form=ExtendedRegisterForm)
+
+
+def with_sijax_route(*args, **kwargs):
+    flask_fun = flask_sijax.route(*args, **kwargs)
+
+    def dec(f):
+        @wraps(f)
+        def g(*a, **k):
+            return f(*a, **k)
+
+        return flask_fun(login_required(g))
+    return dec
+
+from exeris.outer import outer_bp
+from exeris.player import player_bp
+from exeris.character import character_bp
 
 
 @app.before_first_request
@@ -102,27 +114,6 @@ def character_preprocessor(endpoint, values):
     g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
                                context={"observer": g.character})
 
-
-def with_sijax_route(*args, **kwargs):
-    flask_fun = flask_sijax.route(*args, **kwargs)
-
-    def dec(f):
-        @wraps(f)
-        def g(*a, **k):
-            return f(*a, **k)
-
-        return flask_fun(login_required(g))
-    return dec
-
-
-# monkey patching to make the decorator more comfortable to use
-outer_bp.with_sijax_route = types.MethodType(with_sijax_route, outer_bp)
-player_bp.with_sijax_route = types.MethodType(with_sijax_route, player_bp)
-character_bp.with_sijax_route = types.MethodType(with_sijax_route, character_bp)
-
-
-# noinspection PyUnresolvedReferences
-import exeris.views
 
 app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)
