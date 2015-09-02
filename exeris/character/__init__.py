@@ -5,7 +5,7 @@ from exeris.app import with_sijax_route
 character_bp = Blueprint('character',
                          __name__,
                          template_folder='templates',
-                         static_folder="static", static_url_path="/static/character",
+                         static_folder="static",
                          url_prefix="/character/<character_id>")
 
 # monkey patching to make the decorator more comfortable to use

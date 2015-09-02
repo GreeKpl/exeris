@@ -2,6 +2,7 @@ import traceback
 from flask import g, render_template
 
 from exeris.character import sijax, character_bp
+from exeris.core import models, main
 
 
 @character_bp.with_sijax_route('/events')
@@ -19,7 +20,12 @@ def page_events():
 
 @character_bp.with_sijax_route('/entities')
 def page_entities():
+    if g.sijax.is_sijax_request:
+        g.sijax.register_object(sijax.EntitiesPage)
+        return g.sijax.process_request()
+
     return render_template("entities/page_entities.html")
+
 
 
 @character_bp.with_sijax_route('/map')

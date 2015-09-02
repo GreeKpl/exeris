@@ -1,20 +1,17 @@
 from functools import wraps
-import types
 import datetime
 
-from flask import Blueprint, g
+from flask import g
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 import psycopg2
-
 from shapely.geometry import Point
 import flask_sijax
-
 from wtforms import StringField, SelectField
 
-from exeris.core import models
+from exeris.core import models, main
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
@@ -59,7 +56,6 @@ def create_database():
     models.init_database_contents()
 
     if not models.RootLocation.query.count():
-
         new_root = models.RootLocation(Point(1, 1), False, 123)
         db.session.add(new_root)
     if not models.GameDateCheckpoint.query.count():
@@ -72,6 +68,10 @@ def create_database():
     t = models.EntityType.by_name(Types.CHARACTER)
     if not models.EntityTypeProperty.query.filter_by(type=t, name=P.DYNAMIC_NAMEABLE).count():
         t.properties.append(models.EntityTypeProperty(t, P.DYNAMIC_NAMEABLE))
+    if not models.ItemType.query.count():
+        hammer_type = models.ItemType("hammer", 200)
+        hammer = models.Item(hammer_type, models.RootLocation.query.one())
+        db.session.add_all([hammer_type, hammer])
 
     from exeris.translations import data
     for tag_key in data:
@@ -113,6 +113,18 @@ def character_preprocessor(endpoint, values):
     conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
     g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
                                context={"observer": g.character})
+
+
+@app.errorhandler(Exception)
+def handle_invalid_usage(exception):
+    def sijax_error_response(obj_response):
+        obj_response.call("alert('ABC')")
+
+    if g.sijax.is_sijax_request:
+        return g.sijax.execute_callback([], sijax_error_response)
+    if isinstance(exception, main.GameException):
+        return exception.error_tag
+    return "FAILURE", 404
 
 
 app.register_blueprint(outer_bp)

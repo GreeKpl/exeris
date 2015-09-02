@@ -86,3 +86,19 @@ class EventsPage(GlobalMixin):
             rendered = render_template("events/speaking.html", message_type=message_type, receiver=receiver)
 
             obj_response.call("FRAGMENTS.speaking.after_speaking_form_refresh", [rendered])
+
+
+class EntitiesPage(GlobalMixin):
+
+    @staticmethod
+    def entities_refresh_list(obj_response):
+        location = g.character.being_in
+        entities = models.Entity.query.filter(models.Entity.is_in(location)).all()
+
+        neighbours = location.neighbours
+
+        entities += neighbours
+
+        entities_names = [g.pyslate.t("entity_info", html=True, **entity.pyslatize()) for entity in entities]
+
+        obj_response.call("FRAGMENTS.entities.after_refresh_list", [entities_names])

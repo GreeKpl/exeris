@@ -56,4 +56,10 @@ data = {
     "whisper_to_somebody_button": {
         "en": "Whisper to ${character_info}",
     },
+    "tp_item_info": {
+        "en": "%{main_material}%{item_name}%{parts}",
+    },
+    "entity_hammer": {
+        "en": "hammer",
+    }
 }
