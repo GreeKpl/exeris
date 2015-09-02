@@ -24,7 +24,7 @@
 
 {% block scripts %}
     {{ super() }}
-    <script type="text/javascript" src="{{ url_for("static", filename="js/events/page_events.js") }}"></script>
-    <script type="text/javascript" src="{{ url_for("static", filename="js/events/people_short.js") }}"></script>
-    <script type="text/javascript" src="{{ url_for("static", filename="js/events/speaking.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/events/page_events.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/events/people_short.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/events/speaking.js") }}"></script>
 {% endblock %}

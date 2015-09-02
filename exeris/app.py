@@ -46,7 +46,7 @@ def with_sijax_route(*args, **kwargs):
 
 from exeris.outer import outer_bp
 from exeris.player import player_bp
-from exeris.character import character_bp
+from exeris.character import character_bp, character_static
 
 
 @app.before_first_request
@@ -116,19 +116,20 @@ def character_preprocessor(endpoint, values):
 
 
 @app.errorhandler(Exception)
-def handle_invalid_usage(exception):
+def handle_error(exception):
     def sijax_error_response(obj_response):
-        obj_response.call("alert('ABC')")
+        obj_response.alert("ERROR " + exception)
 
     if g.sijax.is_sijax_request:
         return g.sijax.execute_callback([], sijax_error_response)
     if isinstance(exception, main.GameException):
         return exception.error_tag
-    return "FAILURE", 404
+    return "FAILURE " + str(exception), 404
 
 
 app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)
 app.register_blueprint(character_bp)
+app.register_blueprint(character_static)
 
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))

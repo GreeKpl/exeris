@@ -27,7 +27,6 @@ def page_entities():
     return render_template("entities/page_entities.html")
 
 
-
 @character_bp.with_sijax_route('/map')
 def page_map():
     pass

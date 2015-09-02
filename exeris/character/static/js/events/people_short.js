@@ -20,6 +20,11 @@ FRAGMENTS.people_short = (function($) {
         $.publish("speaking:change_listener", "WHISPER", character_id);
     });
 
+    $(document).on("click", "#say_to_all", function(event) {
+        $.publish("speaking:change_listener", "PUBLIC");
+    });
+
+
     $(function() {
         $.publish("people_short:refresh_list");
     });
