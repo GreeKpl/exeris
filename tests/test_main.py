@@ -16,7 +16,7 @@ class GameDateTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
-    def test_basic(self):
+    def test_basic_now_precision(self):
         last_checkpoint_timestamp = 1000
         checkpoint = GameDateCheckpoint(game_date=100, real_date=last_checkpoint_timestamp)
         db.session.add(checkpoint)
@@ -24,7 +24,7 @@ class GameDateTest(TestCase):
             now = GameDate.now()
             self.assertAlmostEqual(200, now.game_timestamp)
 
-    def test_params(self):
+    def test_timestamp_to_date_conversion(self):
         date = GameDate(3600 * 48 * 14 * 5 + 3600 * 48 * 3 + 3600 * 30 + 60 * 17 + 33)
         # 5-3-11:17:33
         self.assertEqual(33, date.second)
@@ -39,7 +39,7 @@ class GameDateTest(TestCase):
         # check if it's night
         self.assertTrue(date.after_twilight)
 
-    def test_comparisons(self):
+    def test_date_objects_comparison(self):
         old = GameDate(1000)
         new = GameDate(1100)
         like_old = GameDate(1000)

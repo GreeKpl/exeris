@@ -13,9 +13,8 @@ class ProductionIntegrationTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
-
     # kind of integration test
-    def test_activity_process(self):
+    def test_activity_process_for_axe_production(self):
 
         rt = RootLocation(Point(1, 1), False, 134)
 

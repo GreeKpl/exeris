@@ -13,7 +13,16 @@ from tests import util
 __author__ = 'alek'
 
 
-class SchedulerTest(TestCase):
+class SchedulerTravelTest(TestCase):
+    create_app = util.set_up_app_with_database
+
+    def test_travel_process(self):
+        pass
+
+    tearDown = util.tear_down_rollback
+
+
+class SchedulerActivityTest(TestCase):
 
     create_app = util.set_up_app_with_database
 
@@ -212,7 +221,7 @@ class SchedulerTest(TestCase):
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
         self.assertCountEqual([2, 1.5], process.machine_based_quality)
 
-    def test_targets(self):
+    def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), False, 123)
         far_away = RootLocation(Point(5, 5), False, 123)
         some_item_type = ItemType("some_item", 100)

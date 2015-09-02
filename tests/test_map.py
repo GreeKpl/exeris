@@ -22,7 +22,9 @@ class PassageTest(TestCase):
 
         db.session.add(area)
 
-        a = TerrainArea.query.all()
+        grassland_area = TerrainArea.query.one()
 
+        self.assertEqual(1, grassland_area.priority)
+        self.assertEqual(poly, grassland_area.terrain)
 
     tearDown = util.tear_down_rollback

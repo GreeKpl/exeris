@@ -73,7 +73,7 @@ class LocationTest(TestCase):
 
         self.assertEqual(root_loc, room.get_root())
 
-    def test_methods_get_inside(self):
+    def test_methods_get_items_characters_inside(self):
 
         root_loc = RootLocation(Point(20, 20), False, 100)
         building_type = LocationType("building", 2000)
@@ -350,7 +350,5 @@ class GroupTest(TestCase):
         # tools build menu structure
         self.assertCountEqual([steel_tools, bone_tools], tools.child_categories)
         self.assertCountEqual([steel_hammer, steel_needle], steel_tools.get_recipes())
-
-
 
     tearDown = util.tear_down_rollback

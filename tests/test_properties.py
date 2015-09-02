@@ -13,7 +13,7 @@ __author__ = 'alek'
 class PassageTest(TestCase):
     create_app = util.set_up_app_with_database
 
-    def test_set_dynamic_name(self):
+    def test_set_and_alter_dynamic_name_success(self):
         rl = RootLocation(Point(1, 1), True, 123)
         building_type = LocationType("building", 1000)
         building = Location(rl, building_type)
@@ -39,3 +39,4 @@ class PassageTest(TestCase):
         self.assertEqual("Wroclaw", new_name.name)
 
     tearDown = util.tear_down_rollback
+

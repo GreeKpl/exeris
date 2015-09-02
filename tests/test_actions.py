@@ -86,7 +86,7 @@ class ActionsTest(TestCase):
         self.assertEqual(item_type, items[0].type)
         self.assertTrue(items[0].has_property("Edible"))
 
-    def test_complicated_create_item_action(self):
+    def test_create_item_action_considering_input_material_group(self):
         """
         Create a lock and a key in an activity made of iron (for lock) and hard metal group (for key - we use steel)
         For key 'steel' should be "main" in visible_material property
@@ -154,13 +154,7 @@ class ActionsTest(TestCase):
         self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
 
 
-
-
-
-
-
-
-    def test_drop_item_action(self):
+    def test_drop_item_action_on_hammer(self):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), False, 111)
@@ -188,12 +182,20 @@ class ActionsTest(TestCase):
         self.assertEqual(hammer.pyslatize(), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
         self.assertEqual(dict(hammer.pyslatize(), groups={"doer": doer.pyslatize()}), event_drop_obs.params)
-        Event.query.delete()
+
+    def test_drop_item_action_drop_stackable(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+
+        plr = util.create_player("aaa")
+        doer = util.create_character("John", rl, plr)
+        obs = util.create_character("obs", rl, plr)
 
         potatoes_type = ItemType("potatoes", 1, stackable=True)
-        potatoes = Item(potatoes_type, doer, weight=200)
+        potatoes = Item(potatoes_type, doer, amount=200)
 
-        db.session.add_all([potatoes_type, potatoes])
+        db.session.add_all([rl, potatoes_type, potatoes])
 
         amount = 50
         action = DropItemAction(doer, potatoes, amount)
@@ -206,52 +208,61 @@ class ActionsTest(TestCase):
         self.assertEqual(dict(potatoes.pyslatize(item_amount=amount), groups={"doer": doer.pyslatize()}), event_drop_obs.params)
         Event.query.delete()
 
-        self.assertEqual(150, potatoes.weight)  # 50 was dropped
+        self.assertEqual(150, potatoes.weight)  # 50 of 200 was dropped
         potatoes_on_ground = Item.query.filter(Item.is_in(rl)).filter_by(type=potatoes_type).one()
         self.assertEqual(50, potatoes_on_ground.weight)
 
         action = DropItemAction(doer, potatoes, 150)
         action.perform()
-
         db.session.flush()  # to correctly check deletion
+
         self.assertIsNone(potatoes.being_in)  # check whether the object is deleted
         self.assertIsNone(potatoes.used_for)
         self.assertIsNotNone(potatoes.removal_game_date)
 
         self.assertEqual(200, potatoes_on_ground.weight)
 
+    def test_drop_item_action_on_stackable_with_parts(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+        plr = util.create_player("aaa")
+        doer = util.create_character("John", rl, plr)
+        obs = util.create_character("obs", rl, plr)
+
+        potatoes_type = ItemType("potatoes", 1, stackable=True)
         strawberries_type = ItemType("strawberries", 5, stackable=True)
         grapes_type = ItemType("grapes", 3, stackable=True)
         cake_type = ItemType("cake", 100, stackable=True)
 
         # check multipart resources
-        cake = Item(cake_type, doer, weight=300)
+        cake_in_inv = Item(cake_type, doer, weight=300)
         cake_ground = Item(cake_type, rl, weight=300)
         other_cake_ground = Item(cake_type, rl, weight=300)
 
-        db.session.add_all([strawberries_type, grapes_type, cake_type, cake, cake_ground, other_cake_ground])
+        db.session.add_all([rl, strawberries_type, grapes_type, cake_type, cake_in_inv, cake_ground, other_cake_ground])
         db.session.flush()
 
-        cake.visible_parts = [grapes_type.name, strawberries_type.name]
+        cake_in_inv.visible_parts = [grapes_type.name, strawberries_type.name]
         cake_ground.visible_parts = [grapes_type.name, strawberries_type.name]
 
         other_cake_ground.visible_parts = [strawberries_type.name, potatoes_type.name]
 
         db.session.flush()
 
-        action = DropItemAction(doer, cake, 1)
+        action = DropItemAction(doer, cake_in_inv, 1)
         action.perform()
 
-        self.assertEqual(200, cake.weight)
+        self.assertEqual(200, cake_in_inv.weight)
         self.assertEqual(400, cake_ground.weight)
-        self.assertEqual(300, other_cake_ground.weight)
+        self.assertEqual(300, other_cake_ground.weight)  # it isn't merged with different cake
 
-        db.session.delete(cake_ground)  # remove it!
+        db.session.delete(cake_ground)  # remove cake with the same parts
 
-        action = DropItemAction(doer, cake, 1)
+        action = DropItemAction(doer, cake_in_inv, 1)
         action.perform()
 
-        self.assertEqual(100, cake.weight)
+        self.assertEqual(100, cake_in_inv.weight)
         self.assertEqual(300, other_cake_ground.weight)
 
         new_ground_cake = Item.query.filter(Item.is_in(rl)).filter_by(type=cake_type).\
@@ -259,7 +270,7 @@ class ActionsTest(TestCase):
         self.assertEqual(100, new_ground_cake.weight)
         self.assertEqual([grapes_type.name, strawberries_type.name], new_ground_cake.visible_parts)
 
-    def test_drop_action_failure(self):
+    def test_drop_action_failure_not_in_inv(self):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), False, 111)
@@ -274,6 +285,12 @@ class ActionsTest(TestCase):
 
         action = DropItemAction(char, hammer)
         self.assertRaises(main.EntityNotInInventoryException, action.perform)
+
+    def test_drop_action_failure_too_little_potatoes(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+        char = util.create_character("John", rl, util.create_player("aaa"))
 
         # there are too little potatoes
         potatoes_type = ItemType("potatoes", 20, stackable=True)
