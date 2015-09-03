@@ -1,6 +1,6 @@
 import time
 from flask import g, render_template
-from exeris.core import models, actions
+from exeris.core import models, actions, main
 from exeris.core.main import db
 
 
@@ -11,14 +11,14 @@ class GlobalMixin:
             entity_to_rename.set_dynamic_name(g.character, new_name)
             db.session.commit()
 
-            obj_response.call("$.publish", ["refresh_entity", character_id])
+            obj_response.call("FRAGMENTS.character.after_rename_entity", [character_id])
 
         @staticmethod
         def get_entity_tag(obj_response, entity_id):
             entity = models.Entity.by_id(entity_id)
             text = g.pyslate.t("entity_info", html=True, **entity.pyslatize())
 
-            obj_response.call("FRAGMENTS.global.after_get_entity_tag", [entity_id, text])
+            obj_response.call("FRAGMENTS.character.after_get_entity_tag", [entity_id, text])
 
 
 class EventsPage(GlobalMixin):

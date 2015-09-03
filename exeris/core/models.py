@@ -333,7 +333,7 @@ class Entity(db.Model):
     def __getattr__(self, item):
         try:
             method = properties_base.get_method(item)
-            return types.MethodType(method, self)  # return method type with updated self
+            return types.MethodType(method, self)  # return method with updated 'self'
         except KeyError:
             try:
                 super().__getattr__(item)

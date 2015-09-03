@@ -35,7 +35,7 @@ class SkillsPropertyType(PropertyType):
         return skills.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
 
     @property_method
-    def get_skill(self, specific_skill):
+    def get_skill_factor(self, specific_skill):
         skills = self.get_property(P.SKILLS)
 
         skill_type = models.SkillType.query.filter_by(name=specific_skill).one()
@@ -45,15 +45,12 @@ class SkillsPropertyType(PropertyType):
         return statistics.mean([specific_skill_value, general_skill_value])
 
     @property_method
-    def alter_skill_by(self, skill_name, change):  # todo it shouldn't know whether property is for entity or for type
+    def alter_skill_by(self, skill_name, change):
         skills_prop = models.EntityProperty.query.filter_by(name=P.SKILLS, entity=self).first()
-        if skills_prop:
-            skill_val = skills_prop.data.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
-            skills_prop.data[skill_name] = skill_val + change
-        else:
-            skills_type_prop = models.EntityTypeProperty.query.filter_by(name=P.SKILLS, type=self.type).first()
-            if skills_type_prop:
-                skill_val = skills_type_prop.data.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
-                skills_type_prop.data[skill_name] = skill_val + change
+
+        assert skills_prop  # it must be property of entity
+
+        skill_val = skills_prop.data.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
+        skills_prop.data[skill_name] = skill_val + change
 
 print("metody: ", __registry)

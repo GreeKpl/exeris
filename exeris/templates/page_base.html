@@ -1,8 +1,4 @@
 {% extends "bootstrap/base.html" %}
-{% block styles %}
-    {{ super() }}
-    <link href="{{ url_for("static", filename="character.css") }}" rel="stylesheet" media="screen">
-{% endblock %}
 {% block scripts %}
     {{ super() }}
     <script type="text/javascript"
@@ -13,4 +9,5 @@
     var FRAGMENTS = {};
     </script>
     <script type="text/javascript" src="{{ url_for("static", filename="js/global.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("static", filename="js/bootstrap-notify-3.1.3/bootstrap-notify.js") }}"></script>
 {% endblock %}

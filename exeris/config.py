@@ -18,7 +18,6 @@ class Config:
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False
     SECURITY_LOGIN_WITHOUT_CONFIRMATION = True
-    PYSLATE_BACKEND = ""
 
 
 class ProductionConfig(Config):
@@ -28,7 +27,7 @@ class ProductionConfig(Config):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False
 
 
 class TestingConfig(Config):

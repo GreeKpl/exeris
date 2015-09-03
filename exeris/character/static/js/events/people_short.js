@@ -7,7 +7,7 @@ FRAGMENTS.people_short = (function($) {
     $(document).on("click", ".character", function(event) {
         var character = $(event.target);
         var new_name = prompt("select new name");
-        Sijax.request("rename_entity", [FRAGMENTS.global.get_id(character), new_name]);
+        Sijax.request("rename_entity", [FRAGMENTS.character.get_id(character), new_name]);
     });
 
     $(document).on("click", ".select-listener", function(event) {

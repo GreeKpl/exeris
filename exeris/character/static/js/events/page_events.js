@@ -22,7 +22,7 @@ $(function() {
     var event_refresher = function() {
         $.publish("events:refresh_list");
 
-        setTimeout(event_refresher, 5000);
+        setTimeout(event_refresher, 20000);
     };
 
     event_refresher();

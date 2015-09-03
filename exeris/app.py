@@ -3,6 +3,7 @@ import datetime
 
 from flask import g
 from flask.ext.bootstrap import Bootstrap
+from flask.ext.bower import Bower
 from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
@@ -22,6 +23,8 @@ app = create_app()
 
 Bootstrap(app)
 flask_sijax.Sijax(app)
+
+Bower(app)
 
 
 class ExtendedRegisterForm(RegisterForm):
@@ -118,12 +121,20 @@ def character_preprocessor(endpoint, values):
 @app.errorhandler(Exception)
 def handle_error(exception):
     def sijax_error_response(obj_response):
-        obj_response.alert("ERROR " + exception)
+        try:
+            if isinstance(exception, main.GameException):
+                obj_response.call("$.publish", ["show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)])
+                return
+        except:
+            pass  # execute next line...
+        print(exception)
+        obj_response.call("$.publish", ["show_error", "unknown error has happened"])
 
     if g.sijax.is_sijax_request:
         return g.sijax.execute_callback([], sijax_error_response)
+
     if isinstance(exception, main.GameException):
-        return exception.error_tag
+        return g.pyslate.t(exception.error_tag, **exception.error_kwargs)
     return "FAILURE " + str(exception), 404
 
 

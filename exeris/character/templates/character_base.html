@@ -1,0 +1,10 @@
+{% extends "page_base.html" %}
+{% block styles %}
+    {{ super() }}
+    <link href="{{ url_for("static", filename="character.css") }}" rel="stylesheet" media="screen">
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+
+    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/global.js") }}"></script>
+{% endblock %}
