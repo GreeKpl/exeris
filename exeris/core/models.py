@@ -657,6 +657,17 @@ class EventTypeGroup(db.Model):
     name = sql.Column(sql.String(32))
 
 
+class SkillType(db.Model):
+    __tablename__ = "skill_types"
+
+    def __init__(self, name, general_name):
+        self.name = name
+        self.general_name = general_name
+
+    name = sql.Column(sql.String(20), primary_key=True)
+    general_name = sql.Column(sql.String(20))
+
+
 class EventType(db.Model):
     __tablename__ = "event_types"
 
@@ -721,7 +732,7 @@ class EventObserver(db.Model):
 class EntityTypeProperty(db.Model):
     __tablename__ = "entity_type_properties"
 
-    def __init__(self, type, name, data=None):
+    def __init__(self, name, data=None, type=None):
         self.type = type
         self.name = name
         self.data = data if data is not None else {}
@@ -739,7 +750,7 @@ class EntityProperty(db.Model):
     entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
-    def __init__(self, entity, name, data=None):
+    def __init__(self, name, data=None, entity=None):
         self.entity = entity
         self.name = name
         self.data = data if data is not None else {}
@@ -925,6 +936,7 @@ class ObservedName(db.Model):
 
     def __repr__(self):
         return "{{ObservedName target={}, by={}, name={}}}".format(self.target, self.observer, self.name)
+
 
 class ScheduledTask(db.Model):
     __tablename__ = "scheduled_tasks"

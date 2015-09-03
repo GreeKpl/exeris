@@ -273,8 +273,8 @@ class ItemTranslationTest(TestCase):
         db.session.add_all([rl, shirt_type, shirt, hemp_cloth_type])
         db.session.flush()
 
-        main_material_prop = EntityProperty(shirt, P.VISIBLE_MATERIAL, data={"main": hemp_cloth_type.name})
-        db.session.add(main_material_prop)
+        shirt.properties.append(EntityProperty(P.VISIBLE_MATERIAL, {"main": hemp_cloth_type.name}))
+
         db.session.flush()
 
         self.assertEqual("damaged hemp shirt", pyslate.t("item_info", **shirt.pyslatize(detailed=True)))

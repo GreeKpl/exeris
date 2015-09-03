@@ -153,7 +153,6 @@ class ActionsTest(TestCase):
         visible_material_prop = EntityProperty.query.filter_by(entity=new_key, name=P.VISIBLE_MATERIAL).one()
         self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
 
-
     def test_drop_item_action_on_hammer(self):
         util.initialize_date()
 
@@ -428,8 +427,8 @@ class ActionsTest(TestCase):
         self.assertCountEqual([obs_same_loc], event_say_observer.observers)
 
         door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
+        door_to_building.properties.append(EntityProperty(P.WINDOW, {"open": True}))
 
-        db.session.add(EntityProperty(door_to_building, P.WINDOW, {"open": True}))
 
         # now there will be open connection between rl1 and building
 

@@ -122,13 +122,13 @@ class EntityTest(TestCase):
         item_type = ItemType("sickle", 500)
 
         item = Item(item_type, None, weight=100)
-        prop = EntityProperty(entity=item, name="Happy", data={})
+        prop = EntityProperty("Happy", entity=item)
         db.session.add(prop)
 
         item.be_happy()  # item has property enabling the method, so it should be possible to call it
 
         item2 = Item(item_type, None, weight=200)
-        type_prop = EntityTypeProperty(type=item_type, name="Happy", data={})
+        type_prop = EntityTypeProperty(name="Happy", type=item_type)
         db.session.add(type_prop)
 
         item2.be_happy()  # item type has property enabling the method, so it should be possible to call it
@@ -150,10 +150,10 @@ class EntityTest(TestCase):
         item_type = ItemType("potato", 1, stackable=True)
 
         item = Item(item_type, None, weight=100)
-        type_prop = EntityTypeProperty(item_type, "Sad", {"very": False, "cookies": 0})
-        prop = EntityProperty(item, "Sad", {"very": True, "feel": "blue"})
+        item.type.properties.append(EntityTypeProperty("Sad", {"very": False, "cookies": 0}))
+        item.properties.append(EntityProperty("Sad", {"very": True, "feel": "blue"}))
 
-        db.session.add_all([item_type, item, prop, type_prop])
+        db.session.add_all([item_type, item])
 
         self.assertDictEqual({"very": True, "feel": "blue", "cookies": 0}, item.get_property("Sad"))
 
@@ -192,8 +192,8 @@ class PassageTest(TestCase):
         passage1 = Passage.query.filter(Passage.between(rl, loc1)).first()
         passage2 = Passage.query.filter(Passage.between(rl, loc2)).first()
 
-        open_window = EntityProperty(entity=passage1, name=P.WINDOW, data={"open": True})
-        closed_window = EntityProperty(entity=passage2, name=P.WINDOW, data={"open": False})
+        open_window = EntityProperty(P.WINDOW, {"open": True}, entity=passage1)
+        closed_window = EntityProperty(P.WINDOW, {"open": False}, entity=passage2)
         db.session.add_all([open_window, closed_window])
 
         self.assertTrue(passage1.is_accessible())

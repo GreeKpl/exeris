@@ -176,8 +176,9 @@ class EventCreatorTest(TestCase):
 
         psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
         psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
-        db.session.add(EntityProperty(entity=psg1, name=P.OPEN_PASSAGE, data={}))
-        db.session.add(EntityProperty(entity=psg2, name=P.OPEN_PASSAGE, data={}))
+        db.session.add_all([psg1, psg2])
+        db.session.add(EntityProperty(P.OPEN_PASSAGE, entity=psg1))
+        db.session.add(EntityProperty(P.OPEN_PASSAGE, entity=psg2))
 
         EventCreator.base("slap", doer=doer, target=target,
                           rng=VisibilityBasedRange(100), params={"hi": "hehe"})

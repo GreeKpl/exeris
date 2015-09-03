@@ -65,9 +65,9 @@ def create_database():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
 
-    t = models.EntityType.by_name(Types.CHARACTER)
-    if not models.EntityTypeProperty.query.filter_by(type=t, name=P.DYNAMIC_NAMEABLE).count():
-        t.properties.append(models.EntityTypeProperty(t, P.DYNAMIC_NAMEABLE))
+    character_type = models.EntityType.by_name(Types.CHARACTER)
+    if not models.EntityTypeProperty.query.filter_by(type=character_type, name=P.DYNAMIC_NAMEABLE).count():
+        character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
     if not models.ItemType.query.count():
         hammer_type = models.ItemType("hammer", 200)
         hammer = models.Item(hammer_type, models.RootLocation.query.one())

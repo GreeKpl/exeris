@@ -5,6 +5,7 @@ __author__ = 'alek'
 
 # property
 class P:
+    SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"
     VISIBLE_MATERIAL = "VisibleMaterial"
     WINDOW = "Window"

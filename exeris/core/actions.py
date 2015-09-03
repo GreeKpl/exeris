@@ -133,7 +133,7 @@ class CreateItemAction(ActivityAction):
         db.session.add(new_item)
 
         for property_name in self.properties:
-            db.session.add(models.EntityProperty(new_item, property_name, self.properties[property_name]))
+            new_item.properties.append(models.EntityProperty(property_name, self.properties[property_name]))
 
         if self.used_materials == "all": # all the materials used for an activity were set to build this item
             for material_type in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
@@ -151,7 +151,7 @@ class CreateItemAction(ActivityAction):
                     real_used_type_name = req_material["used_type"]
                     if group_name == req_material_name:  # this group is going to be shown by our visible material
                         visible_material_property[place_to_show] = real_used_type_name
-            db.session.add(models.EntityProperty(new_item, P.VISIBLE_MATERIAL, visible_material_property))
+            new_item.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
     def extract_used_material(self, material_type_name, new_item):
         for req_material_name, requirement_params in self.activity.requirements.get("input",
