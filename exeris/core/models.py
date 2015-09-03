@@ -464,6 +464,8 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
+    states = sql.Column(psql.JSONB, default={"health": 1.0, "hunger": 0.0, "modifiers": []})
+
     @hybrid_property
     def name(self):
         return ObservedName.query.filter_by(target=self, observer=self).one().name
@@ -482,6 +484,22 @@ class Character(Entity):
         if not rng:
             rng = general.InsideRange()
         return rng.is_near(self, entity)
+
+    @hybrid_property
+    def health(self):
+        return self.states["health"]
+
+    @health.setter
+    def health(self, value):
+        self.states["health"] = max(0, min(value, 1.0))
+
+    @hybrid_property
+    def hunger(self):
+        return self.states["hunger"]
+
+    @hunger.setter
+    def hunger(self, value):
+        self.states["hunger"] = max(0, min(value, 1.0))
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon

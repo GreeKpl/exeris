@@ -1,6 +1,6 @@
 import time
 from flask import g, render_template
-from exeris.core import models, actions, main
+from exeris.core import models, actions, main, accessible_actions
 from exeris.core.main import db
 
 
@@ -99,6 +99,15 @@ class EntitiesPage(GlobalMixin):
 
         entities += neighbours
 
-        entities_names = [g.pyslate.t("entity_info", html=True, **entity.pyslatize()) for entity in entities]
+        entity_entries = []
+        for entity in entities:
+            full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
 
-        obj_response.call("FRAGMENTS.entities.after_refresh_list", [entities_names])
+            has_needed_prop = lambda action: entity.has_property(action.required_property)
+            possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
+
+            # TODO translation
+
+            entity_entries += [render_template("entities/item_info.html", full_name=full_name, actions=possible_actions)]
+        print(entity_entries)
+        obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])

@@ -71,10 +71,16 @@ def create_database():
     character_type = models.EntityType.by_name(Types.CHARACTER)
     if not models.EntityTypeProperty.query.filter_by(type=character_type, name=P.DYNAMIC_NAMEABLE).count():
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
-    if not models.ItemType.query.count():
-        hammer_type = models.ItemType("hammer", 200)
-        hammer = models.Item(hammer_type, models.RootLocation.query.one())
-        db.session.add_all([hammer_type, hammer])
+    if models.ItemType.query.count() < 2:
+        #hammer_type = models.ItemType("hammer", 200)
+        #hammer = models.Item(hammer_type, models.RootLocation.query.one())
+        #db.session.add_all([hammer_type, hammer])
+        potatoes_type = models.ItemType("potatoes", 20, stackable=True)
+        potatoes = models.Item(potatoes_type, models.RootLocation.query.one())
+    if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
+        potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
+        potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": 0.1}))
+        print("DOING IT")
 
     from exeris.translations import data
     for tag_key in data:
@@ -127,8 +133,8 @@ def handle_error(exception):
                 return
         except:
             pass  # execute next line...
-        print(exception)
-        obj_response.call("$.publish", ["show_error", "unknown error has happened"])
+        fun_name = obj_response._sijax.requested_function
+        obj_response.call("$.publish", ["show_error", "SIJAX error on " + fun_name + ": " +  str(exception)])
 
     if g.sijax.is_sijax_request:
         return g.sijax.execute_callback([], sijax_error_response)

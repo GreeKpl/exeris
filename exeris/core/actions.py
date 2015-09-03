@@ -7,7 +7,7 @@ from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core import models
 from exeris.core import general
-from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
+from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange, InsideRange
 from exeris.core.properties import P
 
 __author__ = 'alek'
@@ -394,6 +394,7 @@ class ActivityProgressProcess(ProcessAction):
 # CHARACTER-SPECIFIC ACTIONS #
 ##############################
 
+
 def move_between_entities(item, source, destination, amount, to_be_used_for=False):
 
     if item.parent_entity == source:
@@ -546,6 +547,31 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
             return
 
         raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
+
+
+class EatAction(ActionOnItem):
+
+    def __init__(self, executor, item, amount):
+        super().__init__(executor, item, rng=SameLocationRange())
+        self.amount = amount
+
+    def perform_action(self):
+
+        if not self.executor.has_access(self.item):
+            raise main.EntityTooFarAwayException(entity=self.item)
+
+        if self.item.amount < self.amount:
+            raise main.InvalidAmountException(amount=self.amount)
+
+        if self.item.get_max_edible(self.executor) < self.amount:
+            raise main.InvalidAmountException(amount=self.amount)
+
+        self.item.amount -= self.amount
+
+        # TODO, because it doesn't do anything :)
+
+        food_item_info = self.item.pyslatize(amount=self.amount, detailed=False)
+        EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
 
 
 class SayAloudAction(ActionOnSelf):

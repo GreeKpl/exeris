@@ -6,8 +6,8 @@ FRAGMENTS.entities = (function($) {
     
     return {
         after_refresh_list: function (entity_names) {
-            $.each(entity_names, function(idx, entity_name) {
-                $("#entities_list > ol").append("<li>" + entity_name + "</li>");
+            $.each(entity_names, function(idx, item_info) {
+                $("#entities_list > ol").append(item_info);
             });
         }
     }

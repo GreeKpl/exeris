@@ -1,0 +1,6 @@
+<li>
+    {{ full_name|safe }}
+    {% for action in actions %}
+        <button data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
+    {% endfor %}
+</li>

@@ -32,7 +32,8 @@ FRAGMENTS.global = (function($) {
             $.notify({
                 message: message
             },{
-                type: "danger"
+                type: "danger",
+                delay: 0
             });
         });
 

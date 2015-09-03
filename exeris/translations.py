@@ -35,6 +35,12 @@ data = {
     "event_whisper_target": {
         "en": "${doer:character_info} whispers to you: %{message@escape_html}",
     },
+    "event_eat_doer": {
+        "en": "You eat ${food:entity_info}",
+    },
+    "event_eat_observer": {
+        "en": "You see ${doer:entity_info} eat ${food:entity_info}",
+    },
     "entity_character#f": {
         "en": "unknown woman",
     },
@@ -59,7 +65,23 @@ data = {
     "tp_item_info": {
         "en": "%{main_material}%{item_name}%{parts}",
     },
+    "tp_detailed_item_info": {
+        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{states}%{parts}",
+    },
+    "tp_item_parts": {
+        "en": "with ${_parts}",
+        "pl": "z ${_parts}",
+    },
+    "tp_item_main_material": {
+        "en": "${entity_%{material_name}_adj#%{item_form}}",
+    },
     "entity_hammer": {
         "en": "hammer",
-    }
+    },
+    "entity_potatoes": {
+        "en": "potato",
+    },
+    "entity_potatoes#p": {
+        "en": "potatoes",
+    },
 }
