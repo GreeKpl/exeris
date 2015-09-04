@@ -88,7 +88,22 @@ class EventsPage(GlobalMixin):
             obj_response.call("FRAGMENTS.speaking.after_speaking_form_refresh", [rendered])
 
 
-class EntitiesPage(GlobalMixin):
+class EntityActionMixin:
+
+    @staticmethod
+    def eat(obj_response, entity_id, amount=None):
+        entity = models.Item.by_id(entity_id)
+        if not amount:
+            obj_response.call("FRAGMENTS.entities.before_eat", [entity_id, entity.get_max_edible(g.character)])
+        else:
+            eat_action = actions.EatAction(g.character, entity, amount)
+            eat_action.perform()
+            entity_info = g.pyslate.t("entity_info", **entity.pyslatize(amount=amount))
+            obj_response.call("FRAGMENTS.entities.after_eat", [entity_info, amount])
+            db.session.commit()
+
+
+class EntitiesPage(GlobalMixin, EntityActionMixin):
 
     @staticmethod
     def entities_refresh_list(obj_response):
@@ -114,7 +129,7 @@ class EntitiesPage(GlobalMixin):
                 activity = activity.name_tag
                 activity_percent = 1 - activity.ticks_left / activity.ticks_needed
 
-            entity_entries += [render_template("entities/item_info.html", full_name=full_name,
+            entity_entries += [render_template("entities/item_info.html", full_name=full_name, entity_id=entity.id,
                                                actions=possible_actions, activity=activity,
                                                activity_percent=activity_percent)]
         print(entity_entries)

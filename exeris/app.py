@@ -1,5 +1,6 @@
 from functools import wraps
 import datetime
+import traceback
 
 from flask import g
 from flask.ext.bootstrap import Bootstrap
@@ -72,9 +73,9 @@ def create_database():
     if not models.EntityTypeProperty.query.filter_by(type=character_type, name=P.DYNAMIC_NAMEABLE).count():
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
     if models.ItemType.query.count() < 2:
-        #hammer_type = models.ItemType("hammer", 200)
-        #hammer = models.Item(hammer_type, models.RootLocation.query.one())
-        #db.session.add_all([hammer_type, hammer])
+        hammer_type = models.ItemType("hammer", 200)
+        hammer = models.Item(hammer_type, models.RootLocation.query.one())
+        db.session.add_all([hammer_type, hammer])
         potatoes_type = models.ItemType("potatoes", 20, stackable=True)
         potatoes = models.Item(potatoes_type, models.RootLocation.query.one())
     if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
@@ -134,14 +135,16 @@ def handle_error(exception):
         except:
             pass  # execute next line...
         fun_name = obj_response._sijax.requested_function
-        obj_response.call("$.publish", ["show_error", "SIJAX error on " + fun_name + ": " +  str(exception)])
+        obj_response.call("$.publish", ["show_error", "SIJAX error on " + fun_name + ": " + str(exception)])
+        print(traceback.print_tb(exception.__traceback__))
 
     if g.sijax.is_sijax_request:
         return g.sijax.execute_callback([], sijax_error_response)
 
     if isinstance(exception, main.GameException):
         return g.pyslate.t(exception.error_tag, **exception.error_kwargs)
-    return "FAILURE " + str(exception), 404
+    print(traceback.print_tb(exception.__traceback__))
+    return traceback.print_tb(exception.__traceback__), 404
 
 
 app.register_blueprint(outer_bp)

@@ -29,13 +29,22 @@ FRAGMENTS.global = (function($) {
      */
 
     $.subscribe("show_error", function(message) {
-            $.notify({
-                message: message
-            },{
-                type: "danger",
-                delay: 0
-            });
+        $.notify({
+            message: message
+        },{
+            type: "danger",
+            delay: 0
         });
+    });
+
+    $.subscribe("show_success", function(message) {
+        $.notify({
+            message: message
+        },{
+            type: "success",
+            delay: 0
+        });
+    });
 
     return {
     };

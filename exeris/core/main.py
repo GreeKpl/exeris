@@ -53,6 +53,9 @@ class GameException(Exception):
         self.error_tag = error_tag
         self.error_kwargs = kwargs
 
+    def __str__(self):
+        return "{}: {} ({})".format(str(self.__class__), self.error_tag, str(self.error_kwargs))
+
 
 class ItemException(GameException):
     pass

@@ -62,13 +62,19 @@ class EdiblePropertyType(PropertyType):
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
 
+        max_edible = 0
         if edible_prop.get("hunger"):
-            hunger = eater.get_hunger()
-            return hunger / edible_prop["hunger"]
-        return 0
+            max_edible = max(max_edible, - eater.hunger / edible_prop["hunger"])
 
+        return max_edible
+
+    @property_method
     def eat(self, eater, amount):
-        pass
+        edible_prop = self.get_property(P.EDIBLE)
+
+        if edible_prop.get("hunger"):
+            eater.hunger += amount * edible_prop.get("hunger")
+
 
 print("metody: ")
 for prop in __registry.items():

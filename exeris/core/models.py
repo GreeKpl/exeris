@@ -1,3 +1,4 @@
+import copy
 import types
 import collections
 import datetime
@@ -499,7 +500,7 @@ class Character(Entity):
 
     @hunger.setter
     def hunger(self, value):
-        self.states["hunger"] = max(0, min(value, 1.0))
+        self.states = dict(self.states, hunger=max(0, min(value, 1.0)))
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon

@@ -557,7 +557,7 @@ class EatAction(ActionOnItem):
 
     def perform_action(self):
 
-        if not self.executor.has_access(self.item):
+        if not self.executor.has_access(self.item, rng=SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.item.amount < self.amount:
@@ -568,7 +568,7 @@ class EatAction(ActionOnItem):
 
         self.item.amount -= self.amount
 
-        # TODO, because it doesn't do anything :)
+        self.item.eat(self.executor, self.amount)
 
         food_item_info = self.item.pyslatize(amount=self.amount, detailed=False)
         EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
