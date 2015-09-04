@@ -2,5 +2,8 @@
     {{ full_name|safe }}
     {% for action in actions %}
         <button data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
+        {% if activity_name %}
+            <p> -> {{ activity_name }} - {{ activity_percent }}</p>
+        {% endif %}
     {% endfor %}
 </li>

@@ -108,6 +108,14 @@ class EntitiesPage(GlobalMixin):
 
             # TODO translation
 
-            entity_entries += [render_template("entities/item_info.html", full_name=full_name, actions=possible_actions)]
+            activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
+            activity_percent = None
+            if activity:
+                activity = activity.name_tag
+                activity_percent = 1 - activity.ticks_left / activity.ticks_needed
+
+            entity_entries += [render_template("entities/item_info.html", full_name=full_name,
+                                               actions=possible_actions, activity=activity,
+                                               activity_percent=activity_percent)]
         print(entity_entries)
         obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])

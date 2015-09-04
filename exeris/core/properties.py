@@ -58,6 +58,7 @@ class SkillsPropertyType(PropertyType):
 class EdiblePropertyType(PropertyType):
     __property__ = P.EDIBLE
 
+    @property_method
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
 
@@ -69,4 +70,6 @@ class EdiblePropertyType(PropertyType):
     def eat(self, eater, amount):
         pass
 
-print("metody: ", __registry)
+print("metody: ")
+for prop in __registry.items():
+    print(prop)

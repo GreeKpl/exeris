@@ -59,7 +59,7 @@ class PassageTest(TestCase):
         self.assertAlmostEqual(0.1, char.get_raw_skill("baking"))
         self.assertAlmostEqual(0.3, char.get_raw_skill("frying"))
 
-        self.assertAlmostEqual(0.2, char.get_skill("frying"))  # mean value of 0.1 cooking and 0.3 frying = 0.2
+        self.assertAlmostEqual(0.2, char.get_skill_factor("frying"))  # mean value of 0.1 cooking and 0.3 frying = 0.2
 
     tearDown = util.tear_down_rollback
 
