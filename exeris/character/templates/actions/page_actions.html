@@ -1,0 +1,14 @@
+{% extends "character_base.html" %}
+{% block title %} {{ t("title_page_actions") }} {% endblock %}
+{% block content %}
+    {% include "character_top_bar.html" %}
+    <br><br><br><br><br><br>
+    <div id="actions_list">
+        <ol>
+        </ol>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/actions/page_actions.js") }}"></script>
+{% endblock %}

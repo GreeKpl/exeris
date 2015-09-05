@@ -1,6 +1,8 @@
 import time
+
 from flask import g, render_template
-from exeris.core import models, actions, main, accessible_actions
+
+from exeris.core import models, actions, accessible_actions
 from exeris.core.main import db
 
 
@@ -9,9 +11,9 @@ class GlobalMixin:
         def rename_entity(obj_response, character_id, new_name):
             entity_to_rename = models.Entity.by_id(character_id)
             entity_to_rename.set_dynamic_name(g.character, new_name)
-            db.session.commit()
 
             obj_response.call("FRAGMENTS.character.after_rename_entity", [character_id])
+            db.session.commit()
 
         @staticmethod
         def get_entity_tag(obj_response, entity_id):
@@ -39,8 +41,8 @@ class SpeakingMixin:
             action = actions.SayAloudAction(g.character, message)
             action.perform()
 
-            db.session.commit()
             obj_response.call("FRAGMENTS.speaking.after_say_aloud", [])
+            db.session.commit()
 
         @staticmethod
         def say_to_somebody(obj_response, receiver_id, message):
@@ -49,8 +51,8 @@ class SpeakingMixin:
             action = actions.SpeakToSomebody(g.character, receiver, message)
             action.perform()
 
-            db.session.commit()
             obj_response.call("FRAGMENTS.speaking.after_say_to_somebody", [])
+            db.session.commit()
 
         @staticmethod
         def whisper(obj_response, receiver_id, message):
@@ -59,11 +61,37 @@ class SpeakingMixin:
             action = actions.WhisperToSomebody(g.character, receiver, message)
             action.perform()
 
-            db.session.commit()
             obj_response.call("FRAGMENTS.speaking.after_whisper", [])
+            db.session.commit()
 
 
-class EventsPage(GlobalMixin, SpeakingMixin):
+class ActivityMixin:
+
+    @staticmethod
+    def get_activity_info(obj_response):
+        pass
+
+    @staticmethod
+    def get_current_activity(obj_response):
+        activity = g.character.activity
+        if not activity:
+            msg = "not working"
+        else:
+            msg = "{} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left, activity.ticks_needed)
+        obj_response.call("FRAGMENTS.activity.after_get_current_activity", [msg])
+
+    @staticmethod
+    def join_activity(obj_response, activity_id):
+
+        activity = models.Activity.by_id(activity_id)
+        action = actions.JoinActivityAction(g.character, activity)
+        action.perform()
+
+        obj_response.call("FRAGMENTS.activity.after_join", [])
+        db.session.commit()
+
+
+class EventsPage(GlobalMixin, SpeakingMixin, ActivityMixin):
 
         @staticmethod
         def get_new_events(obj_response, last_event):
@@ -82,6 +110,7 @@ class EventsPage(GlobalMixin, SpeakingMixin):
             all = time.time()
             print("esc: ", all - tran)
             obj_response.call("FRAGMENTS.events.update_list", [events_texts, last_event_id])
+            db.session.commit()
 
         @staticmethod
         def people_short_refresh_list(obj_response):
@@ -89,6 +118,7 @@ class EventsPage(GlobalMixin, SpeakingMixin):
             rendered = render_template("events/people_short.html", chars=chars)
 
             obj_response.call("FRAGMENTS.people_short.after_refresh_list", [rendered])
+            db.session.commit()
 
 
 class EntityActionMixin:
@@ -102,11 +132,12 @@ class EntityActionMixin:
             eat_action = actions.EatAction(g.character, entity, amount)
             eat_action.perform()
             entity_info = g.pyslate.t("entity_info", **entity.pyslatize(amount=amount))
+
             obj_response.call("FRAGMENTS.entities.after_eat", [entity_info, amount])
             db.session.commit()
 
 
-class EntitiesPage(GlobalMixin, EntityActionMixin):
+class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
     @staticmethod
     def entities_refresh_list(obj_response):
@@ -121,19 +152,26 @@ class EntitiesPage(GlobalMixin, EntityActionMixin):
         for entity in entities:
             full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
 
-            has_needed_prop = lambda action: entity.has_property(action.required_property)
+            def has_needed_prop(action):
+                return entity.has_property(action.required_property)
+
             possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
 
             # TODO translation
 
             activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
-            activity_percent = None
-            if activity:
-                activity = activity.name_tag
-                activity_percent = 1 - activity.ticks_left / activity.ticks_needed
 
             entity_entries += [render_template("entities/item_info.html", full_name=full_name, entity_id=entity.id,
-                                               actions=possible_actions, activity=activity,
-                                               activity_percent=activity_percent)]
+                                               actions=possible_actions, activity=activity)]
         print(entity_entries)
         obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])
+
+
+class ActionsPage(ActivityMixin):
+
+    @staticmethod
+    def update_actions_list(obj_response):
+
+        recipes = models.EntityRecipe.query.all()
+        recipe_names = [{"name": recipe.name_tag, "id": recipe.id} for recipe in recipes]
+        obj_response.call("FRAGMENTS.actions.after_update_actions_list", [recipe_names])

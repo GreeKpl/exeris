@@ -30,10 +30,10 @@ class Scheduler:
                 self.process_task(task)
 
                 if task.is_repeatable():  # it should be kept in the database to be used again
-                    if task.execution_game_date + 10 < general.GameDate.now().game_timestamp:  # TODO temporary change to avoid multiple runs at once
-                        task.execution_game_date = general.GameDate.now().game_timestamp
-                    task.execution_game_date += task.execution_interval
-                    self.logger.info("Task will be run again at %s", task.execution_game_date)
+                    if task.execution_game_timestamp + 10 < general.GameDate.now().game_timestamp:  # TODO temporary change to avoid multiple runs at once
+                        task.execution_game_timestamp = general.GameDate.now().game_timestamp
+                    task.execution_game_timestamp += task.execution_interval
+                    self.logger.info("Task will be run again at %s", task.execution_game_timestamp)
                 else:
                     db.session.delete(task)
                     self.logger.info("Task deleted")

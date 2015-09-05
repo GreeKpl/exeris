@@ -1,5 +1,6 @@
 from statistics import mean
 import traceback
+from flask import logging
 from shapely.geometry import Point
 from exeris.core.deferred import convert
 from exeris.core import deferred
@@ -227,21 +228,25 @@ class SingleActivityProgressProcess(ProcessAction):
         self.tool_based_quality = []
         self.machine_based_quality = []
         self.progress_ratio = 0.0
+        self.logger = logging.getLogger(__name__)
 
     def perform_action(self):
-        print("progress of ", self.activity)
+        self.logger.info("progress of %s", self.activity)
         workers = models.Character.query.filter_by(activity=self.activity).all()
 
         try:
             req = self.activity.requirements
 
             if "mandatory_machines" in req:
+                self.logger.info("checking mandatory_machines")
                 self.check_mandatory_machines(req["mandatory_machines"])
 
             if "optional_machines" in req:
+                self.logger.info("checking optional_machines")
                 self.check_optional_machines(req["optional_machines"])
 
             if "targets" in req:
+                self.logger.info("checking targets")
                 self.check_target_proximity(req["targets"])
 
             if "target_with_properties" in req:
@@ -261,7 +266,7 @@ class SingleActivityProgressProcess(ProcessAction):
                     self.check_optional_tools(worker, req["optional_tools"])
 
                 if "skill" in req:
-                    pass
+                    self.check_skills(worker, req["skills"].items()[0])
 
                 self.progress_ratio += 1.0
                 active_workers.append(worker)
@@ -387,6 +392,13 @@ class SingleActivityProgressProcess(ProcessAction):
     def check_max_workers(self, active_workers, max_number):
         if len(active_workers) > max_number:
             raise main.TooManyParticipantsException(max_number=max_number)
+
+    def check_skills(self, worker, skill):
+        skill_name = skill[0]
+        min_skill_value = skill[1]
+
+        if worker.get_skill_factor(skill_name) < min_skill_value:
+            raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
 
 
 class HungerProcess(ProcessAction):
@@ -621,3 +633,17 @@ class WhisperToSomebody(ActionOnCharacter):
         if not self.executor.has_access(self.character, rng=SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.character)
         EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor, target=self.character)
+
+
+class JoinActivityAction(ActionOnActivity):
+
+    def __init__(self, executor, activity):
+        super().__init__(executor, activity, rng=None)
+
+    def perform_action(self):
+
+        if not self.executor.has_access(self.activity, rng=SameLocationRange()):
+            raise main.TooFarFromActivityException(activity=self.activity)
+
+        self.executor.activity = self.activity
+

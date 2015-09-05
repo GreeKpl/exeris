@@ -8,6 +8,7 @@ app = None
 
 
 class Errors:
+    TOO_LOW_SKILL = "error_too_low_skill"
     NO_INPUT_MATERIALS = "error_no_input_materials"
     ENTITY_NOT_IN_INVENTORY = "error_entity_not_in_inventory"
     ENTITY_TOO_FAR_AWAY = "error_entity_too_far_away"
@@ -135,6 +136,11 @@ class ActivityTargetTooFarAwayException(ActivityException):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, **entity.pyslatize())
 
 
+class TooLowSkillException(ActivityException):
+    def __init__(self, *, skill_name, required_level):
+        super().__init__(Errors.TOO_LOW_SKILL, skill_name=skill_name, required_level=required_level)
+
+
 class TooFewParticipantsException(ActivityException):
     def __init__(self, *, min_number):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, min_number=min_number)
@@ -143,3 +149,5 @@ class TooFewParticipantsException(ActivityException):
 class TooManyParticipantsException(ActivityException):
     def __init__(self, *, max_number):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, max_number=max_number)
+
+

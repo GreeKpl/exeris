@@ -31,4 +31,8 @@ def page_map():
 
 @character_bp.with_sijax_route('/actions')
 def page_actions():
-    return "NOTHING"
+    if g.sijax.is_sijax_request:
+        g.sijax.register_object(sijax.ActionsPage)
+        return g.sijax.process_request()
+
+    return render_template("actions/page_actions.html")

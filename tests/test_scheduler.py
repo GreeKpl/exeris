@@ -4,8 +4,10 @@ from shapely.geometry import Point
 from exeris.core import main
 
 from exeris.core.main import db
-from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup
+from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
+    EntityProperty, SkillType
 from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess
+from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from tests import util
 
@@ -220,6 +222,29 @@ class SchedulerActivityTest(TestCase):
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
         self.assertCountEqual([2, 1.5], process.machine_based_quality)
+
+    def test_activitys_skills(self):
+        rl = RootLocation(Point(1, 1), False, 123)
+        worked_on_type = ItemType("worked_on", 100)
+        worked_on = Item(worked_on_type, rl)
+        worker = util.create_character("ABC", rl, util.create_player("DEF"))
+
+        frying_skill = SkillType("frying", "cooking")
+        baking_skill = SkillType("baking", "cooking")
+
+        worker.properties.append(EntityProperty(P.SKILLS, data={"cooking": 0.1, "frying": 0.5, "baking": 0.1}))
+
+        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
+
+        db.session.add_all([rl, worked_on_type, worked_on, worker, frying_skill, baking_skill, activity])
+        process = SingleActivityProgressProcess(activity)
+
+        process.check_skills(worker, ("frying", 0.3))
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("frying", 0.4)))
+
+        process.check_skills(worker, ("baking", 0.1))
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01)))
+
 
     def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), False, 123)

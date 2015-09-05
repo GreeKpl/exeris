@@ -13,7 +13,7 @@ from shapely.geometry import Point
 import flask_sijax
 from wtforms import StringField, SelectField
 
-from exeris.core import models, main
+from exeris.core import models, main, general
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
@@ -75,13 +75,29 @@ def create_database():
     if models.ItemType.query.count() < 2:
         hammer_type = models.ItemType("hammer", 200)
         hammer = models.Item(hammer_type, models.RootLocation.query.one())
-        db.session.add_all([hammer_type, hammer])
+
         potatoes_type = models.ItemType("potatoes", 20, stackable=True)
         potatoes = models.Item(potatoes_type, models.RootLocation.query.one(), amount=5000)
-        db.session.add_all([potatoes_type, potatoes])
+        signpost_type = models.ItemType("signpost", 500, portable=False)
+        db.session.add_all([potatoes_type, potatoes, signpost_type])
     if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
-        potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": 0.1}))
+        potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1}))
+
+    if not models.Character.query.count():
+        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en", general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
+        db.session.add(character)
+
+    if not models.ItemType.query.filter_by(name="scaffolding").count():
+        scaffolding_type = models.ItemType("scaffolding", 5000, portable=False)
+        scaffolding = models.Item(scaffolding_type, models.RootLocation.query.one())
+        activity = models.Activity(scaffolding, "building a hut", {}, {}, 100, models.Character.query.one())
+        db.session.add_all([scaffolding_type, scaffolding, activity])
+
+    if not models.EntityRecipe.query.count():
+        build_menu_category = models.BuildMenuCategory("structures")
+        recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category, result_entity=models.ItemType.by_name("signpost"))
+        db.session.add_all([build_menu_category, recipe])
 
     from exeris.translations import data
     for tag_key in data:

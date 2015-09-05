@@ -15,6 +15,7 @@
                    class="btn {% if endpoint[0] == request.endpoint %} btn-primary {% else %} btn-default {% endif %} navbar-btn">{{ endpoint[1] }}</a>
             {% endfor %}
             <span>Hunger: {{ g.character.hunger }}</span> | <span>Health: {{ g.character.health }}</span> {# TODO only for development #}
+            | <span id="current_activity"></span>
         </div>
     </div>
 </nav>

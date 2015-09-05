@@ -11,6 +11,9 @@ data = {
     "title_page_entities": {
         "en": "Entities",
     },
+    "title_page_actions": {
+        "en": "Actions",
+    },
     "event_say_aloud_doer": {
         "en": "You say: %{message@escape_html}",
     },
@@ -83,5 +86,8 @@ data = {
     },
     "entity_potatoes#p": {
         "en": "potatoes",
+    },
+    "entity_scaffolding": {
+        "en": "scaffolding",
     },
 }

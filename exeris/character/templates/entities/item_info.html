@@ -3,7 +3,8 @@
     {% for action in actions %}
         <button class="entity-action btn btn-default" data-entity="{{ entity_id }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
     {% endfor %}
-    {% if activity_name %}
-        <p> -> {{ activity_name }} - {{ activity_percent }}</p>
+    {% if activity %}
+        <p> -> {{ activity.name_tag }} - {{ activity.ticks_needed - activity.ticks_left }} / {{ activity.ticks_needed }} -
+            <button data-activity="{{ activity.id }}" class="join_activity btn btn-default">Join</button></p>
     {% endif %}
 </li>

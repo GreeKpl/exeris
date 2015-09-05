@@ -958,10 +958,10 @@ class ScheduledTask(db.Model):
     execution_game_timestamp = sql.Column(sql.BigInteger)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
-    def __init__(self, process_json, execution_game_date, execution_interval=None):
+    def __init__(self, process_json, execution_game_timestamp, execution_interval=None):
 
         self.process_data = process_json
-        self.execution_game_timestamp = execution_game_date
+        self.execution_game_timestamp = execution_game_timestamp
         self.execution_interval = execution_interval
 
     def is_repeatable(self):
