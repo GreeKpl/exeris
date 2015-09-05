@@ -77,11 +77,11 @@ def create_database():
         hammer = models.Item(hammer_type, models.RootLocation.query.one())
         db.session.add_all([hammer_type, hammer])
         potatoes_type = models.ItemType("potatoes", 20, stackable=True)
-        potatoes = models.Item(potatoes_type, models.RootLocation.query.one())
+        potatoes = models.Item(potatoes_type, models.RootLocation.query.one(), amount=5000)
+        db.session.add_all([potatoes_type, potatoes])
     if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
         potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": 0.1}))
-        print("DOING IT")
 
     from exeris.translations import data
     for tag_key in data:

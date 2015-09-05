@@ -13,7 +13,7 @@ def create_pyslate(language, backend=None, **kwargs):
             result_text = f(helper, tag_name, params)
             if not params.get("html", False):
                 return result_text
-            entity_type_name = models.NAMES[params["entity_type"]]
+            entity_type_name = params["entity_type"]
             entity_id = params.get(entity_type_name + "_id", 0)
             return '''<span class="entity {} id_{}">{}</span>'''.format(entity_type_name, entity_id, result_text)
 

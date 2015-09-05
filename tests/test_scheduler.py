@@ -5,7 +5,7 @@ from exeris.core import main
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup
-from exeris.core.actions import ActivitiesProgressProcess, ActivityProgressProcess
+from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess
 from exeris.core.scheduler import Scheduler
 from tests import util
 
@@ -101,7 +101,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
@@ -115,7 +115,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
@@ -123,7 +123,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -139,7 +139,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
@@ -157,7 +157,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
@@ -170,7 +170,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -188,7 +188,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         bucket_type = ItemType("bucket", 200, portable=False)
         wooden_spindle_type = ItemType("wooden_spindle", 300, portable=False)
@@ -202,7 +202,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         bucket = Item(bucket_type, worker, quality=2)
         db.session.add(bucket)
@@ -210,7 +210,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
 
         # recreate the process
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         spindle_on_ground = Item(wooden_spindle_type, rl, quality=0.75)
         db.session.add(spindle_on_ground)
@@ -237,7 +237,7 @@ class SchedulerActivityTest(TestCase):
         db.session.flush()
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         process.check_target_proximity([target_item1.id, target_item2.id])
 
@@ -258,7 +258,7 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2])
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker1)
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
 
         workers = [worker1, worker2]
 

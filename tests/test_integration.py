@@ -3,7 +3,7 @@ from shapely.geometry import Point
 from exeris.core.main import db
 from exeris.core.models import Activity, Item, RootLocation, ItemType, EntityRecipe, BuildMenuCategory
 from exeris.core.recipes import ActivityFactory
-from exeris.core.actions import ActivityProgressProcess
+from exeris.core.actions import SingleActivityProgressProcess
 from tests import util
 
 __author__ = 'alek'
@@ -42,7 +42,7 @@ class ProductionIntegrationTest(TestCase):
 
         db.session.add(activity)
 
-        process = ActivityProgressProcess(activity)
+        process = SingleActivityProgressProcess(activity)
         process.perform()
         process.perform()
 

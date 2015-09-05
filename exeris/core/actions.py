@@ -215,11 +215,11 @@ class ActivitiesProgressProcess(ProcessAction):
     def perform_action(self):
         activities = models.Activity.query.all()
         for activity in activities:
-            activity_progress = ActivityProgressProcess(activity)
+            activity_progress = SingleActivityProgressProcess(activity)
             activity_progress.perform()
 
 
-class ActivityProgressProcess(ProcessAction):
+class SingleActivityProgressProcess(ProcessAction):
 
     def __init__(self, activity):
         self.activity = activity
@@ -388,6 +388,18 @@ class ActivityProgressProcess(ProcessAction):
         if len(active_workers) > max_number:
             raise main.TooManyParticipantsException(max_number=max_number)
 
+
+class HungerProcess(ProcessAction):
+
+    HUNGER_INCREASE = 0.1
+
+    def perform_action(self):
+        characters = models.Character.query.all()
+
+        for character in characters:
+            character.hunger += HungerProcess.HUNGER_INCREASE
+
+        db.session.commit()
 #
 
 ##############################

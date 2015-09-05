@@ -25,27 +25,15 @@ from .map import MAP_HEIGHT, MAP_WIDTH
 
 
 # subclasses hierarchy for Entity
-ENTITY_BASE = 1
-ENTITY_ITEM = 2
-ENTITY_LOCATION = 3
-ENTITY_ROOT_LOCATION = 5
-ENTITY_PASSAGE = 6
-ENTITY_CHARACTER = 7
-ENTITY_ACTIVITY = 8
-ENTITY_TERRAIN_AREA = 9
-ENTITY_GROUP = 10
-
-NAMES = {
-    ENTITY_BASE: "base",
-    ENTITY_ITEM: "item",
-    ENTITY_LOCATION: "location",
-    ENTITY_ROOT_LOCATION: "location",
-    ENTITY_PASSAGE: "passage",
-    ENTITY_CHARACTER: "character",
-    ENTITY_ACTIVITY: "activity",
-    ENTITY_TERRAIN_AREA: "terrain_area",
-    ENTITY_GROUP: "group",
-}
+ENTITY_BASE = "base"
+ENTITY_ITEM = "item"
+ENTITY_LOCATION = "location"
+ENTITY_ROOT_LOCATION = "root_location"
+ENTITY_PASSAGE = "passage"
+ENTITY_CHARACTER = "character"
+ENTITY_ACTIVITY = "activity"
+ENTITY_TERRAIN_AREA = "terrain_area"
+ENTITY_GROUP = "group"
 
 
 TYPE_NAME_MAXLEN = 32
@@ -105,6 +93,10 @@ class Player(db.Model, UserMixin):
     def is_anonymous(self):
         return False
 
+    @hybrid_property
+    def alive_characters(self):
+        return Character.query.filter_by(player=self, state=Character.STATE_ALIVE).all()
+
     def get_id(self):
         return self.id
 
@@ -134,7 +126,7 @@ class EntityType(db.Model):
 
     properties = sql.orm.relationship("EntityTypeProperty", back_populates="type")
 
-    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
+    discriminator_type = sql.Column(sql.String(15))  # discriminator
 
     @hybrid_property
     def parent_groups(self):
@@ -390,7 +382,7 @@ class Entity(db.Model):
     def pyslatize(self, **overwrites):
         return dict(dict(entity_type=ENTITY_BASE, entity_id=self.id), **overwrites)
 
-    discriminator_type = sql.Column(sql.SmallInteger)  # discriminator
+    discriminator_type = sql.Column(sql.String(15))  # discriminator
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -963,13 +955,13 @@ class ScheduledTask(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
 
     process_data = sql.Column(psql.JSON)
-    execution_game_date = sql.Column(sql.BigInteger)
+    execution_game_timestamp = sql.Column(sql.BigInteger)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
     def __init__(self, process_json, execution_game_date, execution_interval=None):
 
         self.process_data = process_json
-        self.execution_game_date = execution_game_date
+        self.execution_game_timestamp = execution_game_date
         self.execution_interval = execution_interval
 
     def is_repeatable(self):

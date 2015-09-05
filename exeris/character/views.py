@@ -26,9 +26,9 @@ def page_entities():
 
 @character_bp.with_sijax_route('/map')
 def page_map():
-    pass
+    return "NOTHING"
 
 
 @character_bp.with_sijax_route('/actions')
 def page_actions():
-    pass
+    return "NOTHING"

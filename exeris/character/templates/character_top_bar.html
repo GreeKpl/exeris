@@ -1,0 +1,20 @@
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="row">
+            <a href="{{ url_for("player.page_player") }}" class="btn btn-default navbar-btn">Community</a>
+            {% for other_character in g.player.alive_characters %}
+            <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
+               class="btn {% if g.character == other_character%} btn-primary {% else %} btn-default {% endif %}
+               navbar-btn">{{ other_character.name }}</a>
+            {% endfor %}
+        </div>
+        <div class="row">
+            {% for endpoint in [("character.page_events", "Events"),
+            ("character.page_entities","Entities"), ("character.page_actions", "Actions"), ("character.page_map", "Map")] %}
+                <a href="{{ url_for(endpoint[0], character_id=g.character.id) }}"
+                   class="btn {% if endpoint[0] == request.endpoint %} btn-primary {% else %} btn-default {% endif %} navbar-btn">{{ endpoint[1] }}</a>
+            {% endfor %}
+            <span>Hunger: {{ g.character.hunger }}</span> | <span>Health: {{ g.character.health }}</span> {# TODO only for development #}
+        </div>
+    </div>
+</nav>

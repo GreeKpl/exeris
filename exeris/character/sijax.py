@@ -21,25 +21,17 @@ class GlobalMixin:
             obj_response.call("FRAGMENTS.character.after_get_entity_tag", [entity_id, text])
 
 
-class EventsPage(GlobalMixin):
+class SpeakingMixin:
 
         @staticmethod
-        def get_new_events(obj_response, last_event):
-            start = time.time()
-            events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character)\
-                .filter(models.Event.id > last_event).order_by(models.Event.id.asc()).all()
+        def speaking_form_refresh(obj_response, message_type, receiver=None):
 
-            queried = time.time()
-            print("query: ", queried - start)
-            last_event_id = events[-1].id if len(events) else last_event
-            events_texts = [g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
+            if receiver:
+                receiver = models.Character.by_id(receiver)
 
-            tran = time.time()
-            print("translations:", tran - queried)
-            events_texts = [event for event in events_texts]
-            all = time.time()
-            print("esc: ", all - tran)
-            obj_response.call("FRAGMENTS.events.update_list", [events_texts, last_event_id])
+            rendered = render_template("events/speaking.html", message_type=message_type, receiver=receiver)
+
+            obj_response.call("FRAGMENTS.speaking.after_speaking_form_refresh", [rendered])
 
         @staticmethod
         def say_aloud(obj_response, message):
@@ -70,22 +62,33 @@ class EventsPage(GlobalMixin):
             db.session.commit()
             obj_response.call("FRAGMENTS.speaking.after_whisper", [])
 
+
+class EventsPage(GlobalMixin, SpeakingMixin):
+
+        @staticmethod
+        def get_new_events(obj_response, last_event):
+            start = time.time()
+            events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character)\
+                .filter(models.Event.id > last_event).order_by(models.Event.id.asc()).all()
+
+            queried = time.time()
+            print("query: ", queried - start)
+            last_event_id = events[-1].id if len(events) else last_event
+            events_texts = [g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
+
+            tran = time.time()
+            print("translations:", tran - queried)
+            events_texts = [event for event in events_texts]
+            all = time.time()
+            print("esc: ", all - tran)
+            obj_response.call("FRAGMENTS.events.update_list", [events_texts, last_event_id])
+
         @staticmethod
         def people_short_refresh_list(obj_response):
             chars = models.Character.query.all()
             rendered = render_template("events/people_short.html", chars=chars)
 
             obj_response.call("FRAGMENTS.people_short.after_refresh_list", [rendered])
-
-        @staticmethod
-        def speaking_form_refresh(obj_response, message_type, receiver=None):
-
-            if receiver:
-                receiver = models.Character.by_id(receiver)
-
-            rendered = render_template("events/speaking.html", message_type=message_type, receiver=receiver)
-
-            obj_response.call("FRAGMENTS.speaking.after_speaking_form_refresh", [rendered])
 
 
 class EntityActionMixin:
