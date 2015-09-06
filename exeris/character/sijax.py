@@ -2,7 +2,7 @@ import time
 
 from flask import g, render_template
 
-from exeris.core import models, actions, accessible_actions
+from exeris.core import models, actions, accessible_actions, recipes
 from exeris.core.main import db
 
 
@@ -171,7 +171,20 @@ class ActionsPage(ActivityMixin):
 
     @staticmethod
     def update_actions_list(obj_response):
-
         recipes = models.EntityRecipe.query.all()
         recipe_names = [{"name": recipe.name_tag, "id": recipe.id} for recipe in recipes]
         obj_response.call("FRAGMENTS.actions.after_update_actions_list", [recipe_names])
+
+    @staticmethod
+    def create_activity_from_recipe(obj_response, recipe_id):
+        recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
+
+        activity_factory = recipes.ActivityFactory()
+        item_in_construction = models.ItemType.by_name("item_in_construction")
+        activity_holder = models.Item(item_in_construction, g.character.being_in)
+        activity = activity_factory.create_from_recipe(recipe, activity_holder, g.character)
+
+        db.session.add_all([activity_holder, activity])
+        obj_response.call("FRAGMENTS.actions.after_create_activity_from_recipe", [])
+        db.session.commit()
+

@@ -7,7 +7,7 @@ FRAGMENTS.actions = (function() {
     $(document).on("click", ".recipe", function(event) {
         var recipe = $(event.target);
         var recipe_id = recipe.data("recipe");
-        //Sijax.request();
+        Sijax.request("create_activity_from_recipe", [recipe_id]);
     });
 
     return {
@@ -15,6 +15,9 @@ FRAGMENTS.actions = (function() {
             $.each(actions, function(idx, action) {
                 $("#actions_list > ol").append("<li class='recipe' data-recipe='" + action.id + "'>" +  action.name +  "</li>");
             });
+        },
+        after_create_activity_from_recipe: function() {
+            alert("activity started!");
         }
     }
 })();

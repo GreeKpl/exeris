@@ -90,4 +90,10 @@ data = {
     "entity_scaffolding": {
         "en": "scaffolding",
     },
+    "entity_signpost": {
+        "en": "signpost",
+    },
+    "entity_item_in_construction": {
+        "en": "item (in construction)",
+    },
 }

@@ -373,10 +373,11 @@ class SingleActivityProgressProcess(ProcessAction):
             self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
 
     def finish_activity(self, activity):
-        print("finishing activity")
         for serialized_action in activity.result_actions:
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
             action.perform()
+
+        db.session.delete(activity)
 
     def check_target_proximity(self, target_ids):
         targets = models.Entity.query.filter(models.Entity.id.in_(target_ids)).all()

@@ -22,10 +22,7 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
-        print(being_in, recipe.requirements, all_ticks_needed, initiator)
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, recipe.requirements, all_ticks_needed, initiator)
-
-        db.session.add(activity)
 
         actions = self._enhance_actions(recipe.result, user_input)
         activity.result_actions = actions

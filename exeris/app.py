@@ -94,6 +94,10 @@ def create_database():
         activity = models.Activity(scaffolding, "building a hut", {}, {}, 100, models.Character.query.one())
         db.session.add_all([scaffolding_type, scaffolding, activity])
 
+    if not models.ItemType.by_name("item_in_construction"):
+        item_in_construction_type = models.ItemType("item_in_construction", 1, portable=False)
+        db.session.add(item_in_construction_type)
+
     if not models.EntityRecipe.query.count():
         build_menu_category = models.BuildMenuCategory("structures")
         recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category, result_entity=models.ItemType.by_name("signpost"))
