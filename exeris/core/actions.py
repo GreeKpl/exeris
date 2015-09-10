@@ -179,6 +179,15 @@ class RemoveItemAction(ActivityAction):
         self.item.remove(self.gracefully)
 
 
+class RemoveActivityContainerAction(ActivityAction):
+
+    def __init__(self, **injected_args):
+        self.activity = injected_args["activity"]
+
+    def perform_action(self):
+        self.activity.being_in.remove(True)
+
+
 @form_on_setup(item_name=deferred.NameInput)
 class AddNameToItemAction(ActivityAction):
 
@@ -268,7 +277,7 @@ class SingleActivityProgressProcess(ProcessAction):
                 if "skill" in req:
                     self.check_skills(worker, req["skills"].items()[0])
 
-                self.progress_ratio += 1.0
+                self.progress_ratio += 5.0
                 active_workers.append(worker)
 
             if "max_workers" in req:
@@ -595,7 +604,7 @@ class EatAction(ActionOnItem):
 
         self.item.eat(self.executor, self.amount)
 
-        food_item_info = self.item.pyslatize(amount=self.amount, detailed=False)
+        food_item_info = self.item.pyslatize(item_amount=self.amount, detailed=False)
         EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
 
 

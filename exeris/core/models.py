@@ -451,7 +451,7 @@ class Character(Entity):
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))
 
-    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id"), nullable=True)
+    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id", ondelete="SET NULL"), nullable=True)
     activity = sql.orm.relationship("Activity", primaryjoin="Character.activity_id == Activity.id", uselist=False)
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
@@ -974,7 +974,7 @@ class EntityRecipe(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
 
     def __init__(self, name_tag, name_params, requirements, ticks_needed, build_menu_category,
-                 result=None, result_entity=None):
+                 result=None, result_entity=None, activity_container=None):
         self.name_tag = name_tag
         self.name_params = name_params
         self.requirements = requirements
@@ -982,6 +982,7 @@ class EntityRecipe(db.Model):
         self.build_menu_category = build_menu_category
         self.result = result if result else []
         self.result_entity = result_entity
+        self.activity_container = activity_container
 
     name_tag = sql.Column(sql.String)
     name_params = sql.Column(psql.JSON)
@@ -992,6 +993,7 @@ class EntityRecipe(db.Model):
     result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
+    activity_container = sql.Column(psql.JSON, default="entity_specific_item")
 
     build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"))
     build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)

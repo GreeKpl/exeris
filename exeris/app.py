@@ -94,8 +94,12 @@ def create_database():
         activity = models.Activity(scaffolding, "building a hut", {}, {}, 100, models.Character.query.one())
         db.session.add_all([scaffolding_type, scaffolding, activity])
 
-    if not models.ItemType.by_name("item_in_construction"):
-        item_in_construction_type = models.ItemType("item_in_construction", 1, portable=False)
+    if not models.ItemType.by_name("portable_item_in_constr"):
+        item_in_construction_type = models.ItemType("portable_item_in_constr", 1, portable=True)
+        db.session.add(item_in_construction_type)
+
+    if not models.ItemType.by_name("fixed_item_in_constr"):
+        item_in_construction_type = models.ItemType("fixed_item_in_constr", 1, portable=False)
         db.session.add(item_in_construction_type)
 
     if not models.EntityRecipe.query.count():

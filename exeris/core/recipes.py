@@ -22,11 +22,35 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
+        container_type = None
+        if recipe.activity_container == "portable_item":
+            container_type = "portable_item_in_constr"
+        elif recipe.activity_container == "fixed_item":
+            container_type = "fixed_item_in_constr"
+        elif recipe.activity_container == "entity_specific_item":
+            if recipe.result_entity and recipe.result_entity.portable:
+                container_type = "portable_item_in_constr"
+            elif recipe.result_entity:
+                container_type = "fixed_item_in_constr"
+            else:
+                raise ValueError("don't know what entity is going to be created by {}".format(recipe))
+
+        if container_type:
+            container_type = models.ItemType.by_name(container_type)
+            activity_container = models.Item(container_type, being_in, weight=0)
+            db.session.add(activity_container)
+
+            being_in = activity_container  # it should become parent of activity
+
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, recipe.requirements, all_ticks_needed, initiator)
 
         actions = self._enhance_actions(recipe.result, user_input)
         activity.result_actions = actions
         activity.result_actions += self.result_actions_list_from_result_entity(recipe.result_entity, user_input)
+        if container_type:
+            activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
+
+        db.session.add(activity)
 
         return activity
 

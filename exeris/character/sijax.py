@@ -131,7 +131,7 @@ class EntityActionMixin:
         else:
             eat_action = actions.EatAction(g.character, entity, amount)
             eat_action.perform()
-            entity_info = g.pyslate.t("entity_info", **entity.pyslatize(amount=amount))
+            entity_info = g.pyslate.t("entity_info", **entity.pyslatize(item_amount=amount))
 
             obj_response.call("FRAGMENTS.entities.after_eat", [entity_info, amount])
             db.session.commit()
@@ -153,6 +153,7 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
             full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
 
             def has_needed_prop(action):
+                print(">>>", entity, action)
                 return entity.has_property(action.required_property)
 
             possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
@@ -180,11 +181,10 @@ class ActionsPage(ActivityMixin):
         recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
         activity_factory = recipes.ActivityFactory()
-        item_in_construction = models.ItemType.by_name("item_in_construction")
-        activity_holder = models.Item(item_in_construction, g.character.being_in)
-        activity = activity_factory.create_from_recipe(recipe, activity_holder, g.character)
 
-        db.session.add_all([activity_holder, activity])
+        activity = activity_factory.create_from_recipe(recipe, g.character.being_in, g.character)
+
+        db.session.add_all([activity])
         obj_response.call("FRAGMENTS.actions.after_create_activity_from_recipe", [])
         db.session.commit()
 

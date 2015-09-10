@@ -96,4 +96,11 @@ data = {
     "entity_item_in_construction": {
         "en": "item (in construction)",
     },
+    "entity_portable_item_in_constr": {
+        "en": "item (in construction)",
+    },
+    "entity_fixed_item_in_constr": {
+        "en": "item (in construction)",
+    },
+
 }
