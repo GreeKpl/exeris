@@ -5,6 +5,7 @@ __author__ = 'alek'
 
 # property
 class P:
+    HAS_DEPENDENT = "HasDependent"
     EDIBLE = "Edible"
     SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"

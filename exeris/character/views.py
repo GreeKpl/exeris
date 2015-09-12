@@ -1,9 +1,10 @@
 import traceback
 from flask import g, render_template
+import flask
 
 from exeris.character import sijax, character_bp
 from exeris.core import models, main
-
+from exeris.core.graphics import get_map
 
 @character_bp.with_sijax_route('/events')
 def page_events():
@@ -26,7 +27,7 @@ def page_entities():
 
 @character_bp.with_sijax_route('/map')
 def page_map():
-    return "NOTHING"
+    return render_template("map/page_map.html")
 
 
 @character_bp.with_sijax_route('/actions')
@@ -36,3 +37,11 @@ def page_actions():
         return g.sijax.process_request()
 
     return render_template("actions/page_actions.html")
+
+
+@character_bp.route("/map_image")
+def map_image():
+
+    resp = flask.make_response(get_map())
+    resp.content_type = "image/png"
+    return resp

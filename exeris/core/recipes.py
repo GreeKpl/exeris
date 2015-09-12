@@ -2,8 +2,8 @@ import copy
 import math
 
 from exeris.core import models, deferred
-from exeris.core.main import db
-
+from exeris.core.main import db, Types
+from exeris.core.properties_base import P
 
 __author__ = 'alek'
 
@@ -34,10 +34,18 @@ class ActivityFactory:
                 container_type = "fixed_item_in_constr"
             else:
                 raise ValueError("don't know what entity is going to be created by {}".format(recipe))
+        elif recipe.activity_container == "selected_machine":
+            pass  # keep the same being_in
 
         if container_type:
             container_type = models.ItemType.by_name(container_type)
             activity_container = models.Item(container_type, being_in, weight=0)
+            if recipe.result_entity:
+                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
+                                                                           data={"name": recipe.result_entity.name}))
+            else:  # TODO can be needed to be able to read CIA from result_actions
+                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
+                                                                           data={"name": Types.ITEM}))
             db.session.add(activity_container)
 
             being_in = activity_container  # it should become parent of activity

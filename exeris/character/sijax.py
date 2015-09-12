@@ -153,7 +153,6 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
             full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
 
             def has_needed_prop(action):
-                print(">>>", entity, action)
                 return entity.has_property(action.required_property)
 
             possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]

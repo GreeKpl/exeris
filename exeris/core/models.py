@@ -267,7 +267,7 @@ class Entity(db.Model):
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.Column(sql.SmallInteger, nullable=True)
 
-    title = sql.Column(sql.String)
+    title = sql.Column(sql.String, nullable=True)
     properties = sql.orm.relationship("EntityProperty", back_populates="entity")
 
     @hybrid_property
@@ -334,8 +334,8 @@ class Entity(db.Model):
                 raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__, item))
 
     def get_property(self, name):
-        type_property = EntityTypeProperty.query.filter_by(type=self.type, name=name).first()
         props = {}
+        type_property = EntityTypeProperty.query.filter_by(type=self.type, name=name).first()
         if type_property:
             props.update(type_property.data)
 
@@ -603,6 +603,9 @@ class Item(Entity):
         prop = self.get_property(P.VISIBLE_MATERIAL)
         if prop:
             pyslatized["item_material"] = prop
+        prop = self.get_property(P.HAS_DEPENDENT)
+        if prop:
+            pyslatized["item_dependent"] = prop["name"]
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):

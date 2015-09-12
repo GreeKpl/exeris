@@ -36,6 +36,7 @@ def create_pyslate(language, backend=None, **kwargs):
 
         detailed = params.get("detailed", False)
 
+        dependent_text = ""
         number_text = ""
         parts_text = ""
         material_text = ""
@@ -55,6 +56,10 @@ def create_pyslate(language, backend=None, **kwargs):
             item_text, form = helper.translation_and_form("entity_" + item_name + "#u" + helper.get_suffix(tag_name))
         item_text += " "
 
+        if "item_dependent" in params:
+            dependent_text = helper.translation("tp_item_dependent", dependent=params["item_dependent"], item_form=form)
+            dependent_text += " "
+
         if "item_parts" in params:
             parts_text = helper.translation("tp_item_parts", parts=params["item_parts"], item_form=form)
             parts_text += " "
@@ -66,8 +71,13 @@ def create_pyslate(language, backend=None, **kwargs):
             material_text += " "
 
         if params.get("item_damage", 0) > models.Item.DAMAGED_LB:
-            damage_text = helper.translation("tp_item_damaged", item_name=item_text, item_form=form)
-            damage_text += " "
+            if "item_amount" in params:  # it's stackable
+                damage_text = helper.translation("tp_item_rotten", number=params["item_amount"],
+                                                 item_name=item_text, item_form=form)
+                damage_text += " "
+            else:
+                damage_text = helper.translation("tp_item_damaged", item_name=item_text, item_form=form)
+                damage_text += " "
 
         if params.get("item_title", None):
             title_text = helper.translation("tp_item_title", title=params["item_title"])
@@ -75,10 +85,11 @@ def create_pyslate(language, backend=None, **kwargs):
 
         if detailed:
             return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
-                                      amount=number_text, item_name=item_text, parts=parts_text,
-                                      title=title_text, states=states_text).strip()  # TODO such strip is weak
+                                      dependent=dependent_text, amount=number_text, item_name=item_text,
+                                      parts=parts_text, title=title_text,
+                                      states=states_text).strip()  # TODO such strip is weak
         else:
-            return helper.translation("tp_item_info", main_material=material_text,
+            return helper.translation("tp_item_info", dependent=dependent_text, main_material=material_text,
                                       item_name=item_text, parts=parts_text).strip()  # TODO such strip is weak
 
     pyslate.register_function("item_info", func_item_info)

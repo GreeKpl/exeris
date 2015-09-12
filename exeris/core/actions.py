@@ -125,6 +125,7 @@ class CreateItemAction(ActivityAction):
     def perform_action(self):
 
         result_loc = self.activity.being_in.being_in
+
         if self.item_type.portable and self.initiator.being_in == result_loc:  # if being in the same location then go to inventory
             result_loc = self.initiator
 

@@ -28,27 +28,22 @@ class ProductionIntegrationTest(TestCase):
         anvil = Item(anvil_type, rt, weight=100)
         db.session.add(anvil)
 
-        db.session.flush()
-
         # setup recipe
-
-        recipe = EntityRecipe("Producing an axe", {}, {"carrots": 3}, 2, tools_category, result_entity=axe_type)
+        recipe = EntityRecipe("Producing an axe", {}, {}, 1, tools_category, result_entity=axe_type,
+                              activity_container="selected_machine")
         db.session.add(recipe)
 
         factory = ActivityFactory()
         activity = factory.create_from_recipe(recipe, anvil, worker)
 
         worker.activity = activity
-
-        db.session.add(activity)
+        db.session.flush()
 
         process = SingleActivityProgressProcess(activity)
-        process.perform()
         process.perform()
 
         new_axe = Item.query.filter_by(type=axe_type).one()
         self.assertEqual(worker, new_axe.being_in)
-
 
     tearDown = util.tear_down_rollback
 

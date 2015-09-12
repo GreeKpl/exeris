@@ -149,6 +149,12 @@ data = {
         "en": "damaged",
         "pl": "uszkodzon%{item_form:m?y|f?a|n?e}",
     },
+    "tp_item_rotting": {
+        "en": "rotting",
+    },
+    "tp_item_dependent": {
+        "en": "${entity_%{dependent}}",
+    },
     "entity_character": {
         "en": "human",
         "pl": "człowiek",

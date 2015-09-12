@@ -1,3 +1,6 @@
+import logging
+import sys
+
 __author__ = 'aleksander chrabąszcz'
 
 from flask import Flask
@@ -21,6 +24,7 @@ class Errors:
 
 
 class Types:
+    ITEM = "item"  # generic item
     SEA = "sea"
     DOOR = "door"
     OUTSIDE = "outside"
@@ -40,8 +44,15 @@ class Events:
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
     global app
+
     app = Flask("exeris")
     app.config.from_object(config_object_module)
+
+    if app.config["DEBUG"]:
+        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+    else:
+        pass  # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
     database.init_app(app)
     return app
 

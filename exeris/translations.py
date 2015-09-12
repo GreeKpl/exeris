@@ -66,10 +66,13 @@ data = {
         "en": "Whisper to ${character_info}",
     },
     "tp_item_info": {
-        "en": "%{main_material}%{item_name}%{parts}",
+        "en": "%{main_material}%{dependent}%{item_name}%{parts}",
+    },
+    "entity_item": {
+        "en": "item",
     },
     "tp_detailed_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{states}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{dependent}%{item_name}%{title}%{states}%{parts}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",
@@ -77,6 +80,12 @@ data = {
     },
     "tp_item_main_material": {
         "en": "${entity_%{material_name}_adj#%{item_form}}",
+    },
+    "tp_item_rotting": {
+        "en": "rotting",
+    },
+    "tp_item_dependent": {
+        "en": "${entity_%{dependent}}",
     },
     "entity_hammer": {
         "en": "hammer",
@@ -93,14 +102,10 @@ data = {
     "entity_signpost": {
         "en": "signpost",
     },
-    "entity_item_in_construction": {
-        "en": "item (in construction)",
-    },
     "entity_portable_item_in_constr": {
-        "en": "item (in construction)",
+        "en": "in construction",
     },
     "entity_fixed_item_in_constr": {
-        "en": "item (in construction)",
+        "en": "in construction",
     },
-
 }

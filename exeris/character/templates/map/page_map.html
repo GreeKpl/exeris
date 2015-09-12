@@ -1,0 +1,7 @@
+{% extends "character_base.html" %}
+{% block title %} {{ t("title_page_events") }} {% endblock %}
+{% block content %}
+    {% include "character_top_bar.html" %}
+
+    <img src="{{ url_for("character.map_image", character_id=g.character.id) }}">
+{% endblock %}
