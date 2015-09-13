@@ -12,6 +12,7 @@ class ActionRecord:
 
 ACTIONS_ON_GROUND = [
     ActionRecord("eat", "image", P.EDIBLE, "eat"),
+    ActionRecord("enter", "image", P.ENTERABLE, "move_to_location"),
 ]
 
 TOOLBAR_ACTIONS = [

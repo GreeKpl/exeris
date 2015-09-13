@@ -7,6 +7,7 @@ __author__ = 'alek'
 class P:
     HAS_DEPENDENT = "HasDependent"
     EDIBLE = "Edible"
+    ENTERABLE = "Enterable"
     SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"
     VISIBLE_MATERIAL = "VisibleMaterial"

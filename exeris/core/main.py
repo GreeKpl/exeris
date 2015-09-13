@@ -1,8 +1,6 @@
 import logging
 import sys
 
-__author__ = 'aleksander chrabąszcz'
-
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
@@ -32,6 +30,7 @@ class Types:
 
 
 class Events:
+    MOVE = "event_move"
     EAT = "event_eat"
     SAY_ALOUD = "event_say_aloud"
     SPEAK_TO_SOMEBODY = "event_speak_to_somebody"

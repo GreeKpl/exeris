@@ -155,6 +155,8 @@ class CreateItemAction(ActivityAction):
                         visible_material_property[place_to_show] = real_used_type_name
             new_item.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
+        return new_item
+
     def extract_used_material(self, material_type_name, new_item):
         for req_material_name, requirement_params in self.activity.requirements.get("input",
                 {}).items():  # forall requirements
@@ -189,12 +191,39 @@ class RemoveActivityContainerAction(ActivityAction):
         self.activity.being_in.remove(True)
 
 
-@form_on_setup(item_name=deferred.NameInput)
-class AddNameToItemAction(ActivityAction):
+class CreateLocationAction(ActivityAction):
 
-    @convert(item=models.Item)
-    def __init__(self, *, item, item_name):
-        pass
+    @convert(location_type=models.LocationType)
+    def __init__(self, *, location_type, properties, **injected_args):
+        self.location_type = location_type
+        self.activity = injected_args["activity"]
+        self.initiator = injected_args["initiator"]
+        self.kwargs = injected_args
+        self.properties = properties
+
+    def perform_action(self):
+        result_loc = self.activity.being_in.being_in
+
+        new_location = models.Location(result_loc, self.location_type)
+
+        for prop_name, prop_value in self.properties.items():
+            new_location.properties.append(models.EntityProperty(prop_name, prop_value))
+
+        db.session.add(new_location)
+
+        return new_location
+
+
+@form_on_setup(entity_name=deferred.NameInput)
+class AddNameToEntityAction(ActivityAction):
+
+    @convert(entity=models.Entity)
+    def __init__(self, *, entity, entity_name):
+        self.entity = entity
+        self.entity_name = entity_name
+
+    def perform_action(self):
+        self.entity.title = self.entity_name
 
 ##############################
 #      SCHEDULER ACTIONS     #
@@ -658,3 +687,28 @@ class JoinActivityAction(ActionOnActivity):
 
         self.executor.activity = self.activity
 
+
+class MoveToLocationAction(ActionOnLocation):
+
+    def __init__(self, executor, location, passage):
+        super().__init__(executor, location, rng=SameLocationRange())
+        self.passage = passage
+
+    def perform_action(self):
+
+        # TODO check if passage is locked
+
+        if not self.executor.has_access(self.passage, rng=general.SameLocationRange()):
+            raise main.EntityTooFarAwayException(entity=self.location)
+
+        from_loc = self.executor.being_in
+        if not self.passage.between(from_loc, self.location):
+            raise main.EntityTooFarAwayException(entity=self.location)  # TODO Better event?
+
+        EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
+                                                             "destination": self.location.pyslatize()}}, doer=self.executor)
+
+        self.executor.being_in = self.location
+
+        EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
+                                                             "destination": self.location.pyslatize()}}, doer=self.executor)

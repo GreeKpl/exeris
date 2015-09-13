@@ -906,6 +906,11 @@ class Passage(Entity):
 
     @hybrid_method
     def between(self, first_loc, second_loc):
+        return (self.left_location == first_loc and self.right_location == second_loc) or \
+               (self.right_location == first_loc and self.left_location == second_loc)
+
+    @between.expression
+    def between(self, first_loc, second_loc):
         return or_((self.left_location == first_loc) & (self.right_location == second_loc),
                    (self.right_location == first_loc) & (self.left_location == second_loc))
 

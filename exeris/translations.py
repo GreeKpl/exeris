@@ -41,6 +41,12 @@ data = {
     "event_eat_doer": {
         "en": "You eat ${food:entity_info}",
     },
+    "event_move_doer": {
+        "en": "You move from ${from:location_info} to ${destination:location_info}",
+    },
+    "event_move_observer": {
+        "en": "You see ${doer:character_info} move from ${from:location_info} to ${destination:location_info}",
+    },
     "event_eat_observer": {
         "en": "You see ${doer:entity_info} eat ${food:entity_info}",
     },

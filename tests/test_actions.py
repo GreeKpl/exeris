@@ -5,7 +5,7 @@ from shapely.geometry import Point
 
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction, \
-    SayAloudAction
+    SayAloudAction, MoveToLocationAction, CreateLocationAction
 from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core.general import GameDate
@@ -152,6 +152,23 @@ class ActionsTest(TestCase):
 
         visible_material_prop = EntityProperty.query.filter_by(entity=new_key, name=P.VISIBLE_MATERIAL).one()
         self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
+
+    def test_create_location_action(self):
+        rl = RootLocation(Point(1, 1), False, 33)
+        building_type = LocationType("building", 500)
+        scaffolding_type = ItemType("scaffolding", 200, portable=False)
+        scaffolding = Item(scaffolding_type, rl)
+
+        initiator = util.create_character("char", rl, util.create_player("Hyhy"))
+        activity = Activity(scaffolding, "building_building", {}, {}, 1, initiator)
+        db.session.add_all([building_type, scaffolding_type, scaffolding, rl, initiator, activity])
+
+        action = CreateLocationAction(location_type=building_type, properties={P.ENTERABLE: {}},  activity=activity, initiator=initiator)
+        action.perform()
+
+        new_building = Location.query.filter_by(type=building_type).one()
+        passage = Passage.query.filter(Passage.between(rl, new_building)).one()
+        self.assertTrue(new_building.has_property(P.ENTERABLE))
 
     def test_drop_item_action_on_hammer(self):
         util.initialize_date()
@@ -445,6 +462,27 @@ class ActionsTest(TestCase):
         event_say_observer = Event.query.filter_by(type_name=Events.SAY_ALOUD + "_observer").one()
         self.assertEqual({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc, obs_near_loc], event_say_observer.observers)
+
+    def test_enter_building_there_and_back_again_success(self):
+        util.initialize_date()
+
+        building_type = LocationType("building", 200)
+        rl = RootLocation(Point(1, 1), False, 222)
+        building = Location(rl, building_type, title="Small hut")
+
+        char = util.create_character("John", rl, util.create_player("Eddy"))
+
+        db.session.add_all([rl, building])
+
+        passage = Passage.query.filter(Passage.between(rl, building)).one()
+        enter_loc_action = MoveToLocationAction(char, building, passage)
+        enter_loc_action.perform()
+
+        self.assertEqual(building, char.being_in)
+
+        enter_loc_action = MoveToLocationAction(char, rl, passage)
+        enter_loc_action.perform()
+        self.assertEqual(rl, char.being_in)
 
     tearDown = util.tear_down_rollback
 
