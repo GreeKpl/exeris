@@ -34,12 +34,34 @@ FRAGMENTS.entities = (function($) {
         after_move_to_location: function(loc_id) {
             $.publish("location_changed");
             $.publish("entities:refresh_list");
+        },
+        after_open_readable_contents: function(modal_dialog) {
+            $("#readable_modal, #edit_readable_modal").remove();
+            $(document.body).append(modal_dialog);
+            $("#readable_modal").modal();
+        },
+        after_edit_readable: function(entity_d) {
+            alert("text updated!");
         }
     }
 })(jQuery);
 
 $(function () {
     $.publish("entities:refresh_list");
+});
+
+$(document).on("click", "#readable_edit", function(event) {
+    var entity_id = $(event.target).data("entity");
+
+    $("#edit_readable_modal").modal();
+});
+
+$(document).on("click", "#confirm_edit_readable", function(event) {
+    var new_text = $("#edit_readable_text").val();
+    var entity_id = $(event.target).data("entity");
+    Sijax.request("edit_readable", [entity_id, new_text]);
+
+    $("#edit_readable_modal, #readable_modal").modal("hide");
 });
 
 $(document).on("click", ".entity-action", function (event) {

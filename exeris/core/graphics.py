@@ -21,7 +21,7 @@ def get_map():
     for t in terrains:
         coords = t.terrain.exterior.coords[:-1]
         coords = [(c * MAP_PER_PX, d * MAP_PER_PX) for c, d in coords]
-        print(coords, COLORS[t.type_name])
+
         draw.polygon(coords, fill=COLORS[t.type_name])
         # im.paste(black, (int(pos[0] * MAP_PER_PX), int(pos[1] * MAP_PER_PX)))
 

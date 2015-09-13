@@ -132,6 +132,19 @@ def create_database():
 
         db.session.add_all([t1, t2, t3, road])
 
+    if not models.ItemType.by_name("tablet"):
+        build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
+        tablet_type = models.ItemType("tablet", 100, portable=False)
+
+        tablet_production_result = [["exeris.core.actions.CreateItemAction",
+                                     {"item_type": tablet_type.name,
+                                      "properties": {P.VISIBLE_MATERIAL: {"main": "clay"}, P.READABLE: {"title": "", "text": ""}},
+                                      "used_materials": "all"}]]
+        tablet_recipe = models.EntityRecipe("carving_tablet", {}, {}, 2, build_menu_category,
+                                            result=tablet_production_result,
+                                            activity_container="portable_item")
+        db.session.add_all([tablet_type, tablet_recipe])
+
     outside = models.LocationType.by_name(Types.OUTSIDE)
     if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.ENTERABLE).count():
         outside.properties.append(models.EntityTypeProperty(P.ENTERABLE))

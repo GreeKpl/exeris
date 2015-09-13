@@ -120,4 +120,10 @@ data = {
     "entity_fixed_item_in_constr": {
         "en": "in construction",
     },
+    "entity_tablet": {
+        "en": "tablet",
+    },
+    "entity_clay_adj": {
+        "en": "clay",
+    }
 }

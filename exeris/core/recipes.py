@@ -45,18 +45,27 @@ class ActivityFactory:
             if recipe.result_entity:
                 activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
                                                                            data={"name": recipe.result_entity.name}))
-            else:  # TODO can be needed to be able to read CIA from result_actions
+            else:
+                first_action = recipe.result[0] if recipe.result else ["", {}]
+                entity_type_name = Types.ITEM
+                if first_action[0] == "exeris.core.actions.CreateItemAction":
+                    entity_type_name = first_action[1]["item_type"]
+                elif first_action[0] == "exeris.core.actions.CreateLocationAction":
+                    entity_type_name = first_action[1]["location_type"]
                 activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
-                                                                           data={"name": Types.ITEM}))
+                                                                           data={"name": entity_type_name}))
             db.session.add(activity_container)
 
             being_in = activity_container  # it should become parent of activity
 
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, recipe.requirements, all_ticks_needed, initiator)
-
         actions = self._enhance_actions(recipe.result, user_input)
-        activity.result_actions = actions
-        activity.result_actions += self.result_actions_list_from_result_entity(recipe.result_entity, user_input)
+
+        # entity_result is always the first action, because additional actions can often be some modifiers of this CIA
+        activity.result_actions = self.result_actions_list_from_result_entity(recipe.result_entity, user_input)
+
+        activity.result_actions += actions
+
         if container_type:
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
 

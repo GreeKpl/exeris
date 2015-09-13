@@ -5,6 +5,7 @@ __author__ = 'alek'
 
 # property
 class P:
+    READABLE = "Readable"
     HAS_DEPENDENT = "HasDependent"
     EDIBLE = "Edible"
     ENTERABLE = "Enterable"

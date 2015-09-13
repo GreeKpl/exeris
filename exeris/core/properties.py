@@ -1,4 +1,6 @@
+import copy
 import statistics
+import markdown
 from exeris.core import models
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, property_method, __registry, P
@@ -46,9 +48,7 @@ class SkillsPropertyType(PropertyType):
 
     @property_method
     def alter_skill_by(self, skill_name, change):
-        skills_prop = models.EntityProperty.query.filter_by(name=P.SKILLS, entity=self).first()
-
-        assert skills_prop  # it must be property of entity
+        skills_prop = models.EntityProperty.query.filter_by(name=P.SKILLS, entity=self).one()
 
         skill_val = skills_prop.data.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
         skills_prop.data[skill_name] = skill_val + change
@@ -74,6 +74,37 @@ class EdiblePropertyType(PropertyType):
 
         if edible_prop.get("hunger"):
             eater.hunger += amount * edible_prop.get("hunger")
+
+
+@property_class
+class ReadablePropertyType(PropertyType):
+    __property__ = P.READABLE
+
+    @property_method
+    def read_title(self):
+        return self.get_property(P.READABLE).get("title", "title")
+
+    @property_method
+    def read_contents(self):
+        md = markdown.Markdown()
+        return md.convert(self.read_raw_contents())
+
+    @property_method
+    def read_raw_contents(self):
+        return self.get_property(P.READABLE).get("text", "empty")
+
+    @property_method
+    def alter_contents(self, title, text):
+
+        readable_prop = models.EntityProperty.query.filter_by(entity=self, name=P.READABLE).one()
+        text_data = readable_prop.data
+
+        text_data["title"] = title
+        text_data["text"] = text
+
+        models.EntityProperty.query.filter_by(entity=self, name=P.READABLE).update({"data": text_data})
+        db.session.flush()
+
 
 
 print("metody: ")

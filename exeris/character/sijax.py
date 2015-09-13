@@ -136,6 +136,27 @@ class EntityActionMixin:
             obj_response.call("FRAGMENTS.entities.after_eat", [entity_info, amount])
             db.session.commit()
 
+    @staticmethod
+    def open_readable_contents(obj_response, entity_id):
+
+        entity = models.Entity.by_id(entity_id)
+        title = entity.read_title()
+        contents = entity.read_contents()
+        raw_contents = entity.read_raw_contents()
+        modal = render_template("entities/modal_readable.html", title=title, contents=contents, entity_id=entity_id,
+                                raw_contents=raw_contents)
+
+        obj_response.call("FRAGMENTS.entities.after_open_readable_contents", [modal])
+
+    @staticmethod
+    def edit_readable(obj_response, entity_id, text):
+
+        entity = models.Entity.by_id(entity_id)
+        entity.alter_contents("title", text)
+
+        obj_response.call("FRAGMENTS.entities.after_edit_readable", [entity_id])
+        db.session.commit()
+
 
 class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
