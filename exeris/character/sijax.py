@@ -144,27 +144,45 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         location = g.character.being_in
         entities = models.Entity.query.filter(models.Entity.is_in(location)).all()
 
-        neighbours = location.neighbours
+        passages_to_neighbours = location.passages_to_neighbours
 
-        entities += neighbours
+        def get_entity_flat_list(entities):
+            entity_entries = []
+            for entity in entities:
+                full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
 
-        entity_entries = []
-        for entity in entities:
-            full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
+                def has_needed_prop(action):
+                    return entity.has_property(action.required_property)
 
-            def has_needed_prop(action):
-                return entity.has_property(action.required_property)
+                possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
 
-            possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
+                # TODO translation
 
-            # TODO translation
+                activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
 
-            activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
+                entity_entries += [render_template("entities/item_info.html", full_name=full_name, entity_id=entity.id,
+                                                   actions=possible_actions, activity=activity)]
+            return entity_entries
 
-            entity_entries += [render_template("entities/item_info.html", full_name=full_name, entity_id=entity.id,
-                                               actions=possible_actions, activity=activity)]
-        print(entity_entries)
+        entity_entries = get_entity_flat_list(entities)
+
+        for passage_to_neighbour in passages_to_neighbours:
+            passage_entry = get_entity_flat_list([passage_to_neighbour.other_side])
+            other_side_entries = models.Entity.query.filter(models.Entity.is_in(passage_to_neighbour.other_side)).all()
+            entity_entries += [passage_entry + get_entity_flat_list(other_side_entries)]
+
         obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])
+
+    @staticmethod
+    def move_to_location(obj_response, to_loc_id):
+        loc = models.Location.by_id(to_loc_id)
+        passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, loc)).one()
+
+        action = actions.MoveToLocationAction(g.character, loc, passage)
+        action.perform()
+
+        db.session.commit()
+        obj_response.call("FRAGMENTS.entities.after_move_to_location", [loc.id])
 
 
 class ActionsPage(ActivityMixin):

@@ -105,8 +105,14 @@ data = {
     "entity_scaffolding": {
         "en": "scaffolding",
     },
+    "entity_hut": {
+        "en": "hut",
+    },
     "entity_signpost": {
         "en": "signpost",
+    },
+    "terrain_grass": {
+        "en": "grassland",
     },
     "entity_portable_item_in_constr": {
         "en": "in construction",

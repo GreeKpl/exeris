@@ -9,7 +9,7 @@ from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 import psycopg2
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 import flask_sijax
 from wtforms import StringField, SelectField
 
@@ -106,6 +106,35 @@ def create_database():
         build_menu_category = models.BuildMenuCategory("structures")
         recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category, result_entity=models.ItemType.by_name("signpost"))
         db.session.add_all([build_menu_category, recipe])
+
+    if not models.LocationType.by_name("hut"):
+        build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
+        hut_type = models.LocationType("hut", 500)
+        hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        recipe = models.EntityRecipe("building_hut", {}, {}, 3, build_menu_category, result_entity=hut_type)
+        db.session.add_all([hut_type, recipe])
+
+    if not models.TerrainArea.query.count():
+        tt1 = models.TerrainType("grass")
+        tt2 = models.TerrainType("water")
+        road_type = models.TerrainType("road")
+        db.session.add_all([tt1, tt2])
+
+        poly1 = Polygon([(0, 0), (0, 2), (1, 2), (3, 1), (0, 0)])
+        poly2 = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
+        poly3 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
+        poly4 = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
+
+        t1 = models.TerrainArea(poly1, tt1)
+        t2 = models.TerrainArea(poly2, tt2, priority=0)
+        t3 = models.TerrainArea(poly3, tt1)
+        road = models.TerrainArea(poly4, road_type)
+
+        db.session.add_all([t1, t2, t3, road])
+
+    outside = models.LocationType.by_name(Types.OUTSIDE)
+    if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.ENTERABLE).count():
+        outside.properties.append(models.EntityTypeProperty(P.ENTERABLE))
 
     from exeris.translations import data
     for tag_key in data:

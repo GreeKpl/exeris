@@ -194,8 +194,9 @@ class RemoveActivityContainerAction(ActivityAction):
 class CreateLocationAction(ActivityAction):
 
     @convert(location_type=models.LocationType)
-    def __init__(self, *, location_type, properties, **injected_args):
+    def __init__(self, *, location_type, used_materials, properties, **injected_args):
         self.location_type = location_type
+        self.used_materials = used_materials
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
         self.kwargs = injected_args
@@ -208,6 +209,11 @@ class CreateLocationAction(ActivityAction):
 
         for prop_name, prop_value in self.properties.items():
             new_location.properties.append(models.EntityProperty(prop_name, prop_value))
+
+        if self.used_materials == "all":  # all the materials used for an activity were set to build this item
+            for material in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
+                material.used_for = new_location
+        # TODO what if used_materials is not all?
 
         db.session.add(new_location)
 
@@ -709,6 +715,6 @@ class MoveToLocationAction(ActionOnLocation):
                                                              "destination": self.location.pyslatize()}}, doer=self.executor)
 
         self.executor.being_in = self.location
-
-        EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
-                                                             "destination": self.location.pyslatize()}}, doer=self.executor)
+        EventCreator.create(rng=SameLocationRange(), tag_observer=Events.MOVE + "_observer",
+                            params={"groups": {"from": from_loc.pyslatize(), "destination": self.location.pyslatize()}},
+                            doer=self.executor)

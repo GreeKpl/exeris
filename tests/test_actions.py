@@ -158,17 +158,24 @@ class ActionsTest(TestCase):
         building_type = LocationType("building", 500)
         scaffolding_type = ItemType("scaffolding", 200, portable=False)
         scaffolding = Item(scaffolding_type, rl)
+        stone_type = ItemType("stone", 10, stackable=True)
 
         initiator = util.create_character("char", rl, util.create_player("Hyhy"))
         activity = Activity(scaffolding, "building_building", {}, {}, 1, initiator)
-        db.session.add_all([building_type, scaffolding_type, scaffolding, rl, initiator, activity])
+        stone = Item(stone_type, activity, amount=20, role_being_in=False)
 
-        action = CreateLocationAction(location_type=building_type, properties={P.ENTERABLE: {}},  activity=activity, initiator=initiator)
+        db.session.add_all([building_type, scaffolding_type, scaffolding, rl, initiator, activity, stone_type, stone])
+
+        action = CreateLocationAction(location_type=building_type, used_materials="all",
+                                      properties={P.ENTERABLE: {}},  activity=activity, initiator=initiator)
         action.perform()
 
         new_building = Location.query.filter_by(type=building_type).one()
         passage = Passage.query.filter(Passage.between(rl, new_building)).one()
         self.assertTrue(new_building.has_property(P.ENTERABLE))
+
+        used_stone = Item.query.filter(Item.is_used_for(new_building)).one()
+        self.assertEqual(20, used_stone.amount)
 
     def test_drop_item_action_on_hammer(self):
         util.initialize_date()

@@ -28,7 +28,9 @@ class ActivityFactory:
         elif recipe.activity_container == "fixed_item":
             container_type = "fixed_item_in_constr"
         elif recipe.activity_container == "entity_specific_item":
-            if recipe.result_entity and recipe.result_entity.portable:
+            if isinstance(recipe.result_entity, models.LocationType):
+                container_type = "fixed_item_in_constr"
+            elif recipe.result_entity and recipe.result_entity.portable:
                 container_type = "portable_item_in_constr"
             elif recipe.result_entity:
                 container_type = "fixed_item_in_constr"
@@ -66,11 +68,11 @@ class ActivityFactory:
     def _enhance_actions(cls, result, user_input):
         actions = []
         for action in copy.deepcopy(result):
-            action_object = deferred.object_import(action[0])
+            action_class = deferred.object_import(action[0])  # get result class by name
 
-            if hasattr(action_object, "_form_inputs"):
-                for in_name, in_data in action_object._form_inputs.items():
-                    action[1][in_name] = user_input[in_name]
+            if hasattr(action_class, "_form_inputs"):
+                for in_name, in_data in action_class._form_inputs.items():
+                    action[1][in_name] = user_input[in_name]  # inject user defined form input to result dict
             actions.append(action)
         return actions
 
@@ -78,7 +80,11 @@ class ActivityFactory:
     def result_actions_list_from_result_entity(cls, entity_type, user_input):
         if entity_type is None:
             return []
-        elif type(entity_type) is models.ItemType:
+        elif isinstance(entity_type, models.ItemType):
             standard_actions = [["exeris.core.actions.CreateItemAction",
                                  {"item_type": entity_type.name, "properties": {}, "used_materials": "all"}]]
+            return cls._enhance_actions(standard_actions, user_input)
+        elif isinstance(entity_type, models.LocationType):
+            standard_actions = [["exeris.core.actions.CreateLocationAction",
+                                 {"location_type": entity_type.name, "properties": {}, "used_materials": "all"}]]
             return cls._enhance_actions(standard_actions, user_input)
