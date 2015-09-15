@@ -24,10 +24,10 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy', 'flask', 'flask-bootstrap', 'flask-sijax', 'flask-sqlalchemy', 'flask-security', 'geoalchemy2', 'psycopg2', 'shapely', 'pillow',
-                      'wtforms'],
+    install_requires=['sqlalchemy', 'flask', 'flask-bootstrap', 'flask-bower', 'flask-sijax', 'flask-sqlalchemy',
+                      'flask-security', 'geoalchemy2', 'psycopg2', 'shapely', 'pillow', 'markdown', 'wtforms'],
 
-    extras_require = {
+    extras_require={
         'dev': ['check-manifest'],
         'test': ['coverage', 'flask-testing'],
     },
