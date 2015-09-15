@@ -5,7 +5,6 @@ import traceback
 from flask import g
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
-from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 import psycopg2
@@ -135,10 +134,12 @@ def create_database():
     if not models.ItemType.by_name("tablet"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=False)
+        tablet_type.properties.append(models.EntityTypeProperty(P.READABLE,
+                                      data={"max_length": 300, "allowed_formats": [models.TextContent.FORMAT_MD]}))
 
         tablet_production_result = [["exeris.core.actions.CreateItemAction",
                                      {"item_type": tablet_type.name,
-                                      "properties": {P.VISIBLE_MATERIAL: {"main": "clay"}, P.READABLE: {"title": "", "text": ""}},
+                                      "properties": {P.VISIBLE_MATERIAL: {"main": "clay"}},
                                       "used_materials": "all"}]]
         tablet_recipe = models.EntityRecipe("carving_tablet", {}, {}, 2, build_menu_category,
                                             result=tablet_production_result,

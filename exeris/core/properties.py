@@ -81,8 +81,17 @@ class ReadablePropertyType(PropertyType):
     __property__ = P.READABLE
 
     @property_method
+    def _fetch_text_content(self):
+        text_content = models.TextContent.query.filter_by(entity=self).first()
+        if not text_content:
+            text_content = models.TextContent(entity=self)
+            db.session.add(text_content)
+        return text_content
+
+    @property_method
     def read_title(self):
-        return self.get_property(P.READABLE).get("title", "title")
+        text_content = self._fetch_text_content()
+        return text_content.title
 
     @property_method
     def read_contents(self):
@@ -91,20 +100,18 @@ class ReadablePropertyType(PropertyType):
 
     @property_method
     def read_raw_contents(self):
-        return self.get_property(P.READABLE).get("text", "empty")
+        text_content = self._fetch_text_content()
+        return text_content.md_text or ""
 
     @property_method
-    def alter_contents(self, title, text):
-
-        readable_prop = models.EntityProperty.query.filter_by(entity=self, name=P.READABLE).one()
-        text_data = readable_prop.data
-
-        text_data["title"] = title
-        text_data["text"] = text
-
-        models.EntityProperty.query.filter_by(entity=self, name=P.READABLE).update({"data": text_data})
-        db.session.flush()
-
+    def alter_contents(self, title, text, format):
+        text_content = self._fetch_text_content()
+        text_content.title = title
+        text_content.format = format
+        if format == models.TextContent.FORMAT_MD:
+            text_content.md_text = text
+        else:
+            text_content.html = text
 
 
 print("metody: ")

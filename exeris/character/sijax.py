@@ -152,7 +152,7 @@ class EntityActionMixin:
     def edit_readable(obj_response, entity_id, text):
 
         entity = models.Entity.by_id(entity_id)
-        entity.alter_contents("title", text)
+        entity.alter_contents("title", text, models.TextContent.FORMAT_MD)
 
         obj_response.call("FRAGMENTS.entities.after_edit_readable", [entity_id])
         db.session.commit()

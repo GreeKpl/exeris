@@ -18,6 +18,7 @@ class Config:
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False
     SECURITY_LOGIN_WITHOUT_CONFIRMATION = True
+    SECURITY_DEFAULT_REMEMBER_ME = True
 
 
 class ProductionConfig(Config):

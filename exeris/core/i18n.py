@@ -9,7 +9,7 @@ def create_pyslate(language, backend=None, **kwargs):
 
     def htmlize(f):
         def g(helper, tag_name, params):
-            print(params)
+
             result_text = f(helper, tag_name, params)
             if not params.get("html", False):
                 return result_text

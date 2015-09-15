@@ -1,4 +1,3 @@
-import copy
 import types
 import collections
 import datetime
@@ -890,6 +889,21 @@ class RootLocation(Location):
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
     }
+
+
+class TextContent(db.Model):
+    __tablename__ = "text_contents"
+
+    FORMAT_MD = "MD"
+    FORMAT_HTML = "HTML"
+
+    entity_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    entity = sql.orm.relationship(Entity, uselist=False)
+
+    title = sql.Column(sql.String)
+    md_text = sql.Column(sql.String)
+    html_text = sql.Column(sql.String)
+    format = sql.Column(sql.String(4))
 
 
 class Passage(Entity):
