@@ -1,6 +1,6 @@
 <nav class="navbar navbar-default navbar-fixed-top">
     <div class="navbar-inner">
-        <div class="row">
+        <div>
             <a href="{{ url_for("player.page_player") }}" class="btn btn-default navbar-btn">Community</a>
             {% for other_character in g.player.alive_characters %}
             <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
