@@ -3,8 +3,6 @@ from pyslate.pyslate import Pyslate
 from exeris.core import models
 
 
-
-
 def create_pyslate(language, backend=None, **kwargs):
 
     def htmlize(f):
@@ -15,7 +13,8 @@ def create_pyslate(language, backend=None, **kwargs):
                 return result_text
             entity_type_name = params["entity_type"]
             entity_id = params.get(entity_type_name + "_id", 0)
-            return '''<span class="entity {} id_{}">{}</span>'''.format(entity_type_name, entity_id, result_text)
+            from exeris.app import app
+            return '''<span class="entity {} id_{}">{}</span>'''.format(entity_type_name, app.encode(entity_id), result_text)
 
         return g
 

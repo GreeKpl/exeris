@@ -48,6 +48,22 @@ def with_sijax_route(*args, **kwargs):
         return flask_fun(login_required(g))
     return dec
 
+
+def encode(uid):
+    if g.character:
+        return str(uid + 1000)
+    return str(uid)
+
+
+def decode(encoded_id):
+    if g.character:
+        return int(encoded_id) - 1000
+    return int(encoded_id)
+
+
+app.encode = encode
+app.decode = decode
+
 from exeris.outer import outer_bp
 from exeris.player import player_bp
 from exeris.character import character_bp, character_static
@@ -221,3 +237,6 @@ app.register_blueprint(character_bp)
 app.register_blueprint(character_static)
 
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
+app.jinja_env.globals.update(encode=encode)
+app.jinja_env.globals.update(decode=decode)
+

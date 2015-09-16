@@ -3,24 +3,28 @@ import time
 from flask import g, render_template
 
 from exeris.core import models, actions, accessible_actions, recipes
-from exeris.core.main import db
+from exeris.core.main import db, app
 
 
 class GlobalMixin:
         @staticmethod
         def rename_entity(obj_response, character_id, new_name):
+            character_id = app.decode(character_id)
+
             entity_to_rename = models.Entity.by_id(character_id)
             entity_to_rename.set_dynamic_name(g.character, new_name)
 
-            obj_response.call("FRAGMENTS.character.after_rename_entity", [character_id])
+            obj_response.call("FRAGMENTS.character.after_rename_entity", [app.encode(character_id)])
             db.session.commit()
 
         @staticmethod
         def get_entity_tag(obj_response, entity_id):
+            entity_id = app.decode(entity_id)
+
             entity = models.Entity.by_id(entity_id)
             text = g.pyslate.t("entity_info", html=True, **entity.pyslatize())
 
-            obj_response.call("FRAGMENTS.character.after_get_entity_tag", [entity_id, text])
+            obj_response.call("FRAGMENTS.character.after_get_entity_tag", [app.encode(entity_id), text])
 
 
 class SpeakingMixin:
@@ -29,6 +33,7 @@ class SpeakingMixin:
         def speaking_form_refresh(obj_response, message_type, receiver=None):
 
             if receiver:
+                receiver = app.decode(receiver)
                 receiver = models.Character.by_id(receiver)
 
             rendered = render_template("events/speaking.html", message_type=message_type, receiver=receiver)
@@ -46,6 +51,7 @@ class SpeakingMixin:
 
         @staticmethod
         def say_to_somebody(obj_response, receiver_id, message):
+            receiver_id = app.decode(receiver_id)
             receiver = models.Character.by_id(receiver_id)
 
             action = actions.SpeakToSomebody(g.character, receiver, message)
@@ -56,6 +62,7 @@ class SpeakingMixin:
 
         @staticmethod
         def whisper(obj_response, receiver_id, message):
+            receiver_id = app.decode(receiver_id)
             receiver = models.Character.by_id(receiver_id)
 
             action = actions.WhisperToSomebody(g.character, receiver, message)
@@ -82,6 +89,7 @@ class ActivityMixin:
 
     @staticmethod
     def join_activity(obj_response, activity_id):
+        activity_id = app.decode(activity_id)
 
         activity = models.Activity.by_id(activity_id)
         action = actions.JoinActivityAction(g.character, activity)
@@ -125,9 +133,11 @@ class EntityActionMixin:
 
     @staticmethod
     def eat(obj_response, entity_id, amount=None):
+        entity_id = app.decode(entity_id)
         entity = models.Item.by_id(entity_id)
+
         if not amount:
-            obj_response.call("FRAGMENTS.entities.before_eat", [entity_id, entity.get_max_edible(g.character)])
+            obj_response.call("FRAGMENTS.entities.before_eat", [app.encode(entity_id), entity.get_max_edible(g.character)])
         else:
             eat_action = actions.EatAction(g.character, entity, amount)
             eat_action.perform()
@@ -138,8 +148,9 @@ class EntityActionMixin:
 
     @staticmethod
     def open_readable_contents(obj_response, entity_id):
-
+        entity_id = app.decode(entity_id)
         entity = models.Entity.by_id(entity_id)
+
         title = entity.read_title()
         contents = entity.read_contents()
         raw_contents = entity.read_raw_contents()
@@ -150,11 +161,12 @@ class EntityActionMixin:
 
     @staticmethod
     def edit_readable(obj_response, entity_id, text):
-
+        entity_id = app.decode(entity_id)
         entity = models.Entity.by_id(entity_id)
+
         entity.alter_contents("title", text, models.TextContent.FORMAT_MD)
 
-        obj_response.call("FRAGMENTS.entities.after_edit_readable", [entity_id])
+        obj_response.call("FRAGMENTS.entities.after_edit_readable", [app.encode(entity_id)])
         db.session.commit()
 
 
@@ -196,14 +208,16 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
     @staticmethod
     def move_to_location(obj_response, to_loc_id):
+        to_loc_id = app.decode(to_loc_id)
         loc = models.Location.by_id(to_loc_id)
+
         passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, loc)).one()
 
         action = actions.MoveToLocationAction(g.character, loc, passage)
         action.perform()
 
         db.session.commit()
-        obj_response.call("FRAGMENTS.entities.after_move_to_location", [loc.id])
+        obj_response.call("FRAGMENTS.entities.after_move_to_location", [app.encode(loc.id)])
 
 
 class ActionsPage(ActivityMixin):
@@ -211,11 +225,12 @@ class ActionsPage(ActivityMixin):
     @staticmethod
     def update_actions_list(obj_response):
         recipes = models.EntityRecipe.query.all()
-        recipe_names = [{"name": recipe.name_tag, "id": recipe.id} for recipe in recipes]
+        recipe_names = [{"name": recipe.name_tag, "id": app.encode(recipe.id)} for recipe in recipes]
         obj_response.call("FRAGMENTS.actions.after_update_actions_list", [recipe_names])
 
     @staticmethod
     def create_activity_from_recipe(obj_response, recipe_id):
+        recipe_id = app.decode(recipe_id)
         recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
         activity_factory = recipes.ActivityFactory()

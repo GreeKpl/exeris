@@ -11,7 +11,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" data-entity="{{ entity_id }}" id="readable_edit">Edit
+                <button type="button" class="btn btn-primary" data-entity="{{ encode(entity_id) }}" id="readable_edit">Edit
                 </button>
             </div>
         </div>
@@ -35,7 +35,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-entity="{{ entity_id }}" id="confirm_edit_readable">
+                <button type="button" class="btn btn-primary" data-entity="{{ encode(entity_id) }}" id="confirm_edit_readable">
                     Send message
                 </button>
             </div>

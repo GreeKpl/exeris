@@ -2,7 +2,7 @@
     <div class="panel-heading">{{ t("title_people_short") }} <button class="btn btn-default" id="say_to_all">{{ t("say_to_all_button") }}</button></div>
     <ul class="list-group">
         {% for character in chars %}
-            <li class="list-group-item" data-id="{{ character.id }}">{{ t("character_info", html=True, **character.pyslatize())|safe }}
+            <li class="list-group-item" data-id="{{ encode(character.id) }}">{{ t("character_info", html=True, **character.pyslatize())|safe }}
                 <button class="select-listener btn btn-default">speak</button><button class="select-whisper-listener btn btn-default">whisper</button></li>
         {% endfor %}
     </ul>

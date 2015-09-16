@@ -1,10 +1,10 @@
 <li>
     {{ full_name|safe }}
     {% for action in actions %}
-        <button class="entity-action btn btn-default" data-entity="{{ entity_id }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
+        <button class="entity-action btn btn-default" data-entity="{{ encode(entity_id) }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
     {% endfor %}
     {% if activity %}
         <p> -> {{ activity.name_tag }} - {{ activity.ticks_needed - activity.ticks_left }} / {{ activity.ticks_needed }} -
-            <button data-activity="{{ activity.id }}" class="join_activity btn btn-default">Join</button></p>
+            <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">Join</button></p>
     {% endif %}
 </li>

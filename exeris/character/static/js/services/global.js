@@ -4,6 +4,12 @@ FRAGMENTS.character = (function($) {
         Sijax.request("get_entity_tag", [entity_id]);
     });
 
+    $(document).on("click", ".character", function(event) {
+        var character = $(event.target);
+        var new_name = prompt("select new name");
+        Sijax.request("rename_entity", [FRAGMENTS.character.get_id(character), new_name]);
+    });
+
     return {
         show_error: function(message) {
             $.notify({
