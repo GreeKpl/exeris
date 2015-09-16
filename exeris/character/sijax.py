@@ -26,6 +26,16 @@ class GlobalMixin:
 
             obj_response.call("FRAGMENTS.character.after_get_entity_tag", [app.encode(entity_id), text])
 
+        @staticmethod
+        def update_top_bar(obj_response):
+            activity = g.character.activity
+            if not activity:
+                msg = "not working"
+            else:
+                msg = "{} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left, activity.ticks_needed)
+            rendered = render_template("character_top_bar.html", activity_name=msg)
+            obj_response.call("FRAGMENTS.top_bar.after_update_top_bar", [rendered])
+
 
 class SpeakingMixin:
 
@@ -77,15 +87,6 @@ class ActivityMixin:
     @staticmethod
     def get_activity_info(obj_response):
         pass
-
-    @staticmethod
-    def get_current_activity(obj_response):
-        activity = g.character.activity
-        if not activity:
-            msg = "not working"
-        else:
-            msg = "{} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left, activity.ticks_needed)
-        obj_response.call("FRAGMENTS.activity.after_get_current_activity", [msg])
 
     @staticmethod
     def join_activity(obj_response, activity_id):

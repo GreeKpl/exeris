@@ -478,7 +478,7 @@ class Character(Entity):
 
     @hybrid_property
     def health(self):
-        return self.states["health"]
+        return self.states.get("health", 1.0)
 
     @health.setter
     def health(self, value):
@@ -486,11 +486,43 @@ class Character(Entity):
 
     @hybrid_property
     def hunger(self):
-        return self.states["hunger"]
+        return self.states.get("hunger", 0)
 
     @hunger.setter
     def hunger(self, value):
         self.states = dict(self.states, hunger=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def tiredness(self):
+        return self.states.get("tiredness", 1.0)
+
+    @tiredness.setter
+    def tiredness(self, value):
+        self.states["tiredness"] = max(0, min(value, 1.0))
+
+    @hybrid_property
+    def damage(self):
+        return self.states.get("damage", 0)
+
+    @damage.setter
+    def damage(self, value):
+        self.states = dict(self.states, damage=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def strength(self):
+        return self.states.get("strength", 1.0)
+
+    @strength.setter
+    def strength(self, value):
+        self.states = dict(self.states, strength=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def satiation(self):
+        return self.states.get("satiation", 0.0)
+
+    @satiation.setter
+    def satiation(self, value):
+        self.states = dict(self.states, satiation=max(0, min(value, 1.0)))
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
