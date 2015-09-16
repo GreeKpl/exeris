@@ -4,8 +4,6 @@ from exeris.core.main import create_app, db
 from exeris.core import general
 from exeris.core.models import Player, Character, GameDateCheckpoint, init_database_contents
 
-__author__ = 'alek'
-
 
 def set_up_app_with_database(self):
     global db

@@ -2,7 +2,7 @@ import html
 from pyslate.pyslate import Pyslate
 from exeris.core import models
 
-__author__ = 'alek'
+
 
 
 def create_pyslate(language, backend=None, **kwargs):

@@ -11,7 +11,7 @@ from exeris.core import general
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange, InsideRange
 from exeris.core.properties import P
 
-__author__ = 'alek'
+
 
 
 class AbstractAction:  # top level, we don't assume anything

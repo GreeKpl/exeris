@@ -170,7 +170,7 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         def get_entity_flat_list(entities):
             entity_entries = []
             for entity in entities:
-                full_name = g.pyslate.t("entity_info", html=True, detailed=True, **entity.pyslatize())
+                full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
 
                 def has_needed_prop(action):
                     return entity.has_property(action.required_property)

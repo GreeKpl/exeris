@@ -10,7 +10,7 @@ from exeris.core.properties import P
 from pyslate.backends import json_backend
 from tests import util
 
-__author__ = 'alek'
+
 
 data = {
     "entity_sword": {

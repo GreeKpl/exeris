@@ -2,7 +2,7 @@ from collections import deque
 import collections
 import copy
 
-__author__ = 'alek'
+
 
 from exeris.core.main import db
 

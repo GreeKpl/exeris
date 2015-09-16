@@ -15,7 +15,7 @@ from exeris.core.properties import P
 from tests import util
 
 
-__author__ = 'alek'
+
 
 
 class ActionsTest(TestCase):

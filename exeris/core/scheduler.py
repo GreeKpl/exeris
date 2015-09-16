@@ -5,7 +5,7 @@ import sys
 from exeris.core.main import db
 from exeris.core import models, deferred, general
 
-__author__ = 'alek'
+
 
 
 class Scheduler:

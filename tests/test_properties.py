@@ -9,7 +9,7 @@ from exeris.core.properties_base import P
 from exeris.core import properties
 from tests import util
 
-__author__ = 'alek'
+
 
 
 class PassageTest(TestCase):

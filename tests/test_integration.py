@@ -6,7 +6,7 @@ from exeris.core.recipes import ActivityFactory
 from exeris.core.actions import SingleActivityProgressProcess
 from tests import util
 
-__author__ = 'alek'
+
 
 
 class ProductionIntegrationTest(TestCase):

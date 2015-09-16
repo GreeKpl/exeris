@@ -12,7 +12,7 @@ from exeris.core.scheduler import Scheduler
 from tests import util
 
 
-__author__ = 'alek'
+
 
 
 class SchedulerTravelTest(TestCase):

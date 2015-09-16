@@ -4,7 +4,7 @@ from exeris.core.main import db
 from exeris.core.models import TerrainArea, TerrainType
 from tests import util
 
-__author__ = 'alek'
+
 
 
 class PassageTest(TestCase):

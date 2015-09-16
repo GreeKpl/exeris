@@ -1,6 +1,5 @@
 from exeris.app import db, create_app
 
-__author__ = 'alek'
 
 from exeris.config import Config
 

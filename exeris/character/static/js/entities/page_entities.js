@@ -4,6 +4,28 @@ FRAGMENTS.entities = (function($) {
         Sijax.request("entities_refresh_list", []);
     });
 
+    $(document).on("click", "#confirm_edit_readable", function(event) {
+        var new_text = $("#edit_readable_text").val();
+        var entity_id = $(event.target).data("entity");
+        Sijax.request("edit_readable", [entity_id, new_text]);
+
+        $("#edit_readable_modal, #readable_modal").modal("hide");
+    });
+
+    $(document).on("click", ".entity-action", function (event) {
+        var target = $(event.target);
+
+        var endpoint = target.data("action");
+        var entity_id = target.data("entity");
+        Sijax.request(endpoint, [entity_id]);
+    });
+
+    $(document).on("click", "#readable_edit", function(event) {
+        var entity_id = $(event.target).data("entity");
+
+        $("#edit_readable_modal").modal();
+    });
+
     return {
         after_refresh_list: function (entity_names) {
             $("#entities_list > ol").empty();
@@ -48,26 +70,4 @@ FRAGMENTS.entities = (function($) {
 
 $(function () {
     $.publish("entities:refresh_list");
-});
-
-$(document).on("click", "#readable_edit", function(event) {
-    var entity_id = $(event.target).data("entity");
-
-    $("#edit_readable_modal").modal();
-});
-
-$(document).on("click", "#confirm_edit_readable", function(event) {
-    var new_text = $("#edit_readable_text").val();
-    var entity_id = $(event.target).data("entity");
-    Sijax.request("edit_readable", [entity_id, new_text]);
-
-    $("#edit_readable_modal, #readable_modal").modal("hide");
-});
-
-$(document).on("click", ".entity-action", function (event) {
-    var target = $(event.target);
-    console.log(target);
-    var endpoint = target.data("action");
-    var entity_id = target.data("entity");
-    Sijax.request(endpoint, [entity_id]);
 });

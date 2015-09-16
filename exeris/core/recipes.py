@@ -5,7 +5,7 @@ from exeris.core import models, deferred
 from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
-__author__ = 'alek'
+
 
 
 class ActivityFactory:

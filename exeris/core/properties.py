@@ -5,8 +5,6 @@ from exeris.core import models
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, property_method, __registry, P
 
-__author__ = 'Aleksander Chrabąszcz'
-
 
 @property_class
 class DynamicNameablePropertyType(PropertyType):

@@ -15,7 +15,6 @@ from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
 
-__author__ = 'Aleksander Chrabąszcz'
 
 import sqlalchemy as sql
 import sqlalchemy.orm

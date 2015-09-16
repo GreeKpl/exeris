@@ -1,6 +1,6 @@
 import inspect
 
-__author__ = 'alek'
+
 
 
 # property

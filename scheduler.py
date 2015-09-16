@@ -4,7 +4,6 @@ from exeris.core import general, models
 from exeris.core.main import create_app, db
 
 import exeris.core.scheduler as scheduler
-__author__ = 'alek'
 
 
 app = create_app()
