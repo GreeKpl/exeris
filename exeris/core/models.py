@@ -2,7 +2,7 @@ import types
 import collections
 import datetime
 
-from flask.ext.login import UserMixin
+from flask.ext.security import UserMixin
 from flask.ext.security import RoleMixin
 import geoalchemy2 as gis
 from geoalchemy2.shape import to_shape, from_shape

@@ -5,6 +5,7 @@ import traceback
 from flask import g
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
+from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 import psycopg2
