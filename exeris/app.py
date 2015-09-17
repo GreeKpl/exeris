@@ -1,6 +1,9 @@
 from functools import wraps
 import datetime
 import traceback
+import hashlib
+
+from Crypto.Cipher import AES
 
 from flask import g
 from flask.ext.bootstrap import Bootstrap
@@ -48,17 +51,27 @@ def with_sijax_route(*args, **kwargs):
         return flask_fun(login_required(g))
     return dec
 
+def _cipher():
+    h = hashlib.sha256()
+    h.update(app.config['SECRET_KEY'].encode())
+    char = g.character
+    if char:
+        h.update(char.id.to_bytes(8, 'big'))
+    else:
+        h.update(b'NO CHAR ID')
+    return AES.new(h.digest(), AES.MODE_ECB)
+
+_encode_token = b'f'*8
 
 def encode(uid):
-    if g.character:
-        return str(uid + 1000)
-    return str(uid)
-
+    pt = uid.to_bytes(8, 'big') + _encode_token
+    return str(int.from_bytes(_cipher().encrypt(pt), 'big'))
 
 def decode(encoded_id):
-    if g.character:
-        return int(encoded_id) - 1000
-    return int(encoded_id)
+    pt = _cipher().decrypt(int(encoded_id).to_bytes(16, 'big'))
+    if pt[8:] != _encode_token:
+        raise ValueError('Could not decode ID')
+    return int.from_bytes(pt[:8], 'big')
 
 
 app.encode = encode
