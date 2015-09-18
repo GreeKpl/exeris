@@ -15,9 +15,6 @@ from exeris.core.properties import P
 from tests import util
 
 
-
-
-
 class ActionsTest(TestCase):
 
     create_app = util.set_up_app_with_database

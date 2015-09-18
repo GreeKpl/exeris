@@ -1,4 +1,4 @@
-<li>
+<li class="entity_wrapper" data-entity="{{ encode(entity_id) }}">
     {{ full_name|safe }}
     {% for action in actions %}
         <button class="entity-action btn btn-default" data-entity="{{ encode(entity_id) }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>

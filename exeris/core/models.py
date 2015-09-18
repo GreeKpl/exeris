@@ -455,7 +455,8 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(psql.JSONB, default={"health": 1.0, "hunger": 0.0, "modifiers": []})
+    states = sql.Column(psql.JSONB, default=lambda x: {"modifiers": []})
+    eating_queue = sql.Column(psql.JSONB, default=lambda x: {})
 
     @hybrid_property
     def name(self):
@@ -477,14 +478,6 @@ class Character(Entity):
         return rng.is_near(self, entity)
 
     @hybrid_property
-    def health(self):
-        return self.states.get("health", 1.0)
-
-    @health.setter
-    def health(self, value):
-        self.states["health"] = max(0, min(value, 1.0))
-
-    @hybrid_property
     def hunger(self):
         return self.states.get("hunger", 0)
 
@@ -494,11 +487,11 @@ class Character(Entity):
 
     @hybrid_property
     def tiredness(self):
-        return self.states.get("tiredness", 1.0)
+        return self.states.get("tiredness", 0)
 
     @tiredness.setter
     def tiredness(self, value):
-        self.states["tiredness"] = max(0, min(value, 1.0))
+        self.states = dict(self.states, tiredness=max(0, min(value, 1.0)))
 
     @hybrid_property
     def damage(self):
@@ -508,13 +501,39 @@ class Character(Entity):
     def damage(self, value):
         self.states = dict(self.states, damage=max(0, min(value, 1.0)))
 
+    FOOD_BASED_ATTR_INITIAL_VALUE = 0.1
+
     @hybrid_property
     def strength(self):
-        return self.states.get("strength", 1.0)
+        return self.states.get("strength", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
 
     @strength.setter
     def strength(self, value):
         self.states = dict(self.states, strength=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def durability(self):
+        return self.states.get("durability", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+
+    @durability.setter
+    def durability(self, value):
+        self.states = dict(self.states, durability=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def fitness(self):
+        return self.states.get("fitness", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+
+    @fitness.setter
+    def fitness(self, value):
+        self.states = dict(self.states, fitness=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def perception(self):
+        return self.states.get("perception", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+
+    @perception.setter
+    def perception(self, value):
+        self.states = dict(self.states, perception=max(0, min(value, 1.0)))
 
     @hybrid_property
     def satiation(self):
@@ -569,7 +588,7 @@ class Item(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
-    visible_parts = sql.Column(psql.JSONB, default=[])  # sorted list of item type names
+    visible_parts = sql.Column(psql.JSONB, default=lambda x: [])  # sorted list of item type names
 
     @validates("visible_parts")
     def validate_visible_parts(self, key, visible_parts):

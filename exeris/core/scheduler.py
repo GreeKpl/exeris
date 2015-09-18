@@ -69,7 +69,6 @@ class Scheduler:
         self.logger.error("UNABLE TO COMPLETE PROCESS %s", task.process_data)
         return False
 
-
     def _start_transaction(self):
         db.session.rollback()
 

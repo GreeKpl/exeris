@@ -1,6 +1,7 @@
 import copy
 import statistics
 import markdown
+import math
 from exeris.core import models
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, property_method, __registry, P
@@ -56,22 +57,24 @@ class SkillsPropertyType(PropertyType):
 class EdiblePropertyType(PropertyType):
     __property__ = P.EDIBLE
 
+    FOOD_BASED_ATTR = ["strength", "durability", "fitness", "perception"]
+
     @property_method
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
-
-        max_edible = 0
-        if edible_prop.get("hunger"):
-            max_edible = max(max_edible, - eater.hunger / edible_prop["hunger"])
-
-        return max_edible
+        satiation_left = (1 - eater.satiation)
+        return math.floor(satiation_left / edible_prop["satiation"])
 
     @property_method
     def eat(self, eater, amount):
         edible_prop = self.get_property(P.EDIBLE)
 
-        if edible_prop.get("hunger"):
-            eater.hunger += amount * edible_prop.get("hunger")
+        queue = eater.eating_queue
+        for attribute in EdiblePropertyType.FOOD_BASED_ATTR:
+            if edible_prop.get(attribute):
+                queue[attribute] = queue.get(attribute, 0) + amount * edible_prop.get(attribute)
+
+        eater.eating_queue = queue
 
 
 @property_class

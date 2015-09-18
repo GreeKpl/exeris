@@ -26,22 +26,31 @@ FRAGMENTS.entities = (function($) {
         $("#edit_readable_modal").modal();
     });
 
+    $(document).on("click", ".expand_entity", function(event) {
+        var parent = $(event.target).closest(".entity_wrapper");
+        var entity_id = parent.data("entity");
+        Sijax.request("entities_get_sublist", [entity_id]);
+    });
+
     return {
-        after_refresh_list: function (entity_names) {
+        after_refresh_list: function (entities) {
             $("#entities_list > ol").empty();
-            $.each(entity_names, function(idx, item_info) {
-                if (Array.isArray(item_info)) {
-                    var loc_name = item_info.shift();
-                    var loc = $(loc_name).css("border", "#ccc solid 1px");
-                    var inner_list = $("<ol></ol>");
-                    $.each(item_info, function(idx, inner_info) {
-                        inner_list.append(inner_info);
-                    });
-                    loc.append(inner_list);
-                    $("#entities_list > ol").append(loc);
-                } else {
-                    $("#entities_list > ol").append(item_info);
+            $.each(entities, function(idx, entity_info) {
+                var html = $(entity_info.html);
+                if (entity_info.has_children) {
+                    html.append(' <span class="expand">(+)</span>');
                 }
+                $("#entities_list > ol").append(html);
+            });
+        },
+        after_entities_get_sublist: function(entities) {
+            $("#entities_list > ol").empty();
+            $.each(entities, function(idx, entity_info) {
+                var html = $(entity_info.html);
+                if (entity_info.has_children) {
+                    html.append(' <span class="expand">(+)</span>');
+                }
+                $("#entities_list > ol").append(html);
             });
         },
         before_eat: function (entity_id, max_amount) {

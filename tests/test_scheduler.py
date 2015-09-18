@@ -5,35 +5,27 @@ from exeris.core import main
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
-    EntityProperty, SkillType
-from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess
+    EntityProperty, SkillType, Character
+from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from tests import util
 
 
-
-
-
 class SchedulerTravelTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_travel_process(self):
         pass
-
-    tearDown = util.tear_down_rollback
 
 
 class SchedulerActivityTest(TestCase):
-
     create_app = util.set_up_app_with_database
-
-    def test_travel_process(self):
-        pass
+    tearDown = util.tear_down_rollback
 
     # kind of integration test
     def test_activity_process(self):
-
         self._before_activity_process()
 
         process = ActivitiesProgressProcess()
@@ -89,7 +81,8 @@ class SchedulerActivityTest(TestCase):
         db.session.add(hammer)
         db.session.flush()
 
-        activity = Activity(hammer_worked_on, "dummy_activity_name", {}, {"mandatory_tools": [hammer_type.name]}, 1, self.worker)
+        activity = Activity(hammer_worked_on, "dummy_activity_name", {}, {"mandatory_tools": [hammer_type.name]}, 1,
+                            self.worker)
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
@@ -166,7 +159,8 @@ class SchedulerActivityTest(TestCase):
         process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
 
         # optional tools DO AFFECT progress ratio bonus
-        self.assertAlmostEqual(0.6, process.progress_ratio, places=3)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
+        self.assertAlmostEqual(0.6, process.progress_ratio,
+                               places=3)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
 
         # check quality change for an activity. Optional tools DON'T AFFECT tool_based_quality
         self.assertCountEqual([], process.tool_based_quality)
@@ -198,7 +192,8 @@ class SchedulerActivityTest(TestCase):
         spindles_group = TypeGroup("group_spindles")
         spindles_group.add_to_group(wooden_spindle_type, efficiency=2.0)
 
-        db.session.add_all([rl, worked_on_type, worked_on, worker, activity, bucket_type, wooden_spindle_type, spindles_group])
+        db.session.add_all(
+            [rl, worked_on_type, worked_on, worker, activity, bucket_type, wooden_spindle_type, spindles_group])
 
         self.assertRaises(main.NoMachineForActivityException,
                           lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
@@ -236,7 +231,7 @@ class SchedulerActivityTest(TestCase):
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
 
-        db.session.add_all([rl, worked_on_type, worked_on, worker, frying_skill, baking_skill, activity])
+        db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill, activity])
         process = SingleActivityProgressProcess(activity)
 
         process.check_skills(worker, ("frying", 0.3))
@@ -244,7 +239,6 @@ class SchedulerActivityTest(TestCase):
 
         process.check_skills(worker, ("baking", 0.1))
         self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01)))
-
 
     def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), False, 123)
@@ -297,4 +291,81 @@ class SchedulerActivityTest(TestCase):
         self.assertRaises(main.TooManyParticipantsException,
                           lambda: process.check_max_workers(workers, 1))
 
+
+class SchedulerEatingTest(TestCase):
+    create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
+
+    def test_eating_process_nothing_eaten(self):
+        rl = RootLocation(Point(1, 1), False, 111)
+        db.session.add(rl)
+        char = util.create_character("testing", rl, util.create_player("DEF"))
+
+        process = EatingProcess()
+        process.perform()
+
+        self.assertEqual(EatingProcess.HUNGER_INCREASE, char.hunger)
+
+        process = EatingProcess()
+        process.perform()
+
+        self.assertEqual(2 * EatingProcess.HUNGER_INCREASE, char.hunger)
+
+        value_after_two_ticks = Character.FOOD_BASED_ATTR_INITIAL_VALUE - 2 * EatingProcess.FOOD_BASED_ATTR_DECAY
+        self.assertAlmostEqual(value_after_two_ticks, char.strength)
+        self.assertAlmostEqual(value_after_two_ticks, char.durability)
+        self.assertAlmostEqual(value_after_two_ticks, char.fitness)
+        self.assertAlmostEqual(value_after_two_ticks, char.perception)
+
+    def test_eating_applying_single_attr_food(self):
+        rl = RootLocation(Point(1, 1), False, 111)
+        db.session.add(rl)
+        char = util.create_character("testing", rl, util.create_player("DEF"))
+
+        char.eating_queue = dict(strength=0.3, hunger=0.2)
+
+        char.hunger = 0.3
+
+        process = EatingProcess()
+        process.perform()
+
+        hunger_after_tick = 0.3 + EatingProcess.HUNGER_INCREASE - EatingProcess.HUNGER_MAX_DECREASE
+        self.assertAlmostEqual(hunger_after_tick, char.hunger)
+
+        # increase of just a single parameter, so no diversity bonus applies
+        value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE - EatingProcess.FOOD_BASED_ATTR_DECAY \
+                           + EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE
+        self.assertEqual(value_after_tick, char.strength)
+
+    def test_bonus_multiplier_value(self):
+        values = [0.01]
+        self.assertAlmostEqual(1, EatingProcess.bonus_mult(values))
+
+        values = [0.01, 0.01]
+        self.assertAlmostEqual(1.3, EatingProcess.bonus_mult(values))
+
+        values = [0.01, 0.01, 0.005]
+        self.assertAlmostEqual(1.45, EatingProcess.bonus_mult(values))
+
+        values = [0.01, 0.01, 0.005]
+        self.assertAlmostEqual(1.45, EatingProcess.bonus_mult(values))
+
+        values = [0.003, 0.01]
+        self.assertAlmostEqual(1.09, EatingProcess.bonus_mult(values))
+
+    def test_eating_applying_multi_attr_food(self):
+        rl = RootLocation(Point(1, 1), False, 111)
+        db.session.add(rl)
+        char = util.create_character("testing", rl, util.create_player("DEF"))
+
+        char.eating_queue = dict(strength=0.003, hunger=0.2, durability=0.01)
+
+        process = EatingProcess()
+        process.perform()
+
+        # increase all parameters parameter, diversity bonus applies
+        value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE + 0.003 * 1.09 - EatingProcess.FOOD_BASED_ATTR_DECAY
+        self.assertEqual(value_after_tick, char.strength)
+
+        value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE + 0.01 * 1.09 - EatingProcess.FOOD_BASED_ATTR_DECAY
+        self.assertEqual(value_after_tick, char.durability)

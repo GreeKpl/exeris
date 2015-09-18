@@ -6,12 +6,9 @@ from exeris.core.deferred import convert
 from exeris.core import deferred
 from exeris.core import main
 from exeris.core.main import db, Events
-from exeris.core import models
-from exeris.core import general
+from exeris.core import models, general, properties
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange, InsideRange
 from exeris.core.properties import P
-
-
 
 
 class AbstractAction:  # top level, we don't assume anything
@@ -106,11 +103,11 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
     def f(clazz):
         clazz._form_inputs = kwargs
         return clazz
+
     return f
 
 
 class CreateItemAction(ActivityAction):
-
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
         self.item_type = item_type
@@ -137,7 +134,7 @@ class CreateItemAction(ActivityAction):
         for property_name in self.properties:
             new_item.properties.append(models.EntityProperty(property_name, self.properties[property_name]))
 
-        if self.used_materials == "all": # all the materials used for an activity were set to build this item
+        if self.used_materials == "all":  # all the materials used for an activity were set to build this item
             for material_type in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
                 material_type.used_for = new_item
         else:  # otherwise it's a dict and we need to look into it
@@ -159,7 +156,7 @@ class CreateItemAction(ActivityAction):
 
     def extract_used_material(self, material_type_name, new_item):
         for req_material_name, requirement_params in self.activity.requirements.get("input",
-                {}).items():  # forall requirements
+                                                                                    {}).items():  # forall requirements
             req_used_type_name = requirement_params["used_type"]
             if req_material_name == material_type_name:  # req is fulfilled by material
                 real_material_type = models.ItemType.by_name(req_used_type_name)
@@ -172,7 +169,6 @@ class CreateItemAction(ActivityAction):
 
 
 class RemoveItemAction(ActivityAction):
-
     @convert(item=models.Item)
     def __init__(self, item, gracefully=True):
         self.item = item
@@ -183,7 +179,6 @@ class RemoveItemAction(ActivityAction):
 
 
 class RemoveActivityContainerAction(ActivityAction):
-
     def __init__(self, **injected_args):
         self.activity = injected_args["activity"]
 
@@ -192,7 +187,6 @@ class RemoveActivityContainerAction(ActivityAction):
 
 
 class CreateLocationAction(ActivityAction):
-
     @convert(location_type=models.LocationType)
     def __init__(self, *, location_type, used_materials, properties, **injected_args):
         self.location_type = location_type
@@ -222,7 +216,6 @@ class CreateLocationAction(ActivityAction):
 
 @form_on_setup(entity_name=deferred.NameInput)
 class AddNameToEntityAction(ActivityAction):
-
     @convert(entity=models.Entity)
     def __init__(self, *, entity, entity_name):
         self.entity = entity
@@ -230,6 +223,7 @@ class AddNameToEntityAction(ActivityAction):
 
     def perform_action(self):
         self.entity.title = self.entity_name
+
 
 ##############################
 #      SCHEDULER ACTIONS     #
@@ -241,7 +235,6 @@ class ProcessAction(AbstractAction):
 
 
 class TravelProcess(ProcessAction):
-
     def __init__(self):
         pass
 
@@ -254,7 +247,6 @@ class TravelProcess(ProcessAction):
 
 
 class ActivitiesProgressProcess(ProcessAction):
-
     def __init__(self):
         pass
 
@@ -266,7 +258,6 @@ class ActivitiesProgressProcess(ProcessAction):
 
 
 class SingleActivityProgressProcess(ProcessAction):
-
     def __init__(self, activity):
         self.activity = activity
         self.entity_worked_on = self.activity.being_in
@@ -447,17 +438,44 @@ class SingleActivityProgressProcess(ProcessAction):
             raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
 
 
-class HungerProcess(ProcessAction):
-
+class EatingProcess(ProcessAction):
     HUNGER_INCREASE = 0.1
+    HUNGER_MAX_DECREASE = 0.2
+    FOOD_BASED_ATTR_DECAY = 0.005
+    FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE = 0.01
+
+    @staticmethod
+    def bonus_mult(vals):
+        return 1 + max(0, (sum(vals) / EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE - 1) * 0.3)
 
     def perform_action(self):
         characters = models.Character.query.all()
 
         for character in characters:
-            character.hunger += HungerProcess.HUNGER_INCREASE
+            character.hunger += EatingProcess.HUNGER_INCREASE
 
-        db.session.commit()
+            eating_queue = character.eating_queue
+
+            hunger_attr_points = eating_queue.get("hunger")
+            if hunger_attr_points:
+                character.hunger -= min(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+                eating_queue["hunger"] -= min(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+
+            attributes_to_increase = {}
+            for attribute in properties.EdiblePropertyType.FOOD_BASED_ATTR:
+                setattr(character, attribute, getattr(character, attribute) - EatingProcess.FOOD_BASED_ATTR_DECAY)
+
+                queue_attr_points = eating_queue.get(attribute, 0)
+                increase = min(queue_attr_points, EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE)
+                attributes_to_increase[attribute] = increase
+                eating_queue[attribute] = eating_queue.get(attribute, 0) - increase
+
+            for attribute, increase in attributes_to_increase.items():
+                setattr(character, attribute, getattr(character, attribute) + increase * EatingProcess.bonus_mult(
+                    attributes_to_increase.values()))
+            character.eating_queue = eating_queue
+
+
 #
 
 ##############################
@@ -466,7 +484,6 @@ class HungerProcess(ProcessAction):
 
 
 def move_between_entities(item, source, destination, amount, to_be_used_for=False):
-
     if item.parent_entity == source:
         if item.type.stackable:
             weight = amount * item.type.unit_weight
@@ -488,10 +505,10 @@ def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
 
     # add to the goal
     if to_be_used_for:
-        existing_pile = models.Item.query.filter_by(type=item.type)\
+        existing_pile = models.Item.query.filter_by(type=item.type) \
             .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=item.visible_parts).first()
     else:
-        existing_pile = models.Item.query.filter_by(type=item.type).\
+        existing_pile = models.Item.query.filter_by(type=item.type). \
             filter(models.Item.is_in(goal)).filter_by(visible_parts=item.visible_parts).first()
 
     if existing_pile:
@@ -509,7 +526,6 @@ def overwrite_item_amount(item, amount):
 
 
 class DropItemAction(ActionOnItem):
-
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
         self.amount = amount
@@ -569,7 +585,6 @@ class GiveItemAction(ActionOnItemAndCharacter):
 
 
 class AddItemToActivityAction(ActionOnItemAndActivity):
-
     def __init__(self, executor, item, activity, amount):
         super().__init__(executor, item, activity)
         self.amount = amount
@@ -587,9 +602,9 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
         for required_group_name, required_group_params in sorted(req.get("input", {}).items()):
             required_group = models.EntityType.by_name(required_group_name)
             if "used_type" in required_group_params:
-                    if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type
-                        raise main.OnlySpecificTypeForGroupException(
-                            type_name=required_group_params["used_type"], group_name=required_group_name)
+                if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type
+                    raise main.OnlySpecificTypeForGroupException(
+                        type_name=required_group_params["used_type"], group_name=required_group_name)
             if required_group_params["left"] == 0:  # this requirement is fulfilled
                 continue
             if not required_group.contains(self.item.type):  # requirement cannot be fulfilled by this type
@@ -620,7 +635,6 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
 
 
 class EatAction(ActionOnItem):
-
     def __init__(self, executor, item, amount):
         super().__init__(executor, item, rng=SameLocationRange())
         self.amount = amount
@@ -645,7 +659,6 @@ class EatAction(ActionOnItem):
 
 
 class SayAloudAction(ActionOnSelf):
-
     def __init__(self, executor, message):
         super().__init__(executor, rng=VisibilityBasedRange(20))
         self.message = message
@@ -655,39 +668,35 @@ class SayAloudAction(ActionOnSelf):
 
 
 class SpeakToSomebody(ActionOnCharacter):
-
     def __init__(self, executor, character, message):
         super().__init__(executor, character, rng=VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
-
         if not self.executor.has_access(self.character, rng=VisibilityBasedRange(20)):
             raise main.EntityTooFarAwayException(entity=self.character)
 
-        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor, target=self.character)
+        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor,
+                          target=self.character)
 
 
 class WhisperToSomebody(ActionOnCharacter):
-
     def __init__(self, executor, character, message):
         super().__init__(executor, character, rng=VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
-
         if not self.executor.has_access(self.character, rng=SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.character)
-        EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor, target=self.character)
+        EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor,
+                          target=self.character)
 
 
 class JoinActivityAction(ActionOnActivity):
-
     def __init__(self, executor, activity):
         super().__init__(executor, activity, rng=None)
 
     def perform_action(self):
-
         if not self.executor.has_access(self.activity, rng=SameLocationRange()):
             raise main.TooFarFromActivityException(activity=self.activity)
 
@@ -695,7 +704,6 @@ class JoinActivityAction(ActionOnActivity):
 
 
 class MoveToLocationAction(ActionOnLocation):
-
     def __init__(self, executor, location, passage):
         super().__init__(executor, location, rng=SameLocationRange())
         self.passage = passage
@@ -712,7 +720,8 @@ class MoveToLocationAction(ActionOnLocation):
             raise main.EntityTooFarAwayException(entity=self.location)  # TODO Better event?
 
         EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
-                                                             "destination": self.location.pyslatize()}}, doer=self.executor)
+                                                             "destination": self.location.pyslatize()}},
+                          doer=self.executor)
 
         self.executor.being_in = self.location
         EventCreator.create(rng=SameLocationRange(), tag_observer=Events.MOVE + "_observer",

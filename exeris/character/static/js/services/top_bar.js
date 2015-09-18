@@ -14,3 +14,7 @@ FRAGMENTS.top_bar = (function($) {
         }
     };
 })(jQuery);
+
+$(function() {
+    $.publish("character:activity_participation_changed");
+});

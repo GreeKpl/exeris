@@ -1,10 +1,10 @@
 {% extends "character_base.html" %}
 {% block title %} {{ t("title_page_actions") }} {% endblock %}
 {% block content %}
-    {% include "character_top_bar.html" %}
+    <nav id="top_bar"></nav>
     <br><br><br><br><br><br>
     <div id="actions_list">
-        <ol>
+        <ol class="btn-group-vertical" role="group">
         </ol>
     </div>
 {% endblock %}

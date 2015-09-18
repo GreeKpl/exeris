@@ -13,7 +13,7 @@ FRAGMENTS.actions = (function() {
     return {
         after_update_actions_list: function(actions) {
             $.each(actions, function(idx, action) {
-                $("#actions_list > ol").append("<li class='recipe' data-recipe='" + action.id + "'>" +  action.name +  "</li>");
+                $("#actions_list > ol").append("<li class='recipe btn btn-default' data-recipe='" + action.id + "'>" +  action.name +  "</li>");
             });
         },
         after_create_activity_from_recipe: function() {

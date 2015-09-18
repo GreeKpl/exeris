@@ -27,6 +27,9 @@ def page_entities():
 
 @character_bp.with_sijax_route('/map')
 def page_map():
+    if g.sijax.is_sijax_request:
+        g.sijax.register_object(sijax.MapPage)
+        return g.sijax.process_request()
     return render_template("map/page_map.html")
 
 
