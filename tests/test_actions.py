@@ -5,19 +5,19 @@ from shapely.geometry import Point
 
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction, \
-    SayAloudAction, MoveToLocationAction, CreateLocationAction
+    SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction
 from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core.general import GameDate
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
-    LocationType, Passage
+    LocationType, Passage, EntityTypeProperty
 from exeris.core.properties import P
 from tests import util
 
 
 class ActionsTest(TestCase):
-
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_simple_create_item_action(self):
         item_type = ItemType("hammer", 200)
@@ -119,7 +119,8 @@ class ActionsTest(TestCase):
         create_lock_action = ["exeris.core.actions.CreateItemAction", create_lock_action_args]
 
         create_key_action_args = {"item_type": key_type.name, "properties": {},
-                                  "used_materials": {hard_metal_group.name: 1}, "visible_material": {"main": hard_metal_group.name}}
+                                  "used_materials": {hard_metal_group.name: 1},
+                                  "visible_material": {"main": hard_metal_group.name}}
         create_key_action = ["exeris.core.actions.CreateItemAction", create_key_action_args]
         activity.result_actions = [create_lock_action, create_key_action]
 
@@ -164,7 +165,7 @@ class ActionsTest(TestCase):
         db.session.add_all([building_type, scaffolding_type, scaffolding, rl, initiator, activity, stone_type, stone])
 
         action = CreateLocationAction(location_type=building_type, used_materials="all",
-                                      properties={P.ENTERABLE: {}},  activity=activity, initiator=initiator)
+                                      properties={P.ENTERABLE: {}}, activity=activity, initiator=initiator)
         action.perform()
 
         new_building = Location.query.filter_by(type=building_type).one()
@@ -225,7 +226,8 @@ class ActionsTest(TestCase):
         event_drop_doer = Event.query.filter_by(type_name=Events.DROP_ITEM + "_doer").one()
         self.assertEqual(potatoes.pyslatize(item_amount=amount), event_drop_doer.params)
         event_drop_obs = Event.query.filter_by(type_name=Events.DROP_ITEM + "_observer").one()
-        self.assertEqual(dict(potatoes.pyslatize(item_amount=amount), groups={"doer": doer.pyslatize()}), event_drop_obs.params)
+        self.assertEqual(dict(potatoes.pyslatize(item_amount=amount), groups={"doer": doer.pyslatize()}),
+                         event_drop_obs.params)
         Event.query.delete()
 
         self.assertEqual(150, potatoes.weight)  # 50 of 200 was dropped
@@ -285,7 +287,7 @@ class ActionsTest(TestCase):
         self.assertEqual(100, cake_in_inv.weight)
         self.assertEqual(300, other_cake_ground.weight)
 
-        new_ground_cake = Item.query.filter(Item.is_in(rl)).filter_by(type=cake_type).\
+        new_ground_cake = Item.query.filter(Item.is_in(rl)).filter_by(type=cake_type). \
             filter_by(visible_parts=[grapes_type.name, strawberries_type.name]).one()
         self.assertEqual(100, new_ground_cake.weight)
         self.assertEqual([grapes_type.name, strawberries_type.name], new_ground_cake.visible_parts)
@@ -350,13 +352,15 @@ class ActionsTest(TestCase):
         action = AddItemToActivityAction(initiator, iron, activity, 4)
         action.perform()
 
-        self.assertEqual({metal_group.name: {"needed": 10, "left": 8, "used_type": iron_type.name}}, activity.requirements["input"])
+        self.assertEqual({metal_group.name: {"needed": 10, "left": 8, "used_type": iron_type.name}},
+                         activity.requirements["input"])
         self.assertEqual(16, iron.amount)
 
         action = AddItemToActivityAction(initiator, iron, activity, 16)
         action.perform()
 
-        self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}}, activity.requirements["input"])
+        self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}},
+                         activity.requirements["input"])
         self.assertIsNone(iron.parent_entity)
         self.assertIsNotNone(iron.removal_game_date)
         Event.query.delete()
@@ -488,5 +492,23 @@ class ActionsTest(TestCase):
         enter_loc_action.perform()
         self.assertEqual(rl, char.being_in)
 
-    tearDown = util.tear_down_rollback
+    def test_eat_action_success(self):
+        util.initialize_date()
 
+        rl = RootLocation(Point(1, 1), False, 222)
+        char = util.create_character("John", rl, util.create_player("Eddy"))
+
+        potatoes_type = ItemType("potatoes", 10, stackable=True)
+        potatoes = Item(potatoes_type, char, amount=30)
+
+        potatoes_type.properties.append(
+            EntityTypeProperty(P.EDIBLE, data={"satiation": 0.01, "hunger": 0.2, "strength": 0.3}))
+
+        db.session.add_all([rl, potatoes_type, potatoes])
+
+        action = EatAction(char, potatoes, 3)
+        action.perform()
+
+        self.assertAlmostEqual(0.03, char.satiation)
+        self.assertAlmostEqual(0.6, char.eating_queue["hunger"])
+        self.assertAlmostEqual(0.9, char.eating_queue["strength"])

@@ -440,7 +440,7 @@ class SingleActivityProgressProcess(ProcessAction):
 
 class EatingProcess(ProcessAction):
     HUNGER_INCREASE = 0.1
-    HUNGER_MAX_DECREASE = 0.2
+    HUNGER_MAX_DECREASE = -0.2
     FOOD_BASED_ATTR_DECAY = 0.005
     FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE = 0.01
 
@@ -458,8 +458,8 @@ class EatingProcess(ProcessAction):
 
             hunger_attr_points = eating_queue.get("hunger")
             if hunger_attr_points:
-                character.hunger -= min(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
-                eating_queue["hunger"] -= min(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+                character.hunger += max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+                eating_queue["hunger"] -= max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
 
             attributes_to_increase = {}
             for attribute in properties.EdiblePropertyType.FOOD_BASED_ATTR:

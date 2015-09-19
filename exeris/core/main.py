@@ -1,7 +1,9 @@
+import hashlib
 import logging
 import sys
+from Crypto.Cipher import AES
 
-from flask import Flask
+from flask import Flask, g
 from flask.ext.sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -56,10 +58,37 @@ def create_app(database=db, config_object_module="exeris.config.DevelopmentConfi
     return app
 
 
+def _cipher():
+    h = hashlib.sha256()
+    h.update(app.config['SECRET_KEY'].encode())
+    char = g.character
+    if char:
+        h.update(char.id.to_bytes(8, 'big'))
+    else:
+        h.update(b'NO CHAR ID')
+    return AES.new(h.digest(), AES.MODE_ECB)
+
+
+_encode_token = b'f' * 8
+
+
+def encode(uid):
+    pt = uid.to_bytes(8, 'big') + _encode_token
+    return str(int.from_bytes(_cipher().encrypt(pt), 'big'))
+
+
+def decode(encoded_id):
+    pt = _cipher().decrypt(int(encoded_id).to_bytes(16, 'big'))
+    if pt[8:] != _encode_token:
+        raise ValueError('Could not decode ID')
+    return int.from_bytes(pt[:8], 'big')
+
+
 class GameException(Exception):
     """
     General game exception which can be shown to the user
     """
+
     def __init__(self, error_tag, **kwargs):
         self.error_tag = error_tag
         self.error_kwargs = kwargs
@@ -159,5 +188,3 @@ class TooFewParticipantsException(ActivityException):
 class TooManyParticipantsException(ActivityException):
     def __init__(self, *, max_number):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, max_number=max_number)
-
-

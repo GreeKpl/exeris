@@ -51,31 +51,9 @@ def with_sijax_route(*args, **kwargs):
         return flask_fun(login_required(g))
     return dec
 
-def _cipher():
-    h = hashlib.sha256()
-    h.update(app.config['SECRET_KEY'].encode())
-    char = g.character
-    if char:
-        h.update(char.id.to_bytes(8, 'big'))
-    else:
-        h.update(b'NO CHAR ID')
-    return AES.new(h.digest(), AES.MODE_ECB)
 
-_encode_token = b'f'*8
-
-def encode(uid):
-    pt = uid.to_bytes(8, 'big') + _encode_token
-    return str(int.from_bytes(_cipher().encrypt(pt), 'big'))
-
-def decode(encoded_id):
-    pt = _cipher().decrypt(int(encoded_id).to_bytes(16, 'big'))
-    if pt[8:] != _encode_token:
-        raise ValueError('Could not decode ID')
-    return int.from_bytes(pt[:8], 'big')
-
-
-app.encode = encode
-app.decode = decode
+app.encode = main.encode
+app.decode = main.decode
 
 from exeris.outer import outer_bp
 from exeris.player import player_bp
@@ -111,7 +89,7 @@ def create_database():
         db.session.add_all([potatoes_type, potatoes, signpost_type])
     if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
-        potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1}))
+        potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1, "satiation": 0.05}))
 
     if not models.Character.query.count():
         character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en", general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
@@ -250,6 +228,6 @@ app.register_blueprint(character_bp)
 app.register_blueprint(character_static)
 
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
-app.jinja_env.globals.update(encode=encode)
-app.jinja_env.globals.update(decode=decode)
+app.jinja_env.globals.update(encode=main.encode)
+app.jinja_env.globals.update(decode=main.decode)
 

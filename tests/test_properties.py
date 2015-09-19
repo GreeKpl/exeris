@@ -2,18 +2,14 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core.main import db
-from exeris.core.models import RootLocation, LocationType, Location, EntityTypeProperty, ObservedName, Character, \
-    SkillType, EntityProperty
-from exeris.core.properties import SkillsPropertyType
+from exeris.core.models import RootLocation, LocationType, Location, EntityTypeProperty, ObservedName, SkillType, EntityProperty
 from exeris.core.properties_base import P
-from exeris.core import properties
 from tests import util
-
-
 
 
 class PassageTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_set_and_alter_dynamic_name_success(self):
         rl = RootLocation(Point(1, 1), True, 123)
@@ -60,6 +56,3 @@ class PassageTest(TestCase):
         self.assertAlmostEqual(0.3, char.get_raw_skill("frying"))
 
         self.assertAlmostEqual(0.2, char.get_skill_factor("frying"))  # mean value of 0.1 cooking and 0.3 frying = 0.2
-
-    tearDown = util.tear_down_rollback
-

@@ -70,9 +70,10 @@ class EdiblePropertyType(PropertyType):
         edible_prop = self.get_property(P.EDIBLE)
 
         queue = eater.eating_queue
-        for attribute in EdiblePropertyType.FOOD_BASED_ATTR:
+        for attribute in list(EdiblePropertyType.FOOD_BASED_ATTR) + ["hunger"]:
             if edible_prop.get(attribute):
                 queue[attribute] = queue.get(attribute, 0) + amount * edible_prop.get(attribute)
+        eater.satiation += amount * edible_prop["satiation"]
 
         eater.eating_queue = queue
 

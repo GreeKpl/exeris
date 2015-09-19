@@ -1,7 +1,11 @@
-from flask.ext.testing import TestCase
 from flask import g
+
+from flask.ext.testing import TestCase
+from shapely.geometry import Point
+from exeris.core import models, main
+
 from tests import util
-from exeris.app import *
+
 
 class EncoderTest(TestCase):
     create_app = util.set_up_app_with_database
@@ -13,28 +17,28 @@ class EncoderTest(TestCase):
         self.character2 = util.create_character('char2', rl, pl)
         str(self.character2)
 
-    values = (0, 1, 2, 3, 10, 100, 1053218997898321983, 2**63-4, 2**64 - 3, 2**64 - 1)
+    values = (0, 1, 2, 3, 10, 100, 1053218997898321983, 2 ** 63 - 4, 2 ** 64 - 3, 2 ** 64 - 1)
 
     def test_codec_match(self):
         g.character = self.character1
         for val in self.values:
-            enc = encode(val)
+            enc = main.encode(val)
             self.assertTrue(len(enc) > 0)
             self.assertTrue(enc.isdigit())
-            self.assertEqual(decode(enc), val)
+            self.assertEqual(main.decode(enc), val)
 
     def test_codec_no_match(self):
         g.character = self.character1
-        encoded = [encode(i) for i in self.values]
+        encoded = [main.encode(i) for i in self.values]
         g.character = self.character2
         for val, enc in zip(self.values, encoded):
-            self.assertRaises(ValueError, decode, enc)
-            self.assertNotEqual(encode(val), enc)
+            self.assertRaises(ValueError, main.decode, enc)
+            self.assertNotEqual(main.encode(val), enc)
 
     def test_codec_invalid(self):
         g.character = self.character1
         for val in self.values:
-            enc = encode(val)
-            self.assertRaises(ValueError, decode, str(int(enc) + 1))
+            enc = main.encode(val)
+            self.assertRaises(ValueError, main.decode, str(int(enc) + 1))
 
     tearDown = util.tear_down_rollback

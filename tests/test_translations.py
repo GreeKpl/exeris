@@ -1,7 +1,9 @@
+from flask import g
 from flask.ext.testing import TestCase
 from shapely import geometry
 from shapely.geometry import Point
 
+from exeris.core import main
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
@@ -9,8 +11,6 @@ from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Cha
 from exeris.core.properties import P
 from pyslate.backends import json_backend
 from tests import util
-
-
 
 data = {
     "entity_sword": {
@@ -187,8 +187,8 @@ data = {
 
 
 class ItemTranslationTest(TestCase):
-
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_simple_translation(self):
         backend = json_backend.JsonBackend(json_data=data)
@@ -200,7 +200,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1,1), True, 111)
+        rl = RootLocation(Point(1, 1), True, 111)
         sword_type = ItemType("sword", 100)
         sword = Item(sword_type, rl)
 
@@ -214,7 +214,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1,1), True, 111)
+        rl = RootLocation(Point(1, 1), True, 111)
         carrot_type = ItemType("carrot", 100, stackable=False)
         apple_type = ItemType("apple", 100, stackable=False)
         berries_type = ItemType("berries", 3, stackable=False)
@@ -237,7 +237,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1,1), True, 111)
+        rl = RootLocation(Point(1, 1), True, 111)
         sword_type = ItemType("sword", 100)
         sword = Item(sword_type, rl)
         sword.damage = 0.8
@@ -251,7 +251,7 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("uszkodzony miecz", pyslate.t("item_info", **sword.pyslatize(detailed=True)))
 
     def test_title(self):
-        rl = RootLocation(Point(1,1), True, 111)
+        rl = RootLocation(Point(1, 1), True, 111)
         book_type = ItemType("book", 100)
         book = Item(book_type, rl)
         book.title = "How to make a good translation system"
@@ -261,10 +261,12 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
 
         pyslate_en = create_pyslate("en", backend=backend)
-        self.assertEqual("book 'How to make a good translation system'", pyslate_en.t("item_info", **book.pyslatize(detailed=True)))
+        self.assertEqual("book 'How to make a good translation system'",
+                         pyslate_en.t("item_info", **book.pyslatize(detailed=True)))
 
         pyslate_pl = create_pyslate("pl", backend=backend)
-        self.assertEqual("książka „How to make a good translation system”", pyslate_pl.t("item_info", **book.pyslatize(detailed=True)))
+        self.assertEqual("książka „How to make a good translation system”",
+                         pyslate_pl.t("item_info", **book.pyslatize(detailed=True)))
 
     def test_main_material(self):
         backend = json_backend.JsonBackend(json_data=data)
@@ -294,6 +296,7 @@ class ItemTranslationTest(TestCase):
         pyslate_pl = create_pyslate("pl", backend=backend)
 
         rl = RootLocation(Point(1, 1), True, 111)
+        g.character = util.create_character("QAZ", rl, util.create_player("WER"))
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
         hemp_cloth = Item(hemp_cloth_type, rl, amount=1)
 
@@ -332,22 +335,22 @@ class ItemTranslationTest(TestCase):
 
         # embedded in HTML tag
         translated_html_text = pyslate_pl.t("entity_info", **carrots.pyslatize(detailed=True, html=True))
-        self.assertEqual("""<span class="entity item id_{}">11 marchewek</span>""".format(carrots.id), translated_html_text)
-
-    tearDown = util.tear_down_rollback
+        self.assertEqual("""<span class="entity item id_{}">11 marchewek</span>""".format(main.encode(carrots.id)),
+                         translated_html_text)
 
 
 class CharacterAndLocationTranslationTest(TestCase):
-
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_character_name(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1,1), True, 111)
+        rl = RootLocation(Point(1, 1), True, 111)
 
         plr = util.create_player("adwdas")
         man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
+        g.character = man
         woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
         obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
         obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
@@ -374,13 +377,14 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("John", pyslate_en.t("character_info", **man.pyslatize()))
 
         translated_html_text = pyslate_en.t("character_info", **man.pyslatize(html=True))
-        self.assertEqual("""<span class="entity character id_{}">John</span>""".format(man.id), translated_html_text)
+        self.assertEqual("""<span class="entity character id_{}">John</span>""".format(main.encode(man.id)),
+                         translated_html_text)
 
     def test_location_name(self):
-
         rl = RootLocation(Point(1, 1), True, 213)
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
+        g.character = obs
 
         building_type = LocationType("building", 200)
         loc = Location(rl, building_type)
@@ -396,10 +400,10 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         # test embedding in HTML tag
         translated_html_text = pyslate_en.t("location_info", **loc.pyslatize(html=True))
-        self.assertEqual("""<span class="entity location id_{}">'Workshop'</span>""".format(loc.id), translated_html_text)
+        self.assertEqual("""<span class="entity location id_{}">'Workshop'</span>""".format(main.encode(loc.id)),
+                         translated_html_text)
 
     def test_root_location_name(self):
-
         rl = RootLocation(Point(1, 1), True, 213)
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
@@ -420,7 +424,6 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("Wonderland", pyslate_en.t("location_info", **rl.pyslatize()))
 
     def test_passage_translation(self):
-
         rl = RootLocation(Point(1, 1), True, 213)
 
         building_type = LocationType("building", 200)
@@ -433,7 +436,6 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))
 
     def test_activity_translation(self):
-
         rl = RootLocation(Point(1, 1), True, 213)
         initiator = util.create_character("initiator", rl, util.create_player("abc"))
 
@@ -452,5 +454,3 @@ class CharacterAndLocationTranslationTest(TestCase):
         pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_info", **activity.pyslatize()))
-
-    tearDown = util.tear_down_rollback
