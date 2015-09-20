@@ -57,10 +57,10 @@ data = {
         "en": "unknown man",
     },
     "tp_location_title": {
-        "en": "'${title@escape_html}'",
+        "en": "'%{title@escape_html}'",
     },
     "tp_character_title": {
-        "en": "'${title@escape_html}'",
+        "en": "'%{title@escape_html}'",
     },
     "say_to_all_button": {
         "en": "Say to all",
@@ -73,6 +73,12 @@ data = {
     },
     "tp_item_info": {
         "en": "%{main_material}%{dependent}%{item_name}%{parts}",
+    },
+    "tp_location_info": {
+        "en": "%{location_name}%{title}",
+    },
+    "tp_item_title": {
+        "en": "'%{title@escape_html}'",
     },
     "entity_item": {
         "en": "item",

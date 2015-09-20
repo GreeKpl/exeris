@@ -1,20 +1,22 @@
 from statistics import mean
 import traceback
+
 from flask import logging
 from shapely.geometry import Point
+
 from exeris.core.deferred import convert
 from exeris.core import deferred
 from exeris.core import main
 from exeris.core.main import db, Events
 from exeris.core import models, general, properties
-from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange, InsideRange
+from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.properties import P
 
 
 class AbstractAction:  # top level, we don't assume anything
 
     def perform(self):
-        self.perform_action()
+        return self.perform_action()
 
     def perform_action(self):
         pass
@@ -200,7 +202,6 @@ class CreateLocationAction(ActivityAction):
         result_loc = self.activity.being_in.being_in
 
         new_location = models.Location(result_loc, self.location_type)
-
         for prop_name, prop_value in self.properties.items():
             new_location.properties.append(models.EntityProperty(prop_name, prop_value))
 
@@ -216,10 +217,11 @@ class CreateLocationAction(ActivityAction):
 
 @form_on_setup(entity_name=deferred.NameInput)
 class AddNameToEntityAction(ActivityAction):
-    @convert(entity=models.Entity)
-    def __init__(self, *, entity, entity_name):
-        self.entity = entity
+
+    def __init__(self, *, entity_name, **injected_args):
+
         self.entity_name = entity_name
+        self.entity = injected_args["resulting_entities"][-1]
 
     def perform_action(self):
         self.entity.title = self.entity_name
@@ -409,10 +411,16 @@ class SingleActivityProgressProcess(ProcessAction):
             self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
 
     def finish_activity(self, activity):
+        self.logger.info("Finishing activity %s", self.activity)
+        entities = []
         for serialized_action in activity.result_actions:
-            action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator)
-            action.perform()
+            self.logger.debug("executing action: %s", serialized_action)
+            action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator,
+                                   resulting_entities=entities)
 
+            returned_entity = action.perform()
+            if returned_entity:
+                entities.append(returned_entity)
         db.session.delete(activity)
 
     def check_target_proximity(self, target_ids):

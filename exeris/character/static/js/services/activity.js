@@ -2,7 +2,7 @@ FRAGMENTS.activity = (function($) {
 
     $(document).on("click", ".join_activity", function(event) {
         var button = $(event.target);
-        var activity_id = +button.data("activity");
+        var activity_id = button.data("activity");
         Sijax.request("join_activity", [activity_id]);
     });
 

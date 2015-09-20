@@ -13,7 +13,7 @@ with app.app_context():
 
     if not models.ScheduledTask.query.count():
         hunger_task = models.ScheduledTask(["exeris.core.actions.ActivitiesProgressProcess", {}], general.GameDate.now().game_timestamp, 20)
-        activity_task = models.ScheduledTask(["exeris.core.actions.HungerProcess", {}], general.GameDate.now().game_timestamp, 20)
+        activity_task = models.ScheduledTask(["exeris.core.actions.EatingProcess", {}], general.GameDate.now().game_timestamp, 20)
         db.session.add_all([hunger_task, activity_task])
         db.session.commit()
 

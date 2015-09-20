@@ -2,7 +2,7 @@ import time
 
 from flask import g, render_template
 
-from exeris.core import models, actions, accessible_actions, recipes
+from exeris.core import models, actions, accessible_actions, recipes, deferred
 from exeris.core.main import db, app
 
 
@@ -227,18 +227,34 @@ class MapPage(GlobalMixin):
 class ActionsPage(GlobalMixin, ActivityMixin):
     @staticmethod
     def update_actions_list(obj_response):
-        recipes = models.EntityRecipe.query.all()
-        recipe_names = [{"name": recipe.name_tag, "id": app.encode(recipe.id)} for recipe in recipes]
+        entity_recipes = models.EntityRecipe.query.all()
+        recipe_names = [{"name": recipe.name_tag, "id": app.encode(recipe.id)} for recipe in entity_recipes]
         obj_response.call("FRAGMENTS.actions.after_update_actions_list", [recipe_names])
 
     @staticmethod
-    def create_activity_from_recipe(obj_response, recipe_id):
+    def activity_from_recipe_setup(obj_response, recipe_id):
+        recipe_id = app.decode(recipe_id)
+        recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
+
+        actions_requiring_input = [deferred.object_import(x[0]) for x in recipe.result]
+        actions_requiring_input = [x for x in actions_requiring_input if hasattr(x, "_form_inputs")]
+
+        form_inputs = {}
+        for i in actions_requiring_input:
+            form_inputs.update({k: v.__name__ for k, v in i._form_inputs.items()})
+
+        rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
+                                         recipe_id=recipe_id)
+        obj_response.call("FRAGMENTS.actions.after_activity_from_recipe_setup", [rendered_modal])
+
+    @staticmethod
+    def create_activity_from_recipe(obj_response, recipe_id, user_input):
         recipe_id = app.decode(recipe_id)
         recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
         activity_factory = recipes.ActivityFactory()
 
-        activity = activity_factory.create_from_recipe(recipe, g.character.being_in, g.character)
+        activity = activity_factory.create_from_recipe(recipe, g.character.being_in, g.character, user_input=user_input)
 
         db.session.add_all([activity])
         obj_response.call("FRAGMENTS.actions.after_create_activity_from_recipe", [])

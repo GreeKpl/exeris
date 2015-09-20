@@ -134,6 +134,9 @@ data = {
         "en": "'%{title}'",
         "pl": "„%{title}”",
     },
+    "tp_location_info": {
+        "en": "%{location_name}%{title}",
+    },
     "tp_location_title": {
         "en": "'%{title}'",
         "pl": "„%{title}”",
@@ -396,11 +399,11 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("building", pyslate_en.t("location_info", **loc.pyslatize()))
 
         loc.title = "Workshop"
-        self.assertEqual("'Workshop'", pyslate_en.t("location_info", **loc.pyslatize()))
+        self.assertEqual("building 'Workshop'", pyslate_en.t("location_info", **loc.pyslatize()))
 
         # test embedding in HTML tag
         translated_html_text = pyslate_en.t("location_info", **loc.pyslatize(html=True))
-        self.assertEqual("""<span class="entity location id_{}">'Workshop'</span>""".format(main.encode(loc.id)),
+        self.assertEqual("""<span class="entity location id_{}">building 'Workshop'</span>""".format(main.encode(loc.id)),
                          translated_html_text)
 
     def test_root_location_name(self):

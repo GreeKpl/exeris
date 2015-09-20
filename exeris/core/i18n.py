@@ -78,7 +78,7 @@ def create_pyslate(language, backend=None, **kwargs):
                 damage_text = helper.translation("tp_item_damaged", item_name=item_text, item_form=form)
                 damage_text += " "
 
-        if params.get("item_title", None):
+        if params.get("item_title"):
             title_text = helper.translation("tp_item_title", title=params["item_title"])
             title_text += " "
 
@@ -148,15 +148,17 @@ def create_pyslate(language, backend=None, **kwargs):
             if observed_name:
                 return observed_name.name
 
+        title_text = ""
         if "location_title" in params:
-            return helper.translation("tp_location_title", title=params["location_title"])
+            title_text = helper.translation("tp_location_title", title=params["location_title"])
 
         if "location_terrain" in params:
             location_terrain = params["location_terrain"]
             return helper.translation("terrain_" + location_terrain)
 
-        location_name = params["location_name"]
-        return helper.translation("entity_" + location_name)
+        location_name = helper.translation("entity_" + params["location_name"])
+        location_name += " "
+        return helper.translation("tp_location_info", location_name=location_name, title=title_text).strip()
 
     pyslate.register_function("location_info", func_location_info)
 
@@ -215,8 +217,8 @@ def create_pyslate(language, backend=None, **kwargs):
             tag_to_call = "item_info"
         elif entity_type == models.ENTITY_LOCATION:
             tag_to_call = "location_info"
-        # elif entity_type == models.ENTITY_ROOT_LOCATION:
-        #     tag_to_call = "location_info"
+        elif entity_type == models.ENTITY_ROOT_LOCATION:
+            tag_to_call = "location_info"
         elif entity_type == models.ENTITY_PASSAGE:
             tag_to_call = "passage_info"
         elif entity_type == models.ENTITY_CHARACTER:

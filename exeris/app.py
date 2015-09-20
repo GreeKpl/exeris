@@ -24,7 +24,6 @@ from pyslate.backends import postgres_backend
 
 app = create_app()
 
-
 Bootstrap(app)
 flask_sijax.Sijax(app)
 
@@ -49,6 +48,7 @@ def with_sijax_route(*args, **kwargs):
             return f(*a, **k)
 
         return flask_fun(login_required(g))
+
     return dec
 
 
@@ -92,14 +92,9 @@ def create_database():
         potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1, "satiation": 0.05}))
 
     if not models.Character.query.count():
-        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en", general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
+        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
+                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
         db.session.add(character)
-
-    if not models.ItemType.query.filter_by(name="scaffolding").count():
-        scaffolding_type = models.ItemType("scaffolding", 5000, portable=False)
-        scaffolding = models.Item(scaffolding_type, models.RootLocation.query.one())
-        activity = models.Activity(scaffolding, "building a hut", {}, {}, 100, models.Character.query.one())
-        db.session.add_all([scaffolding_type, scaffolding, activity])
 
     if not models.ItemType.by_name("portable_item_in_constr"):
         item_in_construction_type = models.ItemType("portable_item_in_constr", 1, portable=True)
@@ -111,14 +106,16 @@ def create_database():
 
     if not models.EntityRecipe.query.count():
         build_menu_category = models.BuildMenuCategory("structures")
-        recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category, result_entity=models.ItemType.by_name("signpost"))
+        recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category,
+                                     result_entity=models.ItemType.by_name("signpost"))
         db.session.add_all([build_menu_category, recipe])
 
     if not models.LocationType.by_name("hut"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
-        recipe = models.EntityRecipe("building_hut", {}, {}, 3, build_menu_category, result_entity=hut_type)
+        recipe = models.EntityRecipe("building_hut", {}, {}, 3, build_menu_category, result_entity=hut_type,
+                                     result=[["exeris.core.actions.AddNameToEntityAction", {}]])
         db.session.add_all([hut_type, recipe])
 
     if not models.TerrainArea.query.count():
@@ -143,7 +140,8 @@ def create_database():
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=False)
         tablet_type.properties.append(models.EntityTypeProperty(P.READABLE,
-                                      data={"max_length": 300, "allowed_formats": [models.TextContent.FORMAT_MD]}))
+                                                                data={"max_length": 300, "allowed_formats": [
+                                                                    models.TextContent.FORMAT_MD]}))
 
         tablet_production_result = [["exeris.core.actions.CreateItemAction",
                                      {"item_type": tablet_type.name,
@@ -205,7 +203,8 @@ def handle_error(exception):
     def sijax_error_response(obj_response):
         try:
             if isinstance(exception, main.GameException):
-                obj_response.call("$.publish", ["show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)])
+                obj_response.call("$.publish",
+                                  ["show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)])
                 return
         except:
             pass  # execute next line...
@@ -230,4 +229,3 @@ app.register_blueprint(character_static)
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
 app.jinja_env.globals.update(encode=main.encode)
 app.jinja_env.globals.update(decode=main.decode)
-

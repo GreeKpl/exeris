@@ -15,7 +15,6 @@ from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
 
-
 import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
@@ -32,7 +31,6 @@ ENTITY_CHARACTER = "character"
 ENTITY_ACTIVITY = "activity"
 ENTITY_TERRAIN_AREA = "terrain_area"
 ENTITY_GROUP = "group"
-
 
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
@@ -65,8 +63,9 @@ class Player(db.Model, UserMixin):
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
-    
-    def __init__(self, id, email, language, password, active=True, register_date=None, register_game_date=None, **kwargs):
+
+    def __init__(self, id, email, language, password, active=True, register_date=None, register_game_date=None,
+                 **kwargs):
         self.id = id
         self.email = email
         self.language = language
@@ -282,13 +281,11 @@ class Entity(db.Model):
     @being_in.expression
     def being_in(cls):
         return cls.parent_entity == Entity.id
-        #print(select(cls.id).where((cls.role == Item.ROLE_BEING_IN) & (cls.parent_entity == Item)))
-        #return select(cls.parent_entity).where((cls.role == Entity.ROLE_BEING_IN) & (cls.parent_entity_id == Entity.id))
-        #return case([(cls.role == Entity.ROLE_BEING_IN, cls.parent_entity_id)], else_=-1)
-        #return select([cls.parent_entity]).where(cls.role == Entity.ROLE_BEING_IN).as_scalar()
-        #return func.IF(cls.role == Entity.ROLE_BEING_IN, Entity.parent_entity, None)
-
-
+        # print(select(cls.id).where((cls.role == Item.ROLE_BEING_IN) & (cls.parent_entity == Item)))
+        # return select(cls.parent_entity).where((cls.role == Entity.ROLE_BEING_IN) & (cls.parent_entity_id == Entity.id))
+        # return case([(cls.role == Entity.ROLE_BEING_IN, cls.parent_entity_id)], else_=-1)
+        # return select([cls.parent_entity]).where(cls.role == Entity.ROLE_BEING_IN).as_scalar()
+        # return func.IF(cls.role == Entity.ROLE_BEING_IN, Entity.parent_entity, None)
 
     @hybrid_method
     def is_in(self, parents):
@@ -301,7 +298,9 @@ class Entity(db.Model):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
         db.session.flush()  # todo might require more
-        return (self.role == Entity.ROLE_BEING_IN) & (self.parent_entity_id.in_([p.id for p in parents]))
+        return (self.role == Entity.ROLE_BEING_IN) & (
+        self.parent_entity_id.in_([p.id for p in parents]) & ~self.discriminator_type.in_([ENTITY_LOCATION,
+                                                                                          ENTITY_ROOT_LOCATION]))
 
     @hybrid_method
     def is_used_for(self, parents):
@@ -357,12 +356,12 @@ class Entity(db.Model):
             assert len(data_kv) == 1
             key, value = next(iter(data_kv.items()))
 
-            entities_count = EntityProperty.query.filter_by(entity=self, name=name).\
+            entities_count = EntityProperty.query.filter_by(entity=self, name=name). \
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
             if entities_count > 0:
                 return True
 
-            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name).\
+            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name). \
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
             if entities_count > 0:
                 return True
@@ -658,7 +657,7 @@ class Item(Entity):
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
-        return "{{Item id={}, type={}, parent={}, parent_type={}}}"\
+        return "{{Item id={}, type={}, parent={}, parent_type={}}}" \
             .format(self.id, self.type_name, self.parent_entity.id, self.parent_entity.discriminator_type)
 
     __mapper_args__ = {
@@ -672,7 +671,6 @@ class Activity(Entity):
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     def __init__(self, being_in, name_tag, name_params, requirements, ticks_needed, initiator):
-
         self.being_in = being_in
 
         self.name_tag = name_tag
@@ -687,7 +685,8 @@ class Activity(Entity):
     name_params = sql.Column(psql.JSON)
 
     initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
-    initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id", post_update=True)
+    initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id",
+                                     post_update=True)
 
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
@@ -698,11 +697,17 @@ class Activity(Entity):
 
     def pyslatize(self, **overwrites):
         return dict(dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
-                    activity_name=self.name_tag, activity_params=self.name_params), **overwrites)
+                         activity_name=self.name_tag, activity_params=self.name_params), **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ACTIVITY,
     }
+
+    def __repr__(self):
+        return "{{Activity name_tag={}, params={}, in={}, ticks={}/{}, req={}}}".format(self.name_tag, self.name_params,
+                                                                                        self.being_in, self.ticks_left,
+                                                                                        self.ticks_needed,
+                                                                                        self.requirements)
 
 
 class GameDateCheckpoint(db.Model):
@@ -780,7 +785,9 @@ class EventObserver(db.Model):
     observer_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False)
     event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id, ondelete='CASCADE'), primary_key=True)
-    event = sql.orm.relationship(Event, uselist=False, backref=sql.orm.backref("observers_junction", cascade="all,delete-orphan", passive_deletes=True))
+    event = sql.orm.relationship(Event, uselist=False,
+                                 backref=sql.orm.backref("observers_junction", cascade="all,delete-orphan",
+                                                         passive_deletes=True))
     times_seen = sql.Column(sql.Integer)
 
     def __init__(self, event, observer):
@@ -826,7 +833,6 @@ class EntityProperty(db.Model):
 
 
 class PassageToNeighbour:
-
     def __init__(self, passage, other_side):
         self.passage = passage
         self.other_side = other_side
@@ -926,7 +932,7 @@ class RootLocation(Location):
         return cls._position
 
     def get_terrain_type(self):
-        top_terrain = TerrainArea.query.filter(sql.func.ST_CoveredBy(from_shape(self.position), TerrainArea._terrain)).\
+        top_terrain = TerrainArea.query.filter(sql.func.ST_CoveredBy(from_shape(self.position), TerrainArea._terrain)). \
             order_by(TerrainArea.priority.desc()).first()
         if not top_terrain:
             return TerrainType.by_name(Types.SEA)
@@ -934,7 +940,7 @@ class RootLocation(Location):
 
     def pyslatize(self, **overwrites):
         return dict(dict(entity_type=ENTITY_LOCATION, location_id=self.id,
-                    location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
+                         location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
@@ -1003,7 +1009,6 @@ class Passage(Entity):
 
 
 class ObservedName(db.Model):
-
     observer_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False, foreign_keys=[observer_id])
 
@@ -1031,7 +1036,6 @@ class ScheduledTask(db.Model):
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
     def __init__(self, process_json, execution_game_timestamp, execution_interval=None):
-
         self.process_data = process_json
         self.execution_game_timestamp = execution_game_timestamp
         self.execution_interval = execution_interval
@@ -1222,7 +1226,6 @@ class ResultantPropertyArea:  # no overlays
 
 
 def init_database_contents():
-
     event_types = [type_name for key_name, type_name in Events.__dict__.items() if not key_name.startswith("__")]
 
     for type_name in event_types:
@@ -1241,6 +1244,7 @@ def init_database_contents():
 def delete_all(seq):
     for element in seq:
         db.session.delete(element)
+
 
 '''
 # low-level functions to maintain ResultantTerrainArea as
@@ -1261,18 +1265,3 @@ def receive_after_update(mapper, connection, target):
 
     print(ResultantTerrainArea.query.all())
 '''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
