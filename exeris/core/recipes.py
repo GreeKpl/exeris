@@ -16,7 +16,10 @@ class ActivityFactory:
         all_requirements = {}
         for req in recipe.requirements:
             if req == "input":
-                all_requirements[req] = {k: math.ceil(v * amount) for (k, v) in recipe.requirements[req].items()}
+                input_req = {}
+                for req_type, req_amount in recipe.requirements[req].items():
+                    input_req[req_type] = {"needed": req_amount * amount, "left": req_amount * amount}
+                all_requirements[req] = input_req
             else:
                 all_requirements[req] = recipe.requirements[req]
 
@@ -58,7 +61,7 @@ class ActivityFactory:
 
             being_in = activity_container  # it should become parent of activity
 
-        activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, recipe.requirements, all_ticks_needed, initiator)
+        activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed, initiator)
         actions = self._enhance_actions(recipe.result, user_input)
 
         # entity_result is always the first action, because additional actions can often be some modifiers of this CIA

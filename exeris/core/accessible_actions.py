@@ -14,6 +14,7 @@ ACTIONS_ON_GROUND = [
     ActionRecord("eat", "image", P.EDIBLE, "eat"),
     ActionRecord("enter", "image", P.ENTERABLE, "move_to_location"),
     ActionRecord("read", "image", P.READABLE, "open_readable_contents"),
+    ActionRecord("add_to_activity", "image", "any", "form_add_item_to_activity")
 ]
 
 TOOLBAR_ACTIONS = [

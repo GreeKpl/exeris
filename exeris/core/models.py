@@ -299,8 +299,8 @@ class Entity(db.Model):
             parents = [parents]
         db.session.flush()  # todo might require more
         return (self.role == Entity.ROLE_BEING_IN) & (
-        self.parent_entity_id.in_([p.id for p in parents]) & ~self.discriminator_type.in_([ENTITY_LOCATION,
-                                                                                          ENTITY_ROOT_LOCATION]))
+            self.parent_entity_id.in_([p.id for p in parents]) & ~self.discriminator_type.in_([ENTITY_LOCATION,
+                                                                                               ENTITY_ROOT_LOCATION]))
 
     @hybrid_method
     def is_used_for(self, parents):
@@ -886,6 +886,9 @@ class Location(Entity):
             pyslatized["location_title"] = self.title
         return dict(pyslatized, **overwrites)
 
+    def __repr__(self):
+        return "{{Location id={}, title={},type={}}}".format(self.id, self.title, self.type_name)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_LOCATION,
     }
@@ -962,6 +965,17 @@ class TextContent(db.Model):
     format = sql.Column(sql.String(4))
 
 
+class LocationView:
+
+    def __init__(self, location, observer_loc, windows, route):
+        self.location = location
+        self.observer_loc = observer_loc
+        self.windows = windows
+        self.route = route
+
+    def __repr__(self):
+        return "{{LocationView of={}, from={}, windows={}, route_len={}}}".format(self.location.__repr__(), self.observer_loc, self.windows, len(self.route))
+
 class Passage(Entity):
     __tablename__ = "passages"
 
@@ -985,7 +999,14 @@ class Passage(Entity):
                    (self.right_location == first_loc) & (self.left_location == second_loc))
 
     def is_accessible(self):
-        return self.has_property(P.WINDOW, data_kv={"open": True}) or self.has_property(P.OPEN_PASSAGE)
+        """
+        Checks if the other side of the passage is accessible for any character.
+        :return:
+        """
+        return self.has_window(is_open=True) or self.has_property(P.OPEN_PASSAGE)
+
+    def has_window(self, *, is_open=True):
+        return self.has_property(P.WINDOW, data_kv={"open": is_open})
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 

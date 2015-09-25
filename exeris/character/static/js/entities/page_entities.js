@@ -73,6 +73,11 @@ FRAGMENTS.entities = (function($) {
         },
         after_edit_readable: function(entity_d) {
             alert("text updated!");
+        },
+        after_form_add_item_to_activity: function(modal_dialog) {
+            $("#add_to_activity").remove();
+            $(document.body).append(modal_dialog);
+            $("#add_to_activity").modal();
         }
     }
 })(jQuery);

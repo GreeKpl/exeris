@@ -2,8 +2,6 @@ from collections import deque
 import collections
 import copy
 
-
-
 from exeris.core.main import db
 
 from exeris.core import models
@@ -76,7 +74,6 @@ class GameDate:
 
 
 class RangeSpec:
-
     def characters_near(self, entity):
         locs = []
         for loc in self._locationize(entity):
@@ -96,9 +93,20 @@ class RangeSpec:
         return [loc for loc in locs if isinstance(loc, models.RootLocation)]
 
     def locations_near(self, entity):
+        return [loc_view.location for loc_view in self.location_views_near(entity)]
+
+    def location_views_near(self, entity):
         raise NotImplementedError  # abstract
 
     def is_near(self, entity_a, entity_b, strict=True):
+        """
+        Checks whether entity_a has access to entity_b.
+        If entity_a is instance of Character then their capabilities like keys are taken into account.
+        :param entity_a:
+        :param entity_b:
+        :param strict:
+        :return:
+        """
         for a in self._locationize(entity_a):
             locations_near_a = self.locations_near(a)
             return any([True for b in self._locationize(entity_b) if b in locations_near_a])
@@ -125,8 +133,7 @@ class RangeSpec:
 
 
 class InsideRange(RangeSpec):
-
-    def locations_near(self, entity):
+    def location_views_near(self, entity):
         return []
 
     def characters_near(self, entity):
@@ -140,23 +147,38 @@ class InsideRange(RangeSpec):
 
 
 class SameLocationRange(RangeSpec):
-
-    def locations_near(self, entity):
+    def location_views_near(self, entity):
         if isinstance(entity, models.Location):
-            return [entity]
-        return [entity.being_in]
+            return [models.LocationView(entity, entity, 0, [entity])]
+        return [models.LocationView(entity.being_in, entity.being_in, 0, [entity.being_in])]
 
 
 class NeighbouringLocationsRange(RangeSpec):
+    def location_views_near(self, entity):
+        main_loc = self._locationize(entity)[0]
+        all_location_views_by_id = {}
+        left_passages = main_loc.passages_to_neighbours  # list of PassagesToNeighbours
 
-    def locations_near(self, entity):
+        all_location_views_by_id[main_loc.id] = models.LocationView(main_loc, main_loc, 0, [main_loc])
 
-        passages = entity.passages_to_neighbours
-        accessible_sides = [psg.other_side for psg in passages if psg.passage.is_accessible()]
+        for passage_to_nei in list(left_passages):
+            print(all_location_views_by_id)
+            window_inc = 0
+            if passage_to_nei.passage.is_accessible():
+                if passage_to_nei.passage.has_window(is_open=True):
+                    window_inc = 1
+                curr_loc = passage_to_nei.other_side
+                if curr_loc.id not in all_location_views_by_id:
+                    own_side_loc_view = all_location_views_by_id[passage_to_nei.own_side.id]
+                    all_location_views_by_id[curr_loc.id] = models.LocationView(curr_loc, main_loc,
+                                                                                own_side_loc_view.windows + window_inc,
+                                                                                own_side_loc_view.route + [curr_loc])
+                left_passages += [new_psg for new_psg in curr_loc.passages_to_neighbours if
+                                  new_psg.other_side.id not in all_location_views_by_id]
+        print(all_location_views_by_id.values())
+        location_views = [a for a in all_location_views_by_id.values() if a.windows <= 2]
 
-        accessible_sides += [entity]
-
-        return accessible_sides
+        return location_views
 
 
 def visit_subgraph(node):
@@ -174,7 +196,6 @@ def visit_subgraph(node):
 
 
 class VisibilityBasedRange(RangeSpec):
-
     def __init__(self, distance):
         self.distance = distance
 
@@ -185,8 +206,8 @@ class VisibilityBasedRange(RangeSpec):
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
             root = roots[0]
-            other_locs = models.RootLocation.query.\
-                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)).\
+            other_locs = models.RootLocation.query. \
+                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)). \
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
@@ -196,7 +217,6 @@ class VisibilityBasedRange(RangeSpec):
 
 
 class TraversabilityBasedRange(RangeSpec):
-
     def __init__(self, distance):
         self.distance = distance
 
@@ -207,8 +227,8 @@ class TraversabilityBasedRange(RangeSpec):
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
             root = roots[0]
-            other_locs = models.RootLocation.query.\
-                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)).\
+            other_locs = models.RootLocation.query. \
+                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)). \
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
@@ -218,7 +238,6 @@ class TraversabilityBasedRange(RangeSpec):
 
 
 class ItemQueryHelper:
-
     @staticmethod
     def all_of_types_in(types, being_in):
         """
@@ -252,21 +271,21 @@ class ItemQueryHelper:
 
 
 class EventCreator:
-
     @classmethod
     def get_event_type_by_name(cls, name):
         return models.EventType.query.filter_by(name=name).one()
 
     @classmethod
-    def base(cls, tag_base, rng=None, params=None, doer=None, target=None):
+    def base(cls, tag_base, rng=None, params=None, doer=None, target=None, other_source=None):
 
         tag_doer = tag_base + "_doer"
         tag_target = tag_base + "_target"
         tag_observer = tag_base + "_observer"
-        EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target)
+        EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target, other_source)
 
     @classmethod
-    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
+    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None,
+               other_source=None):
         """
         Either tag_base or tag_doer should be specified. If tag_base is specified then event
         for doer and observers (based on specified range) are emitted.
@@ -319,7 +338,10 @@ class EventCreator:
 
             event_for_observer = models.Event(tag_observer, obs_params)
             db.session.add(event_for_observer)
-            event_obs = [models.EventObserver(event_for_observer, char) for char in rng.characters_near(doer)
-                         if char not in (doer, target)]
+            character_obs = {char for char in rng.characters_near(doer)
+                             if char not in (doer, target)}
+            if other_source:
+                character_obs.update({char for char in rng.characters_near(other_source)})
+            event_obs = [models.EventObserver(event_for_observer, char) for char in character_obs]
 
             db.session.add_all(event_obs)

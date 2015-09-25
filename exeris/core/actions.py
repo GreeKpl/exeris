@@ -3,6 +3,7 @@ import traceback
 
 from flask import logging
 from shapely.geometry import Point
+from sqlalchemy import func
 
 from exeris.core.deferred import convert
 from exeris.core import deferred
@@ -20,6 +21,12 @@ class AbstractAction:  # top level, we don't assume anything
 
     def perform_action(self):
         pass
+
+
+class PlayerAction(AbstractAction):  # top level player action
+
+    def __init__(self, player):
+        self.player = player
 
 
 class Action(AbstractAction):  # top level character action, where we only know that it's done by a character
@@ -487,6 +494,34 @@ class EatingProcess(ProcessAction):
 #
 
 ##############################
+#   PLAYER-SPECIFIC ACTIONS  #
+##############################
+
+
+#
+
+
+class CreateCharacterAction(PlayerAction):
+
+    def __init__(self, player, character_name, sex, language):
+        super().__init__(player)
+        self.character_name = character_name
+        self.sex = sex
+        self.language = language
+
+    def perform_action(self):
+        loc = models.RootLocation.query.order_by(func.random()).first()
+        new_char = models.Character(self.character_name, self.sex, self.player, self.language,
+                                    general.GameDate.now(), loc.position, loc)
+        db.session.add(new_char)
+
+        return new_char
+
+
+#
+
+
+##############################
 # CHARACTER-SPECIFIC ACTIONS #
 ##############################
 
@@ -599,15 +634,18 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
 
     def perform_action(self):
 
-        if self.item.being_in != self.executor:
+        if not self.executor.has_access(self.item, rng=SameLocationRange()):
             raise main.EntityNotInInventoryException(entity=self.item)
+
+        if not self.executor.has_access(self.activity, rng=SameLocationRange()):
+            raise main.TooFarFromActivityException(activity=self.activity)
 
         if self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
         req = self.activity.requirements
 
-        for required_group_name, required_group_params in sorted(req.get("input", {}).items()):
+        for required_group_name, required_group_params in sorted(req.get("input", {}).items()):  # TODO make it prettier
             required_group = models.EntityType.by_name(required_group_name)
             if "used_type" in required_group_params:
                 if required_group_params["used_type"] != self.item.type_name:  # must be exactly the same type

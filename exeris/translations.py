@@ -131,5 +131,17 @@ data = {
     },
     "entity_clay_adj": {
         "en": "clay",
-    }
+    },
+    "entity_granite": {
+        "en": "granite",
+    },
+    "entity_sandstone": {
+        "en": "sandstone",
+    },
+    "entity_marble": {
+        "en": "marble",
+    },
+    "entity_group_stone": {
+        "en": "stone",
+    },
 }

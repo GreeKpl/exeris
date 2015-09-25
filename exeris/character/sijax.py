@@ -183,6 +183,8 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
             full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
 
             def has_needed_prop(action):
+                if action.required_property == "any":
+                    return True
                 return entity.has_property(action.required_property)
 
             possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
@@ -218,6 +220,28 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
         db.session.commit()
         obj_response.call("FRAGMENTS.entities.after_move_to_location", [app.encode(loc.id)])
+
+    @staticmethod
+    def form_add_item_to_activity(obj_response, entity_id):
+        entity_id = app.decode(entity_id)
+        entity_to_add = models.Entity.by_id(entity_id)
+        loc = g.character.being_in
+        activity_holders = models.Entity.query.filter(models.Entity.is_in(loc)).all()
+
+        activities = models.Activity.query.filter(models.Activity.is_in(activity_holders)).all()
+
+        activities_to_add = []
+        for activity in activities:
+            if "input" in activity.requirements:
+                for needed_type, req_data in activity.requirements["input"].items():
+                    if models.EntityType.by_name(needed_type).contains(entity_to_add.type):
+                        amount = req_data["left"] / needed_type.efficiency(entity_to_add.type)
+                        activities_to_add += [{"name": activity.name_tag, "amount": amount}]
+
+        rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
+                                   entity_to_add=entity_to_add)
+
+        obj_response.call("FRAGMENTS.entities.after_form_add_item_to_activity", [rendered])
 
 
 class MapPage(GlobalMixin):

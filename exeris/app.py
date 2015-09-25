@@ -114,8 +114,12 @@ def create_database():
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
-        recipe = models.EntityRecipe("building_hut", {}, {}, 3, build_menu_category, result_entity=hut_type,
-                                     result=[["exeris.core.actions.AddNameToEntityAction", {}]])
+        recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}}, 3, build_menu_category,
+                                     result=[["exeris.core.actions.CreateItemAction",
+                                              {"item_type": hut_type.name, "properties": {}, "used_materials": "all",
+                                               "visible_materials": {"main": "group_stone"}}],
+                                             ["exeris.core.actions.AddNameToEntityAction", {}]],
+                                     activity_container="fixed_item")
         db.session.add_all([hut_type, recipe])
 
     if not models.TerrainArea.query.count():
@@ -155,6 +159,23 @@ def create_database():
     outside = models.LocationType.by_name(Types.OUTSIDE)
     if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.ENTERABLE).count():
         outside.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+
+    if not models.ItemType.by_name("granite"):
+        stone_group = models.TypeGroup("group_stone")
+        granite_type = models.ItemType("granite", 20, stackable=True)
+        sandstone_type = models.ItemType("sandstone", 10, stackable=True)
+        marble_type = models.ItemType("marble", 30, stackable=True)
+        stone_group.add_to_group(granite_type, efficiency=1.5)
+        stone_group.add_to_group(sandstone_type, efficiency=1.0)
+        stone_group.add_to_group(marble_type, efficiency=2.0)
+
+        rl = models.RootLocation.query.one()
+        granite_pile = models.Item(granite_type, rl, amount=1000)
+        sandstone_pile = models.Item(sandstone_type, rl, amount=1000)
+        marble_pile = models.Item(marble_type, rl, amount=1000)
+
+        db.session.add_all(
+            [stone_group, granite_type, sandstone_type, marble_type, granite_pile, sandstone_pile, marble_pile])
 
     from exeris.translations import data
     for tag_key in data:
@@ -210,6 +231,7 @@ def handle_error(exception):
             pass  # execute next line...
         fun_name = obj_response._sijax.requested_function
         obj_response.call("$.publish", ["show_error", "SIJAX error on " + fun_name + ": " + str(exception)])
+        print(exception)
         print(traceback.print_tb(exception.__traceback__))
 
     if g.sijax.is_sijax_request:
@@ -217,6 +239,7 @@ def handle_error(exception):
 
     if isinstance(exception, main.GameException):
         return g.pyslate.t(exception.error_tag, **exception.error_kwargs)
+    print(exception)
     print(traceback.print_tb(exception.__traceback__))
     return traceback.print_tb(exception.__traceback__), 404
 
