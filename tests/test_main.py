@@ -167,9 +167,9 @@ class RangeSpecTest(TestCase):
 class EventCreatorTest(TestCase):
 
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_event_creation(self):
-
         util.initialize_date()
 
         et1 = EventType("slap_doer", EventType.IMPORTANT)
@@ -190,10 +190,10 @@ class EventCreatorTest(TestCase):
         db.session.add_all([rl, loc_type, loc1, loc2, doer, target, observer])
 
         psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+        psg1.properties.append(EntityProperty(P.OPEN_PASSAGE))
         psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
+        psg2.properties.append(EntityProperty(P.OPEN_PASSAGE))
         db.session.add_all([psg1, psg2])
-        db.session.add(EntityProperty(P.OPEN_PASSAGE, entity=psg1))
-        db.session.add(EntityProperty(P.OPEN_PASSAGE, entity=psg2))
 
         EventCreator.base("slap", doer=doer, target=target,
                           rng=VisibilityBasedRange(100), params={"hi": "hehe"})
@@ -217,4 +217,45 @@ class EventCreatorTest(TestCase):
             "target": target.pyslatize()
         }}, event_obs.event.params)
 
-    tearDown = util.tear_down_rollback
+
+def test_event_for_observer_in_targets_location(self):
+        util.initialize_date()
+
+        et1 = EventType("slap_doer", EventType.IMPORTANT)
+        et2 = EventType("slap_target", EventType.IMPORTANT)
+        et3 = EventType("slap_observer", EventType.NORMAL)
+        db.session.add_all([et1, et2, et3])
+
+        rl = RootLocation(Point(10, 10), False, 103)
+        loc_type = LocationType("building", 200)
+        loc1 = Location(rl, loc_type)
+        loc2 = Location(rl, loc_type)
+
+        plr = util.create_player("plr1")
+        doer = util.create_character("doer", loc1, plr)
+        target = util.create_character("target", loc2, plr)
+        observer = util.create_character("observer", loc2, plr)
+        observer_in_root_loc = util.create_character("observer_too_far_away", rl, plr)
+
+        db.session.add_all([rl, loc_type, loc1, loc2])
+
+        psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+        psg1.properties.append(EntityProperty(P.OPEN_PASSAGE))
+        psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
+        psg2.properties.append(EntityProperty(P.OPEN_PASSAGE))
+        db.session.add_all([psg1, psg2])
+
+        EventCreator.base("slap", doer=doer, target=target,
+                          rng=SameLocationRange())
+
+        event_doer = EventObserver.query.filter_by(observer=doer).one()
+        self.assertEqual(et1, event_doer.event.type)
+
+        event_target = EventObserver.query.filter_by(observer=target).one()
+        self.assertEqual(et2, event_target.event.type)
+
+        event_obs = EventObserver.query.filter_by(observer=observer).one()
+        self.assertEqual(et3, event_obs.event.type)
+
+        observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
+        self.assertEqual(0, observer_in_root_loc_count)

@@ -283,16 +283,15 @@ class EventCreator:
         return models.EventType.query.filter_by(name=name).one()
 
     @classmethod
-    def base(cls, tag_base, rng=None, params=None, doer=None, target=None, other_source=None):
+    def base(cls, tag_base, rng=None, params=None, doer=None, target=None):
 
         tag_doer = tag_base + "_doer"
         tag_target = tag_base + "_target"
         tag_observer = tag_base + "_observer"
-        EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target, other_source)
+        EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target)
 
     @classmethod
-    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None,
-               other_source=None):
+    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
         """
         Either tag_base or tag_doer should be specified. If tag_base is specified then event
         for doer and observers (based on specified range) are emitted.
@@ -345,10 +344,11 @@ class EventCreator:
 
             event_for_observer = models.Event(tag_observer, obs_params)
             db.session.add(event_for_observer)
-            character_obs = {char for char in rng.characters_near(doer)
-                             if char not in (doer, target)}
-            if other_source:
-                character_obs.update({char for char in rng.characters_near(other_source)})
-            event_obs = [models.EventObserver(event_for_observer, char) for char in character_obs]
+            character_obs = set(rng.characters_near(doer))
+
+            if target:
+                character_obs.update(rng.characters_near(target))
+            event_obs = [models.EventObserver(event_for_observer, char) for char in character_obs
+                         if char not in (doer, target)]
 
             db.session.add_all(event_obs)
