@@ -115,9 +115,9 @@ def create_database():
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}}, 3, build_menu_category,
-                                     result=[["exeris.core.actions.CreateItemAction",
-                                              {"item_type": hut_type.name, "properties": {}, "used_materials": "all",
-                                               "visible_materials": {"main": "group_stone"}}],
+                                     result=[["exeris.core.actions.CreateLocationAction",
+                                              {"location_type": hut_type.name, "properties": {}, "used_materials": "all",
+                                               "visible_material": {"main": "group_stone"}}],
                                              ["exeris.core.actions.AddNameToEntityAction", {}]],
                                      activity_container="fixed_item")
         db.session.add_all([hut_type, recipe])

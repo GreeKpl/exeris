@@ -1,5 +1,6 @@
 from statistics import mean
 import traceback
+import math
 
 from flask import logging
 from shapely.geometry import Point
@@ -197,13 +198,14 @@ class RemoveActivityContainerAction(ActivityAction):
 
 class CreateLocationAction(ActivityAction):
     @convert(location_type=models.LocationType)
-    def __init__(self, *, location_type, used_materials, properties, **injected_args):
+    def __init__(self, *, location_type, used_materials, properties, visible_material=None, **injected_args):
         self.location_type = location_type
         self.used_materials = used_materials
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
         self.kwargs = injected_args
         self.properties = properties
+        self.visible_material = visible_material if visible_material else {}
 
     def perform_action(self):
         result_loc = self.activity.being_in.being_in
@@ -216,6 +218,17 @@ class CreateLocationAction(ActivityAction):
             for material in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
                 material.used_for = new_location
         # TODO what if used_materials is not all?
+
+        if self.visible_material:
+            visible_material_property = {}
+            for place_to_show in self.visible_material:
+                group_name = self.visible_material[place_to_show]
+                req_input = self.activity.requirements["input"]
+                for req_material_name, req_material in req_input.items():  # forall requirements
+                    real_used_type_name = req_material["used_type"]
+                    if group_name == req_material_name:  # this group is going to be shown by our visible material
+                        visible_material_property[place_to_show] = real_used_type_name
+            new_location.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
         db.session.add(new_location)
 
@@ -597,7 +610,7 @@ class TakeItemAction(ActionOnItem):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.amount > self.item.amount:
-            raise Exception
+            raise main.InvalidAmountException(amount=self.amount)
 
         move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
 
@@ -627,7 +640,7 @@ class GiveItemAction(ActionOnItemAndCharacter):
                           self.executor, self.character)
 
 
-class AddItemToActivityAction(ActionOnItemAndActivity):
+class AddEntityToActivityAction(ActionOnItemAndActivity):
     def __init__(self, executor, item, activity, amount):
         super().__init__(executor, item, activity)
         self.amount = amount
@@ -656,13 +669,18 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
             if not required_group.contains(self.item.type):  # requirement cannot be fulfilled by this type
                 continue
             type_efficiency_ratio = required_group.efficiency(self.item.type)
-            max_to_be_added = required_group_params["left"] / type_efficiency_ratio
+            max_to_be_added = math.ceil(required_group_params["left"] / type_efficiency_ratio)
             amount_to_add = min(self.amount, max_to_be_added)
-            move_between_entities(self.item, self.executor, self.activity, amount_to_add, to_be_used_for=True)
+
+            source = self.item.being_in  # on ground
+            if self.item.being_in == self.executor:  # in inventory
+                source = self.executor
+
+            move_between_entities(self.item, source, self.activity, amount_to_add, to_be_used_for=True)
 
             material_left_reduction = amount_to_add * type_efficiency_ratio
 
-            required_group_params["left"] -= material_left_reduction
+            required_group_params["left"] = max(0, required_group_params["left"] - material_left_reduction)
             required_group_params["used_type"] = self.item.type_name
 
             overwrites = {}
@@ -675,9 +693,13 @@ class AddItemToActivityAction(ActionOnItemAndActivity):
                 "activity": self.activity.pyslatize()
             }}
             EventCreator.base(Events.ADD_TO_ACTIVITY, self.rng, event_args, doer=self.executor)
-            return
+            break
+        else:
+            raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
 
-        raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
+        self.activity.requirements = {}  # TODO CATASTROPHE
+        db.session.flush()
+        self.activity.requirements = req
 
 
 class EatAction(ActionOnItem):

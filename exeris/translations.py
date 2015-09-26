@@ -75,7 +75,7 @@ data = {
         "en": "%{main_material}%{dependent}%{item_name}%{parts}",
     },
     "tp_location_info": {
-        "en": "%{location_name}%{title}",
+        "en": "%{main_material}%{location_name}%{title}",
     },
     "tp_item_title": {
         "en": "'%{title@escape_html}'",
@@ -93,6 +93,10 @@ data = {
     "tp_item_main_material": {
         "en": "${entity_%{material_name}_adj#%{item_form}}",
     },
+    "tp_location_main_material": {
+        "en": "${entity_%{material_name}_adj#%{location_form}}",
+    },
+
     "tp_item_rotting": {
         "en": "rotting",
     },
@@ -135,10 +139,19 @@ data = {
     "entity_granite": {
         "en": "granite",
     },
+    "entity_granite_adj": {
+        "en": "granite",
+    },
     "entity_sandstone": {
         "en": "sandstone",
     },
+    "entity_sandstone_adj": {
+        "en": "sandstone",
+    },
     "entity_marble": {
+        "en": "marble",
+    },
+    "entity_marble_adj": {
         "en": "marble",
     },
     "entity_group_stone": {

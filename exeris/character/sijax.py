@@ -233,15 +233,27 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         activities_to_add = []
         for activity in activities:
             if "input" in activity.requirements:
-                for needed_type, req_data in activity.requirements["input"].items():
-                    if models.EntityType.by_name(needed_type).contains(entity_to_add.type):
+                for needed_type_name, req_data in activity.requirements["input"].items():
+                    needed_type = models.EntityType.by_name(needed_type_name)
+                    if needed_type.contains(entity_to_add.type):
                         amount = req_data["left"] / needed_type.efficiency(entity_to_add.type)
-                        activities_to_add += [{"name": activity.name_tag, "amount": amount}]
+                        activities_to_add += [{"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
 
         rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
                                    entity_to_add=entity_to_add)
 
         obj_response.call("FRAGMENTS.entities.after_form_add_item_to_activity", [rendered])
+
+    @staticmethod
+    def add_item_to_activity(obj_response, entity_to_add, amount, activity_id):
+        entity_to_add = models.Entity.by_id(app.decode(entity_to_add))
+        activity = models.Activity.by_id(app.decode(activity_id))
+
+        action = actions.AddEntityToActivityAction(g.character, entity_to_add, activity, amount)
+        action.perform()
+
+        obj_response.call("FRAGMENTS.entities.after_add_item_to_activity", [])
+        db.session.commit()
 
 
 class MapPage(GlobalMixin):

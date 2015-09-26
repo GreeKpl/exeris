@@ -884,6 +884,9 @@ class Location(Entity):
                           location_name=self.type_name)
         if self.title:
             pyslatized["location_title"] = self.title
+        prop = self.get_property(P.VISIBLE_MATERIAL)
+        if prop:
+            pyslatized["location_material"] = prop
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):

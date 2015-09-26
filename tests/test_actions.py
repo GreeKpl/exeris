@@ -4,7 +4,7 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core import deferred
-from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddItemToActivityAction, \
+from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction
 from exeris.core import main
 from exeris.core.main import db, Events
@@ -349,14 +349,14 @@ class ActionsTest(TestCase):
             }
         }, 1, initiator)
 
-        action = AddItemToActivityAction(initiator, iron, activity, 4)
+        action = AddEntityToActivityAction(initiator, iron, activity, 4)
         action.perform()
 
         self.assertEqual({metal_group.name: {"needed": 10, "left": 8, "used_type": iron_type.name}},
                          activity.requirements["input"])
         self.assertEqual(16, iron.amount)
 
-        action = AddItemToActivityAction(initiator, iron, activity, 16)
+        action = AddEntityToActivityAction(initiator, iron, activity, 16)
         action.perform()
 
         self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}},
@@ -385,7 +385,7 @@ class ActionsTest(TestCase):
         }, 1, initiator)
         db.session.add(activity)
 
-        action = AddItemToActivityAction(initiator, oak, activity, 20)  # added as the first material from the list
+        action = AddEntityToActivityAction(initiator, oak, activity, 20)  # added as the first material from the list
         action.perform()
 
         # in this case oak should be added as fuel, because material groups are sorted and applied alphabetically
@@ -413,7 +413,7 @@ class ActionsTest(TestCase):
         }, event_add_obs.params)
         Event.query.delete()
 
-        action = AddItemToActivityAction(initiator, oak, activity, 10)
+        action = AddEntityToActivityAction(initiator, oak, activity, 10)
         action.perform()  # add materials to another group
 
         self.assertEqual({

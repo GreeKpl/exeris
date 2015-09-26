@@ -32,6 +32,14 @@ FRAGMENTS.entities = (function($) {
         Sijax.request("entities_get_sublist", [entity_id]);
     });
 
+    $(document).on("click", "#add_to_activity_confirm", function(event) {
+        var entity_to_add = $("#add_to_activity").data("entity_to_add");
+        var amount = +$("#add_to_activity_amount").val();
+        var activity_id = $("#selected_activity").find(":selected").val();
+
+        Sijax.request("add_item_to_activity", [entity_to_add, amount, activity_id]);
+    });
+
     return {
         after_refresh_list: function (entities) {
             $("#entities_list > ol").empty();
@@ -78,6 +86,10 @@ FRAGMENTS.entities = (function($) {
             $("#add_to_activity").remove();
             $(document.body).append(modal_dialog);
             $("#add_to_activity").modal();
+        },
+        after_add_item_to_activity: function() {
+            $("#add_to_activity").modal("hide");
+            $.publish("entities:refresh_list");
         }
     }
 })(jQuery);

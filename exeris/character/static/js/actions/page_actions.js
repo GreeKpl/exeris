@@ -16,7 +16,7 @@ FRAGMENTS.actions = (function() {
         $(".recipe_input").each(function() {
             user_input[$(this).prop("name")] = $(this).val();
         });
-        console.log(user_input);
+
         Sijax.request("create_activity_from_recipe", [recipe_id, user_input]);
     });
 
