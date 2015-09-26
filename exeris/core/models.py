@@ -998,12 +998,14 @@ class Passage(Entity):
         return or_((self.left_location == first_loc) & (self.right_location == second_loc),
                    (self.right_location == first_loc) & (self.left_location == second_loc))
 
-    def is_accessible(self):
+    def is_accessible(self, go_through_window=True):
         """
         Checks if the other side of the passage is accessible for any character.
         :return:
         """
-        return self.has_window(is_open=True) or self.has_property(P.OPEN_PASSAGE)
+        if go_through_window:
+            return self.has_window(is_open=True) or self.has_property(P.OPEN_PASSAGE)
+        return self.has_property(P.OPEN_PASSAGE)
 
     def has_window(self, *, is_open=True):
         return self.has_property(P.WINDOW, data_kv={"open": is_open})

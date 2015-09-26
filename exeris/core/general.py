@@ -93,9 +93,6 @@ class RangeSpec:
         return [loc for loc in locs if isinstance(loc, models.RootLocation)]
 
     def locations_near(self, entity):
-        return [loc_view.location for loc_view in self.location_views_near(entity)]
-
-    def location_views_near(self, entity):
         raise NotImplementedError  # abstract
 
     def is_near(self, entity_a, entity_b, strict=True):
@@ -133,7 +130,7 @@ class RangeSpec:
 
 
 class InsideRange(RangeSpec):
-    def location_views_near(self, entity):
+    def locations_near(self, entity):
         return []
 
     def characters_near(self, entity):
@@ -147,13 +144,21 @@ class InsideRange(RangeSpec):
 
 
 class SameLocationRange(RangeSpec):
-    def location_views_near(self, entity):
+    def locations_near(self, entity):
         if isinstance(entity, models.Location):
-            return [models.LocationView(entity, entity, 0, [entity])]
-        return [models.LocationView(entity.being_in, entity.being_in, 0, [entity.being_in])]
+            return [entity]
+        return [entity.being_in]
 
 
 class NeighbouringLocationsRange(RangeSpec):
+    def __init__(self, go_through_window):
+        self.go_through_window = go_through_window
+
+    def locations_near(self, entity):
+
+        loc = self._locationize(entity)[0]
+        return visit_subgraph(loc, self.go_through_window)
+
     def location_views_near(self, entity):
         main_loc = self._locationize(entity)[0]
         all_location_views_by_id = {}
@@ -181,13 +186,13 @@ class NeighbouringLocationsRange(RangeSpec):
         return location_views
 
 
-def visit_subgraph(node):
+def visit_subgraph(node, go_through_window=True):
     passages_all = node.passages_to_neighbours
     passages_left = deque(passages_all)
     visited_locations = {node}
     while len(passages_left):
         passage = passages_left.popleft()
-        if passage.passage.is_accessible():
+        if passage.passage.is_accessible(go_through_window=go_through_window):
             if passage.other_side not in visited_locations:
                 visited_locations.add(passage.other_side)
                 new_passages = passage.other_side.passages_to_neighbours
@@ -196,12 +201,13 @@ def visit_subgraph(node):
 
 
 class VisibilityBasedRange(RangeSpec):
-    def __init__(self, distance):
+    def __init__(self, distance, go_through_window=True):
         self.distance = distance
+        self.go_through_window = go_through_window
 
     def locations_near(self, entity):
 
-        locs = visit_subgraph(entity)
+        locs = visit_subgraph(entity, self.go_through_window)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -211,18 +217,19 @@ class VisibilityBasedRange(RangeSpec):
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc))
+                locs.update(visit_subgraph(other_loc, self.go_through_window))
 
         return locs
 
 
 class TraversabilityBasedRange(RangeSpec):
-    def __init__(self, distance):
+    def __init__(self, distance, go_through_window=False):
         self.distance = distance
+        self.go_through_window = go_through_window
 
     def locations_near(self, entity):
 
-        locs = visit_subgraph(entity)
+        locs = visit_subgraph(entity, self.go_through_window)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -232,7 +239,7 @@ class TraversabilityBasedRange(RangeSpec):
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc))
+                locs.update(visit_subgraph(other_loc, self.go_through_window))
 
         return locs
 

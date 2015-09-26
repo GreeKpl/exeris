@@ -126,10 +126,15 @@ class RangeSpecTest(TestCase):
 
         # items in the same and neighbouring locations
 
-        rng = NeighbouringLocationsRange()
+        rng = NeighbouringLocationsRange(go_through_window=True)
         items = rng.items_near(loc2)
 
-        self.assertCountEqual([i2_1, i2_2, irl_1, i21_1], items)
+        self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
+
+        rng = NeighbouringLocationsRange(go_through_window=False)
+        items = rng.items_near(loc2)
+
+        self.assertCountEqual([i2_1, i2_2, i21_1], items)
 
         rng = VisibilityBasedRange(100)
         items = rng.items_near(loc2)
@@ -142,6 +147,16 @@ class RangeSpecTest(TestCase):
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
 
         rng = TraversabilityBasedRange(100)
+        items = rng.items_near(loc2)
+
+        self.assertCountEqual([i2_1, i2_2, i21_1], items)
+
+        rng = TraversabilityBasedRange(100)
+        items = rng.items_near(loc1)
+
+        self.assertCountEqual([irl_1, i11_1, i11_2, iorl_1, io1_1], items)
+
+        rng = TraversabilityBasedRange(100, go_through_window=True)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
