@@ -4,6 +4,7 @@ from shapely import geometry
 from shapely.geometry import Point
 
 from exeris.core import main
+from exeris.core.general import GameDate
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
@@ -186,6 +187,10 @@ data = {
         "en": "manufacturing ${result:entity_info@article}",
         "pl": "produkcja ${result:entity_info#g}",
     },
+    "tp_game_date": {
+        "en": "%{day}-%{moon}m. %{hour}:%{minute}",
+    },
+
 }
 
 
@@ -457,3 +462,14 @@ class CharacterAndLocationTranslationTest(TestCase):
         pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_info", **activity.pyslatize()))
+
+
+class GameDateDisplayTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_game_date(self):
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
+        date = GameDate.from_date(11, 3, 1, 2, 3)
+        self.assertEqual("3-11m. 1:02", pyslate_en.t("game_date", game_date=date))

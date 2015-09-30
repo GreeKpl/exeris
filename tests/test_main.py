@@ -29,15 +29,15 @@ class GameDateTest(TestCase):
         # 5-3-11:17:33
         self.assertEqual(33, date.second)
         self.assertEqual(17, date.minute)
-        self.assertEqual(30, date.hour)
-        self.assertEqual(3, date.sol)
+        self.assertEqual(6, date.hour)
+        self.assertEqual(7, date.day)
         self.assertEqual(5, date.moon)
 
-        self.assertAlmostEqual(0.631, date.sol_progression, places=3)
+        self.assertAlmostEqual(0.2621, date.sun_progression, places=3)
         self.assertAlmostEqual(0.25936, date.moon_progression, places=3)
 
-        # check if it's night
-        self.assertTrue(date.after_twilight)
+        # check if it's day
+        self.assertTrue(date.is_day)
 
     def test_date_objects_comparison(self):
         old = GameDate(1000)

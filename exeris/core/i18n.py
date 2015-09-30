@@ -1,6 +1,6 @@
 import html
 from pyslate.pyslate import Pyslate
-from exeris.core import models
+from exeris.core import models, general
 
 
 def create_pyslate(language, backend=None, **kwargs):
@@ -242,5 +242,18 @@ def create_pyslate(language, backend=None, **kwargs):
         return text
 
     pyslate.register_function("entity_info", func_entity_info)
+
+    ###################
+    #    DATE INFO    #
+    ###################
+
+    def func_game_date(helper, tag_name, params):
+        date = params["game_date"]
+        if isinstance(date, int):
+            date = general.GameDate(date)
+
+        return helper.translation("tp_game_date", moon=date.moon, day=date.day, hour=date.hour, minute=str(date.minute).zfill(2))
+
+    pyslate.register_function("game_date", func_game_date)
 
     return pyslate

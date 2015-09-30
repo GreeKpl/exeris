@@ -14,17 +14,17 @@ class GameDate:
     """
     Class handling in-game date and in-game time intervals. It can be used to get current in-game time (NOW), and also
     perform basic addition and compare operations.
-    1 minute = 60 seconds, 1 hour = 60 minutes, 1 Sol = 48 hours (24 day + 24 night), 1 moon = 14 Sols
+    1 minute = 60 seconds, 1 hour = 60 minutes, 1 day = 24 hours (odd days mean sunlight, even are night), 1 moon = 14 days
     """
 
     SEC_IN_MIN = 60
     MIN_IN_HOUR = 60
-    HOUR_IN_SOL = 48
+    HOUR_IN_DAY = 24
     DAYLIGHT_HOURS = 24
-    SOL_IN_MOON = 14
+    DAY_IN_MOON = 28
 
-    SEC_IN_SOL = SEC_IN_MIN * MIN_IN_HOUR * HOUR_IN_SOL
-    SEC_IN_MOON = SEC_IN_SOL * SOL_IN_MOON
+    SEC_IN_DAY = SEC_IN_MIN * MIN_IN_HOUR * HOUR_IN_DAY
+    SEC_IN_MOON = SEC_IN_DAY * DAY_IN_MOON
 
     def __init__(self, game_timestamp):
         self.game_timestamp = game_timestamp
@@ -32,15 +32,16 @@ class GameDate:
 
         self.minute, game_timestamp = self.__get_modulo_and_divided(game_timestamp, GameDate.MIN_IN_HOUR)
 
-        self.hour, game_timestamp = self.__get_modulo_and_divided(game_timestamp, GameDate.HOUR_IN_SOL)
+        self.hour, game_timestamp = self.__get_modulo_and_divided(game_timestamp, GameDate.HOUR_IN_DAY)
 
-        self.sol, game_timestamp = self.__get_modulo_and_divided(game_timestamp, GameDate.SOL_IN_MOON)
+        self.day, game_timestamp = self.__get_modulo_and_divided(game_timestamp, GameDate.DAY_IN_MOON)
 
-        self.after_twilight = self.hour >= GameDate.DAYLIGHT_HOURS
+        self.is_night = self.day >= GameDate.DAYLIGHT_HOURS
+        self.is_day = not self.is_night
 
         self.moon = game_timestamp
 
-        self.sol_progression = (self.game_timestamp % GameDate.SEC_IN_SOL) / GameDate.SEC_IN_SOL
+        self.sun_progression = (self.game_timestamp % GameDate.SEC_IN_DAY) / GameDate.SEC_IN_DAY
 
         self.moon_progression = (self.game_timestamp % GameDate.SEC_IN_MOON) / GameDate.SEC_IN_MOON
 
@@ -48,6 +49,12 @@ class GameDate:
 
     def __get_modulo_and_divided(self, dividend, divisor):
         return dividend % divisor, dividend // divisor
+
+    @classmethod
+    def from_date(cls, moon, day, hour=0, minute=0, second=0):
+        timestamp = moon * cls.SEC_IN_MOON + day * cls.SEC_IN_DAY + \
+                    hour * cls.MIN_IN_HOUR * cls.SEC_IN_MIN + minute * cls.SEC_IN_MIN + second
+        return GameDate(timestamp)
 
     @staticmethod
     def now():

@@ -96,7 +96,10 @@ data = {
     "tp_location_main_material": {
         "en": "${entity_%{material_name}_adj#%{location_form}}",
     },
-
+    "tp_game_date": {
+        "en": "%{day}-%{moon}m. %{hour}:%{minute}",
+        "pl": "%{day}-%{moon}k. %{hour}:%{minute}",
+    },
     "tp_item_rotting": {
         "en": "rotting",
     },
