@@ -178,6 +178,9 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         if isinstance(parent_entity, models.Location):
             entities += [passage.other_side for passage in parent_entity.passages_to_neighbours]
 
+            preference = models.EntityContentsPreference(g.character, parent_entity)
+            db.session.merge(preference)
+
         entity_entries = []
         for entity in entities:
             full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
@@ -202,11 +205,29 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         return entity_entries
 
     @staticmethod
+    def collapse_entity(obj_response, parent_entity_id):
+        parent_entity = models.Entity.by_id(app.decode(parent_entity_id))
+        pref = models.EntityContentsPreference.query.filter_by(character=g.character, open_entity=parent_entity).first()
+        if pref:
+            db.session.delete(pref)
+        obj_response.call("FRAGMENTS.entities.after_collapse_entity", [parent_entity_id])
+
+        db.session.commit()
+
+    @staticmethod
     def entities_refresh_list(obj_response):
         location = g.character.being_in
 
         entity_entries = EntitiesPage.get_entities_in(location)
         obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])
+
+    @staticmethod
+    def entities_get_sublist(obj_response, entity_id, parent):
+        parent_entity = models.Entity.by_id(app.decode(entity_id))
+        rendered = EntitiesPage.get_entities_in(parent_entity, parent)
+
+        obj_response.call("FRAGMENTS.entities.after_entities_get_sublist", [entity_id, rendered])
+
 
     @staticmethod
     def move_to_location(obj_response, to_loc_id):

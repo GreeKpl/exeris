@@ -799,6 +799,22 @@ class EventObserver(db.Model):
         return str(self.__class__) + str(self.__dict__)
 
 
+class EntityContentsPreference(db.Model):
+    __tablename__ = "entity_contents_preferences"
+
+    character_id = sql.Column(sql.Integer, sql.ForeignKey(Character.id), primary_key=True)
+    character = sql.orm.relationship(Character, uselist=False,
+                                     primaryjoin="EntityContentsPreference.character_id == Character.id")
+
+    def __init__(self, character, open_entity):
+        self.character = character
+        self.open_entity = open_entity
+
+    open_entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
+    open_entity = sql.orm.relationship(Entity, uselist=False,
+                                       primaryjoin="EntityContentsPreference.open_entity_id == Entity.id")
+
+
 class EntityTypeProperty(db.Model):
     __tablename__ = "entity_type_properties"
 
@@ -969,7 +985,6 @@ class TextContent(db.Model):
 
 
 class LocationView:
-
     def __init__(self, location, observer_loc, windows, route):
         self.location = location
         self.observer_loc = observer_loc
@@ -977,7 +992,10 @@ class LocationView:
         self.route = route
 
     def __repr__(self):
-        return "{{LocationView of={}, from={}, windows={}, route_len={}}}".format(self.location.__repr__(), self.observer_loc, self.windows, len(self.route))
+        return "{{LocationView of={}, from={}, windows={}, route_len={}}}".format(self.location.__repr__(),
+                                                                                  self.observer_loc, self.windows,
+                                                                                  len(self.route))
+
 
 class Passage(Entity):
     __tablename__ = "passages"

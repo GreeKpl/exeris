@@ -3,7 +3,20 @@ FRAGMENTS.entities = (function($) {
     $.subscribe("entities:refresh_list", function () {
         Sijax.request("entities_refresh_list", []);
     });
+    
+    $(document).on("click", ".expand", function(event) {
+        var entity_node = $(event.target).closest(".entity_wrapper");
+        var entity_id = entity_node.data("entity");
 
+        Sijax.request("entities_get_sublist", [entity_id, null]);
+    });
+
+    $(document).on("click", ".subtree-collapse", function(event) {
+        var entity_id = $(event.target).closest(".entity_wrapper").data("entity");
+
+        Sijax.request("collapse_entity", [entity_id]);
+    });
+    
     $(document).on("click", "#confirm_edit_readable", function(event) {
         var new_text = $("#edit_readable_text").val();
         var entity_id = $(event.target).data("entity");
@@ -26,12 +39,6 @@ FRAGMENTS.entities = (function($) {
         $("#edit_readable_modal").modal();
     });
 
-    $(document).on("click", ".expand_entity", function(event) {
-        var parent = $(event.target).closest(".entity_wrapper");
-        var entity_id = parent.data("entity");
-        Sijax.request("entities_get_sublist", [entity_id]);
-    });
-
     $(document).on("click", "#add_to_activity_confirm", function(event) {
         var entity_to_add = $("#add_to_activity").data("entity_to_add");
         var amount = +$("#add_to_activity_amount").val();
@@ -51,15 +58,23 @@ FRAGMENTS.entities = (function($) {
                 $("#entities_list > ol").append(html);
             });
         },
-        after_entities_get_sublist: function(entities) {
-            $("#entities_list > ol").empty();
+        after_entities_get_sublist: function(parent_id, entities) {
+            var list = $("<ol></ol>");
             $.each(entities, function(idx, entity_info) {
                 var html = $(entity_info.html);
                 if (entity_info.has_children) {
                     html.append(' <span class="expand">(+)</span>');
                 }
-                $("#entities_list > ol").append(html);
+                list.append(html);
             });
+            var parent = $("li[data-entity='" + parent_id + "']");
+            parent.find(".expand").replaceWith(' <span class="subtree-collapse">(-)</span>');
+            parent.append(list);
+        },
+        after_collapse_entity: function(entity_id) {
+            var parent = $("li[data-entity='" + entity_id + "']");
+            parent.find("ol").remove();
+            parent.find(".subtree-collapse").replaceWith(' <span class="expand">(+)</span>');
         },
         before_eat: function (entity_id, max_amount) {
             var amount = +prompt("amount to eat", max_amount);
