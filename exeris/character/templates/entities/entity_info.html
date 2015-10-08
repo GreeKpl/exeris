@@ -1,10 +1,11 @@
-<li class="entity_wrapper" data-entity="{{ encode(entity_id) }}">
+<div class="entity_info" data-entity="{{ encode(entity_id) }}">
     {{ full_name|safe }}
     {% for action in actions %}
-        <button class="entity-action btn btn-default" data-entity="{{ encode(entity_id) }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
+        <button class="entity_action btn btn-default" data-entity="{{ encode(entity_id) }}" data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
     {% endfor %}
+    {% if expandable %}<button class="expand_subtree">\/</button>{% endif %}
     {% if activity %}
-        <p> -> {{ activity.name_tag }} - {{ activity.ticks_needed - activity.ticks_left }} / {{ activity.ticks_needed }} -
+        <p class="activity_info"> -> {{ activity.name_tag }} - {{ activity.ticks_needed - activity.ticks_left }} / {{ activity.ticks_needed }} -
             <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">Join</button></p>
     {% endif %}
-</li>
+</div>

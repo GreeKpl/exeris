@@ -208,13 +208,13 @@ def visit_subgraph(node, go_through_window=True):
 
 
 class VisibilityBasedRange(RangeSpec):
-    def __init__(self, distance, go_through_window=True):
+    def __init__(self, distance, go_through=True):
         self.distance = distance
-        self.go_through_window = go_through_window
+        self.go_through = go_through
 
     def locations_near(self, entity):
 
-        locs = visit_subgraph(entity, self.go_through_window)
+        locs = visit_subgraph(entity, self.go_through)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -224,7 +224,7 @@ class VisibilityBasedRange(RangeSpec):
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc, self.go_through_window))
+                locs.update(visit_subgraph(other_loc, self.go_through))
 
         return locs
 

@@ -2,7 +2,7 @@ import time
 
 from flask import g, render_template
 
-from exeris.core import models, actions, accessible_actions, recipes, deferred
+from exeris.core import models, actions, accessible_actions, recipes, deferred, general
 from exeris.core.main import db, app
 
 
@@ -169,39 +169,25 @@ class EntityActionMixin:
 
 class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
     @staticmethod
-    def get_entities_in(parent_entity, exclude=None):
-        exclude = exclude if exclude else []
+    def _get_entities_in(parent_entity, excluded=None):
+        excluded = excluded if excluded else []
 
         entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
-            .filter(~models.Entity.id.in_([e.id for e in exclude])).all()
+            .filter(~models.Entity.id.in_([e.id for e in excluded])).all()
 
         if isinstance(parent_entity, models.Location):
-            entities += [passage.other_side for passage in parent_entity.passages_to_neighbours]
+            entities += [passage.other_side for passage in parent_entity.passages_to_neighbours if
+                         passage.other_side not in excluded]
 
-            preference = models.EntityContentsPreference(g.character, parent_entity)
-            db.session.merge(preference)
+            if not models.EntityContentsPreference.query.filter_by(character=g.character,
+                                                                   open_entity=parent_entity).first():
+                db.session.add(models.EntityContentsPreference(g.character, parent_entity))
 
         entity_entries = []
         for entity in entities:
-            full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
+            entity_info = EntitiesPage._get_entity_info(entity)
 
-            def has_needed_prop(action):
-                if action.required_property == "any":
-                    return True
-                return entity.has_property(action.required_property)
-
-            possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if has_needed_prop(action)]
-
-            # TODO translation
-
-            activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
-
-            entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
-                                          actions=possible_actions, activity=activity)
-            has_children = models.Entity.query.filter(models.Entity.is_in(entity)) \
-                               .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
-            entity_entries.append({"html": entity_html, "has_children": has_children, "children": []})
-
+            entity_entries.append(entity_info)
         return entity_entries
 
     @staticmethod
@@ -218,16 +204,22 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
     def entities_refresh_list(obj_response):
         location = g.character.being_in
 
-        entity_entries = EntitiesPage.get_entities_in(location)
-        obj_response.call("FRAGMENTS.entities.after_refresh_list", [entity_entries])
+        rng = general.VisibilityBasedRange(distance=30, go_through=False)
+        if isinstance(location, models.RootLocation):
+            displayed_locations = rng.root_locations_near(location)
+        else:
+            displayed_locations = [location]
+
+        locations = [EntitiesPage._get_entity_info(loc_to_show) for loc_to_show in displayed_locations]
+        obj_response.call("FRAGMENTS.entities.after_refresh_list", [locations])
 
     @staticmethod
-    def entities_get_sublist(obj_response, entity_id, parent):
+    def entities_get_sublist(obj_response, entity_id, parent_id):
         parent_entity = models.Entity.by_id(app.decode(entity_id))
-        rendered = EntitiesPage.get_entities_in(parent_entity, parent)
+        exclude = [models.Entity.by_id(app.decode(parent_id))] if parent_id else []
+        rendered = EntitiesPage._get_entities_in(parent_entity, exclude)
 
         obj_response.call("FRAGMENTS.entities.after_entities_get_sublist", [entity_id, rendered])
-
 
     @staticmethod
     def move_to_location(obj_response, to_loc_id):
@@ -258,7 +250,8 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
                     needed_type = models.EntityType.by_name(needed_type_name)
                     if needed_type.contains(entity_to_add.type):
                         amount = req_data["left"] / needed_type.efficiency(entity_to_add.type)
-                        activities_to_add += [{"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
+                        activities_to_add += [
+                            {"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
 
         rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
                                    entity_to_add=entity_to_add)
@@ -275,6 +268,28 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
         obj_response.call("FRAGMENTS.entities.after_add_item_to_activity", [])
         db.session.commit()
+
+    @staticmethod
+    def _get_entity_info(entity):
+        full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
+
+        def has_needed_prop(action):
+            if action.required_property == "any":
+                return True
+            return entity.has_property(action.required_property)
+
+        possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if
+                            has_needed_prop(action) and action.other_req(entity)]
+
+        # TODO translation
+        activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
+
+        expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
+                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+
+        entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
+                                      actions=possible_actions, activity=activity, expandable=expandable)
+        return {"html": entity_html, "id": app.encode(entity.id)}
 
 
 class MapPage(GlobalMixin):

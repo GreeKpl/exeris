@@ -1,22 +1,24 @@
 FRAGMENTS.entities = (function($) {
 
-    $.subscribe("entities:refresh_list", function () {
+    $.subscribe("entities:refresh_list", function() {
         Sijax.request("entities_refresh_list", []);
     });
-    
-    $(document).on("click", ".expand", function(event) {
-        var entity_node = $(event.target).closest(".entity_wrapper");
+
+    $(document).on("click", ".expand_subtree", function(event) {
+        var entity_node = $(event.target).closest(".entity_info");
         var entity_id = entity_node.data("entity");
 
-        Sijax.request("entities_get_sublist", [entity_id, null]);
+        var entity_parent = entity_node.parent().closest(".entity_info");
+
+        Sijax.request("entities_get_sublist", [entity_id, entity_parent.data("entity")]);
     });
 
-    $(document).on("click", ".subtree-collapse", function(event) {
-        var entity_id = $(event.target).closest(".entity_wrapper").data("entity");
+    $(document).on("click", ".collapse_subtree", function(event) {
+        var entity_id = $(event.target).closest(".entity_info").data("entity");
 
         Sijax.request("collapse_entity", [entity_id]);
     });
-    
+
     $(document).on("click", "#confirm_edit_readable", function(event) {
         var new_text = $("#edit_readable_text").val();
         var entity_id = $(event.target).data("entity");
@@ -25,7 +27,7 @@ FRAGMENTS.entities = (function($) {
         $("#edit_readable_modal, #readable_modal").modal("hide");
     });
 
-    $(document).on("click", ".entity-action", function (event) {
+    $(document).on("click", ".entity_action", function(event) {
         var target = $(event.target);
 
         var endpoint = target.data("action");
@@ -48,41 +50,36 @@ FRAGMENTS.entities = (function($) {
     });
 
     return {
-        after_refresh_list: function (entities) {
-            $("#entities_list > ol").empty();
-            $.each(entities, function(idx, entity_info) {
-                var html = $(entity_info.html);
-                if (entity_info.has_children) {
-                    html.append(' <span class="expand">(+)</span>');
-                }
-                $("#entities_list > ol").append(html);
+        after_refresh_list: function(locations) {
+            var entities_root = $("#entities_root > ol");
+            entities_root.empty();
+            $.each(locations, function(idx, location_info) {
+                entities_root.append($("<li></li>").append(location_info.html));
             });
+
+            $("#entities_root .entity_info").first().find("button.expand_subtree").click();
         },
         after_entities_get_sublist: function(parent_id, entities) {
             var list = $("<ol></ol>");
             $.each(entities, function(idx, entity_info) {
-                var html = $(entity_info.html);
-                if (entity_info.has_children) {
-                    html.append(' <span class="expand">(+)</span>');
-                }
-                list.append(html);
+                list.append($("<li>" + entity_info.html + "</li>"));
             });
-            var parent = $("li[data-entity='" + parent_id + "']");
-            parent.find(".expand").replaceWith(' <span class="subtree-collapse">(-)</span>');
+            var parent = $("div[data-entity='" + parent_id + "']");
             parent.append(list);
+            parent.children(".expand_subtree").text("/\\").addClass("collapse_subtree").removeClass("expand_subtree");
         },
         after_collapse_entity: function(entity_id) {
-            var parent = $("li[data-entity='" + entity_id + "']");
+            var parent = $("div[data-entity='" + entity_id + "']");
             parent.find("ol").remove();
-            parent.find(".subtree-collapse").replaceWith(' <span class="expand">(+)</span>');
+            parent.children(".collapse_subtree").text("\\/").addClass("expand_subtree").removeClass("collapse_subtree");
         },
-        before_eat: function (entity_id, max_amount) {
+        before_eat: function(entity_id, max_amount) {
             var amount = +prompt("amount to eat", max_amount);
             if (amount) {
                 Sijax.request("eat", [entity_id, amount]);
             }
         },
-        after_eat: function (entity_id, amount) {
+        after_eat: function(entity_id, amount) {
             $.publish("show_success", "eaten " + amount + " of " + entity_id);
         },
         after_move_to_location: function(loc_id) {
@@ -109,6 +106,6 @@ FRAGMENTS.entities = (function($) {
     }
 })(jQuery);
 
-$(function () {
+$(function() {
     $.publish("entities:refresh_list");
 });
