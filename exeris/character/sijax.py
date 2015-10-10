@@ -204,7 +204,7 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
     def entities_refresh_list(obj_response):
         location = g.character.being_in
 
-        rng = general.VisibilityBasedRange(distance=30, go_through=False)
+        rng = general.VisibilityBasedRange(distance=30, only_through_unlimited=False)
         if isinstance(location, models.RootLocation):
             displayed_locations = rng.root_locations_near(location)
         else:

@@ -5,6 +5,7 @@ import inspect
 
 # property
 class P:
+    CLOSEABLE = "Closeable"
     READABLE = "Readable"
     HAS_DEPENDENT = "HasDependent"
     EDIBLE = "Edible"
@@ -12,8 +13,6 @@ class P:
     SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"
     VISIBLE_MATERIAL = "VisibleMaterial"
-    WINDOW = "Window"
-    OPEN_PASSAGE = "OpenPassage"
 
 
 # type property

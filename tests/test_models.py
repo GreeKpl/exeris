@@ -192,9 +192,8 @@ class PassageTest(TestCase):
         passage1 = Passage.query.filter(Passage.between(rl, loc1)).first()
         passage2 = Passage.query.filter(Passage.between(rl, loc2)).first()
 
-        open_window = EntityProperty(P.WINDOW, {"open": True}, entity=passage1)
-        closed_window = EntityProperty(P.WINDOW, {"open": False}, entity=passage2)
-        db.session.add_all([open_window, closed_window])
+        passage1.properties.append(EntityProperty(P.CLOSEABLE, {"closed": False}))
+        passage2.properties.append(EntityProperty(P.CLOSEABLE, {"closed": True}))
 
         self.assertTrue(passage1.is_accessible())
         self.assertFalse(passage2.is_accessible())

@@ -158,48 +158,22 @@ class SameLocationRange(RangeSpec):
 
 
 class NeighbouringLocationsRange(RangeSpec):
-    def __init__(self, go_through_window):
-        self.go_through_window = go_through_window
+    def __init__(self, only_through_unlimited):
+        self.only_through_unlimited = only_through_unlimited
 
     def locations_near(self, entity):
 
         loc = self._locationize(entity)[0]
-        return visit_subgraph(loc, self.go_through_window)
-
-    def location_views_near(self, entity):
-        main_loc = self._locationize(entity)[0]
-        all_location_views_by_id = {}
-        left_passages = main_loc.passages_to_neighbours  # list of PassagesToNeighbours
-
-        all_location_views_by_id[main_loc.id] = models.LocationView(main_loc, main_loc, 0, [main_loc])
-
-        for passage_to_nei in list(left_passages):
-            print(all_location_views_by_id)
-            window_inc = 0
-            if passage_to_nei.passage.is_accessible():
-                if passage_to_nei.passage.has_window(is_open=True):
-                    window_inc = 1
-                curr_loc = passage_to_nei.other_side
-                if curr_loc.id not in all_location_views_by_id:
-                    own_side_loc_view = all_location_views_by_id[passage_to_nei.own_side.id]
-                    all_location_views_by_id[curr_loc.id] = models.LocationView(curr_loc, main_loc,
-                                                                                own_side_loc_view.windows + window_inc,
-                                                                                own_side_loc_view.route + [curr_loc])
-                left_passages += [new_psg for new_psg in curr_loc.passages_to_neighbours if
-                                  new_psg.other_side.id not in all_location_views_by_id]
-        print(all_location_views_by_id.values())
-        location_views = [a for a in all_location_views_by_id.values() if a.windows <= 2]
-
-        return location_views
+        return visit_subgraph(loc, self.only_through_unlimited)
 
 
-def visit_subgraph(node, go_through_window=True):
+def visit_subgraph(node, only_through_unlimited=False):
     passages_all = node.passages_to_neighbours
     passages_left = deque(passages_all)
     visited_locations = {node}
     while len(passages_left):
         passage = passages_left.popleft()
-        if passage.passage.is_accessible(go_through_window=go_through_window):
+        if passage.passage.is_accessible(only_through_unlimited=only_through_unlimited):
             if passage.other_side not in visited_locations:
                 visited_locations.add(passage.other_side)
                 new_passages = passage.other_side.passages_to_neighbours
@@ -208,13 +182,13 @@ def visit_subgraph(node, go_through_window=True):
 
 
 class VisibilityBasedRange(RangeSpec):
-    def __init__(self, distance, go_through=True):
+    def __init__(self, distance, only_through_unlimited=False):
         self.distance = distance
-        self.go_through = go_through
+        self.only_through_unlimited = only_through_unlimited
 
     def locations_near(self, entity):
 
-        locs = visit_subgraph(entity, self.go_through)
+        locs = visit_subgraph(entity, self.only_through_unlimited)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -224,19 +198,19 @@ class VisibilityBasedRange(RangeSpec):
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc, self.go_through))
+                locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
 
 
 class TraversabilityBasedRange(RangeSpec):
-    def __init__(self, distance, go_through_window=False):
+    def __init__(self, distance, only_through_unlimited=False):
         self.distance = distance
-        self.go_through_window = go_through_window
+        self.only_through_unlimited = only_through_unlimited
 
     def locations_near(self, entity):
 
-        locs = visit_subgraph(entity, self.go_through_window)
+        locs = visit_subgraph(entity, self.only_through_unlimited)
 
         roots = [r for r in locs if type(r) is models.RootLocation]
         if len(roots):
@@ -246,7 +220,7 @@ class TraversabilityBasedRange(RangeSpec):
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc, self.go_through_window))
+                locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
 

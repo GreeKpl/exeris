@@ -435,7 +435,11 @@ class ActionsTest(TestCase):
         doer = util.create_character("doer", building, plr)
         obs_same_loc = util.create_character("obs_same_loc", building, plr)
         obs_near_loc = util.create_character("obs_near_loc", rl2, plr)
-        obs_far_loc = util.create_character("obs_far_loc", rl3, plr)
+
+        door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
+        closeable_property = EntityProperty(P.CLOSEABLE, {"closed": True})
+        door_to_building.properties.append(closeable_property)
+
         db.session.add_all([rl1, rl2, rl3, building_type, building, doer])
 
         # no window in building -> nobody but obs_same_loc can hear it
@@ -451,9 +455,7 @@ class ActionsTest(TestCase):
         self.assertEqual({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc], event_say_observer.observers)
 
-        door_to_building = Passage.query.filter(Passage.between(rl1, building)).one()
-        door_to_building.properties.append(EntityProperty(P.WINDOW, {"open": True}))
-
+        closeable_property.data = {"closed": False}
 
         # now there will be open connection between rl1 and building
 

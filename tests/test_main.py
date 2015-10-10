@@ -7,13 +7,12 @@ from exeris.core.main import db
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     TraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
-    EventType, EventObserver, LocationType
+    EventType, EventObserver, LocationType, PassageType
 from exeris.core.properties import P
 from tests import util
 
 
 class GameDateTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_basic_now_precision(self):
@@ -58,26 +57,26 @@ class GameDateTest(TestCase):
 
 
 class RangeSpecTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_entities_near(self):
         self.maxDiff = None
 
         loc_type = LocationType("building", 300)
+        unlimited = PassageType("unlimited", True)
 
         rl = RootLocation(Point(10, 20), False, 122)
-        loc1 = Location(rl, loc_type)
+        loc1 = Location(rl, loc_type, unlimited)
         loc2 = Location(rl, loc_type)
-        loc11 = Location(loc1, loc_type)
+        loc11 = Location(loc1, loc_type, unlimited)
         loc12 = Location(loc1, loc_type)
-        loc21 = Location(loc2, loc_type)
+        loc21 = Location(loc2, loc_type, unlimited)
         loc22 = Location(loc2, loc_type)
 
-        loc221 = Location(loc22, loc_type)
+        loc221 = Location(loc22, loc_type, unlimited)
 
         orl = RootLocation(Point(20, 20), False, 100)
-        oloc1 = Location(orl, loc_type)
+        oloc1 = Location(orl, loc_type, unlimited)
         db.session.add_all([rl, loc_type, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
 
         knife_type = ItemType("knife", 300)
@@ -102,21 +101,13 @@ class RangeSpecTest(TestCase):
 
         db.session.add_all([irl_1, i2_1, i2_2, i11_1, i11_2, i21_1, i22_1, i221_1, iorl_1, io1_1])
 
-        loc2_loc21_psg = Passage.query.filter(Passage.between(loc2, loc21)).first()
-        rl_loc1_psg = Passage.query.filter(Passage.between(rl, loc1)).first()
         rl_loc2_psg = Passage.query.filter(Passage.between(rl, loc2)).first()
-        loc1_loc11_psg = Passage.query.filter(Passage.between(loc1, loc11)).first()
-        loc22_loc221_psg = Passage.query.filter(Passage.between(loc22, loc221)).first()
-        orl_oloc1_psg = Passage.query.filter(Passage.between(orl, oloc1)).first()
+        loc2_loc22_psg = Passage.query.filter(Passage.between(loc2, loc22)).first()
+        loc1_loc12_psg = Passage.query.filter(Passage.between(loc1, loc12)).first()
 
-        db.session.add_all([EntityProperty(entity=rl_loc2_psg, name=P.WINDOW, data={"open": True}),
-                            EntityProperty(entity=loc2_loc21_psg, name=P.OPEN_PASSAGE),
-                            EntityProperty(entity=rl_loc1_psg, name=P.OPEN_PASSAGE),
-                            EntityProperty(entity=loc1_loc11_psg, name=P.OPEN_PASSAGE),
-                            EntityProperty(entity=loc22_loc221_psg, name=P.OPEN_PASSAGE),
-                            EntityProperty(entity=orl_oloc1_psg, name=P.OPEN_PASSAGE),
-
-                            ])
+        db.session.add_all([EntityProperty(entity=rl_loc2_psg, name=P.CLOSEABLE, data={"closed": False})])
+        db.session.add_all([EntityProperty(entity=loc2_loc22_psg, name=P.CLOSEABLE, data={"closed": True})])
+        db.session.add_all([EntityProperty(entity=loc1_loc12_psg, name=P.CLOSEABLE, data={"closed": True})])
 
         # items in the same location
         rng = SameLocationRange()
@@ -126,12 +117,12 @@ class RangeSpecTest(TestCase):
 
         # items in the same and neighbouring locations
 
-        rng = NeighbouringLocationsRange(go_through_window=True)
+        rng = NeighbouringLocationsRange(only_through_unlimited=False)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
 
-        rng = NeighbouringLocationsRange(go_through_window=False)
+        rng = NeighbouringLocationsRange(only_through_unlimited=True)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, i21_1], items)
@@ -146,17 +137,17 @@ class RangeSpecTest(TestCase):
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
 
-        rng = TraversabilityBasedRange(100)
+        rng = TraversabilityBasedRange(100, only_through_unlimited=True)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, i21_1], items)
 
-        rng = TraversabilityBasedRange(100)
+        rng = TraversabilityBasedRange(100, only_through_unlimited=True)
         items = rng.items_near(loc1)
 
         self.assertCountEqual([irl_1, i11_1, i11_2, iorl_1, io1_1], items)
 
-        rng = TraversabilityBasedRange(100, go_through_window=True)
+        rng = TraversabilityBasedRange(100, only_through_unlimited=False)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
@@ -165,7 +156,6 @@ class RangeSpecTest(TestCase):
 
 
 class EventCreatorTest(TestCase):
-
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
@@ -175,12 +165,13 @@ class EventCreatorTest(TestCase):
         et1 = EventType("slap_doer", EventType.IMPORTANT)
         et2 = EventType("slap_target", EventType.IMPORTANT)
         et3 = EventType("slap_observer", EventType.NORMAL)
+        unlimited = PassageType("unlimited", True)
         db.session.add_all([et1, et2, et3])
 
         rl = RootLocation(Point(10, 10), False, 103)
         loc_type = LocationType("building", 200)
-        loc1 = Location(rl, loc_type)
-        loc2 = Location(rl, loc_type)
+        loc1 = Location(rl, loc_type, unlimited)
+        loc2 = Location(rl, loc_type, unlimited)
 
         plr = util.create_player("plr1")
         doer = util.create_character("doer", loc1, plr)
@@ -189,11 +180,7 @@ class EventCreatorTest(TestCase):
 
         db.session.add_all([rl, loc_type, loc1, loc2, doer, target, observer])
 
-        psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
-        psg1.properties.append(EntityProperty(P.OPEN_PASSAGE))
-        psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
-        psg2.properties.append(EntityProperty(P.OPEN_PASSAGE))
-        db.session.add_all([psg1, psg2])
+        db.session.flush()
 
         EventCreator.base("slap", doer=doer, target=target,
                           rng=VisibilityBasedRange(100), params={"hi": "hehe"})
@@ -219,43 +206,44 @@ class EventCreatorTest(TestCase):
 
 
 def test_event_for_observer_in_targets_location(self):
-        util.initialize_date()
+    util.initialize_date()
 
-        et1 = EventType("slap_doer", EventType.IMPORTANT)
-        et2 = EventType("slap_target", EventType.IMPORTANT)
-        et3 = EventType("slap_observer", EventType.NORMAL)
-        db.session.add_all([et1, et2, et3])
+    et1 = EventType("slap_doer", EventType.IMPORTANT)
+    et2 = EventType("slap_target", EventType.IMPORTANT)
+    et3 = EventType("slap_observer", EventType.NORMAL)
+    db.session.add_all([et1, et2, et3])
 
-        rl = RootLocation(Point(10, 10), False, 103)
-        loc_type = LocationType("building", 200)
-        loc1 = Location(rl, loc_type)
-        loc2 = Location(rl, loc_type)
+    rl = RootLocation(Point(10, 10), False, 103)
+    unlimited = PassageType("unlimited", True)
+    loc_type = LocationType("building", 200)
+    loc1 = Location(rl, loc_type, unlimited)
+    loc2 = Location(rl, loc_type, unlimited)
 
-        plr = util.create_player("plr1")
-        doer = util.create_character("doer", loc1, plr)
-        target = util.create_character("target", loc2, plr)
-        observer = util.create_character("observer", loc2, plr)
-        observer_in_root_loc = util.create_character("observer_too_far_away", rl, plr)
+    plr = util.create_player("plr1")
+    doer = util.create_character("doer", loc1, plr)
+    target = util.create_character("target", loc2, plr)
+    observer = util.create_character("observer", loc2, plr)
+    observer_in_root_loc = util.create_character("observer_too_far_away", rl, plr)
 
-        db.session.add_all([rl, loc_type, loc1, loc2])
+    db.session.add_all([rl, loc_type, loc1, loc2])
 
-        psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
-        psg1.properties.append(EntityProperty(P.OPEN_PASSAGE))
-        psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
-        psg2.properties.append(EntityProperty(P.OPEN_PASSAGE))
-        db.session.add_all([psg1, psg2])
+    psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+    psg1.properties.append(EntityProperty(P.unlimited))
+    psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
+    psg2.properties.append(EntityProperty(P.unlimited))
+    db.session.add_all([psg1, psg2])
 
-        EventCreator.base("slap", doer=doer, target=target,
-                          rng=SameLocationRange())
+    EventCreator.base("slap", doer=doer, target=target,
+                      rng=SameLocationRange())
 
-        event_doer = EventObserver.query.filter_by(observer=doer).one()
-        self.assertEqual(et1, event_doer.event.type)
+    event_doer = EventObserver.query.filter_by(observer=doer).one()
+    self.assertEqual(et1, event_doer.event.type)
 
-        event_target = EventObserver.query.filter_by(observer=target).one()
-        self.assertEqual(et2, event_target.event.type)
+    event_target = EventObserver.query.filter_by(observer=target).one()
+    self.assertEqual(et2, event_target.event.type)
 
-        event_obs = EventObserver.query.filter_by(observer=observer).one()
-        self.assertEqual(et3, event_obs.event.type)
+    event_obs = EventObserver.query.filter_by(observer=observer).one()
+    self.assertEqual(et3, event_obs.event.type)
 
-        observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
-        self.assertEqual(0, observer_in_root_loc_count)
+    observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
+    self.assertEqual(0, observer_in_root_loc_count)

@@ -342,8 +342,8 @@ class Entity(db.Model):
 
         return props
 
-    def has_property(self, name, data_kv=None):
-        if data_kv is None:
+    def has_property(self, name, **kwargs):
+        if not kwargs:
             entities_count = EntityProperty.query.filter_by(entity=self, name=name).count()
             if entities_count > 0:
                 return True
@@ -353,8 +353,8 @@ class Entity(db.Model):
             if entities_count > 0:
                 return True
         else:
-            assert len(data_kv) == 1
-            key, value = next(iter(data_kv.items()))
+            assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
+            key, value = next(iter(kwargs.items()))
 
             entities_count = EntityProperty.query.filter_by(entity=self, name=name). \
                 filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
@@ -362,7 +362,7 @@ class Entity(db.Model):
                 return True
 
             entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name). \
-                filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
+                filter(EntityTypeProperty.data[key].cast(sql.Boolean) == value).count()
             if entities_count > 0:
                 return True
         return False
@@ -862,7 +862,7 @@ class Location(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    def __init__(self, being_in, location_type, weight=None, title=None):
+    def __init__(self, being_in, location_type, passage_type=None, weight=None, title=None):
         self.being_in = being_in
         self.weight = weight
         if not weight:
@@ -870,7 +870,7 @@ class Location(Entity):
         self.type = location_type
 
         if self.being_in is not None:
-            db.session.add(Passage(self.being_in, self))
+            db.session.add(Passage(self.being_in, self, passage_type))
 
         self.title = title
 
@@ -984,30 +984,35 @@ class TextContent(db.Model):
     format = sql.Column(sql.String(4))
 
 
-class LocationView:
-    def __init__(self, location, observer_loc, windows, route):
-        self.location = location
-        self.observer_loc = observer_loc
-        self.windows = windows
-        self.route = route
+class PassageType(EntityType):
+    __tablename__ = "passage_types"
 
-    def __repr__(self):
-        return "{{LocationView of={}, from={}, windows={}, route_len={}}}".format(self.location.__repr__(),
-                                                                                  self.observer_loc, self.windows,
-                                                                                  len(self.route))
+    name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
+
+    def __init__(self, name, unlimited):
+        super().__init__(name)
+        self.unlimited = unlimited
+
+    unlimited = sql.Column(sql.Boolean)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_PASSAGE,
+    }
 
 
 class Passage(Entity):
     __tablename__ = "passages"
 
-    def __init__(self, left_location, right_location):
+    def __init__(self, left_location, right_location, passage_type=None):
         self.weight = 0
         self.being_in = None
         self.left_location = left_location
         self.right_location = right_location
-        door = EntityType.by_name(Types.DOOR)
-        db.session.add(door)
-        self.type = door
+        if not passage_type:
+            passage_type = EntityType.by_name(Types.DOOR)
+            db.session.add(passage_type)
+
+        self.type = passage_type
 
     @hybrid_method
     def between(self, first_loc, second_loc):
@@ -1019,22 +1024,22 @@ class Passage(Entity):
         return or_((self.left_location == first_loc) & (self.right_location == second_loc),
                    (self.right_location == first_loc) & (self.left_location == second_loc))
 
-    def is_accessible(self, go_through_window=True):
+    def is_accessible(self, only_through_unlimited=False):
         """
         Checks if the other side of the passage is accessible for any character.
         :return:
         """
-        if go_through_window:
-            return self.has_window(is_open=True) or self.has_property(P.OPEN_PASSAGE)
-        return self.has_property(P.OPEN_PASSAGE)
+        if only_through_unlimited:
+            return self.type.unlimited
+        return self.type.unlimited or self.is_open()
 
-    def has_window(self, *, is_open=True):
-        return self.has_property(P.WINDOW, data_kv={"open": is_open})
+    def is_open(self):
+        return not self.has_property(P.CLOSEABLE, closed=True)
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
-    type = sql.orm.relationship(EntityType, uselist=False)
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("passage_types.name"))
+    type = sql.orm.relationship(PassageType, uselist=False)
 
     left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
     right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
@@ -1277,7 +1282,10 @@ def init_database_contents():
         db.session.merge(EventType(type_name + "_observer"))
         db.session.merge(EventType(type_name + "_target"))
 
-    db.session.merge(EntityType(Types.DOOR))
+    if not PassageType.by_name(Types.DOOR):
+        door_passage = PassageType(Types.DOOR, False)
+        db.session.add(door_passage)
+        db.session.add(EntityTypeProperty(P.CLOSEABLE, {"closed": False}, type=door_passage))
     db.session.merge(EntityType(Types.CHARACTER))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))
