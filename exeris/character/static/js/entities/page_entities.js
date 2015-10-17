@@ -4,12 +4,18 @@ FRAGMENTS.entities = (function($) {
         Sijax.request("entities_refresh_list", []);
     });
 
+    $.subscribe("entities:refresh_entity_info", function(entity_id) {
+        Sijax.request("refresh_entity_info", [entity_id]);
+    });
+
     $(document).on("click", ".expand_subtree", function(event) {
         var entity_node = $(event.target).closest(".entity_info");
         var entity_id = entity_node.data("entity");
+        if (entity_node.data("other-side")) {
+            entity_id = entity_node.data("other-side");
+        }
 
         var entity_parent = entity_node.parent().closest(".entity_info");
-
         Sijax.request("entities_get_sublist", [entity_id, entity_parent.data("entity")]);
     });
 
@@ -65,6 +71,9 @@ FRAGMENTS.entities = (function($) {
                 list.append($("<li>" + entity_info.html + "</li>"));
             });
             var parent = $("div[data-entity='" + parent_id + "']");
+            if (parent.length == 0) { // todo handling other-side
+                parent = $("div[data-other-side='" + parent_id + "']");
+            }
             parent.append(list);
             parent.children(".expand_subtree").text("/\\").addClass("collapse_subtree").removeClass("expand_subtree");
         },
@@ -102,6 +111,13 @@ FRAGMENTS.entities = (function($) {
         after_add_item_to_activity: function() {
             $("#add_to_activity").modal("hide");
             $.publish("entities:refresh_list");
+        },
+        after_refresh_entity_info: function(entity_info) {
+            var old_entity_info = $("div[data-entity='" + entity_info.id + "']");
+            old_entity_info.replaceWith(entity_info.html);
+        },
+        after_toggle_closeable: function(entity_id) {
+            $.publish("entities:refresh_entity_info", entity_id);
         }
     }
 })(jQuery);

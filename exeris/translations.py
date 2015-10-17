@@ -109,6 +109,9 @@ data = {
     "tp_detailed_passage_info": {
         "en": "%{states} %{passage_name}",
     },
+    "tp_passage_other_side": {
+        "en": "${passage:entity_info} to ${location:entity_info}",
+    },
     "passage_closed": {
         "en": "closed",
     },

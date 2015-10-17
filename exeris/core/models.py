@@ -862,6 +862,15 @@ class PassageToNeighbour:
         if passage.left_location == other_side:
             self.own_side = passage.right_location
 
+    @staticmethod
+    def get_other_side(passage, own_side):
+        if passage.left_location == own_side:
+            return passage.right_location
+        elif passage.right_location == own_side:
+            return passage.left_location
+
+        raise ValueError("location {} is not on any side of passage {}", own_side, passage)
+
 
 class Location(Entity):
     __tablename__ = "locations"

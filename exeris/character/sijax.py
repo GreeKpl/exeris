@@ -107,7 +107,9 @@ class EventsPage(GlobalMixin, SpeakingMixin, ActivityMixin):
         queried = time.time()
         print("query: ", queried - start)
         last_event_id = events[-1].id if len(events) else last_event
-        events_texts = [g.pyslate.t("game_date", game_date=event.date) + ": " + g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
+        events_texts = [g.pyslate.t("game_date", game_date=event.date) + ": " + g.pyslate.t(event.type_name, html=True,
+                                                                                            **event.params) for event in
+                        events]
 
         tran = time.time()
         print("translations:", tran - queried)
@@ -168,7 +170,6 @@ class EntityActionMixin:
 
 
 class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
-
     @staticmethod
     def _get_entities_in(parent_entity, excluded=None):
         excluded = excluded if excluded else []
@@ -213,6 +214,14 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
         locations = [EntitiesPage._get_entity_info(loc_to_show) for loc_to_show in displayed_locations]
         obj_response.call("FRAGMENTS.entities.after_refresh_list", [locations])
+
+    @staticmethod
+    def refresh_entity_info(obj_response, entity_id):
+        entity_id = app.decode(entity_id)
+        entity = models.Entity.by_id(entity_id)
+
+        entity_info = EntitiesPage._get_entity_info(entity)
+        obj_response.call("FRAGMENTS.entities.after_refresh_entity_info", [entity_info])
 
     @staticmethod
     def entities_get_sublist(obj_response, entity_id, parent_id):
@@ -270,10 +279,19 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
     @staticmethod
     def _get_entity_info(entity):
+        if isinstance(entity, models.Passage):
+            entity = models.PassageToNeighbour(entity,
+                                               models.PassageToNeighbour.get_other_side(entity, g.character.being_in))
+
+        other_side = None
         if isinstance(entity, models.PassageToNeighbour):
-            full_name = g.pyslate.t("entity_info", **entity.passage.pyslatize(html=True, detailed=True)) + " to " +\
-                g.pyslate.t("entity_info", **entity.other_side.pyslatize(html=True, detailed=True))
-            entity = entity.passage
+            full_name = g.pyslate.t("tp_passage_other_side",
+                                    groups={"passage": entity.passage.pyslatize(html=True, detailed=True),
+                                            "location": entity.other_side.pyslatize(html=True, detailed=True)})
+            passage_to_neighbour = entity
+            entity = passage_to_neighbour.passage
+            other_side = passage_to_neighbour.other_side
+
         else:
             full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
 
@@ -288,19 +306,26 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         # TODO translation
         activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
 
-        expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
-                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+        if isinstance(entity, models.Passage):
+            expandable = models.Entity.query.filter(models.Entity.is_in(other_side)) \
+                             .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+        else:
+            expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
+                             .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
 
         entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
-                                      actions=possible_actions, activity=activity, expandable=expandable)
+                                      actions=possible_actions, activity=activity, expandable=expandable,
+                                      other_side=other_side)
         return {"html": entity_html, "id": app.encode(entity.id)}
 
     @staticmethod
-    def toggle_closeable(obj_response, entity):
-        entity = models.Entity.by_id(app.decode(entity))
+    def toggle_closeable(obj_response, entity_id):
+        entity = models.Entity.by_id(app.decode(entity_id))
 
         action = actions.ToggleCloseableAction(g.character, entity)
         action.perform()
+
+        obj_response.call("FRAGMENTS.entities.after_toggle_closeable", [entity_id])
         db.session.commit()
 
 
