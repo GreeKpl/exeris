@@ -33,7 +33,7 @@ class ActionsTest(TestCase):
         hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": "potatoes"}, 100, initiator)
         db.session.add(hammer_activity)
 
-        action = CreateItemAction(item_type=item_type, properties={"Edible": True},
+        action = CreateItemAction(item_type=item_type, properties={"Edible": {"hunger": 5}},
                                   activity=hammer_activity, initiator=initiator, used_materials="all")
         action.perform()
 
@@ -69,8 +69,9 @@ class ActionsTest(TestCase):
         db.session.add(hammer_activity)
 
         db.session.flush()
-        d = ["exeris.core.actions.CreateItemAction", {"item_type": item_type.name, "properties": {"Edible": True},
-                                                      "used_materials": "all"}]
+        d = ["exeris.core.actions.CreateItemAction",
+             {"item_type": item_type.name, "properties": {"Edible": {"strength": 5.0}},
+              "used_materials": "all"}]
 
         # dump it, then read and run the deferred function
         action = deferred.call(d, activity=hammer_activity, initiator=initiator)
@@ -485,12 +486,12 @@ class ActionsTest(TestCase):
         db.session.add_all([rl, building])
 
         passage = Passage.query.filter(Passage.between(rl, building)).one()
-        enter_loc_action = MoveToLocationAction(char, building, passage)
+        enter_loc_action = MoveToLocationAction(char, passage)
         enter_loc_action.perform()
 
         self.assertEqual(building, char.being_in)
 
-        enter_loc_action = MoveToLocationAction(char, rl, passage)
+        enter_loc_action = MoveToLocationAction(char, passage)
         enter_loc_action.perform()
         self.assertEqual(rl, char.being_in)
 

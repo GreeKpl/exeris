@@ -210,6 +210,11 @@ def create_pyslate(language, backend=None, **kwargs):
             return passage_name
 
         states_text = ""
+        if "closed" in params:
+            if params["closed"]:
+                states_text += helper.translation("passage_closed", psg_form=form)
+            else:
+                states_text += helper.translation("passage_open", psg_form=form)
         return helper.translation("tp_detailed_passage_info", passage_name=passage_text, states=states_text)
 
     pyslate.register_function("passage_info", func_passage_info)

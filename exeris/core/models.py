@@ -332,40 +332,46 @@ class Entity(db.Model):
 
     def get_property(self, name):
         props = {}
+        ok = False
         type_property = EntityTypeProperty.query.filter_by(type=self.type, name=name).first()
         if type_property:
             props.update(type_property.data)
+            ok = True
 
         entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
         if entity_property:
             props.update(entity_property.data)
+            ok = True
 
+        if not ok:
+            return None
         return props
 
     def has_property(self, name, **kwargs):
         if not kwargs:
-            entities_count = EntityProperty.query.filter_by(entity=self, name=name).count()
-            if entities_count > 0:
-                return True
-
-            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name).count()
-
-            if entities_count > 0:
-                return True
+            return self.get_property(name) is not None
         else:
             assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
             key, value = next(iter(kwargs.items()))
 
-            entities_count = EntityProperty.query.filter_by(entity=self, name=name). \
-                filter(EntityProperty.data[key].cast(sql.Boolean) == value).count()
-            if entities_count > 0:
-                return True
+            prop = self.get_property(name)
+            return key in prop and prop[key] == value
 
-            entities_count = EntityTypeProperty.query.filter_by(type=self.type, name=name). \
-                filter(EntityTypeProperty.data[key].cast(sql.Boolean) == value).count()
-            if entities_count > 0:
-                return True
-        return False
+    def alter_property(self, name, data=None):
+        """
+        Creates an EntityProperty for this Entity if it doesn't exist and fills it with provided data
+        or REPLACES the data of existing EntityProperty with provided data.
+        It doesn't affect any EntityTypeProperty for this Entity's type.
+        :param name: name of the property.
+        :param data: dict with data for this property
+        """
+        if not data:
+            data = {}
+        entity_property = EntityProperty.query.filter_by(name=name).first()
+        if entity_property:
+            entity_property.data = data
+        else:
+            self.properties.append(EntityProperty(name, data=data))
 
     def get_position(self):
         return self.get_root().position
@@ -961,7 +967,7 @@ class RootLocation(Location):
         return top_terrain.type
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_LOCATION, location_id=self.id,
+        return dict(dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id,
                          location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
 
     __mapper_args__ = {
@@ -1050,7 +1056,10 @@ class Passage(Entity):
                                           backref="right_passages", uselist=False)
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name), **overwrites)
+        initial_dict = dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name)
+        if self.has_property(P.CLOSEABLE):
+            initial_dict["closed"] = not self.is_open()
+        return dict(initial_dict, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,

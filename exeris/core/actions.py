@@ -45,40 +45,37 @@ class ActionOnSelf(Action):
             self.rng = SameLocationRange()
 
 
-class ActionOnItem(Action):
+class ActionOnEntity(Action):
+    def __init__(self, executor, entity, rng=None):
+        super().__init__(executor)
+        self.entity = entity
+        if not rng:
+            rng = SameLocationRange()
+        self.rng = rng
+
+
+class ActionOnItem(ActionOnEntity):
     def __init__(self, executor, item, rng=None):
-        super().__init__(executor)
+        super().__init__(executor, item, rng)
         self.item = item
-        self.rng = rng
-        if not rng:
-            self.rng = SameLocationRange()
 
 
-class ActionOnCharacter(Action):
+class ActionOnCharacter(ActionOnEntity):
     def __init__(self, executor, character, rng=None):
-        super().__init__(executor)
+        super().__init__(executor, character, rng)
         self.character = character
-        self.rng = rng
-        if not rng:
-            self.rng = SameLocationRange()
 
 
-class ActionOnLocation(Action):
+class ActionOnLocation(ActionOnEntity):
     def __init__(self, executor, location, rng=None):
-        super().__init__(executor)
+        super().__init__(executor, location, rng)
         self.location = location
-        self.rng = rng
-        if not rng:
-            self.rng = SameLocationRange()
 
 
-class ActionOnActivity(Action):
+class ActionOnActivity(ActionOnEntity):
     def __init__(self, executor, activity, rng=None):
-        super().__init__(executor)
+        super().__init__(executor, activity, rng)
         self.activity = activity
-        self.rng = rng
-        if not rng:
-            self.rng = SameLocationRange()
 
 
 class ActionOnItemAndActivity(Action):
@@ -772,7 +769,11 @@ class JoinActivityAction(ActionOnActivity):
 
 
 class MoveToLocationAction(ActionOnLocation):
-    def __init__(self, executor, location, passage):
+    def __init__(self, executor, passage):
+        if executor.being_in == passage.left_location:
+            location = passage.right_location
+        else:
+            location = passage.left_location
         super().__init__(executor, location, rng=SameLocationRange())
         self.passage = passage
 
@@ -795,3 +796,28 @@ class MoveToLocationAction(ActionOnLocation):
         EventCreator.create(rng=SameLocationRange(), tag_observer=Events.MOVE + "_observer",
                             params={"groups": {"from": from_loc.pyslatize(), "destination": self.location.pyslatize()}},
                             doer=self.executor)
+
+
+class ToggleCloseableAction(ActionOnEntity):
+
+    def __init__(self, executor, closeable_entity):
+        super().__init__(executor, closeable_entity)
+
+    def perform_action(self):
+
+        # TODO check if entity is locked
+
+        if not self.executor.has_access(self.entity, rng=general.SameLocationRange()):
+            raise main.EntityTooFarAwayException(entity=self.entity)
+
+        closeable_prop = self.entity.get_property(P.CLOSEABLE)
+        going_to_open = closeable_prop["closed"]
+        self.entity.alter_property(P.CLOSEABLE, {"closed": not going_to_open})
+
+        if going_to_open:
+            event_name = Events.OPEN_ENTITY
+        else:
+            event_name = Events.CLOSE_ENTITY
+
+        EventCreator.base(event_name, self.rng, {"groups": {"entity": self.entity.pyslatize()}}, doer=self.executor)
+

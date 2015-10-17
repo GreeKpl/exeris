@@ -3,7 +3,6 @@ from exeris.core.properties_base import P
 
 
 class ActionRecord:
-    
     def __init__(self, tag_name, image, required_property, endpoint, other_req=lambda x: True):
         self.tag_name = tag_name
         self.image = image
@@ -16,7 +15,10 @@ ACTIONS_ON_GROUND = [
     ActionRecord("eat", "image", P.EDIBLE, "eat"),
     ActionRecord("enter", "image", P.ENTERABLE, "move_to_location"),
     ActionRecord("read", "image", P.READABLE, "open_readable_contents"),
-    ActionRecord("add_to_activity", "image", "any", "form_add_item_to_activity", lambda x: isinstance(x, models.Item))
+    ActionRecord("add_to_activity", "image", "any", "form_add_item_to_activity", lambda x: isinstance(x, models.Item)),
+    ActionRecord("open", "image", P.CLOSEABLE, "toggle_closeable", lambda x: x.has_property(P.CLOSEABLE, closed=True)),
+    ActionRecord("close", "image", P.CLOSEABLE, "toggle_closeable",
+                 lambda x: x.has_property(P.CLOSEABLE, closed=False)),
 ]
 
 TOOLBAR_ACTIONS = [

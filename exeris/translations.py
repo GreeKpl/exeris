@@ -106,6 +106,18 @@ data = {
     "tp_item_dependent": {
         "en": "${entity_%{dependent}}",
     },
+    "tp_detailed_passage_info": {
+        "en": "%{states} %{passage_name}",
+    },
+    "passage_closed": {
+        "en": "closed",
+    },
+    "passage_open": {
+        "en": "open",
+    },
+    "entity_door": {
+        "en": "door",
+    },
     "entity_hammer": {
         "en": "hammer",
     },

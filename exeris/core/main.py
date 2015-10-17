@@ -32,6 +32,8 @@ class Types:
 
 
 class Events:
+    OPEN_ENTITY = "event_open_entity"
+    CLOSE_ENTITY = "event_close_entity"
     MOVE = "event_move"
     EAT = "event_eat"
     SAY_ALOUD = "event_say_aloud"

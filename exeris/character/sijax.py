@@ -2,19 +2,19 @@ import time
 
 from flask import g, render_template
 
-from exeris.core import models, actions, accessible_actions, recipes, deferred, general
+from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main
 from exeris.core.main import db, app
 
 
 class GlobalMixin:
     @staticmethod
-    def rename_entity(obj_response, character_id, new_name):
-        character_id = app.decode(character_id)
+    def rename_entity(obj_response, entity_id, new_name):
+        entity_id = app.decode(entity_id)
+        entity_to_rename = models.Entity.by_id(entity_id)
 
-        entity_to_rename = models.Entity.by_id(character_id)
         entity_to_rename.set_dynamic_name(g.character, new_name)
 
-        obj_response.call("FRAGMENTS.character.after_rename_entity", [app.encode(character_id)])
+        obj_response.call("FRAGMENTS.character.after_rename_entity", [app.encode(entity_id)])
         db.session.commit()
 
     @staticmethod
@@ -107,7 +107,7 @@ class EventsPage(GlobalMixin, SpeakingMixin, ActivityMixin):
         queried = time.time()
         print("query: ", queried - start)
         last_event_id = events[-1].id if len(events) else last_event
-        events_texts = [g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
+        events_texts = [g.pyslate.t("game_date", game_date=event.date) + ": " + g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
 
         tran = time.time()
         print("translations:", tran - queried)
@@ -168,6 +168,7 @@ class EntityActionMixin:
 
 
 class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
+
     @staticmethod
     def _get_entities_in(parent_entity, excluded=None):
         excluded = excluded if excluded else []
@@ -176,7 +177,7 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
             .filter(~models.Entity.id.in_([e.id for e in excluded])).all()
 
         if isinstance(parent_entity, models.Location):
-            entities += [passage.other_side for passage in parent_entity.passages_to_neighbours if
+            entities += [passage for passage in parent_entity.passages_to_neighbours if
                          passage.other_side not in excluded]
 
             if not models.EntityContentsPreference.query.filter_by(character=g.character,
@@ -226,9 +227,12 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         to_loc_id = app.decode(to_loc_id)
         loc = models.Location.by_id(to_loc_id)
 
-        passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, loc)).one()
+        try:
+            passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, loc)).one()
+        except:
+            raise main.EntityTooFarAwayException(entity=loc)
 
-        action = actions.MoveToLocationAction(g.character, loc, passage)
+        action = actions.MoveToLocationAction(g.character, passage)
         action.perform()
 
         db.session.commit()
@@ -271,7 +275,12 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
     @staticmethod
     def _get_entity_info(entity):
-        full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
+        if isinstance(entity, models.PassageToNeighbour):
+            full_name = g.pyslate.t("entity_info", **entity.passage.pyslatize(html=True, detailed=True)) + " to " +\
+                g.pyslate.t("entity_info", **entity.other_side.pyslatize(html=True, detailed=True))
+            entity = entity.passage
+        else:
+            full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
 
         def has_needed_prop(action):
             if action.required_property == "any":
@@ -290,6 +299,14 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
                                       actions=possible_actions, activity=activity, expandable=expandable)
         return {"html": entity_html, "id": app.encode(entity.id)}
+
+    @staticmethod
+    def toggle_closeable(obj_response, entity):
+        entity = models.Entity.by_id(app.decode(entity))
+
+        action = actions.ToggleCloseableAction(g.character, entity)
+        action.perform()
+        db.session.commit()
 
 
 class MapPage(GlobalMixin):
