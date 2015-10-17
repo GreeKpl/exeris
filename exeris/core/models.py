@@ -967,7 +967,7 @@ class RootLocation(Location):
         return top_terrain.type
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id,
+        return dict(dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id, root_location_id=self.id,
                          location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
 
     __mapper_args__ = {
@@ -1293,8 +1293,9 @@ def init_database_contents():
 
     if not PassageType.by_name(Types.DOOR):
         door_passage = PassageType(Types.DOOR, False)
+        door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
+        door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
-        db.session.add(EntityTypeProperty(P.CLOSEABLE, {"closed": False}, type=door_passage))
     db.session.merge(EntityType(Types.CHARACTER))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))

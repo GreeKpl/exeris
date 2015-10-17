@@ -157,8 +157,8 @@ def create_database():
         db.session.add_all([tablet_type, tablet_recipe])
 
     outside = models.LocationType.by_name(Types.OUTSIDE)
-    if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.ENTERABLE).count():
-        outside.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+    if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
+        outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
 
     if not models.ItemType.by_name("granite"):
         stone_group = models.TypeGroup("group_stone")
