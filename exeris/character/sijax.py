@@ -223,20 +223,15 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         obj_response.call("FRAGMENTS.entities.after_entities_get_sublist", [entity_id, rendered])
 
     @staticmethod
-    def move_to_location(obj_response, to_loc_id):
-        to_loc_id = app.decode(to_loc_id)
-        loc = models.Location.by_id(to_loc_id)
-
-        try:
-            passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, loc)).one()
-        except:
-            raise main.EntityTooFarAwayException(entity=loc)
+    def move_to_location(obj_response, passage_id):
+        passage_id = app.decode(passage_id)
+        passage = models.Passage.by_id(passage_id)
 
         action = actions.MoveToLocationAction(g.character, passage)
         action.perform()
 
         db.session.commit()
-        obj_response.call("FRAGMENTS.entities.after_move_to_location", [app.encode(loc.id)])
+        obj_response.call("FRAGMENTS.entities.after_move_to_location", [app.encode(passage.id)])
 
     @staticmethod
     def form_add_item_to_activity(obj_response, entity_id):
