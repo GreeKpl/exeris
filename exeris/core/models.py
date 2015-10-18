@@ -355,7 +355,7 @@ class Entity(db.Model):
             key, value = next(iter(kwargs.items()))
 
             prop = self.get_property(name)
-            return key in prop and prop[key] == value
+            return prop is not None and key in prop and prop[key] == value
 
     def alter_property(self, name, data=None):
         """

@@ -3,13 +3,17 @@ FRAGMENTS.entity = (function($) {
     $(document).on("click", ".character", function(event) {
         var character = $(event.target);
         var new_name = prompt("select new name");
-        Sijax.request("rename_entity", [FRAGMENTS.entity.get_id(character), new_name]);
+        if (new_name) {
+            Sijax.request("rename_entity", [FRAGMENTS.entity.get_id(character), new_name]);
+        }
     });
 
     $(document).on("click", ".root_location", function(event) {
         var loc = $(event.target);
         var new_name = prompt("select new name");
-        Sijax.request("rename_entity", [FRAGMENTS.entity.get_id(loc), new_name]);
+        if (new_name) {
+            Sijax.request("rename_entity", [FRAGMENTS.entity.get_id(loc), new_name]);
+        }
     });
 
     return {

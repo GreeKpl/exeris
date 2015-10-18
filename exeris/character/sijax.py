@@ -224,9 +224,12 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         obj_response.call("FRAGMENTS.entities.after_refresh_entity_info", [entity_info])
 
     @staticmethod
-    def entities_get_sublist(obj_response, entity_id, parent_id):
+    def entities_get_sublist(obj_response, entity_id, parent_parent_id):
         parent_entity = models.Entity.by_id(app.decode(entity_id))
-        exclude = [models.Entity.by_id(app.decode(parent_id))] if parent_id else []
+        rng = general.VisibilityBasedRange(distance=30)
+        if not rng.is_near(g.character, parent_entity):
+            raise main.EntityTooFarAwayException(entity=parent_entity)
+        exclude = [models.Entity.by_id(app.decode(parent_parent_id))] if parent_parent_id else []
         rendered = EntitiesPage._get_entities_in(parent_entity, exclude)
 
         obj_response.call("FRAGMENTS.entities.after_entities_get_sublist", [entity_id, rendered])

@@ -170,15 +170,19 @@ class NeighbouringLocationsRange(RangeSpec):
 def visit_subgraph(node, only_through_unlimited=False):
     passages_all = node.passages_to_neighbours
     passages_left = deque(passages_all)
+    number_of_door_passed = {node: 0}
     visited_locations = {node}
     while len(passages_left):
         passage = passages_left.popleft()
         if passage.passage.is_accessible(only_through_unlimited=only_through_unlimited):
             if passage.other_side not in visited_locations:
+                number_of_door_passed[passage.other_side] = number_of_door_passed[passage.own_side]
+                if not passage.passage.type.unlimited:
+                    number_of_door_passed[passage.other_side] += 1
                 visited_locations.add(passage.other_side)
                 new_passages = passage.other_side.passages_to_neighbours
                 passages_left.extend([p for p in new_passages if p.other_side not in visited_locations])
-    return visited_locations
+    return {loc for loc in visited_locations if number_of_door_passed[loc] <= 2}
 
 
 class VisibilityBasedRange(RangeSpec):
