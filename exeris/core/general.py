@@ -102,13 +102,11 @@ class RangeSpec:
     def locations_near(self, entity):
         raise NotImplementedError  # abstract
 
-    def is_near(self, entity_a, entity_b, strict=True):
+    def is_near(self, entity_a, entity_b):
         """
         Checks whether entity_a has access to entity_b.
-        If entity_a is instance of Character then their capabilities like keys are taken into account.
         :param entity_a:
         :param entity_b:
-        :param strict:
         :return:
         """
         for a in self._locationize(entity_a):

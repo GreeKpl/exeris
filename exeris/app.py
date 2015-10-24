@@ -11,6 +11,7 @@ from flask.ext.bower import Bower
 from flask.ext.login import current_user
 from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
+from geoalchemy2.shape import from_shape
 import psycopg2
 from shapely.geometry import Point, Polygon
 import flask_sijax
@@ -159,6 +160,28 @@ def create_database():
     outside = models.LocationType.by_name(Types.OUTSIDE)
     if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
         outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
+
+    if not models.LocationType.by_name("pig"):
+        pig_type = models.LocationType("pig", 30000)
+        horse_type = models.LocationType("horse", 200000)
+        impassable_to_animal = models.PassageType("impassable_to_animal", True)
+        invisible_to_animal = models.PassageType("invisible_to_animal", True)
+        invisible_to_animal.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        invisible_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
+        impassable_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
+
+        db.session.add_all([pig_type, horse_type, impassable_to_animal, invisible_to_animal])
+
+    pig_type = models.LocationType.by_name("pig")
+    horse_type = models.LocationType.by_name("horse")
+    if not models.Location.query.filter_by(type=pig_type).first():
+        rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
+        impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
+        invisible_to_animal = models.PassageType.by_name("invisible_to_animal")
+        pig = models.Location(rl, pig_type, passage_type=impassable_to_animal)
+        horse = models.Location(rl, horse_type, passage_type=invisible_to_animal)
+
+        db.session.add_all([pig, horse])
 
     if not models.ItemType.by_name("granite"):
         stone_group = models.TypeGroup("group_stone")

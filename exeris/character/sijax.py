@@ -288,9 +288,9 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
 
         other_side = None
         if isinstance(entity, models.PassageToNeighbour):
-            full_name = g.pyslate.t("tp_passage_other_side",
-                                    groups={"passage": entity.passage.pyslatize(html=True, detailed=True),
-                                            "location": entity.other_side.pyslatize(html=True, detailed=True)})
+            full_name = g.pyslate.t("entity_info",
+                                    other_side=entity.other_side.pyslatize(html=True, detailed=True),
+                                    **entity.passage.pyslatize(html=True, detailed=True))
             passage_to_neighbour = entity
             entity = passage_to_neighbour.passage
             other_side = passage_to_neighbour.other_side
@@ -312,6 +312,8 @@ class EntitiesPage(GlobalMixin, EntityActionMixin, ActivityMixin):
         if isinstance(entity, models.Passage):
             expandable = models.Entity.query.filter(models.Entity.is_in(other_side)) \
                              .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+            if expandable:
+                expandable = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side, )
         else:
             expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
                              .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None

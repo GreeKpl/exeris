@@ -1,24 +1,38 @@
 import html
+import json
+import os
+
 from pyslate.pyslate import Pyslate
 from exeris.core import models, general
 
 
 def create_pyslate(language, backend=None, **kwargs):
-
     def htmlize(f):
         def g(helper, tag_name, params):
-
             result_text = f(helper, tag_name, params)
             if not params.get("html", False):
                 return result_text
             entity_type_name = params["entity_type"]
             entity_id = params.get(entity_type_name + "_id", 0)
             from exeris.app import app
-            return '<span class="entity {} id_{}">{}</span>'.format(entity_type_name, app.encode(entity_id), result_text)
+            classes = ["entity", entity_type_name, "id_{}".format(app.encode(entity_id))]
+            classes += ["dynamic_nameable"] if params.get("dynamic_nameable", False) else []
+            return '<span class="{}">{}</span>'.format(" ".join(classes), result_text)
 
         return g
 
-    pyslate = Pyslate(language, backend=backend, **kwargs)
+    def on_missing_tag_key(key, params):
+        file_path = os.path.join(os.path.dirname(__file__), "../missing_tags.json")
+        with open(file_path, 'r+') as f:
+            old_data = json.loads(f.read())
+            f.seek(0)
+            old_data[key] = {"en": ",".join([x for x in params.keys()])}
+            f.write(json.dumps(old_data, indent=4))
+            f.truncate()
+
+        return "[MISSING TAG {}]".format(key)
+
+    pyslate = Pyslate(language, backend=backend, on_missing_tag_key_callback=on_missing_tag_key, **kwargs)
 
     #################
     #  DECORATORS   #
@@ -50,7 +64,8 @@ def create_pyslate(language, backend=None, **kwargs):
 
         item_name = params["item_name"]
         if detailed:
-            item_text, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name), number=number)
+            item_text, form = helper.translation_and_form("entity_" + item_name + helper.pass_the_suffix(tag_name),
+                                                          number=number)
         else:
             item_text, form = helper.translation_and_form("entity_" + item_name + "#u" + helper.get_suffix(tag_name))
         item_text += " "
@@ -66,7 +81,8 @@ def create_pyslate(language, backend=None, **kwargs):
         material_prop = params.get("item_material", {})
         if "main" in material_prop:
             main_material_type_name = material_prop["main"]
-            material_text = helper.translation("tp_item_main_material", material_name=main_material_type_name, item_form=form)
+            material_text = helper.translation("tp_item_main_material", material_name=main_material_type_name,
+                                               item_form=form)
             material_text += " "
 
         if params.get("item_damage", 0) > models.Item.DAMAGED_LB:
@@ -128,7 +144,8 @@ def create_pyslate(language, backend=None, **kwargs):
     @htmlize
     def func_activity_info(helper, tag_name, params):
         activity_name = params["activity_name"]
-        text, form = helper.translation_and_form("activity_" + activity_name, **params["activity_params"])  # this is all
+        text, form = helper.translation_and_form("activity_" + activity_name,
+                                                 **params["activity_params"])  # this is all
         helper.return_form(form)
         return text
 
@@ -163,10 +180,12 @@ def create_pyslate(language, backend=None, **kwargs):
         material_prop = params.get("location_material", {})
         if "main" in material_prop:
             main_material_type_name = material_prop["main"]
-            material_text = helper.translation("tp_location_main_material", material_name=main_material_type_name, item_form=form)
+            material_text = helper.translation("tp_location_main_material", material_name=main_material_type_name,
+                                               item_form=form)
             material_text += " "
 
-        return helper.translation("tp_location_info", location_name=location_name, title=title_text, main_material=material_text).strip()
+        return helper.translation("tp_location_info", location_name=location_name, title=title_text,
+                                  main_material=material_text).strip()
 
     pyslate.register_function("location_info", func_location_info)
 
@@ -215,6 +234,16 @@ def create_pyslate(language, backend=None, **kwargs):
                 states_text += helper.translation("passage_closed", psg_form=form)
             else:
                 states_text += helper.translation("passage_open", psg_form=form)
+
+        if "other_side" in params:
+            if params.get("invisible", False):
+                return helper.translation("entity_info", **params["other_side"])
+            return helper.translation("tp_detailed_passage_other_side", passage_name=passage_text,
+                                      groups={"other_side": params["other_side"]}, states=states_text)
+
+        if params.get("invisible", True):
+            return ""
+
         return helper.translation("tp_detailed_passage_info", passage_name=passage_text, states=states_text)
 
     pyslate.register_function("passage_info", func_passage_info)
@@ -257,7 +286,8 @@ def create_pyslate(language, backend=None, **kwargs):
         if isinstance(date, int):
             date = general.GameDate(date)
 
-        return helper.translation("tp_game_date", moon=date.moon, day=date.day, hour=date.hour, minute=str(date.minute).zfill(2))
+        return helper.translation("tp_game_date", moon=date.moon, day=date.day, hour=date.hour,
+                                  minute=str(date.minute).zfill(2))
 
     pyslate.register_function("game_date", func_game_date)
 

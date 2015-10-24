@@ -1,8 +1,6 @@
 import inspect
 
 
-
-
 # property
 class P:
     CLOSEABLE = "Closeable"
@@ -13,11 +11,13 @@ class P:
     SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"
     VISIBLE_MATERIAL = "VisibleMaterial"
+    INVISIBLE_PASSAGE = "InvisiblePassage"
 
 
 # type property
 class TP:
     pass
+
 
 __registry = {}
 
@@ -44,12 +44,12 @@ def property_class(clazz):
                         if not entity.has_property(prop_name):
                             raise EntityPropertyException(str(entity.id) + " has no property " + prop_name)
                         return fun(entity, *args, **kwargs)
+
                     return inner
+
                 __registry[attr.__name__] = check_property(attr, cls.__property__)
     return clazz
 
 
 class PropertyType:
     __property__ = None
-
-

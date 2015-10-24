@@ -109,8 +109,8 @@ data = {
     "tp_detailed_passage_info": {
         "en": "%{states} %{passage_name}",
     },
-    "tp_passage_other_side": {
-        "en": "${passage:entity_info} to ${location:entity_info}",
+    "tp_detailed_passage_other_side": {
+        "en": "%{states} %{passage_name} to ${other_side:entity_info}",
     },
     "passage_closed": {
         "en": "closed",
@@ -153,6 +153,12 @@ data = {
     },
     "entity_clay_adj": {
         "en": "clay",
+    },
+    "entity_pig": {
+        "en": "pig"
+    },
+    "entity_horse": {
+        "en": "horse"
     },
     "entity_granite": {
         "en": "granite",

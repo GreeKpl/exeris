@@ -383,7 +383,10 @@ class Entity(db.Model):
             return self.being_in.get_root()
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_BASE, entity_id=self.id), **overwrites)
+        pyslatized = dict(entity_type=ENTITY_BASE, entity_id=self.id)
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
+        return dict(pyslatized, **overwrites)
 
     discriminator_type = sql.Column(sql.String(15))  # discriminator
 
@@ -557,7 +560,10 @@ class Character(Entity):
         return spawn_date.game_timestamp
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex), **overwrites)
+        pyslatized = dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex)
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
+        return dict(pyslatized, **overwrites)
 
     def __repr__(self):
         return "{{Character name={},player={},activity={}}}".format(self.name, self.player_id, self.activity_id)
@@ -687,8 +693,13 @@ class Activity(Entity):
         self.ticks_left = ticks_needed
         self.initiator = initiator
 
+        self.type = EntityType.by_name(Types.ACTIVITY)
+
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
     name_params = sql.Column(psql.JSON)
+
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
+    type = sql.orm.relationship(EntityType, uselist=False)
 
     initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
     initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id",
@@ -702,8 +713,11 @@ class Activity(Entity):
     ticks_left = sql.Column(sql.Float)
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
-                         activity_name=self.name_tag, activity_params=self.name_params), **overwrites)
+        pyslatized = dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
+                          activity_name=self.name_tag, activity_params=self.name_params)
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
+        return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ACTIVITY,
@@ -918,6 +932,8 @@ class Location(Entity):
         prop = self.get_property(P.VISIBLE_MATERIAL)
         if prop:
             pyslatized["location_material"] = prop
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
@@ -976,8 +992,11 @@ class RootLocation(Location):
         return top_terrain.type
 
     def pyslatize(self, **overwrites):
-        return dict(dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id, root_location_id=self.id,
-                         location_name=self.type_name, location_terrain=self.get_terrain_type().name), **overwrites)
+        pyslatized = dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id,
+                          location_name=self.type_name, location_terrain=self.get_terrain_type().name)
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
+        return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
@@ -1025,7 +1044,6 @@ class Passage(Entity):
         self.right_location = right_location
         if not passage_type:
             passage_type = EntityType.by_name(Types.DOOR)
-            db.session.add(passage_type)
 
         self.type = passage_type
 
@@ -1065,10 +1083,14 @@ class Passage(Entity):
                                           backref="right_passages", uselist=False)
 
     def pyslatize(self, **overwrites):
-        initial_dict = dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name)
+        pyslatized = dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name)
         if self.has_property(P.CLOSEABLE):
-            initial_dict["closed"] = not self.is_open()
-        return dict(initial_dict, **overwrites)
+            pyslatized["closed"] = not self.is_open()
+        if self.has_property(P.INVISIBLE_PASSAGE):
+            pyslatized["invisible"] = True
+        if self.has_property(P.DYNAMIC_NAMEABLE):
+            pyslatized["dynamic_nameable"] = True
+        return dict(pyslatized, **overwrites)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,
@@ -1306,6 +1328,7 @@ def init_database_contents():
         door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
     db.session.merge(EntityType(Types.CHARACTER))
+    db.session.merge(EntityType(Types.ACTIVITY))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))
 

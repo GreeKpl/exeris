@@ -5,7 +5,7 @@
             {% for other_character in g.player.alive_characters %}
             <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
                class="btn {% if g.character == other_character%} btn-primary {% else %} btn-default {% endif %}
-               navbar-btn">{{ other_character.name }}</a>
+               navbar-btn">{{ g.pyslate.t("character_info", **other_character.pyslatize(html=True, observer=other_character))|safe }}</a>
             {% endfor %}
         </div>
         <div>

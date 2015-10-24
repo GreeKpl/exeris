@@ -24,6 +24,7 @@ class Errors:
 
 
 class Types:
+    ACTIVITY = "activity"
     ITEM = "item"  # generic item
     SEA = "sea"
     DOOR = "door"
@@ -63,9 +64,9 @@ def create_app(database=db, config_object_module="exeris.config.DevelopmentConfi
 def _cipher():
     h = hashlib.sha256()
     h.update(app.config['SECRET_KEY'].encode())
-    char = g.character
-    if char:
-        h.update(char.id.to_bytes(8, 'big'))
+
+    if hasattr(g, "character"):
+        h.update(g.character.id.to_bytes(8, 'big'))
     else:
         h.update(b'NO CHAR ID')
     return AES.new(h.digest(), AES.MODE_ECB)
