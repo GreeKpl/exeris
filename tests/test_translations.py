@@ -6,9 +6,9 @@ from shapely.geometry import Point
 from exeris.core import main
 from exeris.core.general import GameDate
 from exeris.core.i18n import create_pyslate
-from exeris.core.main import db
+from exeris.core.main import db, Types
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
-    LocationType, TerrainArea, TerrainType, Passage, Activity
+    LocationType, TerrainArea, TerrainType, Passage, Activity, PassageType
 from exeris.core.properties import P
 from pyslate.backends import json_backend
 from tests import util
@@ -118,6 +118,12 @@ data = {
     "entity_cake#ub": {
         "pl": "ciastami",
     },
+    "passage_open": {
+        "en": "open",
+    },
+    "passage_closed": {
+        "en": "closed",
+    },
     "tp_detailed_item_info": {
         "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{states}%{parts}",
     },
@@ -148,6 +154,9 @@ data = {
     "tp_parts#p": {
         "en": "%{most} and %{last}",
         "pl": "%{most} i %{last}",
+    },
+    "tp_detailed_passage_other_side": {
+        "en": "%{states} %{passage_name} to ${other_side:entity_info}",
     },
     "tp_item_damaged": {
         "en": "damaged",
@@ -408,8 +417,9 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         # test embedding in HTML tag
         translated_html_text = pyslate_en.t("location_info", **loc.pyslatize(html=True))
-        self.assertEqual("""<span class="entity location id_{}">building 'Workshop'</span>""".format(main.encode(loc.id)),
-                         translated_html_text)
+        self.assertEqual(
+            """<span class="entity location id_{}">building 'Workshop'</span>""".format(main.encode(loc.id)),
+            translated_html_text)
 
     def test_root_location_name(self):
         rl = RootLocation(Point(1, 1), True, 213)
@@ -462,6 +472,33 @@ class CharacterAndLocationTranslationTest(TestCase):
         pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_info", **activity.pyslatize()))
+
+    def test_missing_tag_callback(self):
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
+        pyslate_en.on_missing_tag_key_callback = lambda key, params: "wololo"
+
+        self.assertEqual("wololo", pyslate_en.t("TAG_THAT_DOESNT_EXIST"))
+
+    def test_passage_with_other_side(self):
+        rl = RootLocation(Point(1, 1), True, 213)
+        initiator = util.create_character("initiator", rl, util.create_player("abc"))
+
+        door_type = PassageType.by_name(Types.DOOR)
+        building_type = LocationType("building", 200)
+        building = Location(rl, building_type, door_type, title="FALA")
+        db.session.add_all([rl, building_type, building])
+
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
+
+        passage = Passage.query.filter(Passage.between(rl, building)).one()
+
+        self.assertEqual("door", pyslate_en.t("entity_info", **passage.pyslatize()))
+
+        full_passage_with_other_side_text = pyslate_en.t("entity_info", other_side=building.pyslatize(detailed=True),
+                                                         **passage.pyslatize(detailed=True))
+        self.assertEqual("open door to building 'FALA'", full_passage_with_other_side_text)
 
 
 class GameDateDisplayTest(TestCase):

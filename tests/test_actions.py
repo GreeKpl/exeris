@@ -5,17 +5,18 @@ from shapely.geometry import Point
 
 from exeris.core import deferred
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
-    SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction
+    SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
+    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction
 from exeris.core import main
-from exeris.core.main import db, Events
+from exeris.core.main import db, Events, Types
 from exeris.core.general import GameDate
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
-    LocationType, Passage, EntityTypeProperty
+    LocationType, Passage, EntityTypeProperty, PassageType, Player, Character
 from exeris.core.properties import P
 from tests import util
 
 
-class ActionsTest(TestCase):
+class CharacterActionsTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
@@ -474,6 +475,47 @@ class ActionsTest(TestCase):
         self.assertEqual({"groups": {"doer": doer.pyslatize()}, "message": message_text}, event_say_observer.params)
         self.assertCountEqual([obs_same_loc, obs_near_loc], event_say_observer.observers)
 
+    def test_speak_to_somebody_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(13, 15), False, 123)
+
+        doer = util.create_character("doer", rl, util.create_player("eee1"))
+        listener = util.create_character("listener", rl, util.create_player("eee2"))
+        observer = util.create_character("obs_same_loc", rl, util.create_player("eee3"))
+        db.session.add(rl)
+
+        speak_to_somebody = SpeakToSomebodyAction(doer, listener, "ABC")
+        speak_to_somebody.perform()
+
+        event_doer = Event.query.filter_by(type_name=Events.SPEAK_TO_SOMEBODY + "_doer").one()
+        event_observer = Event.query.filter_by(type_name=Events.SPEAK_TO_SOMEBODY + "_observer").one()
+
+        self.assertEqual({"message": "ABC", "groups": {"target": listener.pyslatize()}}, event_doer.params)
+        self.assertEqual({"message": "ABC", "groups": {"doer": doer.pyslatize(), "target": listener.pyslatize()}},
+                         event_observer.params)
+
+    def test_whisper_to_somebody_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(13, 15), False, 123)
+
+        doer = util.create_character("doer", rl, util.create_player("eee1"))
+        listener = util.create_character("listener", rl, util.create_player("eee2"))
+        observer = util.create_character("obs_same_loc", rl, util.create_player("eee3"))
+        db.session.add(rl)
+        db.session.flush()
+
+        whisper_to_somebody = WhisperToSomebodyAction(doer, listener, "ABC")
+        whisper_to_somebody.perform()
+
+        event_doer = Event.query.filter_by(type_name=Events.WHISPER + "_doer").one()
+        event_observer = Event.query.filter_by(type_name=Events.WHISPER + "_observer").one()
+
+        self.assertEqual({"message": "ABC", "groups": {"target": listener.pyslatize()}}, event_doer.params)
+        self.assertEqual({"message": "ABC", "groups": {"doer": doer.pyslatize(), "target": listener.pyslatize()}},
+                         event_observer.params)
+
     def test_enter_building_there_and_back_again_success(self):
         util.initialize_date()
 
@@ -515,3 +557,97 @@ class ActionsTest(TestCase):
         self.assertAlmostEqual(0.03, char.satiation)
         self.assertAlmostEqual(0.6, char.eating_queue["hunger"])
         self.assertAlmostEqual(0.9, char.eating_queue["strength"])
+
+    def test_create_open_then_close_then_open_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 222)
+        strange_passage_type = PassageType("strange_passage", False)
+        building_type = LocationType("building", 100)
+        building = Location(rl, building_type, passage_type=strange_passage_type)
+        char = util.create_character("John", rl, util.create_player("Eddy"))
+
+        closeable_passage = Passage.query.filter(Passage.between(rl, building)).one()
+
+        # it's open by default
+        strange_passage_type.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
+
+        db.session.add_all([rl, strange_passage_type, building_type, building])
+
+        self.assertEqual(True, closeable_passage.is_open())
+
+        closeable_action = ToggleCloseableAction(char, closeable_passage)  # toggle to closed
+        closeable_action.perform()
+
+        self.assertEqual(False, closeable_passage.is_open())
+
+        closeable_action = ToggleCloseableAction(char, closeable_passage)  # toggle to open
+        closeable_action.perform()
+
+        self.assertEqual(True, closeable_passage.is_open())
+
+    def test_give_stackable_item_action_give_6_and_then_try_to_give_too_much(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), True, 11)
+
+        plr = util.create_player("ala123")
+        giver = util.create_character("postac", rl, plr)
+        receiver = util.create_character("postac", rl, plr)
+        potatoes_type = ItemType("potatoes", 5, stackable=True)
+        potatoes = Item(potatoes_type, giver, amount=10)
+
+        db.session.add_all([rl, potatoes_type, potatoes])
+
+        give_action = GiveItemAction(giver, potatoes, receiver, amount=4)
+        give_action.perform()
+
+        potatoes_of_giver = Item.query.filter_by(type=potatoes_type).filter(Item.is_in(giver)).one()
+        potatoes_of_receiver = Item.query.filter_by(type=potatoes_type).filter(Item.is_in(receiver)).one()
+
+        self.assertEqual(6, potatoes_of_giver.amount)
+        self.assertEqual(4, potatoes_of_receiver.amount)
+
+        give_action = GiveItemAction(giver, potatoes, receiver, amount=8)
+        self.assertRaises(main.InvalidAmountException, give_action.perform)
+
+    def test_join_activity_action_try_join_too_far_away_and_then_success(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), True, 11)
+        worker = util.create_character("postac", rl, util.create_player("ala123"))
+        anvil_type = ItemType("anvil", 300, portable=False)
+        anvil = Item(anvil_type, rl)
+        activity = Activity(None, "activity", {"data": True}, {}, 11, worker)
+
+        db.session.add_all([rl, anvil_type, anvil, activity])
+
+        join_activity_action = JoinActivityAction(worker, activity)
+        self.assertRaises(main.TooFarFromActivityException, join_activity_action.perform)
+
+        activity.being_in = anvil
+
+        join_activity_action = JoinActivityAction(worker, activity)
+        join_activity_action.perform()
+
+
+class PlayerActionsTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_create_character_action(self):
+        util.initialize_date()
+        rl = RootLocation(Point(2, 3), False, 112)
+        plr = util.create_player("ala123")
+
+        db.session.add(rl)
+
+        create_character1_action = CreateCharacterAction(plr, "postac", Character.SEX_MALE, "en")
+        create_character1_action.perform()
+
+        create_character2_action = CreateCharacterAction(plr, "postacka", Character.SEX_FEMALE, "en")
+        create_character2_action.perform()
+
+        char1 = Character.query.filter_by(sex=Character.SEX_MALE).one()
+        char2 = Character.query.filter_by(sex=Character.SEX_FEMALE).one()
+        self.assertCountEqual([char1, char2], plr.alive_characters)

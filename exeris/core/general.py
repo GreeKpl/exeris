@@ -119,6 +119,7 @@ class RangeSpec:
         :param entity: entity whose direct location(s) need to be found
         :return: list of locations
         """
+
         if isinstance(entity, models.Activity):
             entity = entity.being_in
         if isinstance(entity, models.Passage):
@@ -126,6 +127,9 @@ class RangeSpec:
 
         if isinstance(entity, models.Location):
             return [entity]
+
+        if not entity:
+            return []
 
         entity = entity.being_in
 

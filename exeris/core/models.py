@@ -11,7 +11,6 @@ from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.sql import or_
 from sqlalchemy.orm import validates
 
-from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
 
@@ -19,7 +18,7 @@ import sqlalchemy as sql
 import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 from .map import MAP_HEIGHT, MAP_WIDTH
-
+from exeris.core import properties_base
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
@@ -468,7 +467,10 @@ class Character(Entity):
 
     @hybrid_property
     def name(self):
-        return ObservedName.query.filter_by(target=self, observer=self).one().name
+        own_name = ObservedName.query.filter_by(target=self, observer=self).first()
+        if own_name:
+            return own_name.name
+        return "UNNAMED"
 
     @name.setter
     def name(self, value):
@@ -1009,6 +1011,10 @@ class TextContent(db.Model):
     FORMAT_MD = "MD"
     FORMAT_HTML = "HTML"
 
+    def __init__(self, entity, text_format=FORMAT_MD):
+        self.entity = entity
+        self.format = text_format
+
     entity_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False)
 
@@ -1098,6 +1104,8 @@ class Passage(Entity):
 
 
 class ObservedName(db.Model):
+    __tablename__ = "observed_names"
+
     observer_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)
     observer = sql.orm.relationship(Character, uselist=False, foreign_keys=[observer_id])
 
@@ -1113,6 +1121,35 @@ class ObservedName(db.Model):
 
     def __repr__(self):
         return "{{ObservedName target={}, by={}, name={}}}".format(self.target, self.observer, self.name)
+
+
+class Achievement(db.Model):
+    __tablename__ = "achievements"
+
+    def __init__(self, achiever, achievement):
+        self.achiever = achiever
+        self.achievement = achievement
+
+    achiever_id = sql.Column(sql.String(PLAYER_ID_MAXLEN), sql.ForeignKey("players.id"), primary_key=True)
+    achiever = sql.orm.relationship(Player, uselist=False, foreign_keys=[achiever_id])
+
+    achievement = sql.Column(sql.String, primary_key=True)
+
+
+class AchievementCharacterProgress(db.Model):
+    __tablename__ = "achievement_character_progress"
+
+    def __init__(self, name, character, details):
+        self.name = name
+        self.character = character
+        self.details = details
+
+    name = sql.Column(sql.String, primary_key=True)
+
+    character_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), primary_key=True)
+    character = sql.orm.relationship(Character, uselist=False)
+
+    details = sql.Column(psql.JSONB)
 
 
 class ScheduledTask(db.Model):

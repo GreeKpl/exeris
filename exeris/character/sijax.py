@@ -62,7 +62,7 @@ class SpeakingMixin:
         receiver_id = app.decode(receiver_id)
         receiver = models.Character.by_id(receiver_id)
 
-        action = actions.SpeakToSomebody(g.character, receiver, message)
+        action = actions.SpeakToSomebodyAction(g.character, receiver, message)
         action.perform()
 
         obj_response.call("FRAGMENTS.speaking.after_say_to_somebody", [])
@@ -73,7 +73,7 @@ class SpeakingMixin:
         receiver_id = app.decode(receiver_id)
         receiver = models.Character.by_id(receiver_id)
 
-        action = actions.WhisperToSomebody(g.character, receiver, message)
+        action = actions.WhisperToSomebodyAction(g.character, receiver, message)
         action.perform()
 
         obj_response.call("FRAGMENTS.speaking.after_whisper", [])

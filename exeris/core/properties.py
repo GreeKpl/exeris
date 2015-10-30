@@ -1,7 +1,8 @@
-import copy
 import statistics
-import markdown
 import math
+
+import markdown
+
 from exeris.core import models
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, property_method, __registry, P
@@ -86,14 +87,14 @@ class ReadablePropertyType(PropertyType):
     def _fetch_text_content(self):
         text_content = models.TextContent.query.filter_by(entity=self).first()
         if not text_content:
-            text_content = models.TextContent(entity=self)
+            text_content = models.TextContent(self)
             db.session.add(text_content)
         return text_content
 
     @property_method
     def read_title(self):
         text_content = self._fetch_text_content()
-        return text_content.title
+        return text_content.title or ""
 
     @property_method
     def read_contents(self):
@@ -106,11 +107,11 @@ class ReadablePropertyType(PropertyType):
         return text_content.md_text or ""
 
     @property_method
-    def alter_contents(self, title, text, format):
+    def alter_contents(self, title, text, text_format):
         text_content = self._fetch_text_content()
         text_content.title = title
-        text_content.format = format
-        if format == models.TextContent.FORMAT_MD:
+        text_content.format = text_format
+        if text_format == models.TextContent.FORMAT_MD:
             text_content.md_text = text
         else:
             text_content.html = text
