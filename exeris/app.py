@@ -1,9 +1,6 @@
 from functools import wraps
 import datetime
 import traceback
-import hashlib
-
-from Crypto.Cipher import AES
 
 from flask import g
 from flask.ext.bootstrap import Bootstrap
@@ -22,6 +19,8 @@ from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
 from pyslate.backends import postgres_backend
+
+from exeris.core import achievements # noinspection UnusedImport
 
 app = create_app()
 

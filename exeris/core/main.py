@@ -46,6 +46,13 @@ class Events:
     GIVE_ITEM = "event_give_item"
 
 
+class Hooks:
+    ITEM_DROPPED = "item_dropped"
+    LOCATION_ENTERED = "location_entered"
+    SPOKEN_ALOUD = "spoken_aloud"
+    WHISPERED = "whispered"
+
+
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
     global app
 
@@ -85,6 +92,20 @@ def decode(encoded_id):
     if pt[8:] != _encode_token:
         raise ValueError('Could not decode ID')
     return int.from_bytes(pt[:8], 'big')
+
+
+_hooks = {}
+
+
+def add_hook(name, func):
+    if name not in _hooks:
+        _hooks[name] = []
+    _hooks[name].append(func)
+
+
+def call_hook(name, **kwargs):
+    for func in _hooks.get(name, []):
+        func(**kwargs)
 
 
 class GameException(Exception):

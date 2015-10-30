@@ -7,6 +7,14 @@
 
     <input type="text" id="char_name">
     <button id="create_character">New character</button>
+    <br><br>
+    Achievements:<br>
+    <ul>
+    {% for achievement in achievements %}
+        <li><b>{{ achievement[0] }}</b><br>
+        {{ achievement[1] }}</li>
+    {% endfor %}
+    </ul>
 {% endblock %}
 
 {% block scripts %}

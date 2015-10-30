@@ -234,9 +234,7 @@ class CreateLocationAction(ActivityAction):
 
 @form_on_setup(entity_name=deferred.NameInput)
 class AddNameToEntityAction(ActivityAction):
-
     def __init__(self, *, entity_name, **injected_args):
-
         self.entity_name = entity_name
         self.entity = injected_args["resulting_entities"][-1]
 
@@ -512,7 +510,6 @@ class EatingProcess(ProcessAction):
 
 
 class CreateCharacterAction(PlayerAction):
-
     def __init__(self, player, character_name, sex, language):
         super().__init__(player)
         self.character_name = character_name
@@ -603,7 +600,7 @@ class TakeItemAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
-        if self.item.being_in != self.executor.being_in:
+        if not self.executor.has_access(self.item, rng=general.InsideRange()):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.amount > self.item.amount:
@@ -621,7 +618,7 @@ class GiveItemAction(ActionOnItemAndCharacter):
         self.amount = amount
 
     def perform_action(self):
-        if self.item.being_in != self.executor.being_in:
+        if not self.executor.has_access(self.item, rng=general.InsideRange()):
             raise main.EntityNotInInventoryException(entity=self.item)
 
         if self.amount > self.item.amount:
@@ -731,8 +728,10 @@ class SayAloudAction(ActionOnSelf):
     def perform_action(self):
         EventCreator.base(Events.SAY_ALOUD, self.rng, {"message": self.message}, doer=self.executor)
 
+        main.call_hook(main.Hooks.SPOKEN_ALOUD, character=self.executor)
 
-class SpeakToSomebody(ActionOnCharacter):
+
+class SpeakToSomebodyAction(ActionOnCharacter):
     def __init__(self, executor, character, message):
         super().__init__(executor, character, rng=VisibilityBasedRange(20))
         self.message = message
@@ -745,7 +744,7 @@ class SpeakToSomebody(ActionOnCharacter):
                           target=self.character)
 
 
-class WhisperToSomebody(ActionOnCharacter):
+class WhisperToSomebodyAction(ActionOnCharacter):
     def __init__(self, executor, character, message):
         super().__init__(executor, character, rng=VisibilityBasedRange(20))
         self.message = message
@@ -753,8 +752,11 @@ class WhisperToSomebody(ActionOnCharacter):
     def perform_action(self):
         if not self.executor.has_access(self.character, rng=SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.character)
+
         EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor,
                           target=self.character)
+
+        main.call_hook(main.Hooks.WHISPERED, to_character=self.character)
 
 
 class JoinActivityAction(ActionOnActivity):
@@ -793,13 +795,15 @@ class MoveToLocationAction(ActionOnLocation):
                           doer=self.executor)
 
         self.executor.being_in = self.location
+
         EventCreator.create(rng=SameLocationRange(), tag_observer=Events.MOVE + "_observer",
                             params={"groups": {"from": from_loc.pyslatize(), "destination": self.location.pyslatize()}},
                             doer=self.executor)
 
+        main.call_hook(main.Hooks.LOCATION_ENTERED, character=self.executor, from_loc=from_loc, to_loc=self.location)
+
 
 class ToggleCloseableAction(ActionOnEntity):
-
     def __init__(self, executor, closeable_entity):
         super().__init__(executor, closeable_entity)
 
@@ -820,4 +824,3 @@ class ToggleCloseableAction(ActionOnEntity):
             event_name = Events.CLOSE_ENTITY
 
         EventCreator.base(event_name, self.rng, {"groups": {"entity": self.entity.pyslatize()}}, doer=self.executor)
-
