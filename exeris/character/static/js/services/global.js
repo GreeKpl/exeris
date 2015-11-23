@@ -45,3 +45,10 @@ FRAGMENTS.character = (function($) {
         }
     };
 })(jQuery);
+
+$(function() {
+    setInterval(function () {
+        Sijax.request("get_notifications_list", []);
+    }, 5000);
+
+});

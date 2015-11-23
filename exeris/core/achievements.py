@@ -17,6 +17,7 @@ class AchievementEntries:
     TEXTS_SPOKEN = "texts_spoken"
     WHISPERS = "whispers"
     ENTERED_LOCATIONS = "entered_locations"
+    EATEN_POTATOES = "eaten_potatoes"
 
 
 class CheckHelper:
@@ -38,6 +39,8 @@ achievements = [
      lambda ch: CheckHelper.check_min_number(AchievementEntries.TEXTS_SPOKEN, ch, 10)),
     ("whisperer", "whisper to 3 people",
      lambda ch: CheckHelper.check_list_min_length(AchievementEntries.WHISPERS, ch, 3)),
+    ("potato_eater", "eat 2 potatoes",
+     lambda ch: CheckHelper.check_min_number(AchievementEntries.EATEN_POTATOES, ch, 2)),
 ]
 
 
@@ -47,6 +50,9 @@ def check_achievement_progress(player):
             if achievement[2](character):
                 if not models.Achievement.query.filter_by(achiever=player, achievement=achievement[0]).first():
                     db.session.add(models.Achievement(player, achievement[0]))
+                    notification = models.Notification("achievement_unlocked", {"name": achievement[0]}, "well_done",
+                                                       {}, player=player)
+                    db.session.add(notification)
 
 
 class ProgressHelper:
@@ -96,3 +102,12 @@ def on_whispered(*, character, to_character):
     changed = ProgressHelper.add_to_set(AchievementEntries.WHISPERS, character, to_character.id)
     if changed:
         check_achievement_progress(character.player)
+
+
+@hook(main.Hooks.EATEN)
+def on_eaten(*, character, item, amount):
+    if item.type_name == "potatoes":
+        changed = ProgressHelper.increment_counter(AchievementEntries.EATEN_POTATOES, character, amount)
+        if changed:
+            check_achievement_progress(character.player)
+

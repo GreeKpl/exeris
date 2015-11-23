@@ -1,6 +1,7 @@
 import time
 
 from flask import g, render_template
+from sqlalchemy import sql
 
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main
 from exeris.core.main import db, app
@@ -36,6 +37,14 @@ class GlobalMixin:
                                         activity.ticks_needed)
         rendered = render_template("character_top_bar.html", activity_name=msg)
         obj_response.call("FRAGMENTS.top_bar.after_update_top_bar", [rendered])
+
+    @staticmethod
+    def get_notifications_list(obj_response):
+        notifications = models.Notification.query.filter(
+            sql.or_(models.Notification.character == g.character, models.Notification.player == g.player)).all()
+
+        notification_titles = [g.pyslate.t(n.title_tag, **n.title_params) for n in notifications]
+        obj_response.call("FRAGMENTS.global.after_get_notifications_list", [notification_titles])
 
 
 class SpeakingMixin:

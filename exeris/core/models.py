@@ -1152,6 +1152,46 @@ class AchievementCharacterProgress(db.Model):
     details = sql.Column(psql.JSONB)
 
 
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = sql.Column(sql.Integer, primary_key=True)
+
+    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None):
+        self.title_tag = title_tag
+        self.title_params = title_params
+        self.text_tag = text_tag
+        self.text_params = text_params
+        self.stackable = stackable
+        self.character = character
+        self.player = player
+        
+    player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True)
+    player = sql.orm.relationship(Player, uselist=False)
+
+    character_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), nullable=True)
+    character = sql.orm.relationship(Character, uselist=False)
+
+    title_tag = sql.Column(sql.String)
+    title_params = sql.Column(psql.JSONB, default=lambda: [])
+
+    text_tag = sql.Column(sql.String)
+    text_params = sql.Column(psql.JSONB, default=lambda: [])
+
+    stackable = sql.Column(sql.Boolean, default=False)
+    icon_name = sql.Column(sql.String, default="undefined.png")
+    options = sql.Column(psql.JSON, default=lambda: [])
+
+    def add_close_option(self):
+        self.add_option("option_close", {}, "close", {})
+
+    def add_option(self, name_tag, name_params, endpoint, request_params):
+        options = list(self.options)
+
+        options.append([name_tag, name_params, endpoint, request_params])
+        self.options = options
+
+
 class ScheduledTask(db.Model):
     __tablename__ = "scheduled_tasks"
 

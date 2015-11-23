@@ -46,6 +46,22 @@ FRAGMENTS.global = (function($) {
         });
     });
 
+    $.subscribe("show_info", function(message) {
+        $.notify({
+            message: message
+        },{
+            type: "info",
+            delay: 0
+        });
+    });
+    
     return {
+        after_get_notifications_list: function(notification_titles) {
+            $(".alert-info").remove();
+            for (var i = 0; i < notification_titles.length; i++) {
+                var title = notification_titles[i];
+                $.publish("show_info", title);
+            }
+        }
     };
 })(jQuery);

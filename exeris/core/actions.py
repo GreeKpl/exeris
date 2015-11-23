@@ -719,6 +719,8 @@ class EatAction(ActionOnItem):
         food_item_info = self.item.pyslatize(item_amount=self.amount, detailed=False)
         EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
 
+        main.call_hook(main.Hooks.EATEN, character=self.executor, item=self.item, amount=self.amount)
+
 
 class SayAloudAction(ActionOnSelf):
     def __init__(self, executor, message):

@@ -181,4 +181,10 @@ data = {
     "entity_group_stone": {
         "en": "stone",
     },
+    "achievement_unlocked": {
+        "en": "Achievement %{name} unlocked!",
+    },
+    "option_close": {
+        "en": "Close",
+    }
 }

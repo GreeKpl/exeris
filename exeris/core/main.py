@@ -51,6 +51,7 @@ class Hooks:
     LOCATION_ENTERED = "location_entered"
     SPOKEN_ALOUD = "spoken_aloud"
     WHISPERED = "whispered"
+    EATEN = "eaten"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
