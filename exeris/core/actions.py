@@ -758,7 +758,7 @@ class WhisperToSomebodyAction(ActionOnCharacter):
         EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor,
                           target=self.character)
 
-        main.call_hook(main.Hooks.WHISPERED, to_character=self.character)
+        main.call_hook(main.Hooks.WHISPERED, character=self.executor, to_character=self.character)
 
 
 class JoinActivityAction(ActionOnActivity):
