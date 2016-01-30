@@ -10,6 +10,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI_BASE = "postgresql://postgres:root@localhost/"
     SQLALCHEMY_DATABASE_NAME = "exeris1"
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI_BASE + SQLALCHEMY_DATABASE_NAME
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = "I LIKE POTATOES"
     SIJAX_STATIC_PATH = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
     STATIC_PATH = os.path.join('.', os.path.dirname(__file__))

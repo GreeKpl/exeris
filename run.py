@@ -2,7 +2,6 @@
 
 from exeris.app import app
 
-print(app.url_map)
 if False:
     app.run("0.0.0.0", debug=False)
 else:
