@@ -51,4 +51,15 @@ $(function() {
         Sijax.request("get_notifications_list", []);
     }, 5000);
 
+    Sijax.request("get_notifications_list", []);
+
+    $(document).on("click", "a[href^='show_notification']", function(event) {
+        event.preventDefault();
+        var clicked = $(event.target);
+        var parts = /show_notification\/(\d+)/.exec(clicked.attr("href"));
+        if (parts) {
+            Sijax.request("show_notification_dialog", [parts[1]]);
+            console.log(parts[1]);
+        }
+    });
 });

@@ -43,8 +43,16 @@ class GlobalMixin:
         notifications = models.Notification.query.filter(
             sql.or_(models.Notification.character == g.character, models.Notification.player == g.player)).all()
 
-        notification_titles = [g.pyslate.t(n.title_tag, **n.title_params) for n in notifications]
+        notification_titles = [{"notification_id": n.id, "title": g.pyslate.t(n.title_tag, **n.title_params)}
+                               for n in notifications]
         obj_response.call("FRAGMENTS.global.after_get_notifications_list", [notification_titles])
+
+    @staticmethod
+    def show_notification_dialog(obj_response, notification_id):
+        notification = models.Notification.query.filter_by(id=notification_id).filter(
+            sql.or_(models.Notification.character == g.character, models.Notification.player == g.player)).one()
+        rendered = render_template("modal_notification.html", notification=notification)
+        obj_response.call("FRAGMENTS.global.after_show_notification_dialog", [rendered])
 
 
 class SpeakingMixin:

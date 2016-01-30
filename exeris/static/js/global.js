@@ -46,9 +46,10 @@ FRAGMENTS.global = (function($) {
         });
     });
 
-    $.subscribe("show_info", function(message) {
+    $.subscribe("show_notification", function(message, notification_id) {
         $.notify({
-            message: message
+            message: message,
+            url: "show_notification/" + notification_id
         },{
             type: "info",
             delay: 0
@@ -56,12 +57,18 @@ FRAGMENTS.global = (function($) {
     });
     
     return {
-        after_get_notifications_list: function(notification_titles) {
+        after_get_notifications_list: function(notifications) {
             $(".alert-info").remove();
-            for (var i = 0; i < notification_titles.length; i++) {
-                var title = notification_titles[i];
-                $.publish("show_info", title);
+            for (var i = 0; i < notifications.length; i++) {
+                var title = notifications[i].title;
+                var notification_id = notifications[i].notification_id;
+                $.publish("show_notification", title, notification_id);
             }
+        },
+        after_show_notification_dialog: function(notification_modal) {
+            $("#notification_modal").remove();
+            $(document.body).append(notification_modal);
+            $("#notification_modal").modal();
         }
     };
 })(jQuery);

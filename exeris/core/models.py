@@ -1157,7 +1157,7 @@ class Notification(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None):
+    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None, add_close_option=True):
         self.title_tag = title_tag
         self.title_params = title_params
         self.text_tag = text_tag
@@ -1165,6 +1165,9 @@ class Notification(db.Model):
         self.stackable = stackable
         self.character = character
         self.player = player
+
+        if add_close_option:
+            self.add_close_option()
         
     player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True)
     player = sql.orm.relationship(Player, uselist=False)
@@ -1186,8 +1189,7 @@ class Notification(db.Model):
         self.add_option("option_close", {}, "close", {})
 
     def add_option(self, name_tag, name_params, endpoint, request_params):
-        options = list(self.options)
-
+        options = list(self.options) if self.options else []
         options.append([name_tag, name_params, endpoint, request_params])
         self.options = options
 
