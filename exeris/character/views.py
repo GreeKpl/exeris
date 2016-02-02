@@ -1,7 +1,8 @@
 import flask
-from exeris.character import character_bp, sijax
+# noinspection PyUnresolvedReferences
+from exeris.character import character_bp, socketio_events
 from exeris.core.graphics import get_map
-from flask import g, render_template
+from flask import render_template
 
 
 @character_bp.route('/events')

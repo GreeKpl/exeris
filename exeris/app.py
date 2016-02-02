@@ -1,27 +1,27 @@
-import flask_socketio
-from flask.ext.socketio import SocketIO
-from functools import wraps
 import datetime
 import traceback
 
-from flask import g, request
-from flask.ext.bootstrap import Bootstrap
-from flask.ext.bower import Bower
-from flask.ext.login import current_user
-from flask.ext.security import login_required, SQLAlchemyUserDatastore, Security, RegisterForm
-from flask.ext.security.forms import Required
-from geoalchemy2.shape import from_shape
+import flask_socketio
 import psycopg2
-from shapely.geometry import Point, Polygon
-from wtforms import StringField, SelectField
-
 from exeris.core import models, main, general
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
+from flask import g, request
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.bower import Bower
+from flask.ext.login import current_user
+from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
+from flask.ext.security.forms import Required
+from flask.ext.socketio import SocketIO
+from functools import wraps
+from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
+from shapely.geometry import Point, Polygon
+from wtforms import StringField, SelectField
 
-from exeris.core import achievements  # noinspection UnusedImport
+# noinspection PyUnresolvedReferences
+from exeris.core import achievements
 
 app = create_app()
 

@@ -1,7 +1,8 @@
 from flask import g, render_template
 
 from exeris.core import models, achievements
-from exeris.player import player_bp, sijax
+# noinspection PyUnresolvedReferences
+from exeris.player import player_bp, socketio_events
 
 
 @player_bp.route("/")
