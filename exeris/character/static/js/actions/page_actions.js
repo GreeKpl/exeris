@@ -1,13 +1,21 @@
 FRAGMENTS.actions = (function() {
 
     $.subscribe("actions:update_actions_list", function() {
-        Sijax.request("update_actions_list", []);
+        socket.emit("update_actions_list", [], function(actions) {
+            $.each(actions, function(idx, action) {
+                $("#actions_list > ol").append("<li class='recipe btn btn-default' data-recipe='" + action.id + "'>" + action.name + "</li>");
+            });
+        });
     });
 
     $(document).on("click", ".recipe", function(event) {
         var recipe = $(event.target);
         var recipe_id = recipe.data("recipe");
-        Sijax.request("activity_from_recipe_setup", [recipe_id]);
+        socket.emit("activity_from_recipe_setup", [recipe_id], function(rendered_code) {
+            $("#recipe_setup_modal").remove();
+            $(document.body).append(rendered_code);
+            $("#recipe_setup_modal").modal();
+        });
     });
 
     $(document).on("click", "#create_activity_from_recipe", function(event) {
@@ -17,24 +25,12 @@ FRAGMENTS.actions = (function() {
             user_input[$(this).prop("name")] = $(this).val();
         });
 
-        Sijax.request("create_activity_from_recipe", [recipe_id, user_input]);
+        socket.emit("create_activity_from_recipe", [recipe_id, user_input], function() {
+            $("#recipe_setup_modal").modal("hide");
+        });
     });
 
-    return {
-        after_update_actions_list: function(actions) {
-            $.each(actions, function(idx, action) {
-                $("#actions_list > ol").append("<li class='recipe btn btn-default' data-recipe='" + action.id + "'>" +  action.name +  "</li>");
-            });
-        },
-        after_create_activity_from_recipe: function() {
-            $("#recipe_setup_modal").modal("hide");
-        },
-        after_activity_from_recipe_setup: function(rendered_code) {
-            $("#recipe_setup_modal").remove();
-            $(document.body).append(rendered_code);
-            $("#recipe_setup_modal").modal();
-        }
-    }
+    return {};
 })();
 
 $(function() {

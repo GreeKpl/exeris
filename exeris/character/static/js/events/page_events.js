@@ -1,36 +1,35 @@
-FRAGMENTS.events = (function($) {
+FRAGMENTS.events = (function($, socket) {
 
     var _last_event = 0;
 
     $.subscribe("events:refresh_list", function() {
-        Sijax.request("get_new_events", [_last_event]);
-    });
-
-    return {
-        update_list: function(new_events, last_event) {
+        socket.emit("get_new_events", [_last_event], function(new_events, last_event) {
             for (var i = 0; i < new_events.length; i++) {
                 new_events[i] = "<li>" + new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>") + "</li>";
             }
             $(".events_list_contents > ol").prepend(new_events.reverse());
             _last_event = last_event;
-        }
-    };
-})(jQuery);
+        });
+    });
+
+})(jQuery, socket);
 
 
-FRAGMENTS.people_short = (function($) {
+FRAGMENTS.people_short = (function($, socket) {
 
     var SELECTED_SPEAKER = "#say_to_all";
 
-    var change_listener = function (new_speaker_selector) {
-        console.log("ROBIE TO DLA " + new_speaker_selector);
+    var change_listener = function(new_speaker_selector) {
         $(SELECTED_SPEAKER).removeClass("btn-primary").addClass("btn-default");
         SELECTED_SPEAKER = new_speaker_selector;
         $(SELECTED_SPEAKER).removeClass("btn-default").addClass("btn-primary");
     };
 
     $.subscribe("people_short:refresh_list", function() {
-        Sijax.request("people_short_refresh_list", []);
+        socket.emit("people_short_refresh_list", [], function(code) {
+            $("#people_short_dock").html(code);
+            change_listener(SELECTED_SPEAKER);
+        });
     });
 
     $(document).on("click", ".select-listener", function(event) {
@@ -55,16 +54,10 @@ FRAGMENTS.people_short = (function($) {
         $.publish("people_short:refresh_list");
     });
 
-    return {
-        after_refresh_list: function(code) {
-            $("#people_short_dock").html(code);
-            change_listener(SELECTED_SPEAKER);
-        }
-    };
-})(jQuery);
+})(jQuery, socket);
 
 
-FRAGMENTS.speaking = (function($) {
+FRAGMENTS.speaking = (function($, socket) {
 
     var message = "";
     var speak_type = "PUBLIC";
@@ -76,11 +69,17 @@ FRAGMENTS.speaking = (function($) {
         var message_text = message.val().trim();
         if (message_text) {
             if (speak_type == "PUBLIC") {
-                Sijax.request("say_aloud", [message_text]);
+                socket.emit("say_aloud", [message_text], function() {
+                    $.publish("events:refresh_list");
+                });
             } else if (speak_type == "SAY_TO_SOMEBODY") {
-                Sijax.request("say_to_somebody", [target, message_text]);
+                socket.emit("say_to_somebody", [target, message_text], function() {
+                    $.publish("events:refresh_list");
+                });
             } else if (speak_type == "WHISPER") {
-                Sijax.request("whisper", [target, message_text]);
+                socket.emit("whisper", [target, message_text], function() {
+                    $.publish("events:refresh_list");
+                });
             }
             message.val("");
         }
@@ -94,34 +93,22 @@ FRAGMENTS.speaking = (function($) {
     });
 
     $.subscribe("speaking:form_refresh", function() {
-        Sijax.request("speaking_form_refresh", [speak_type, target]);
-    });
-
-    return {
-        after_speaking_form_refresh: function (code) {
+        socket.emit("speaking_form_refresh", [speak_type, target], function(code) {
             var message = $("#message").val();
             $("#speaking_form_dock").html(code);
 
             $("#message").val(message).focus();
-        },
-        after_say_aloud: function() {
-            $.publish("events:refresh_list");
-        },
-        after_say_to_somebody: function() {
-            $.publish("events:refresh_list");
-        },
-        after_whisper: function() {
-            $.publish("events:refresh_list");
-        }
-    };
-})(jQuery);
+        });
+    });
+
+})(jQuery, socket);
 
 $(function() {
     $.publish("speaking:form_refresh");
 
     var event_refresher = function() {
         $.publish("events:refresh_list");
-        setTimeout(event_refresher, 20000);
+        setTimeout(event_refresher, 5000);
     };
     event_refresher();
 });

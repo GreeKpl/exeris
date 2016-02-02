@@ -1,8 +1,10 @@
+import flask_socketio
+from flask.ext.socketio import SocketIO
 from functools import wraps
 import datetime
 import traceback
 
-from flask import g
+from flask import g, request
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
 from flask.ext.login import current_user
@@ -11,7 +13,6 @@ from flask.ext.security.forms import Required
 from geoalchemy2.shape import from_shape
 import psycopg2
 from shapely.geometry import Point, Polygon
-import flask_sijax
 from wtforms import StringField, SelectField
 
 from exeris.core import models, main, general
@@ -20,13 +21,12 @@ from exeris.core.main import app, create_app, db, Types
 from exeris.core.properties_base import P
 from pyslate.backends import postgres_backend
 
-from exeris.core import achievements # noinspection UnusedImport
+from exeris.core import achievements  # noinspection UnusedImport
 
 app = create_app()
 
 Bootstrap(app)
-flask_sijax.Sijax(app)
-
+socketio = SocketIO(app)
 Bower(app)
 
 
@@ -39,15 +39,64 @@ user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
 security = Security(app, user_datastore, register_form=ExtendedRegisterForm)
 
 
-def with_sijax_route(*args, **kwargs):
-    flask_fun = flask_sijax.route(*args, **kwargs)
+def socketio_outer_event(*args, **kwargs):
+    socketio_handler = socketio.on(*args, **kwargs)
 
     def dec(f):
         @wraps(f)
-        def g(*a, **k):
-            return f(*a, **k)
+        def fg(*a, **k):
+            g.language = request.args.get("language")
+            conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                                       context={})
+            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
 
-        return flask_fun(login_required(g))
+        return socketio_handler(fg)
+
+    return dec
+
+
+def socketio_player_event(*args, **kwargs):
+    socketio_handler = socketio.on(*args, **kwargs)
+
+    def dec(f):
+        @wraps(f)
+        def fg(*a, **k):
+            if not current_user.is_authenticated():
+                print("DISCONNECTED UNWANTED USER")
+                flask_socketio.disconnect()
+
+            g.player = current_user
+            g.language = g.player.language
+            conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                                       context={})
+            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
+
+        return socketio_handler(fg)
+
+    return dec
+
+
+def socketio_character_event(*args, **kwargs):
+    socketio_handler = socketio.on(*args, **kwargs)
+
+    def dec(f):
+        @wraps(f)
+        def fg(*a, **k):
+            if not current_user.is_authenticated():
+                print("DISCONNECTED UNWANTED USER")
+                flask_socketio.disconnect()
+            character_id = request.args.get("character_id")
+            g.player = current_user
+            g.character = models.Character.by_id(character_id)
+            g.language = g.character.language
+            conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                                       context={"observer": g.character})
+            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
+
+        return socketio_handler(fg)
 
     return dec
 
@@ -116,7 +165,8 @@ def create_database():
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}}, 3, build_menu_category,
                                      result=[["exeris.core.actions.CreateLocationAction",
-                                              {"location_type": hut_type.name, "properties": {}, "used_materials": "all",
+                                              {"location_type": hut_type.name, "properties": {},
+                                               "used_materials": "all",
                                                "visible_material": {"main": "group_stone"}}],
                                              ["exeris.core.actions.AddNameToEntityAction", {}]],
                                      activity_container="fixed_item")
@@ -241,24 +291,20 @@ def character_preprocessor(endpoint, values):
                                context={"observer": g.character})
 
 
+@socketio.on_error()
+def error_handler(exception):
+    try:
+        if isinstance(exception, main.GameException):
+            socketio.emit("$.publish", ("show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)))
+            return
+    except:
+        pass  # execute next line...
+    socketio.emit("$.publish", ("show_error", "socketio error " + str(exception)))  # TODO ADD FUNCTION NAME
+    raise Exception("prevent firing socketio's success callback because of error") from exception
+
+
 @app.errorhandler(Exception)
 def handle_error(exception):
-    def sijax_error_response(obj_response):
-        try:
-            if isinstance(exception, main.GameException):
-                obj_response.call("$.publish",
-                                  ["show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)])
-                return
-        except:
-            pass  # execute next line...
-        fun_name = obj_response._sijax.requested_function
-        obj_response.call("$.publish", ["show_error", "SIJAX error on " + fun_name + ": " + str(exception)])
-        print(exception)
-        print(traceback.print_tb(exception.__traceback__))
-
-    if g.sijax.is_sijax_request:
-        return g.sijax.execute_callback([], sijax_error_response)
-
     if isinstance(exception, main.GameException):
         return g.pyslate.t(exception.error_tag, **exception.error_kwargs)
     print(exception)

@@ -1,7 +1,11 @@
 {% extends "character_base.html" %}
 {% block title %} {{ t("title_page_events") }} {% endblock %}
 {% block content %}
-    <nav id="top_bar"></nav>
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="navbar-inner" id="player_top_bar"></div>
+        <div class="navbar-inner" id="character_top_bar"></div>
+    </nav>
+
     <br><br><br><br><br><br>
     <img src="{{ url_for("character.map_image", character_id=g.character.id) }}">
 {% endblock %}

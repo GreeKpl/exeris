@@ -1,20 +1,19 @@
-FRAGMENTS.top_bar = (function($) {
+FRAGMENTS.character_top_bar = (function($, socket) {
+
+    var after_update_character_top_bar = function(code) {
+        $("#character_top_bar").replaceWith(code);
+    };
 
     $.subscribe("character:activity_participation_changed", function () {
-        Sijax.request("update_top_bar", [])
+        socket.emit("character.update_top_bar", [ENDPOINT_NAME], after_update_character_top_bar);
     });
 
     $.subscribe("character:state_changed", function () {
-        Sijax.request("update_top_bar", [])
+        socket.emit("character.update_top_bar", [ENDPOINT_NAME], after_update_character_top_bar);
     });
 
-    return {
-        after_update_top_bar: function(code) {
-            $("#top_bar").replaceWith(code);
-        }
-    };
-})(jQuery);
+})(jQuery, socket);
 
 $(function() {
-    $.publish("character:activity_participation_changed");
+    $.publish("character:state_changed");
 });

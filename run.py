@@ -1,8 +1,8 @@
 
 
-from exeris.app import app
+from exeris.app import app, socketio
 
 if False:
-    app.run("0.0.0.0", debug=False)
+    socketio.run(app, "0.0.0.0", debug=False)
 else:
-    app.run("127.0.0.1", debug=True)
+    socketio.run(app, "127.0.0.1", debug=True)

@@ -1,7 +1,11 @@
 {% extends "character_base.html" %}
 {% block title %} {{ t("title_page_actions") }} {% endblock %}
 {% block content %}
-    <nav id="top_bar"></nav>
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="navbar-inner" id="player_top_bar"></div>
+        <div class="navbar-inner" id="character_top_bar"></div>
+    </nav>
+
     <br><br><br><br><br><br>
     <div id="actions_list">
         <ol class="btn-group-vertical" role="group">
@@ -10,5 +14,6 @@
 {% endblock %}
 {% block scripts %}
     {{ super() }}
-    <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/actions/page_actions.js") }}"></script>
+    <script type="text/javascript"
+            src="{{ url_for("character_static.static", filename="js/actions/page_actions.js") }}"></script>
 {% endblock %}

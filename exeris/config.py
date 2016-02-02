@@ -12,9 +12,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI_BASE + SQLALCHEMY_DATABASE_NAME
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = "I LIKE POTATOES"
-    SIJAX_STATIC_PATH = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
     STATIC_PATH = os.path.join('.', os.path.dirname(__file__))
-    SIJAX_JSON_URI = '/static/js/sijax/json2.js'
     SECURITY_REGISTERABLE = True
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False

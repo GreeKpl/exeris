@@ -1,21 +1,9 @@
-<nav id="top_bar" class="navbar navbar-default navbar-fixed-top">
-    <div class="navbar-inner">
-        <div>
-            <a href="{{ url_for("player.page_player") }}" class="btn btn-default navbar-btn">Community</a>
-            {% for other_character in g.player.alive_characters %}
-            <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
-               class="btn {% if g.character == other_character%} btn-primary {% else %} btn-default {% endif %}
-               navbar-btn">{{ g.pyslate.t("character_info", **other_character.pyslatize(html=True, observer=other_character, dynamic_nameable=False))|safe }}</a>
-            {% endfor %}
-        </div>
-        <div>
-            {% for endpoint in [("character.page_events", "Events"),
-            ("character.page_entities","Entities"), ("character.page_actions", "Actions"), ("character.page_map", "Map")] %}
-                <a href="{{ url_for(endpoint[0], character_id=g.character.id) }}"
-                   class="btn {% if endpoint[0] == request.endpoint %} btn-primary {% else %} btn-default {% endif %} navbar-btn">{{ endpoint[1] }}</a>
-            {% endfor %}
-            {{ g.character.states }} | {{ g.character.eating_queue }} |
-           <span id="top_bar_current_activity">{{ activity_name }}</span>
-        </div>
-    </div>
-</nav>
+<div class="navbar-inner" id="character_top_bar">
+    {% for endpoint in [("character.page_events", "Events"),
+        ("character.page_entities","Entities"), ("character.page_actions", "Actions"), ("character.page_map", "Map")] %}
+        <a href="{{ url_for(endpoint[0], character_id=g.character.id) }}"
+           class="btn {% if endpoint[0] == endpoint_name %} btn-primary {% else %} btn-default {% endif %} navbar-btn">{{ endpoint[1] }}</a>
+    {% endfor %}
+    {{ g.character.states }} | {{ g.character.eating_queue }} |
+    <span id="top_bar_current_activity">{{ activity_name }}</span>
+</div>

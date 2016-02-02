@@ -1,1 +1,1 @@
-# global sijax calls and decorators here (will there be any?)
+# global socketio calls go here (will there be any?)

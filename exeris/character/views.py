@@ -1,43 +1,26 @@
-import traceback
-from flask import g, render_template
 import flask
-
-from exeris.character import sijax, character_bp
-from exeris.core import models, main
+from exeris.character import character_bp, sijax
 from exeris.core.graphics import get_map
+from flask import g, render_template
 
-@character_bp.with_sijax_route('/events')
+
+@character_bp.route('/events')
 def page_events():
-
-    if g.sijax.is_sijax_request:
-        g.sijax.register_object(sijax.EventsPage)
-        return g.sijax.process_request()
-
     return render_template("events/page_events.html")
 
 
-@character_bp.with_sijax_route('/entities')
+@character_bp.route('/entities')
 def page_entities():
-    if g.sijax.is_sijax_request:
-        g.sijax.register_object(sijax.EntitiesPage)
-        return g.sijax.process_request()
-
     return render_template("entities/page_entities.html")
 
 
-@character_bp.with_sijax_route('/map')
+@character_bp.route('/map')
 def page_map():
-    if g.sijax.is_sijax_request:
-        g.sijax.register_object(sijax.MapPage)
-        return g.sijax.process_request()
     return render_template("map/page_map.html")
 
 
-@character_bp.with_sijax_route('/actions')
+@character_bp.route('/actions')
 def page_actions():
-    if g.sijax.is_sijax_request:
-        g.sijax.register_object(sijax.ActionsPage)
-        return g.sijax.process_request()
 
     return render_template("actions/page_actions.html")
 

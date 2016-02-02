@@ -1,10 +1,12 @@
-FRAGMENTS.entity = (function($) {
+FRAGMENTS.entity = (function($, socket) {
 
     $(document).on("click", ".dynamic_nameable", function(event) {
         var loc = $(event.target);
         var new_name = prompt("select new name");
         if (new_name) {
-            Sijax.request("rename_entity", [FRAGMENTS.entity.get_id(loc), new_name]);
+            socket.emit("rename_entity", [FRAGMENTS.entity.get_id(loc), new_name], function(entity_id) {
+                $.publish("refresh_entity", entity_id);
+            });
         }
     });
 
@@ -20,13 +22,15 @@ FRAGMENTS.entity = (function($) {
             return null;
         }
     }
-})(jQuery);
+})(jQuery, socket);
 
 
-FRAGMENTS.character = (function($) {
+FRAGMENTS.character = (function($, socket) {
 
     $.subscribe("refresh_entity", function(entity_id) {
-        Sijax.request("get_entity_tag", [entity_id]);
+        socket.emit("get_entity_tag", [entity_id], function(entity_id, new_data) {
+            $(".id_" + entity_id).replaceWith(new_data);
+        });
     });
 
     return {
@@ -36,30 +40,14 @@ FRAGMENTS.character = (function($) {
             }, {
                 type: "danger"
             });
-        },
-        after_rename_entity: function(entity_id) {
-            $.publish("refresh_entity", entity_id);
-        },
-        after_get_entity_tag: function(entity_id, new_data) {
-            $(".id_" + entity_id).replaceWith(new_data);
         }
     };
-})(jQuery);
+})(jQuery, socket);
 
 $(function() {
-    setInterval(function () {
-        Sijax.request("get_notifications_list", []);
+    setInterval(function() {
+        $.publish("get_notifications_list");
     }, 5000);
 
-    Sijax.request("get_notifications_list", []);
-
-    $(document).on("click", "a[href^='show_notification']", function(event) {
-        event.preventDefault();
-        var clicked = $(event.target);
-        var parts = /show_notification\/(\d+)/.exec(clicked.attr("href"));
-        if (parts) {
-            Sijax.request("show_notification_dialog", [parts[1]]);
-            console.log(parts[1]);
-        }
-    });
+    $.publish("get_notifications_list");
 });

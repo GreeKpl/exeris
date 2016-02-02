@@ -1,7 +1,10 @@
 {% extends "character_base.html" %}
 {% block title %} {{ t("title_page_events") }} {% endblock %}
 {% block content %}
-    <nav id="top_bar"></nav>
+    <nav class="navbar navbar-default navbar-fixed-top">
+     <div class="navbar-inner" id="player_top_bar"></div>
+     <div class="navbar-inner" id="character_top_bar"></div>
+    </nav>
 
     <div class="row">
         <br><br><br><br><br><br>
@@ -24,5 +27,6 @@
 
 {% block scripts %}
     {{ super() }}
+
     <script type="text/javascript" src="{{ url_for("character_static.static", filename="js/events/page_events.js") }}"></script>
 {% endblock %}

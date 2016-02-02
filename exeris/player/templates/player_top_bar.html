@@ -1,11 +1,8 @@
-<nav class="navbar navbar-default navbar-fixed-top">
-    <div class="navbar-inner">
-        <div>
-            <a href="{{ url_for("player.page_player") }}" class="btn btn-default navbar-btn">Community</a>
-            {% for other_character in g.player.alive_characters %}
-                <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
-                   class="btn btn-default navbar-btn">{{ g.pyslate.t("character_info", **other_character.pyslatize(html=True, observer=other_character))|safe }}</a>
-            {% endfor %}
-        </div>
-    </div>
-</nav>
+<div class="navbar-inner" id="player_top_bar">
+    <a href="{{ url_for("player.page_player") }}" class="btn btn-default navbar-btn">Community</a>
+    {% for other_character in g.player.alive_characters %}
+        <a href="{{ url_for("character.page_events", character_id=other_character.id) }}"
+           class="btn {% if current_character_id == other_character.id %} btn-primary {% else %} btn-default {% endif %}
+           navbar-btn">{{ g.pyslate.t("character_info", **other_character.pyslatize(html=True, observer=other_character, dynamic_nameable=False))|safe }}</a>
+    {% endfor %}
+</div>

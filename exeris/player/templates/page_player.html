@@ -1,28 +1,33 @@
 {% extends "page_base.html" %}
 {% block title %} {{ t("title_page_player") }} {% endblock %}
 {% block content %}
-    {% include "player_top_bar.html" %}
-    <br><br><br>
-    Welcome {{ player.id }}! Używasz Microsoft Internet Explorer 5
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="navbar-inner" id="player_top_bar"></div>
+    </nav>
 
-    <input type="text" id="char_name">
+    <br><br><br>
+    Welcome {{ player.id }}! Używasz Microsoft Internet Explorer 5<br>
+
+    <label for="char_name">Character name: </label><input type="text" id="char_name">
     <button id="create_character">New character</button>
     <br><br>
     Achievements:<br>
     <ul>
-    {% for achievement in achievements %}
-        <li><b>{{ achievement[0] }}</b><br>
-        {{ achievement[1] }}</li>
-    {% endfor %}
+        {% for achievement in achievements %}
+            <li><b>{{ achievement[0] }}</b><br>
+                {{ achievement[1] }}</li>
+        {% endfor %}
     </ul>
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
-    <script type="text/javascript"
-        src="{{ url_for("static", filename="js/sijax/sijax.js") }}"></script>
+
+
     <script type="text/javascript">
-        {{ g.sijax.get_js()|safe }}</script>
+        var CURRENT_CHARACTER_ID = null;
+    </script>
 
     <script type="text/javascript" src="{{ url_for("player.static", filename="js/player/page_player.js") }}"></script>
+    <script type="text/javascript" src="{{ url_for("player.static", filename="js/services/top_bar.js") }}"></script>
 {% endblock %}
