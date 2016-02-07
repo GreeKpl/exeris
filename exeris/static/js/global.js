@@ -33,7 +33,6 @@ FRAGMENTS.global = (function($, socket) {
     });
 
 
-
     $.subscribe("global/show_error", function(message) {
         $.notify({
             message: message
@@ -67,7 +66,7 @@ FRAGMENTS.global = (function($, socket) {
         var clicked = $(event.target);
         var parts = /show_notification\/(\d+)/.exec(clicked.attr("href"));
         if (parts) {
-            socket.emit("show_notification_dialog", [parts[1]], function(notification_modal) {
+            socket.emit("show_notification_dialog", parts[1], function(notification_modal) {
                 $("#notification_modal").remove();
                 $(document.body).append(notification_modal);
                 $("#notification_modal").modal();

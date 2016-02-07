@@ -6,7 +6,7 @@ FRAGMENTS.events = (function($, socket) {
     };
 
     $.subscribe("events/refresh_list", function() {
-        socket.emit("character.pull_events_initial", [], function(new_events) {
+        socket.emit("character.pull_events_initial", function(new_events) {
             for (var i = 0; i < new_events.length; i++) {
                 new_events[i] = convertEventToText(new_events[i].text, new_events[i].id);
             }
@@ -32,7 +32,7 @@ FRAGMENTS.people_short = (function($, socket) {
     };
 
     $.subscribe("people_short:refresh_list", function() {
-        socket.emit("people_short_refresh_list", [], function(code) {
+        socket.emit("people_short_refresh_list", function(code) {
             $("#people_short_dock").html(code);
             change_listener(SELECTED_SPEAKER);
         });
@@ -75,13 +75,13 @@ FRAGMENTS.speaking = (function($, socket) {
         var message_text = message.val().trim();
         if (message_text) {
             if (speak_type == "PUBLIC") {
-                socket.emit("say_aloud", [message_text], function() {
+                socket.emit("say_aloud", message_text, function() {
                 });
             } else if (speak_type == "SAY_TO_SOMEBODY") {
-                socket.emit("say_to_somebody", [target, message_text], function() {
+                socket.emit("say_to_somebody", target, message_tex, function() {
                 });
             } else if (speak_type == "WHISPER") {
-                socket.emit("whisper", [target, message_text], function() {
+                socket.emit("whisper", target, message_text, function() {
                 });
             }
             message.val("");
@@ -96,7 +96,7 @@ FRAGMENTS.speaking = (function($, socket) {
     });
 
     $.subscribe("speaking:form_refresh", function() {
-        socket.emit("speaking_form_refresh", [speak_type, target], function(code) {
+        socket.emit("speaking_form_refresh", speak_type, target, function(code) {
             var message = $("#message").val();
             $("#speaking_form_dock").html(code);
 

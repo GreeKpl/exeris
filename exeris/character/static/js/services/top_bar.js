@@ -5,11 +5,11 @@ FRAGMENTS.character_top_bar = (function($, socket) {
     };
 
     $.subscribe("character:activity_participation_changed", function () {
-        socket.emit("character.update_top_bar", [ENDPOINT_NAME], after_update_character_top_bar);
+        socket.emit("character.update_top_bar", ENDPOINT_NAME, after_update_character_top_bar);
     });
 
     $.subscribe("character:state_changed", function () {
-        socket.emit("character.update_top_bar", [ENDPOINT_NAME], after_update_character_top_bar);
+        socket.emit("character.update_top_bar", ENDPOINT_NAME, after_update_character_top_bar);
     });
 
 })(jQuery, socket);

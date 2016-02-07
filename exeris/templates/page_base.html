@@ -10,12 +10,31 @@
                     "&blueprint={{ request.blueprint }}" +
                     "&language={{ g.language }}"
                 });
+
+        // monkey-patch "emit" function to turn "acknowledgement callback" into "on success callback"
+        var originalEmit = socket.emit;
+        socket.emit = function() {
+            var args = Array.prototype.slice.call(arguments);
+            var lastIndex = args.length - 1;
+            if (typeof args[lastIndex] === "function") { // there is a callback
+                var originalCallback = args[lastIndex];
+                args[lastIndex] = function() {
+                    var callbackArgs = Array.prototype.slice.call(arguments, 1);
+                    var wasSuccessful = arguments[0];
+                    if (wasSuccessful) { // emit was successful, so run the original callback
+                        originalCallback.apply(this, callbackArgs);
+                    }
+                };
+            }
+            originalEmit.apply(this, args);
+        };
     </script>
 
     <script type="text/javascript">
         var FRAGMENTS = {};
-        var ENDPOINT_NAME = "{{ request.endpoint }}"; {# TODO! maybe it's unnecessary,
-        but now it needs to be sent in socketio message to know current endpoint to correctly mark the current tab button #}
+        var ENDPOINT_NAME = "{{ request.endpoint }}";
+        {# TODO! maybe it's unnecessary,
+               but now it needs to be sent in socketio message to know current endpoint to correctly mark the current tab button #}
     </script>
     <script type="text/javascript" src="{{ url_for("static", filename="js/global.js") }}"></script>
     <script type="text/javascript"

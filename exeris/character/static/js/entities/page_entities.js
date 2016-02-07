@@ -1,7 +1,7 @@
 FRAGMENTS.entities = (function($, socket) {
 
     $.subscribe("entities:refresh_list", function() {
-        socket.emit("entities_refresh_list", [], function(locations) {
+        socket.emit("entities_refresh_list", function(locations) {
             var entities_root = $("#entities_root > ol");
             entities_root.empty();
             $.each(locations, function(idx, location_info) {
@@ -13,7 +13,7 @@ FRAGMENTS.entities = (function($, socket) {
     });
 
     $.subscribe("entities:refresh_entity_info", function(entity_id) {
-        socket.emit("refresh_entity_info", [entity_id], function(entity_info) {
+        socket.emit("refresh_entity_info", entity_id, function(entity_info) {
             var old_entity_info = $("div[data-entity='" + entity_info.id + "']");
             old_entity_info.replaceWith(entity_info.html);
         });
@@ -27,7 +27,7 @@ FRAGMENTS.entities = (function($, socket) {
         }
 
         var entity_parent = entity_node.parent().closest(".entity_info");
-        socket.emit("entities_get_sublist", [entity_id, entity_parent.data("entity")], function(parent_id, entities) {
+        socket.emit("entities_get_sublist", entity_id, entity_parent.data("entity"), function(parent_id, entities) {
             var list = $("<ol></ol>");
             $.each(entities, function(idx, entity_info) {
                 list.append($("<li>" + entity_info.html + "</li>"));
@@ -44,7 +44,7 @@ FRAGMENTS.entities = (function($, socket) {
     $(document).on("click", ".collapse_subtree", function(event) {
         var entity_id = $(event.target).closest(".entity_info").data("entity");
 
-        socket.emit("collapse_entity", [entity_id], function(entity_id) {
+        socket.emit("collapse_entity", entity_id, function(entity_id) {
             var parent = $("div[data-entity='" + entity_id + "']");
             parent.find("ol").remove();
             parent.children(".collapse_subtree").text("\\/").addClass("expand_subtree").removeClass("collapse_subtree");
@@ -54,7 +54,7 @@ FRAGMENTS.entities = (function($, socket) {
     $(document).on("click", "#confirm_edit_readable", function(event) {
         var new_text = $("#edit_readable_text").val();
         var entity_id = $(event.target).data("entity");
-        socket.emit("edit_readable", [entity_id, new_text]);
+        socket.emit("edit_readable", entity_id, new_text);
 
         $("#edit_readable_modal, #readable_modal").modal("hide");
     });
@@ -64,7 +64,7 @@ FRAGMENTS.entities = (function($, socket) {
 
         var endpoint = target.data("action");
         var entity_id = target.data("entity");
-        socket.emit(endpoint, [entity_id]);
+        socket.emit(endpoint, entity_id);
     });
 
     $(document).on("click", "#readable_edit", function(event) {
@@ -78,7 +78,7 @@ FRAGMENTS.entities = (function($, socket) {
         var amount = +$("#add_to_activity_amount").val();
         var activity_id = $("#selected_activity").find(":selected").val();
 
-        socket.emit("add_item_to_activity", [entity_to_add, amount, activity_id], function() {
+        socket.emit("add_item_to_activity", entity_to_add, amount, activity_id, function() {
             $("#add_to_activity").modal("hide");
             $.publish("entities:refresh_list");
         });
@@ -88,7 +88,7 @@ FRAGMENTS.entities = (function($, socket) {
         console.log(entity_id, max_amount);
         var amount = +prompt("amount to eat", max_amount);
         if (amount) {
-            socket.emit("eat", [entity_id, amount]);
+            socket.emit("eat", entity_id, amount);
         }
     });
 

@@ -4,7 +4,7 @@ FRAGMENTS.entity = (function($, socket) {
         var loc = $(event.target);
         var new_name = prompt("select new name");
         if (new_name) {
-            socket.emit("rename_entity", [FRAGMENTS.entity.get_id(loc), new_name], function(entity_id) {
+            socket.emit("rename_entity", FRAGMENTS.entity.get_id(loc), new_name, function(entity_id) {
                 $.publish("refresh_entity", entity_id);
             });
         }
@@ -28,7 +28,7 @@ FRAGMENTS.entity = (function($, socket) {
 FRAGMENTS.character = (function($, socket) {
 
     $.subscribe("refresh_entity", function(entity_id) {
-        socket.emit("get_entity_tag", [entity_id], function(entity_id, new_data) {
+        socket.emit("get_entity_tag", entity_id, function(entity_id, new_data) {
             $(".id_" + entity_id).replaceWith(new_data);
         });
     });
