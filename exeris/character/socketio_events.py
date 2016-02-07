@@ -1,11 +1,15 @@
 import time
 
-from exeris.app import socketio, socketio_character_event
-from flask import g, render_template
-from sqlalchemy import sql
-
+import exeris
+import flask_socketio as client_socket
+import psycopg2
+from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main
+from exeris.core.achievements import hook
+from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, app
+from flask import g, render_template
+from pyslate.backends import postgres_backend
 
 
 @socketio_character_event("rename_entity")
@@ -38,24 +42,6 @@ def update_top_bar(endpoint_name):
         msg = "{} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
                                     activity.ticks_needed)
     rendered = render_template("character_top_bar.html", activity_name=msg, endpoint_name=endpoint_name)
-    return rendered,
-
-
-@socketio_character_event("get_notifications_list")
-def get_notifications_list():
-    notifications = models.Notification.query.filter(
-        sql.or_(models.Notification.character == g.character, models.Notification.player == g.player)).all()
-
-    notification_titles = [{"notification_id": n.id, "title": g.pyslate.t(n.title_tag, **n.title_params)}
-                           for n in notifications]
-    return notification_titles,
-
-
-@socketio_character_event("show_notification_dialog")
-def show_notification_dialog(notification_id):
-    notification = models.Notification.query.filter_by(id=notification_id).filter(
-        sql.or_(models.Notification.character == g.character, models.Notification.player == g.player)).one()
-    rendered = render_template("modal_notification.html", notification=notification)
     return rendered,
 
 
@@ -120,25 +106,24 @@ def join_activity(activity_id):
     return ()
 
 
-@socketio_character_event("get_new_events")
-def get_new_events(last_event):
+@socketio_character_event("character.pull_events_initial")
+def pull_events_initial():
     start = time.time()
     events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character) \
-        .filter(models.Event.id > last_event).order_by(models.Event.id.asc()).all()
+        .order_by(models.Event.id.asc()).all()
 
     queried = time.time()
     print("query: ", queried - start)
-    last_event_id = events[-1].id if len(events) else last_event
-    events_texts = [g.pyslate.t("game_date", game_date=event.date) + ": " +
-                    g.pyslate.t(event.type_name, html=True, **event.params) for event in events]
+
+    events = [{"id": event.id, "text": g.pyslate.t("game_date", game_date=event.date) + ": " +
+                                       g.pyslate.t(event.type_name, html=True, **event.params)} for event in events]
 
     tran = time.time()
     print("translations:", tran - queried)
-    events_texts = [event for event in events_texts]
-    all = time.time()
-    print("esc: ", all - tran)
+    all_time = time.time()
+    print("esc: ", all_time - tran)
     db.session.commit()
-    return events_texts, last_event_id
+    return events,
 
 
 @socketio_character_event("people_short_refresh_list")
@@ -156,7 +141,7 @@ def eat(entity_id, amount=None):
     entity = models.Item.by_id(entity_id)
 
     if not amount:
-        socketio.emit("before_eat", (app.encode(entity_id), entity.get_max_edible(g.character)))
+        client_socket.emit("before_eat", (app.encode(entity_id), entity.get_max_edible(g.character)))
     else:
         eat_action = actions.EatAction(g.character, entity, amount)
         eat_action.perform()
@@ -176,7 +161,7 @@ def open_readable_contents(entity_id):
     raw_contents = entity.read_raw_contents()
     modal = render_template("entities/modal_readable.html", title=title, contents=contents, entity_id=entity_id,
                             raw_contents=raw_contents)
-    socketio.emit("after_open_readable_contents", modal)
+    client_socket.emit("after_open_readable_contents", modal)
 
 
 @socketio_character_event("edit_readable")
@@ -267,7 +252,7 @@ def move_to_location(passage_id):
     action.perform()
 
     db.session.commit()
-    socketio.emit("after_move_to_location", app.encode(passage.id))
+    client_socket.emit("after_move_to_location", app.encode(passage.id))
 
 
 @socketio_character_event("form_add_item_to_activity")
@@ -292,7 +277,7 @@ def form_add_item_to_activity(entity_id):
     rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
                                entity_to_add=entity_to_add)
 
-    socketio.emit("after_form_add_item_to_activity", rendered)
+    client_socket.emit("after_form_add_item_to_activity", rendered)
 
 
 @socketio_character_event("add_item_to_activity")
@@ -358,7 +343,7 @@ def toggle_closeable(entity_id):
     action.perform()
 
     db.session.commit()
-    socketio.emit("after_toggle_closeable", entity_id)
+    client_socket.emit("after_toggle_closeable", entity_id)
 
 
 @socketio_character_event("update_actions_list")
@@ -398,3 +383,29 @@ def create_activity_from_recipe(recipe_id, user_input):
     db.session.add_all([activity])
     db.session.commit()
     return ()
+
+
+@hook(main.Hooks.NEW_EVENT)
+def on_new_event(event_observer):
+    observer = event_observer.observer
+    event = event_observer.event
+
+    conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    pyslate = create_pyslate(observer.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                             character=observer)
+
+    for sid in exeris.app.socketio_users.get_all_by_character_id(observer.id):
+        client_socket.emit("character.new_event", (event.id, pyslate.t("game_date", game_date=event.date) + ": " +
+                                                   pyslate.t(event.type_name, html=True, **event.params)), room=sid)
+
+
+@hook(main.Hooks.NEW_CHARACTER_NOTIFICATION)
+def on_new_notification(character, notification):
+    conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    pyslate = create_pyslate(character.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
+                             character=character)
+
+    for sid in exeris.app.socketio_users.get_all_by_character_id(character.id):
+        notification_info = {"notification_id": notification.id,
+                             "title": pyslate.t(notification.title_tag, **notification.title_params)}
+        client_socket.emit("player.new_notification", (notification_info,), room=sid)

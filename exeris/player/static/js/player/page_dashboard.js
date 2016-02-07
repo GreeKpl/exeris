@@ -1,4 +1,4 @@
-FRAGMENTS.player = (function($) {
+FRAGMENTS.dashboard = (function($) {
 
     $(document).on("click", "#create_character", function() {
         var char_name = $("#char_name").val();
@@ -6,5 +6,4 @@ FRAGMENTS.player = (function($) {
             $.publish("player/character_added");
         });
     });
-
 })(jQuery);

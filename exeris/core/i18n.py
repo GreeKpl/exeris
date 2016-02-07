@@ -6,7 +6,7 @@ from pyslate.pyslate import Pyslate
 from exeris.core import models, general
 
 
-def create_pyslate(language, backend=None, **kwargs):
+def create_pyslate(language, backend=None, character=None, **kwargs):
     def htmlize(f):
         def g(helper, tag_name, params):
             result_text = f(helper, tag_name, params)
@@ -31,6 +31,9 @@ def create_pyslate(language, backend=None, **kwargs):
             f.truncate()
 
         return "[MISSING TAG {}]".format(key)
+
+    if character:  # add character-specific data if character is specified
+        kwargs["context"] = dict(kwargs.get("context", {}), observer=character, obs_gen=character.sex)
 
     pyslate = Pyslate(language, backend=backend, on_missing_tag_key_callback=on_missing_tag_key, **kwargs)
 

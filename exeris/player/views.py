@@ -16,4 +16,4 @@ def page_player():
             if achievement[0] == awarded_achievement.achievement:
                 achievements_to_show.append(achievement)
 
-    return render_template("page_player.html", chars=chars, player=g.player, achievements=achievements_to_show)
+    return render_template("page_dashboard.html", chars=chars, player=g.player, achievements=achievements_to_show)

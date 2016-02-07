@@ -52,6 +52,9 @@ class Hooks:
     SPOKEN_ALOUD = "spoken_aloud"
     WHISPERED = "whispered"
     EATEN = "eaten"
+    NEW_EVENT = "new_event"
+    NEW_CHARACTER_NOTIFICATION = "new_character_notification"
+    NEW_PLAYER_NOTIFICATION = "new_player_notification"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
