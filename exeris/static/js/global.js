@@ -28,11 +28,13 @@ FRAGMENTS.global = (function($, socket) {
 
      */
 
-    socket.on("$.publish", function() {
-        $.publish.apply(this, Array.prototype.slice.call(arguments));
+    socket.on("global.show_error", function(error_message) {
+        $.publish("global/show_error", error_message);
     });
 
-    $.subscribe("show_error", function(message) {
+
+
+    $.subscribe("global/show_error", function(message) {
         $.notify({
             message: message
         }, {
@@ -41,7 +43,7 @@ FRAGMENTS.global = (function($, socket) {
         });
     });
 
-    $.subscribe("show_success", function(message) {
+    $.subscribe("global/show_success", function(message) {
         $.notify({
             message: message
         }, {
@@ -50,24 +52,13 @@ FRAGMENTS.global = (function($, socket) {
         });
     });
 
-    $.subscribe("show_notification", function(message, notification_id) {
+    $.subscribe("global/show_notification", function(message, notification_id) {
         $.notify({
             message: message,
             url: "show_notification/" + notification_id
         }, {
             type: "info",
             delay: 0
-        });
-    });
-
-    $.subscribe("get_notifications_list", function() {
-        socket.emit("get_notifications_list", [], function(notifications) {
-            $(".alert-info").remove();
-            for (var i = 0; i < notifications.length; i++) {
-                var title = notifications[i].title;
-                var notification_id = notifications[i].notification_id;
-                $.publish("show_notification", title, notification_id);
-            }
         });
     });
 

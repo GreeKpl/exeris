@@ -786,9 +786,11 @@ class Event(db.Model):
     date = sql.Column(sql.BigInteger)
 
     def __init__(self, event_type, params):
-        if type(event_type) is str:
+        if isinstance(event_type, str):
             event_type = EventType.query.get(event_type)
+        self.type_name = event_type.name  # TODO MAKE SURE IT'S THE BEST WAY TO GO
         self.type = event_type
+
         self.params = params
         from exeris.core import general
         self.date = general.GameDate.now().game_timestamp

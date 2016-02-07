@@ -33,21 +33,4 @@ FRAGMENTS.character = (function($, socket) {
         });
     });
 
-    return {
-        show_error: function(message) {
-            $.notify({
-                message: message
-            }, {
-                type: "danger"
-            });
-        }
-    };
 })(jQuery, socket);
-
-$(function() {
-    setInterval(function() {
-        $.publish("get_notifications_list");
-    }, 5000);
-
-    $.publish("get_notifications_list");
-});

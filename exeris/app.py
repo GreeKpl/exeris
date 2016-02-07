@@ -14,6 +14,7 @@ from flask.ext.login import current_user
 from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 from flask.ext.socketio import SocketIO
+import flask_socketio as client_socket
 from functools import wraps
 from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
@@ -26,7 +27,7 @@ from exeris.core import achievements
 app = create_app()
 
 Bootstrap(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, logger=False, engineio_logger=False)
 Bower(app)
 
 
@@ -44,12 +45,11 @@ def socketio_outer_event(*args, **kwargs):
 
     def dec(f):
         @wraps(f)
-        def fg(*a, **k):
+        def fg(a, **k):
             g.language = request.args.get("language")
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={})
-            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
+            return f(*a, **k)
 
         return socketio_handler(fg)
 
@@ -61,17 +61,21 @@ def socketio_player_event(*args, **kwargs):
 
     def dec(f):
         @wraps(f)
-        def fg(*a, **k):
+        def fg(a, **k):
             if not current_user.is_authenticated():
-                print("DISCONNECTED UNWANTED USER")
                 flask_socketio.disconnect()
 
+            character_id = request.args.get("character_id", 0)
             g.player = current_user
             g.language = g.player.language
+            if character_id:
+                g.character = models.Character.by_id(character_id)
+                g.language = g.character.language
+
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
             g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={})
-            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
+                                       character=getattr(g, "character", None))
+            return f(*a, **k)
 
         return socketio_handler(fg)
 
@@ -83,9 +87,8 @@ def socketio_character_event(*args, **kwargs):
 
     def dec(f):
         @wraps(f)
-        def fg(*a, **k):
+        def fg(a, **k):
             if not current_user.is_authenticated():
-                print("DISCONNECTED UNWANTED USER")
                 flask_socketio.disconnect()
             character_id = request.args.get("character_id")
             g.player = current_user
@@ -93,8 +96,8 @@ def socketio_character_event(*args, **kwargs):
             g.language = g.character.language
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
             g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={"observer": g.character})
-            return f(*a[0], **k)  # argument list (the first and only positional arg) is expanded
+                                       character=g.character)
+            return f(*a, **k)
 
         return socketio_handler(fg)
 
@@ -291,16 +294,72 @@ def character_preprocessor(endpoint, values):
                                context={"observer": g.character})
 
 
+class SocketioUsers:
+    def __init__(self):
+        self.sid_by_player_id = {}
+        self.sid_by_character_id = {}
+
+    def get_all_by_player_id(self, player_id):
+        return self.sid_by_player_id.get(player_id, [])
+
+    def get_all_by_character_id(self, character_id):
+        return self.sid_by_character_id.get(character_id, [])
+
+    def add_for_player_id(self, sid, player_id):
+        self.sid_by_player_id[player_id] = [sid] + self.sid_by_player_id.get(player_id, [])
+
+    def add_for_character_id(self, sid, character_id):
+        self.sid_by_character_id[character_id] = [sid] + self.sid_by_character_id.get(character_id, [])
+
+    def remove_sid(self, sid):
+        for player_id, users in self.sid_by_player_id.items():
+            users = [x for x in users if x != sid]
+
+        for character_id, users in self.sid_by_character_id.items():
+            users = [x for x in users if x != sid]
+
+    def remove_for_player_id(self, player_id):
+        self.sid_by_player_id.pop(player_id, None)
+
+    def remove_for_character_id(self, character_id):
+        self.sid_by_character_id.pop(character_id, None)
+
+
+socketio_users = SocketioUsers()
+
+
+@socketio.on("connect")
+def on_connect():
+    character_id = request.args.get("character_id", None)
+    character_id = int(character_id) if character_id else 0
+
+    if current_user.is_authenticated():
+        socketio_users.add_for_player_id(request.sid, current_user.id)
+        print("connected player ", current_user.id, " sid: ", request.sid)
+        if character_id and models.Character.by_id(character_id).player == current_user:
+            socketio_users.add_for_character_id(request.sid, character_id)
+            print("connected character ", character_id, " sid: ", request.sid)
+
+    print("list of players: ", socketio_users.sid_by_player_id)
+    print("list of characters: ", socketio_users.sid_by_character_id)
+
+
+@socketio.on("disconnect")
+def on_disconnect():
+    socketio_users.remove_sid(request.sid)
+    print("removed sid: ", request.sid)
+
+    print("list of players: ", socketio_users.sid_by_player_id)
+    print("list of characters: ", socketio_users.sid_by_character_id)
+
+
 @socketio.on_error()
 def error_handler(exception):
-    try:
-        if isinstance(exception, main.GameException):
-            socketio.emit("$.publish", ("show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs)))
-            return
-    except:
-        pass  # execute next line...
-    socketio.emit("$.publish", ("show_error", "socketio error " + str(exception)))  # TODO ADD FUNCTION NAME
-    raise Exception("prevent firing socketio's success callback because of error") from exception
+    if isinstance(exception, main.GameException):
+        client_socket.emit("global.show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs))
+        return
+    client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
+    raise Exception("prevent firing socketio's success callback") from exception
 
 
 @app.errorhandler(Exception)

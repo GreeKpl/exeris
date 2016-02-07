@@ -4,7 +4,7 @@ import copy
 
 from exeris.core.main import db
 
-from exeris.core import models
+from exeris.core import models, main
 import time
 
 import logging
@@ -64,7 +64,7 @@ class GameDate:
         real_timestamp_base = last_date_point.real_date
         game_timestamp_base = last_date_point.game_date
 
-        real_time_difference = now_timestamp - real_timestamp_base
+        real_time_difference = int(now_timestamp) - real_timestamp_base
         return GameDate(game_timestamp_base + real_time_difference)  # 1 sec in game = 1 rl sec
 
     @staticmethod
@@ -312,7 +312,10 @@ class EventCreator:
 
             event_for_doer = models.Event(tag_doer, doer_params)
             event_obs_doer = models.EventObserver(event_for_doer, doer)
+
             db.session.add_all([event_for_doer, event_obs_doer])
+            main.call_hook(main.Hooks.NEW_EVENT, event_observer=event_obs_doer)
+
         if target and tag_target:
             target_params = copy.deepcopy(base_params)
             if doer:
@@ -320,7 +323,9 @@ class EventCreator:
 
             event_for_target = models.Event(tag_target, target_params)
             event_obs_target = models.EventObserver(event_for_target, target)
+
             db.session.add_all([event_for_target, event_obs_target])
+            main.call_hook(main.Hooks.NEW_EVENT, event_observer=event_obs_target)
 
         if rng and tag_observer:
             obs_params = copy.deepcopy(base_params)
@@ -339,3 +344,6 @@ class EventCreator:
                          if char not in (doer, target)]
 
             db.session.add_all(event_obs)
+
+            for obs in event_obs:
+                main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)

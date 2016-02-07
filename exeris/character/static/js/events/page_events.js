@@ -1,15 +1,21 @@
 FRAGMENTS.events = (function($, socket) {
 
-    var _last_event = 0;
+    var convertEventToText = function(event_text, event_id) {
+        return "<li data-event-id='" + event_id + "'>" +
+            event_text.replace(/(\*+[^*]+\*+)/g, "<b>$1</b>") + "</li>";
+    };
 
-    $.subscribe("events:refresh_list", function() {
-        socket.emit("get_new_events", [_last_event], function(new_events, last_event) {
+    $.subscribe("events/refresh_list", function() {
+        socket.emit("character.pull_events_initial", [], function(new_events) {
             for (var i = 0; i < new_events.length; i++) {
-                new_events[i] = "<li>" + new_events[i].replace(/(\*+[^*]+\*+)/g, "<b>$1</b>") + "</li>";
+                new_events[i] = convertEventToText(new_events[i].text, new_events[i].id);
             }
             $(".events_list_contents > ol").prepend(new_events.reverse());
-            _last_event = last_event;
         });
+    });
+
+    socket.on("character.new_event", function(event_id, event_text) {
+        $(".events_list_contents > ol").prepend(convertEventToText(event_text, event_id));
     });
 
 })(jQuery, socket);
@@ -70,15 +76,12 @@ FRAGMENTS.speaking = (function($, socket) {
         if (message_text) {
             if (speak_type == "PUBLIC") {
                 socket.emit("say_aloud", [message_text], function() {
-                    $.publish("events:refresh_list");
                 });
             } else if (speak_type == "SAY_TO_SOMEBODY") {
                 socket.emit("say_to_somebody", [target, message_text], function() {
-                    $.publish("events:refresh_list");
                 });
             } else if (speak_type == "WHISPER") {
                 socket.emit("whisper", [target, message_text], function() {
-                    $.publish("events:refresh_list");
                 });
             }
             message.val("");
@@ -106,9 +109,5 @@ FRAGMENTS.speaking = (function($, socket) {
 $(function() {
     $.publish("speaking:form_refresh");
 
-    var event_refresher = function() {
-        $.publish("events:refresh_list");
-        setTimeout(event_refresher, 5000);
-    };
-    event_refresher();
+    $.publish("events/refresh_list");
 });

@@ -9,9 +9,8 @@ FRAGMENTS.player_top_bar = (function($, socket) {
     });
 
     $.subscribe("player/character_list_changed", function () {
-        socket.emit("player.update_top_bar", [CURRENT_CHARACTER_ID], after_update_player_top_bar);
+        socket.emit("player.update_top_bar", [], after_update_player_top_bar);
     });
-
 })(jQuery, socket);
 
 $(function() {
