@@ -114,6 +114,18 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
     return f
 
 
+def set_visible_material(activity, visible_material, entity):
+    visible_material_property = {}
+    for place_to_show in visible_material:
+        group_name = visible_material[place_to_show]
+        req_input = activity.requirements["input"]
+        for req_material_name, req_material in req_input.items():  # forall requirements
+            real_used_type_name = req_material["used_type"]
+            if group_name == req_material_name:  # this group is going to be shown by our visible material
+                visible_material_property[place_to_show] = real_used_type_name
+    entity.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
+
+
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
@@ -149,15 +161,7 @@ class CreateItemAction(ActivityAction):
                 self.extract_used_material(material_type_name, new_item)
 
         if self.visible_material:
-            visible_material_property = {}
-            for place_to_show in self.visible_material:
-                group_name = self.visible_material[place_to_show]
-                req_input = self.activity.requirements["input"]
-                for req_material_name, req_material in req_input.items():  # forall requirements
-                    real_used_type_name = req_material["used_type"]
-                    if group_name == req_material_name:  # this group is going to be shown by our visible material
-                        visible_material_property[place_to_show] = real_used_type_name
-            new_item.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
+            set_visible_material(self.activity, self.visible_material, new_item)
 
         return new_item
 
@@ -217,15 +221,7 @@ class CreateLocationAction(ActivityAction):
         # TODO what if used_materials is not all?
 
         if self.visible_material:
-            visible_material_property = {}
-            for place_to_show in self.visible_material:
-                group_name = self.visible_material[place_to_show]
-                req_input = self.activity.requirements["input"]
-                for req_material_name, req_material in req_input.items():  # forall requirements
-                    real_used_type_name = req_material["used_type"]
-                    if group_name == req_material_name:  # this group is going to be shown by our visible material
-                        visible_material_property[place_to_show] = real_used_type_name
-            new_location.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
+            set_visible_material(self.activity, self.visible_material, new_location)
 
         db.session.add(new_location)
 

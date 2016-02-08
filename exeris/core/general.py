@@ -1,13 +1,11 @@
-from collections import deque
 import collections
 import copy
-
-from exeris.core.main import db
+import logging
+import time
+from collections import deque
 
 from exeris.core import models, main
-import time
-
-import logging
+from exeris.core.main import db
 
 
 class GameDate:
@@ -347,3 +345,5 @@ class EventCreator:
 
             for obs in event_obs:
                 main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)
+
+

@@ -47,10 +47,9 @@ def socketio_outer_event(*args, **kwargs):
         def fg(*a, **k):
             g.language = request.args.get("language")
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={})
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
             result = f(*a, **k)  # argument list (the first and only positional arg) is expanded
-            return (True,) + result if result else ()
+            return (True,) + (result if result else ())
 
         return socketio_handler(fg)
 
@@ -75,10 +74,9 @@ def socketio_player_event(*args, **kwargs):
                 g.language = g.character.language
 
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={})
+            g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
             result = f(*a, **k)  # argument list (the first and only positional arg) is expanded
-            return (True,) + result if result else ()
+            return (True,) + (result if result else ())
 
         return socketio_handler(fg)
 
@@ -100,9 +98,9 @@ def socketio_character_event(*args, **kwargs):
             g.language = g.character.language
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
             g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                                       context={"observer": g.character})
+                                       character=g.character)
             result = f(*a, **k)  # argument list (the first and only positional arg) is expanded
-            return (True,) + result if result else ()
+            return (True,) + (result if result else ())
 
         return socketio_handler(fg)
 
@@ -133,7 +131,7 @@ def create_database():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
 
-    character_type = models.EntityType.by_name(Types.CHARACTER)
+    character_type = models.EntityType.by_name(Types.ALIVE_CHARACTER)
     if not models.EntityTypeProperty.query.filter_by(type=character_type, name=P.DYNAMIC_NAMEABLE).count():
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
     if models.ItemType.query.count() < 2:
@@ -296,7 +294,7 @@ def character_preprocessor(endpoint, values):
     g.language = g.character.language
     conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
     g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                               context={"observer": g.character})
+                               character=g.character)
 
 
 class SocketioUsers:
@@ -340,13 +338,16 @@ def on_connect():
 
     if current_user.is_authenticated():
         socketio_users.add_for_player_id(request.sid, current_user.id)
-        if character_id and models.Character.by_id(character_id).player == current_user:
-            socketio_users.add_for_character_id(request.sid, character_id)
+        if character_id:
+            character = models.Character.by_id(character_id)
+            if character.player == current_user and character.is_alive:
+                socketio_users.add_for_character_id(request.sid, character_id)
 
 
 @socketio.on("disconnect")
 def on_disconnect():
     socketio_users.remove_sid(request.sid)
+    print("REMOVED", request.sid)
 
 
 @socketio.on_error()

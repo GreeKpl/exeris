@@ -4,14 +4,14 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core import deferred
+from exeris.core import main
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction
-from exeris.core import main
-from exeris.core.main import db, Events, Types
 from exeris.core.general import GameDate
+from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
-    LocationType, Passage, EntityTypeProperty, PassageType, Player, Character
+    LocationType, Passage, EntityTypeProperty, PassageType, Character
 from exeris.core.properties import P
 from tests import util
 
@@ -161,18 +161,21 @@ class CharacterActionsTest(TestCase):
         stone_type = ItemType("stone", 10, stackable=True)
 
         initiator = util.create_character("char", rl, util.create_player("Hyhy"))
-        activity = Activity(scaffolding, "building_building", {}, {}, 1, initiator)
+        input_requirements = {stone_type.name: {"needed": 5, "left": 0, "used_type": stone_type.name}}
+        activity = Activity(scaffolding, "building_building", {}, {"input": input_requirements}, 1, initiator)
         stone = Item(stone_type, activity, amount=20, role_being_in=False)
 
         db.session.add_all([building_type, scaffolding_type, scaffolding, rl, initiator, activity, stone_type, stone])
 
-        action = CreateLocationAction(location_type=building_type, used_materials="all",
-                                      properties={P.ENTERABLE: {}}, activity=activity, initiator=initiator)
+        action = CreateLocationAction(location_type=building_type, used_materials="all", properties={P.ENTERABLE: {}},
+                                      visible_material={"main": stone_type.name}, activity=activity,
+                                      initiator=initiator)
         action.perform()
 
         new_building = Location.query.filter_by(type=building_type).one()
-        passage = Passage.query.filter(Passage.between(rl, new_building)).one()
+        Passage.query.filter(Passage.between(rl, new_building)).one()
         self.assertTrue(new_building.has_property(P.ENTERABLE))
+        self.assertTrue(new_building.has_property(P.VISIBLE_MATERIAL, main=stone_type.name))
 
         used_stone = Item.query.filter(Item.is_used_for(new_building)).one()
         self.assertEqual(20, used_stone.amount)

@@ -5,7 +5,7 @@ import flask_socketio as client_socket
 import psycopg2
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main
-from exeris.core.achievements import hook
+from exeris.core.main import hook
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, app
 from flask import g, render_template

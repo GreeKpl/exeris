@@ -3,7 +3,7 @@ import json
 import os
 
 from pyslate.pyslate import Pyslate
-from exeris.core import models, general
+from exeris.core import main, models, general
 
 
 def create_pyslate(language, backend=None, character=None, **kwargs):

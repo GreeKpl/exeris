@@ -5,14 +5,11 @@ from exeris.core.models import TerrainArea, TerrainType
 from tests import util
 
 
-
-
 class PassageTest(TestCase):
-
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_terrain_representation(self):
-
         tt = TerrainType("grassland")
         db.session.add(tt)
 
@@ -26,5 +23,3 @@ class PassageTest(TestCase):
 
         self.assertEqual(1, grassland_area.priority)
         self.assertEqual(poly, grassland_area.terrain)
-
-    tearDown = util.tear_down_rollback

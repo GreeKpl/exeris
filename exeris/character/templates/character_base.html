@@ -6,10 +6,6 @@
 {% block scripts %}
     {{ super() }}
 
-    <script type="text/javascript">
-        var CURRENT_CHARACTER_ID = {{ g.character.id }};
-    </script>
-
     <script type="text/javascript"
             src="{{ url_for("character_static.static", filename="js/services/global.js") }}"></script>
     <script type="text/javascript"

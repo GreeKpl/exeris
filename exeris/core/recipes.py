@@ -25,22 +25,7 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
-        container_type = None
-        if recipe.activity_container == "portable_item":
-            container_type = "portable_item_in_constr"
-        elif recipe.activity_container == "fixed_item":
-            container_type = "fixed_item_in_constr"
-        elif recipe.activity_container == "entity_specific_item":
-            if isinstance(recipe.result_entity, models.LocationType):
-                container_type = "fixed_item_in_constr"
-            elif recipe.result_entity and recipe.result_entity.portable:
-                container_type = "portable_item_in_constr"
-            elif recipe.result_entity:
-                container_type = "fixed_item_in_constr"
-            else:
-                raise ValueError("don't know what entity is going to be created by {}".format(recipe))
-        elif recipe.activity_container == "selected_machine":
-            pass  # keep the same being_in
+        container_type = self.identify_container_type(recipe)
 
         if container_type:
             container_type = models.ItemType.by_name(container_type)
@@ -75,6 +60,25 @@ class ActivityFactory:
         db.session.add(activity)
 
         return activity
+
+    def identify_container_type(self, recipe):
+        container_type = None
+        if recipe.activity_container == "portable_item":
+            container_type = "portable_item_in_constr"
+        elif recipe.activity_container == "fixed_item":
+            container_type = "fixed_item_in_constr"
+        elif recipe.activity_container == "entity_specific_item":
+            if isinstance(recipe.result_entity, models.LocationType):
+                container_type = "fixed_item_in_constr"
+            elif recipe.result_entity and recipe.result_entity.portable:
+                container_type = "portable_item_in_constr"
+            elif recipe.result_entity:
+                container_type = "fixed_item_in_constr"
+            else:
+                raise ValueError("don't know what entity is going to be created by {}".format(recipe))
+        elif recipe.activity_container == "selected_machine":
+            pass  # keep the same being_in
+        return container_type
 
     @classmethod
     def _enhance_actions(cls, result, user_input):
