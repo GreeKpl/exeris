@@ -91,7 +91,7 @@ class Player(db.Model, UserMixin):
 
     @hybrid_property
     def alive_characters(self):
-        return Character.query.filter_by(player=self, state=Character.STATE_ALIVE).all()
+        return Character.query.filter_by(player=self).filter(Character.is_alive).all()
 
     def get_id(self):
         return self.id
@@ -424,9 +424,6 @@ class Character(Entity):
     SEX_MALE = "m"
     SEX_FEMALE = "f"
 
-    STATE_ALIVE = 1
-    STATE_DEAD = 2
-
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     def __init__(self, name, sex, player, language, spawn_date, spawn_position, being_in):
@@ -437,16 +434,13 @@ class Character(Entity):
         self.player = player
 
         self.language = language
-        self.state = Character.STATE_ALIVE
 
         self.spawn_position = spawn_position
         self.spawn_date = spawn_date
 
-        self.type = EntityType.by_name(Types.CHARACTER)
+        self.type = EntityType.by_name(Types.ALIVE_CHARACTER)
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
-
-    state = sql.Column(sql.SmallInteger)
 
     player_id = sql.Column(sql.String(PLAYER_ID_MAXLEN), sql.ForeignKey('players.id'))
     player = sql.orm.relationship(Player, uselist=False)
@@ -486,6 +480,10 @@ class Character(Entity):
         if not rng:
             rng = general.InsideRange()
         return rng.is_near(self, entity)
+
+    @hybrid_property
+    def is_alive(self):
+        return self.type_name == Types.ALIVE_CHARACTER
 
     @hybrid_property
     def hunger(self):
@@ -562,7 +560,8 @@ class Character(Entity):
         return spawn_date.game_timestamp
 
     def pyslatize(self, **overwrites):
-        pyslatized = dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex)
+        pyslatized = dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex,
+                          character_name=self.type_name)
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
         return dict(pyslatized, **overwrites)
@@ -1159,7 +1158,8 @@ class Notification(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None, add_close_option=True):
+    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None,
+                 add_close_option=True):
         self.title_tag = title_tag
         self.title_params = title_params
         self.text_tag = text_tag
@@ -1170,7 +1170,7 @@ class Notification(db.Model):
 
         if add_close_option:
             self.add_close_option()
-        
+
     player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True)
     player = sql.orm.relationship(Player, uselist=False)
 
@@ -1408,7 +1408,8 @@ def init_database_contents():
         door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
         door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
-    db.session.merge(EntityType(Types.CHARACTER))
+    db.session.merge(EntityType(Types.ALIVE_CHARACTER))
+    db.session.merge(EntityType(Types.DEAD_CHARACTER))
     db.session.merge(EntityType(Types.ACTIVITY))
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))

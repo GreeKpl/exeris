@@ -29,7 +29,8 @@ class Types:
     SEA = "sea"
     DOOR = "door"
     OUTSIDE = "outside"
-    CHARACTER = "character"
+    ALIVE_CHARACTER = "alive_character"
+    DEAD_CHARACTER = "dead_character"
 
 
 class Events:

@@ -8,7 +8,7 @@ from exeris.core.general import GameDate
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, Types
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
-    LocationType, TerrainArea, TerrainType, Passage, Activity, PassageType
+    LocationType, TerrainArea, TerrainType, Passage, Activity, PassageType, EntityType
 from exeris.core.properties import P
 from pyslate.backends import json_backend
 from tests import util
@@ -147,6 +147,10 @@ data = {
     "tp_location_title": {
         "en": "'%{title}'",
         "pl": "„%{title}”",
+    },
+    "tp_dead_character": {
+        "en": "dead %{name}",
+        "pl": "martw%{tag_v:m?y|f?a} %{name}",
     },
     "tp_parts": {
         "en": "%{last}",
@@ -367,7 +371,7 @@ class CharacterAndLocationTranslationTest(TestCase):
 
         plr = util.create_player("adwdas")
         man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
-        g.character = man
+
         woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
         obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
         obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
@@ -397,11 +401,44 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("""<span class="entity character id_{}">John</span>""".format(main.encode(man.id)),
                          translated_html_text)
 
+    def test_dead_character_name(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), True, 111)
+
+        plr = util.create_player("adwdas")
+        man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
+        man.type = EntityType.by_name(Types.DEAD_CHARACTER)
+        woman = util.create_character("A WOMAN", rl, plr, sex=Character.SEX_FEMALE)
+        woman.type = EntityType.by_name(Types.DEAD_CHARACTER)
+        obs1 = util.create_character("obs1", rl, plr)  # obs1 doesn't know anybody
+        obs2 = util.create_character("obs2", rl, plr)  # obs2 knows both man and woman
+
+        # not testing property DynamicNamable, just translation system
+        man_obs2_name = ObservedName(obs2, man, "John")
+        woman_obs2_name = ObservedName(obs2, woman, "Judith")
+
+        db.session.add_all([man_obs2_name, woman_obs2_name, rl])
+        db.session.flush()
+
+        backend = json_backend.JsonBackend(json_data=data)
+
+        pyslate_en = create_pyslate("en", backend=backend, character=obs1)
+        self.assertEqual("dead woman", pyslate_en.t("character_info", **woman.pyslatize()))
+        self.assertEqual("dead man", pyslate_en.t("character_info", **man.pyslatize()))
+
+        pyslate_pl = create_pyslate("pl", backend=backend, character=obs1)
+        self.assertEqual("martwa kobieta", pyslate_pl.t("character_info", **woman.pyslatize()))
+        self.assertEqual("martwy mężczyzna", pyslate_pl.t("character_info", **man.pyslatize()))
+
+        pyslate_pl = create_pyslate("pl", backend=backend, character=obs2)
+        self.assertEqual("martwa Judith", pyslate_pl.t("character_info", **woman.pyslatize()))
+        self.assertEqual("martwy John", pyslate_pl.t("character_info", **man.pyslatize()))
+
     def test_location_name(self):
         rl = RootLocation(Point(1, 1), True, 213)
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
-        g.character = obs
 
         building_type = LocationType("building", 200)
         loc = Location(rl, building_type)

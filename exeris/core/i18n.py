@@ -3,6 +3,7 @@ import json
 import os
 
 from pyslate.pyslate import Pyslate
+
 from exeris.core import main, models, general
 
 
@@ -201,18 +202,24 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         character_gen = params["character_gen"]
         helper.return_form(character_gen)
 
-        if "character_title" in params:
-            return helper.translation("tp_character_title", title=params["character_title"])
-
+        visible_name = None
         if "observer" in params and "character_id" in params:
             observer = params["observer"]
             character_id = params["character_id"]
 
             observed_name = models.ObservedName.query.filter_by(observer=observer, target_id=character_id).first()
             if observed_name:
-                return observed_name.name
+                visible_name = observed_name.name
+        elif "character_title" in params:
+            visible_name = helper.translation("tp_character_title", title=params["character_title"])
 
-        return helper.translation("entity_character#" + character_gen)
+        if not visible_name:  # name unknown, show generic name
+            visible_name = helper.translation("entity_character#" + character_gen)
+
+        if params["character_name"] == main.Types.DEAD_CHARACTER:
+            return helper.translation("tp_dead_character#" + character_gen, name=visible_name)
+
+        return visible_name
 
     pyslate.register_function("character_info", func_character_info)
 
