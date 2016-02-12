@@ -15,7 +15,13 @@ from exeris.core.general import SameLocationRange, EventCreator, VisibilityBased
 from exeris.core.properties import P
 
 
-class AbstractAction:  # top level, we don't assume anything
+class AbstractAction:
+    """
+    Top-level class in the action system. It represents a serializable in-game operation that leads to a change
+    of the game state. It can have a specific executor (e.g. a character dropping an item) or not.
+
+    All classes subclassing AbstactAction should implement method perform_action.
+    """
 
     def perform(self):
         return self.perform_action()
@@ -24,13 +30,19 @@ class AbstractAction:  # top level, we don't assume anything
         pass
 
 
-class PlayerAction(AbstractAction):  # top level player action
+class PlayerAction(AbstractAction):
+    """
+    A top-level player action. All we know is that it's done by a player (not their character)
+    """
 
     def __init__(self, player):
         self.player = player
 
 
-class Action(AbstractAction):  # top level character action, where we only know that it's done by a character
+class Action(AbstractAction):
+    """
+    A top-level character action. All we know is that it's done by a character
+    """
 
     def __init__(self, executor):
         self.executor = executor
@@ -822,3 +834,46 @@ class ToggleCloseableAction(ActionOnEntity):
             event_name = Events.CLOSE_ENTITY
 
         EventCreator.base(event_name, self.rng, {"groups": {"entity": self.entity.pyslatize()}}, doer=self.executor)
+
+
+class DeathAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    def turn_into_body(self):
+        self.executor.type = models.EntityType.by_name(main.Types.DEAD_CHARACTER)
+
+    @staticmethod
+    def create_death_info_property():
+        return models.EntityProperty(P.DEATH_INFO,
+                                     {"date": general.GameDate.now().game_timestamp})
+
+
+class DeathOfStarvationAction(DeathAction):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    def perform_action(self):
+        EventCreator.base("death_of_starvation", rng=general.VisibilityBasedRange(30), doer=self.executor)
+
+        death_prop = self.create_death_info_property()
+        death_prop["cause"] = None
+        self.executor.properties.append(death_prop)
+        self.turn_into_body()
+
+
+class DeathOfDamageAction(DeathAction):
+    def __init__(self, executor, killer, weapon):  # apparently, executor is the executed character ;)
+        super().__init__(executor)
+        self.killer = killer
+        self.weapon = weapon
+
+    def perform_action(self):
+        EventCreator.base("death_of_damage", rng=general.VisibilityBasedRange(30), doer=self.executor)
+
+        death_prop = self.create_death_info_property()
+        death_prop["cause"] = models.Character.DEATH_WEAPON
+        death_prop["weapon"] = self.weapon.type.name
+        death_prop["killer_id"] = self.killer.id
+        self.executor.properties.append(death_prop)
+        self.turn_into_body()

@@ -12,11 +12,7 @@ class P:
     DYNAMIC_NAMEABLE = "DynamicNameable"
     VISIBLE_MATERIAL = "VisibleMaterial"
     INVISIBLE_PASSAGE = "InvisiblePassage"
-
-
-# type property
-class TP:
-    pass
+    DEATH_INFO = "DeathInfo"
 
 
 __registry = {}

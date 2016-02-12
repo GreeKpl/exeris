@@ -56,6 +56,7 @@ class Hooks:
     NEW_EVENT = "new_event"
     NEW_CHARACTER_NOTIFICATION = "new_character_notification"
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
+    EXCEEDED_HUNGER_LEVEL = "exceeded_hunger_level"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
@@ -111,6 +112,13 @@ def add_hook(name, func):
 def call_hook(name, **kwargs):
     for func in _hooks.get(name, []):
         func(**kwargs)
+
+
+def hook(name):
+    def inner_hook(f):
+        add_hook(name, f)  # register hook
+
+    return inner_hook
 
 
 class GameException(Exception):

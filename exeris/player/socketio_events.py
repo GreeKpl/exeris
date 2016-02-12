@@ -3,7 +3,7 @@ import flask_socketio as client_socket
 import psycopg2
 from exeris.app import socketio_player_event, app
 from exeris.core import models, actions, main
-from exeris.core.achievements import hook
+from exeris.core.main import hook
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db
 from flask import g, render_template

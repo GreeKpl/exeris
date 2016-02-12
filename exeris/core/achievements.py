@@ -1,16 +1,11 @@
-from sqlalchemy import func
-from exeris.core import main, models
-from exeris.core.models import AchievementCharacterProgress as ACProgress
-from exeris.core.main import db
 import sqlalchemy as sql
 import sqlalchemy.dialects.postgresql as psql
+from sqlalchemy import func
 
-
-def hook(name):
-    def inner_hook(f):
-        main.add_hook(name, f)  # register hook
-
-    return inner_hook
+from exeris.core.main import hook
+from exeris.core import main, models
+from exeris.core.main import db
+from exeris.core.models import AchievementCharacterProgress as ACProgress
 
 
 class AchievementEntries:

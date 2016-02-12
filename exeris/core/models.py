@@ -424,6 +424,10 @@ class Character(Entity):
     SEX_MALE = "m"
     SEX_FEMALE = "f"
 
+    DEATH_STARVATION = "starvation"
+    DEATH_WEAPON = "weapon"
+    DEATH_ILLNESS = "illness"
+
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     def __init__(self, name, sex, player, language, spawn_date, spawn_position, being_in):
