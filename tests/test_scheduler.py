@@ -369,3 +369,18 @@ class SchedulerEatingTest(TestCase):
 
         value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE + 0.01 * 1.09 - EatingProcess.FOOD_BASED_ATTR_DECAY
         self.assertEqual(value_after_tick, char.durability)
+
+    def test_death_of_starvation(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+        db.session.add(rl)
+        char = util.create_character("testing", rl, util.create_player("DEF"))
+
+        char.hunger = 0.99  # very hungry
+
+        process = EatingProcess()
+        process.perform()
+
+        self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
+        # no more assertions needed, because DeathOfStarvationAction is tested separately

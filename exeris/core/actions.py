@@ -256,6 +256,9 @@ class AddNameToEntityAction(ActivityAction):
 
 
 class ProcessAction(AbstractAction):
+    """
+    Process is a top-level class which is subclasses by all processes run by the scheduler.
+    """
     pass
 
 
@@ -854,10 +857,10 @@ class DeathOfStarvationAction(DeathAction):
         super().__init__(executor)
 
     def perform_action(self):
-        EventCreator.base("death_of_starvation", rng=general.VisibilityBasedRange(30), doer=self.executor)
+        EventCreator.base(main.Events.DEATH_OF_STARVATION, rng=general.VisibilityBasedRange(30), doer=self.executor)
 
         death_prop = self.create_death_info_property()
-        death_prop["cause"] = None
+        death_prop.data["cause"] = models.Character.DEATH_STARVATION
         self.executor.properties.append(death_prop)
         self.turn_into_body()
 
@@ -869,11 +872,12 @@ class DeathOfDamageAction(DeathAction):
         self.weapon = weapon
 
     def perform_action(self):
-        EventCreator.base("death_of_damage", rng=general.VisibilityBasedRange(30), doer=self.executor)
+        EventCreator.base(main.Events.DEATH_OF_DAMAGE, rng=general.VisibilityBasedRange(30), doer=self.executor,
+                          params=dict(killer=self.killer, weapon=self.weapon))
 
         death_prop = self.create_death_info_property()
-        death_prop["cause"] = models.Character.DEATH_WEAPON
-        death_prop["weapon"] = self.weapon.type.name
-        death_prop["killer_id"] = self.killer.id
+        death_prop.data["cause"] = models.Character.DEATH_WEAPON
+        death_prop.data["weapon"] = self.weapon.type.name
+        death_prop.data["killer_id"] = self.killer.id
         self.executor.properties.append(death_prop)
         self.turn_into_body()

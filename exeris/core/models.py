@@ -11,6 +11,7 @@ from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.sql import or_
 from sqlalchemy.orm import validates
 
+from exeris.core import main
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
 
@@ -496,6 +497,8 @@ class Character(Entity):
     @hunger.setter
     def hunger(self, value):
         self.states = dict(self.states, hunger=max(0, min(value, 1.0)))
+        if self.hunger == 1.0:
+            main.call_hook(main.Hooks.EXCEEDED_HUNGER_LEVEL, character=self)
 
     @hybrid_property
     def tiredness(self):

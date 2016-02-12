@@ -1,11 +1,10 @@
 import logging
 import time
-import sys
 
-from exeris.core.main import db
 from exeris.core import models, deferred, general
-
-
+# noinspection PyUnresolvedReferences
+from exeris.core import hooks
+from exeris.core.main import db
 
 
 class Scheduler:

@@ -292,7 +292,7 @@ class EventCreator:
 
         def replace_dict_values(args):
             for param_key, param_value in list(args.items()):
-                if isinstance(param_value, models.Entity):
+                if isinstance(param_value, models.Entity):  # pyslatize all entities
                     pyslatized = param_value.pyslatize()
                     pyslatized.update(args)
                     del pyslatized[param_key]

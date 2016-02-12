@@ -4,10 +4,11 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core import deferred
+
 from exeris.core import main
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
-    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction
+    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
@@ -632,6 +633,21 @@ class CharacterActionsTest(TestCase):
 
         join_activity_action = JoinActivityAction(worker, activity)
         join_activity_action.perform()
+
+    def test_death_of_starvation_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), True, 11)
+        char = util.create_character("postac", rl, util.create_player("ala123"))
+
+        db.session.add(rl)
+
+        action = DeathOfStarvationAction(char)
+        action.perform()
+
+        self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
+        self.assertEqual(Character.DEATH_STARVATION, char.get_property(P.DEATH_INFO)["cause"])
+        self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
 
 
 class PlayerActionsTest(TestCase):
