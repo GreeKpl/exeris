@@ -13,6 +13,7 @@ class P:
     VISIBLE_MATERIAL = "VisibleMaterial"
     INVISIBLE_PASSAGE = "InvisiblePassage"
     DEATH_INFO = "DeathInfo"
+    DEGRADABLE = "Degradable"
 
 
 __registry = {}

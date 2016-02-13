@@ -1,20 +1,20 @@
 from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
-from exeris.core.general import GameDate
 
-from exeris.core.recipes import ActivityFactory
+from exeris.core import properties_base
+from exeris.core.general import GameDate
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
-    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character
-from exeris.core import properties_base
+    ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
+    Entity, Activity
 from exeris.core.properties_base import EntityPropertyException, P
+from exeris.core.recipes import ActivityFactory
 from tests import util
 
 
 class LocationTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_insert_basic(self):
@@ -74,7 +74,6 @@ class LocationTest(TestCase):
         self.assertEqual(root_loc, room.get_root())
 
     def test_methods_get_items_characters_inside(self):
-
         root_loc = RootLocation(Point(20, 20), False, 100)
         building_type = LocationType("building", 2000)
         loc = Location(root_loc, building_type)
@@ -106,11 +105,9 @@ class LocationTest(TestCase):
 
 
 class EntityTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_property_call_by_property(self):
-
         @properties_base.property_class
         class HappyPropertyType(properties_base.PropertyType):
             __property__ = "Happy"
@@ -138,7 +135,6 @@ class EntityTest(TestCase):
         self.assertRaises(EntityPropertyException, item2.be_happy)
 
     def test_has_property(self):
-
         @properties_base.property_class
         class SadPropertyType(properties_base.PropertyType):
             __property__ = "Sad"
@@ -156,6 +152,29 @@ class EntityTest(TestCase):
         db.session.add_all([item_type, item])
 
         self.assertDictEqual({"very": True, "feel": "blue", "cookies": 0}, item.get_property("Sad"))
+
+    def test_has_property_used_in_query(self):
+        rl = RootLocation(Point(1, 2), True, 31)
+        item_type = ItemType("hammer", 1)
+        item = Item(item_type, rl, weight=100)
+        item_without_properties = Item(item_type, rl, weight=100)
+
+        char = util.create_character("abc", rl, util.create_player("dkwe"))
+        activity = Activity(char, "hehe", {}, {}, 1, char)  # stuff used in activities should be ignored in this test
+        item_in_activity = Item(item_type, activity, role_being_in=False)
+
+        item.type.properties.append(EntityTypeProperty("Sad", {"very": False, "cookies": 0}))
+        item.properties.append(EntityProperty("Happy", {"very": True, "feel": "blue"}))
+        item.properties.append(EntityProperty("Sad", {"value": 0.0}))
+
+        db.session.add_all([item_type, item, item_without_properties, rl, activity, item_in_activity])
+
+        Item.query_entities_having_property("Happy").filter(Item.role == Entity.ROLE_BEING_IN).one()
+        self.assertEqual(2,
+                         Item.query_entities_having_property("Sad").filter(Item.role == Entity.ROLE_BEING_IN).count())
+
+        Item.query_entities_having_property("Happy", feel="blue").filter(Item.role == Entity.ROLE_BEING_IN).one()
+        Item.query_entities_having_property("Sad", value=0.0).filter(Item.role == Entity.ROLE_BEING_IN).one()
 
     def test_change_character_name(self):
         util.initialize_date()
@@ -178,11 +197,9 @@ class EntityTest(TestCase):
 
 
 class PassageTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_accessibility(self):
-
         building_type = LocationType("building", 200)
         rl = RootLocation(Point(10, 20), False, 213)
         loc1 = Location(rl, building_type)
@@ -202,11 +219,9 @@ class PassageTest(TestCase):
 
 
 class GroupTest(TestCase):
-
     create_app = util.set_up_app_with_database
 
     def test_group_direct_modification(self):
-
         self._setup_hammers()
 
         hammers = TypeGroup("group_hammers")
@@ -220,7 +235,6 @@ class GroupTest(TestCase):
         self.assertCountEqual([self.stone_hammer, self.iron_hammer, self.marble_hammer], hammers.children)
 
     def test_group_modification(self):
-
         self._setup_hammers()
 
         tools = TypeGroup("group_tools")
@@ -240,7 +254,6 @@ class GroupTest(TestCase):
         self.assertEqual([tools], hammers.parent_groups)
 
     def test_groups(self):
-
         useful = TypeGroup("group_useful")
         tools = TypeGroup("group_tools")
         hammers = TypeGroup("group_hammers")
@@ -294,7 +307,6 @@ class GroupTest(TestCase):
 
         self.assertCountEqual([(stone_axe, 4.0), (bone_axe, 1.0), (copper_hammer, 10.0)], tools.get_descending_types())
 
-
     def _setup_hammers(self):
         self.stone_hammer = ItemType("stone_hammer", 200)
         self.iron_hammer = ItemType("iron_hammer", 300)
@@ -326,7 +338,6 @@ class GroupTest(TestCase):
         self.assertEqual(33, activity.ticks_left)
 
     def test_build_menu_categories(self):
-
         buildings = BuildMenuCategory("buildings")
         wooden_buildings = BuildMenuCategory("wooden_buildings", buildings)
         stone_buildings = BuildMenuCategory("stone_buildings", buildings)

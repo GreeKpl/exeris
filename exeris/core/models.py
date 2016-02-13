@@ -1,25 +1,25 @@
-import types
 import collections
 import datetime
+import logging
+import types
 
-from flask.ext.security import UserMixin
-from flask.ext.security import RoleMixin
 import geoalchemy2 as gis
+import sqlalchemy as sql
+import sqlalchemy.dialects.postgresql as psql
+import sqlalchemy.orm
+from flask.ext.security import RoleMixin
+from flask.ext.security import UserMixin
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from sqlalchemy.sql import or_
 from sqlalchemy.orm import validates
+from sqlalchemy.sql import or_
 
 from exeris.core import main
+from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
-
-import sqlalchemy as sql
-import sqlalchemy.orm
-import sqlalchemy.dialects.postgresql as psql
 from .map import MAP_HEIGHT, MAP_WIDTH
-from exeris.core import properties_base
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
@@ -35,6 +35,8 @@ ENTITY_GROUP = "group"
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
 PLAYER_ID_MAXLEN = 24
+
+logger = logging.getLogger(__name__)
 
 roles_users = db.Table('player_roles',
                        db.Column('player_id', db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id')),
@@ -360,6 +362,46 @@ class Entity(db.Model):
             prop = self.get_property(name)
             return prop is not None and key in prop and prop[key] == value
 
+    @classmethod
+    def query_entities_having_property(cls, name, **kwargs):
+        """
+        A method building a query that looks for entities having a property of specific name set for itself
+        (EntityProperty) or its type (EntityTypeProperty).
+
+        The returned query can get be further filtered by using filter method referencing attributes of `cls` class.
+
+        Example:
+        Item.query_entities_having_property("Sad", value=0.0).filter(Item.role == Entity.ROLE_BEING_IN).all()
+
+        :param name: name of the property being searched for
+        :param kwargs: key-value pair that must exist in the property to be found. Currently only 1 property can be searched for
+        :return: a query object which will return only entities of specific type having a property.
+        """
+
+        entity_related_where_clause = [Entity.id == EntityProperty.entity_id, EntityProperty.name == name]
+        type_related_where_clause = [EntityType.name == EntityTypeProperty.type_name, EntityTypeProperty.name == name]
+        if kwargs:
+            assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
+            key, value = next(iter(kwargs.items()))
+            entity_json_data, type_json_data = cls.cast_to_correct_psql_type(key, value)
+            entity_related_where_clause += [entity_json_data == value]
+            type_related_where_clause += [type_json_data == value]
+        return db.session.query(cls).distinct().outerjoin(Entity.properties).outerjoin(EntityType.properties).filter(
+            sql.or_(sql.and_(*entity_related_where_clause),
+                    sql.and_(*type_related_where_clause)))
+
+    @staticmethod
+    def cast_to_correct_psql_type(key, value):
+        entity_column_value = EntityProperty.data[key].astext
+        type_column_value = EntityTypeProperty.data[key].astext
+        if isinstance(value, int):
+            entity_column_value = entity_column_value.cast(sql.Integer)
+            type_column_value = type_column_value.cast(sql.Integer)
+        elif isinstance(value, float):
+            entity_column_value = entity_column_value.cast(sql.Float)
+            type_column_value = type_column_value.cast(sql.Float)
+        return entity_column_value, type_column_value
+
     def alter_property(self, name, data=None):
         """
         Creates an EntityProperty for this Entity if it doesn't exist and fills it with provided data
@@ -375,6 +417,14 @@ class Entity(db.Model):
             entity_property.data = data
         else:
             self.properties.append(EntityProperty(name, data=data))
+
+    def get_modifiable_entity_property(self, name):
+        entity_property = EntityProperty.query.filter_by(name=name).first()
+        if not entity_property:
+            entity_property = EntityProperty(name, {}, self)
+            db.session.add(entity_property)
+        entity_property.data = dict(entity_property.data)  # force property's `data` marked as modified
+        return entity_property
 
     def get_position(self):
         return self.get_root().position
@@ -617,7 +667,7 @@ class Item(Entity):
         if visible_parts is None:
             visible_parts = []
         # turn (optional) item types into names
-        visible_parts = [part if type(part) is str else part.name for part in visible_parts]
+        visible_parts = [part if isinstance(part, str) else part.name for part in visible_parts]
         return sorted(visible_parts)
 
     damage = sql.Column(sql.Float, default=0)
@@ -680,6 +730,9 @@ class Item(Entity):
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
+        if not self.parent_entity:
+            logger.warn("Item with id=%s has no parent entity", self.id)
+            return "{{Item id={}, type={}, NO PARENT ENTITY}}".format(self.id, self.type_name)
         return "{{Item id={}, type={}, parent={}, parent_type={}}}" \
             .format(self.id, self.type_name, self.parent_entity.id, self.parent_entity.discriminator_type)
 
@@ -861,6 +914,9 @@ class EntityTypeProperty(db.Model):
 
     name = sql.Column(sql.String, primary_key=True)
     data = sql.Column(psql.JSON)
+
+    def __repr__(self):
+        return "{{EntityTypeProperty name={}, for={}, data={}}}".format(self.name, self.type_name, self.data)
 
 
 class EntityProperty(db.Model):
