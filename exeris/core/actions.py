@@ -14,6 +14,8 @@ from exeris.core import models, general, properties
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.properties import P
 
+logger = logging.getLogger(__name__)
+
 
 class AbstractAction:
     """
@@ -24,6 +26,7 @@ class AbstractAction:
     """
 
     def perform(self):
+        logger.info("Perform %s for arguments: %s", self.__class__.__name__, str(vars(self)))
         return self.perform_action()
 
     def perform_action(self):
@@ -292,25 +295,24 @@ class SingleActivityProgressProcess(ProcessAction):
         self.tool_based_quality = []
         self.machine_based_quality = []
         self.progress_ratio = 0.0
-        self.logger = logging.getLogger(__name__)
 
     def perform_action(self):
-        self.logger.info("progress of %s", self.activity)
+        logger.info("progress of %s", self.activity)
         workers = models.Character.query.filter_by(activity=self.activity).all()
 
         try:
             req = self.activity.requirements
 
             if "mandatory_machines" in req:
-                self.logger.info("checking mandatory_machines")
+                logger.info("checking mandatory_machines")
                 self.check_mandatory_machines(req["mandatory_machines"])
 
             if "optional_machines" in req:
-                self.logger.info("checking optional_machines")
+                logger.info("checking optional_machines")
                 self.check_optional_machines(req["optional_machines"])
 
             if "targets" in req:
-                self.logger.info("checking targets")
+                logger.info("checking targets")
                 self.check_target_proximity(req["targets"])
 
             if "target_with_properties" in req:
@@ -437,10 +439,10 @@ class SingleActivityProgressProcess(ProcessAction):
             self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
 
     def finish_activity(self, activity):
-        self.logger.info("Finishing activity %s", self.activity)
+        logger.info("Finishing activity %s", self.activity)
         entities = []
         for serialized_action in activity.result_actions:
-            self.logger.debug("executing action: %s", serialized_action)
+            logger.debug("executing action: %s", serialized_action)
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator,
                                    resulting_entities=entities)
 

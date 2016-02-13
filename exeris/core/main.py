@@ -9,6 +9,7 @@ from flask.ext.sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 app = None
 
+logger = logging.getLogger(__name__)
 
 class Errors:
     TOO_LOW_SKILL = "error_too_low_skill"
@@ -112,7 +113,9 @@ def add_hook(name, func):
 
 
 def call_hook(name, **kwargs):
+    logger.info("Hook %s for arguments: %s", name, kwargs)
     for func in _hooks.get(name, []):
+        logger.debug("Calling hook function: %s", func.__name__)
         func(**kwargs)
 
 

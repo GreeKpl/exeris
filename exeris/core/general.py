@@ -7,6 +7,8 @@ from collections import deque
 from exeris.core import models, main
 from exeris.core.main import db
 
+logger = logging.getLogger(__name__)
+
 
 class GameDate:
     """
@@ -42,8 +44,6 @@ class GameDate:
         self.sun_progression = (self.game_timestamp % GameDate.SEC_IN_DAY) / GameDate.SEC_IN_DAY
 
         self.moon_progression = (self.game_timestamp % GameDate.SEC_IN_MOON) / GameDate.SEC_IN_MOON
-
-        self.logger = logging.getLogger(__name__)
 
     def __get_modulo_and_divided(self, dividend, divisor):
         return dividend % divisor, dividend // divisor
@@ -162,7 +162,6 @@ class NeighbouringLocationsRange(RangeSpec):
         self.only_through_unlimited = only_through_unlimited
 
     def locations_near(self, entity):
-
         loc = self._locationize(entity)[0]
         return visit_subgraph(loc, self.only_through_unlimited)
 
@@ -205,6 +204,10 @@ class VisibilityBasedRange(RangeSpec):
                 locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
+
+    def __repr__(self):
+        return "{{VisibilityBasedRange, distance={}, only_through_unlimited={}}}".format(self.distance,
+                                                                                   self.only_through_unlimited)
 
 
 class TraversabilityBasedRange(RangeSpec):
@@ -345,5 +348,3 @@ class EventCreator:
 
             for obs in event_obs:
                 main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)
-
-

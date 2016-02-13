@@ -176,6 +176,9 @@ class ItemType(EntityType):
     def get_descending_types(self):
         return [(self, 1.0)]
 
+    def __repr__(self):
+        return "{{ItemType, name: {}}}".format(self.name)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ITEM,
     }
