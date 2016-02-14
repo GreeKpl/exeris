@@ -5,8 +5,8 @@ from exeris.core import main
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
-    EntityProperty, SkillType, Character
-from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess
+    EntityProperty, SkillType, Character, EntityTypeProperty
+from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from tests import util
@@ -384,3 +384,40 @@ class SchedulerEatingTest(TestCase):
 
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
         # no more assertions needed, because DeathOfStarvationAction is tested separately
+
+
+class SchedulerDecayTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_simple_stackable_decay(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+        carrot_type = ItemType("carrot", 5, stackable=True)
+        hammer_type = ItemType("hammer_to_ignore", 30)
+        hammer = Item(hammer_type, rl)
+        fresh_pile_of_carrots = Item(carrot_type, rl, amount=1000)  # only damage will be increased
+
+        carrot_type.properties.append(
+            EntityTypeProperty(P.DEGRADABLE, {"lifetime": 30 * 24 * 3600}))
+
+        db.session.add_all([rl, carrot_type, fresh_pile_of_carrots, hammer_type, hammer])
+
+        process = DecayProcess()
+        process.perform()
+
+        self.assertAlmostEqual(1 / 30, fresh_pile_of_carrots.damage)
+        self.assertEqual(1000, fresh_pile_of_carrots.amount)
+        self.assertEqual(0.0, hammer.damage)  # make sure non-stackables are not affected
+
+        old_pile_of_carrots = Item(carrot_type, rl, amount=1000)
+        old_pile_of_carrots.damage = 0.99  #
+
+        db.session.add(old_pile_of_carrots)
+
+        process = DecayProcess()
+        process.perform()
+
+        self.assertEqual(1, old_pile_of_carrots.damage)
+        self.assertEqual(990, old_pile_of_carrots.amount)

@@ -1,17 +1,17 @@
-from statistics import mean
-import traceback
 import math
+import traceback
+from statistics import mean
 
+import sqlalchemy as sql
 from flask import logging
 from shapely.geometry import Point
 from sqlalchemy import func
 
-from exeris.core.deferred import convert
-from exeris.core import deferred
-from exeris.core import main
-from exeris.core.main import db, Events
+from exeris.core import deferred, main, util
 from exeris.core import models, general, properties
+from exeris.core.deferred import convert
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
+from exeris.core.main import db, Events
 from exeris.core.properties import P
 
 logger = logging.getLogger(__name__)
@@ -512,6 +512,30 @@ class EatingProcess(ProcessAction):
             character.eating_queue = eating_queue
 
 
+class DecayProcess(ProcessAction):
+    DAILY_STACKABLE_DECAY_FACTOR = 0.01
+    SCHEDULER_RUNNING_INTERVAL = general.GameDate.SEC_IN_DAY
+
+    def perform_action(self):
+        items_and_props = db.session.query(models.Item, models.EntityTypeProperty).join(models.ItemType).filter(
+            sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,
+                     models.ItemType.stackable == True,
+                     models.Item.role == models.Item.ROLE_BEING_IN,
+                     models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all normal stackables
+        for item, degradable_prop in items_and_props:
+            item_lifetime = degradable_prop.data["lifetime"]
+            damage_fraction_to_add_since_last_tick = DecayProcess.SCHEDULER_RUNNING_INTERVAL / item_lifetime
+            item.damage += damage_fraction_to_add_since_last_tick
+
+            if item.damage == 1.0:
+                self.decay_stackable_item(item)
+
+    def decay_stackable_item(self, item):
+        runs_per_day = DecayProcess.SCHEDULER_RUNNING_INTERVAL / general.GameDate.SEC_IN_DAY
+        amount_left_fraction = (1 - DecayProcess.DAILY_STACKABLE_DECAY_FACTOR / runs_per_day)
+        item.amount = util.round_probabilistic(item.amount * amount_left_fraction)
+
+
 #
 
 ##############################
@@ -520,7 +544,6 @@ class EatingProcess(ProcessAction):
 
 
 #
-
 
 class CreateCharacterAction(PlayerAction):
     def __init__(self, player, character_name, sex, language):
