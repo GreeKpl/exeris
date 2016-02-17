@@ -359,12 +359,14 @@ def activity_from_recipe_setup(recipe_id):
     recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
-    actions_requiring_input = [deferred.object_import(x[0]) for x in recipe.result]
-    actions_requiring_input = [x for x in actions_requiring_input if hasattr(x, "_form_inputs")]
+    result_actions_and_args = [(deferred.object_import(x[0]), x[1]) for x in recipe.result]
+    result_actions_requiring_input_and_args = [x for x in result_actions_and_args if hasattr(x, "_form_inputs")]
 
     form_inputs = {}
-    for i in actions_requiring_input:
-        form_inputs.update({k: v.__name__ for k, v in i._form_inputs.items()})
+    for action_and_args in result_actions_requiring_input_and_args:
+        form_inputs.update(
+            {k: v.__name__ for k, v in action_and_args[0]._form_inputs.items() if
+             k not in action_and_args[1]})  # show inputs unless the parameter was already set explicitly
 
     rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
                                      recipe_id=recipe_id)

@@ -6,8 +6,6 @@ from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
 
-
-
 class ActivityFactory:
     def create_from_recipe(self, recipe, being_in, initiator, amount=1, user_input=None):
 
@@ -46,7 +44,8 @@ class ActivityFactory:
 
             being_in = activity_container  # it should become parent of activity
 
-        activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed, initiator)
+        activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed,
+                                   initiator)
         actions = self._enhance_actions(recipe.result, user_input)
 
         # entity_result is always the first action, because additional actions can often be some modifiers of this CIA
@@ -88,7 +87,8 @@ class ActivityFactory:
 
             if hasattr(action_class, "_form_inputs"):
                 for in_name, in_data in action_class._form_inputs.items():
-                    action[1][in_name] = user_input[in_name]  # inject user defined form input to result dict
+                    if in_name not in action[1]:  # if wasn't already set explicitly
+                        action[1][in_name] = user_input[in_name]  # inject user defined form input to result dict
             actions.append(action)
         return actions
 

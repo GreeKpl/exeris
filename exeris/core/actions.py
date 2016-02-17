@@ -141,6 +141,7 @@ def set_visible_material(activity, visible_material, entity):
     entity.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
 
+@form_on_setup(amount=deferred.AmountInput)
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
@@ -160,24 +161,29 @@ class CreateItemAction(ActivityAction):
         if self.item_type.portable and self.initiator.being_in == result_loc:  # if being in the same location then go to inventory
             result_loc = self.initiator
 
-        new_item_weight = self.amount * self.item_type.unit_weight
-        new_item = models.Item(self.item_type, result_loc, weight=new_item_weight)
+        new_items = []
+        if self.item_type.stackable:  # create one item with specified 'amount'
+            weight = self.amount * self.item_type.unit_weight
+            new_items += [self.create_item(result_loc, weight)]
+        else:  # create 'amount' of single items
+            for _ in range(self.amount):
+                new_items += [self.create_item(result_loc, self.item_type.unit_weight)]
 
+        return new_items
+
+    def create_item(self, result_loc, item_weight):
+        new_item = models.Item(self.item_type, result_loc, weight=item_weight)
         db.session.add(new_item)
-
         for property_name in self.properties:
             new_item.properties.append(models.EntityProperty(property_name, self.properties[property_name]))
-
         if self.used_materials == "all":  # all the materials used for an activity were set to build this item
             for material_type in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
                 material_type.used_for = new_item
         else:  # otherwise it's a dict and we need to look into it
             for material_type_name in self.used_materials:
                 self.extract_used_material(material_type_name, new_item)
-
         if self.visible_material:
             set_visible_material(self.activity, self.visible_material, new_item)
-
         return new_item
 
     def extract_used_material(self, material_type_name, new_item):
@@ -240,17 +246,18 @@ class CreateLocationAction(ActivityAction):
 
         db.session.add(new_location)
 
-        return new_location
+        return [new_location]
 
 
 @form_on_setup(entity_name=deferred.NameInput)
 class AddNameToEntityAction(ActivityAction):
-    def __init__(self, *, entity_name, **injected_args):
+    def __init__(self, *, entity_name, results_index=-1, **injected_args):
         self.entity_name = entity_name
-        self.entity = injected_args["resulting_entities"][-1]
+        self.entities = injected_args["resulting_entities"][results_index]
 
     def perform_action(self):
-        self.entity.title = self.entity_name
+        for entity in self.entities:
+            entity.title = self.entity_name
 
 
 ##############################
@@ -439,16 +446,18 @@ class SingleActivityProgressProcess(ProcessAction):
             self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
 
     def finish_activity(self, activity):
-        logger.info("Finishing activity %s", self.activity)
-        entities = []
+        logger.info("Finishing activity %s", activity)
+        entities_lists = []
         for serialized_action in activity.result_actions:
             logger.debug("executing action: %s", serialized_action)
             action = deferred.call(serialized_action, activity=activity, initiator=activity.initiator,
-                                   resulting_entities=entities)
+                                   resulting_entities=entities_lists)
 
-            returned_entity = action.perform()
-            if returned_entity:
-                entities.append(returned_entity)
+            returned_entities = action.perform()
+
+            entities_lists.append(
+                returned_entities if returned_entities else [])  # always add a list (even if it's empty)
+
         db.session.delete(activity)
 
     def check_target_proximity(self, target_ids):

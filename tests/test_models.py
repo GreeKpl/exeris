@@ -332,7 +332,7 @@ class GroupTest(TestCase):
 
         factory = ActivityFactory()
 
-        activity = factory.create_from_recipe(recipe, rl, initiator, 3, user_input={"item_name": "mloteczek"})
+        activity = factory.create_from_recipe(recipe, rl, initiator, 3, user_input={"item_name": "mloteczek", "amount": 1})
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)

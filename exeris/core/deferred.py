@@ -41,3 +41,7 @@ def convert(**fun_types):
 
 class NameInput:
     pass
+
+
+class AmountInput:
+    pass

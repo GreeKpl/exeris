@@ -355,6 +355,7 @@ def error_handler(exception):
     if isinstance(exception, main.GameException):
         client_socket.emit("global.show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs))
     else:
+        print(traceback.format_exc())
         client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
     return False,
 
