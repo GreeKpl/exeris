@@ -2,8 +2,10 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core.main import db
-from exeris.core.models import RootLocation, LocationType, Location, EntityTypeProperty, ObservedName, SkillType, EntityProperty, \
+from exeris.core.models import RootLocation, LocationType, Location, EntityTypeProperty, ObservedName, SkillType, \
+    EntityProperty, \
     ItemType, Item, TextContent
+# noinspection PyUnresolvedReferences
 from exeris.core import properties
 from exeris.core.properties_base import P
 from tests import util
@@ -14,7 +16,7 @@ class EntityPropertiesTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_set_and_alter_dynamic_name_success(self):
-        rl = RootLocation(Point(1, 1), True, 123)
+        rl = RootLocation(Point(1, 1), 123)
         building_type = LocationType("building", 1000)
         building = Location(rl, building_type)
 
@@ -38,8 +40,7 @@ class EntityPropertiesTest(TestCase):
         self.assertEqual("Wroclaw", new_name.name)
 
     def test_get_and_alter_skill_success(self):
-
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         char = util.create_character("ABC", rl, util.create_player("wololo"))
 
         char.properties.append(EntityProperty(P.SKILLS, {}))
@@ -63,8 +64,7 @@ class ItemPropertiesTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_readable_property_read_then_alter_text_and_then_read_again(self):
-
-        rl = RootLocation(Point(1, 1), True, 122)
+        rl = RootLocation(Point(1, 1), 122)
         book_type = ItemType("book", 100)
         book_type.properties.append(EntityTypeProperty(P.READABLE))
         book = Item(book_type, rl)
@@ -85,4 +85,3 @@ class ItemPropertiesTest(TestCase):
         book.alter_contents("NEW TITLE", "**abc** hehe", TextContent.FORMAT_MD)
         self.assertEqual("<p><strong>abc</strong> hehe</p>", book.read_contents())
         self.assertEqual("**abc** hehe", book.read_raw_contents())
-

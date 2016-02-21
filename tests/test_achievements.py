@@ -16,7 +16,7 @@ class PassageTest(TestCase):
     def test_getting_speaker_achievement(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         player = util.create_player("elo")
         char = util.create_character("jan", rl, player)
 

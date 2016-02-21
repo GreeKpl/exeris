@@ -221,7 +221,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         sword_type = ItemType("sword", 100)
         sword = Item(sword_type, rl)
 
@@ -235,7 +235,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         carrot_type = ItemType("carrot", 100, stackable=False)
         apple_type = ItemType("apple", 100, stackable=False)
         berries_type = ItemType("berries", 3, stackable=False)
@@ -258,7 +258,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         sword_type = ItemType("sword", 100)
         sword = Item(sword_type, rl)
         sword.damage = 0.8
@@ -272,7 +272,7 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("uszkodzony miecz", pyslate.t("item_info", **sword.pyslatize(detailed=True)))
 
     def test_title(self):
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         book_type = ItemType("book", 100)
         book = Item(book_type, rl)
         book.title = "How to make a good translation system"
@@ -293,7 +293,7 @@ class ItemTranslationTest(TestCase):
         backend = json_backend.JsonBackend(json_data=data)
         pyslate = create_pyslate("en", backend=backend)
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         shirt_type = ItemType("shirt", 100)
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
         shirt = Item(shirt_type, rl)
@@ -316,7 +316,7 @@ class ItemTranslationTest(TestCase):
         pyslate_en = create_pyslate("en", backend=backend)
         pyslate_pl = create_pyslate("pl", backend=backend)
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
         g.character = util.create_character("QAZ", rl, util.create_player("WER"))
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
         hemp_cloth = Item(hemp_cloth_type, rl, amount=1)
@@ -367,7 +367,7 @@ class CharacterAndLocationTranslationTest(TestCase):
     def test_character_name(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
 
         plr = util.create_player("adwdas")
         man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
@@ -404,7 +404,7 @@ class CharacterAndLocationTranslationTest(TestCase):
     def test_dead_character_name(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), True, 111)
+        rl = RootLocation(Point(1, 1), 111)
 
         plr = util.create_player("adwdas")
         man = util.create_character("A MAN", rl, plr, sex=Character.SEX_MALE)
@@ -436,7 +436,7 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("martwy John", pyslate_pl.t("character_info", **man.pyslatize()))
 
     def test_location_name(self):
-        rl = RootLocation(Point(1, 1), True, 213)
+        rl = RootLocation(Point(1, 1), 213)
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
 
@@ -459,7 +459,7 @@ class CharacterAndLocationTranslationTest(TestCase):
             translated_html_text)
 
     def test_root_location_name(self):
-        rl = RootLocation(Point(1, 1), True, 213)
+        rl = RootLocation(Point(1, 1), 213)
         plr = util.create_player("dawdasdawdasw")
         obs = util.create_character("obs1", rl, plr)
 
@@ -479,7 +479,7 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("Wonderland", pyslate_en.t("location_info", **rl.pyslatize()))
 
     def test_passage_translation(self):
-        rl = RootLocation(Point(1, 1), True, 213)
+        rl = RootLocation(Point(1, 1), 213)
 
         building_type = LocationType("building", 200)
         loc = Location(rl, building_type)
@@ -491,7 +491,7 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("door", pyslate_en.t("passage_info", **passage.pyslatize()))
 
     def test_activity_translation(self):
-        rl = RootLocation(Point(1, 1), True, 213)
+        rl = RootLocation(Point(1, 1), 213)
         initiator = util.create_character("initiator", rl, util.create_player("abc"))
 
         sword_type = ItemType("sword", 100, portable=True)
@@ -518,7 +518,7 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("wololo", pyslate_en.t("TAG_THAT_DOESNT_EXIST"))
 
     def test_passage_with_other_side(self):
-        rl = RootLocation(Point(1, 1), True, 213)
+        rl = RootLocation(Point(1, 1), 213)
         initiator = util.create_character("initiator", rl, util.create_player("abc"))
 
         door_type = PassageType.by_name(Types.DOOR)

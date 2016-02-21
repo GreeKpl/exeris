@@ -72,7 +72,7 @@ class SchedulerActivityTest(TestCase):
         result_type = ItemType("result", 200)
         db.session.add_all([hammer_type, result_type])
 
-        rl = RootLocation(Point(1, 1), False, 134)
+        rl = RootLocation(Point(1, 1), 134)
         db.session.add(rl)
         hammer_worked_on = Item(hammer_type, rl, weight=100)
         db.session.add(hammer_worked_on)
@@ -94,7 +94,7 @@ class SchedulerActivityTest(TestCase):
         self.worker.activity = activity
 
     def test_check_mandatory_tools(self):
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
@@ -132,7 +132,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([0.75, 3.0], process.tool_based_quality)
 
     def test_check_optional_tools(self):
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
@@ -180,7 +180,7 @@ class SchedulerActivityTest(TestCase):
         self.assertEqual(1.35, process.progress_ratio)
 
     def test_check_mandatory_machines(self):
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)
         worker = util.create_character("John", rl, util.create_player("ABC"))
@@ -221,7 +221,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([2, 1.5], process.machine_based_quality)
 
     def test_activitys_skills(self):
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)
         worker = util.create_character("ABC", rl, util.create_player("DEF"))
@@ -243,8 +243,8 @@ class SchedulerActivityTest(TestCase):
         self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01)))
 
     def test_activitys_target_proximity(self):
-        rl = RootLocation(Point(1, 1), False, 123)
-        far_away = RootLocation(Point(5, 5), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
+        far_away = RootLocation(Point(5, 5), 123)
         some_item_type = ItemType("some_item", 100)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)
@@ -268,7 +268,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_target_proximity([target_item1.id, target_item2.id]))
 
     def test_number_of_workers(self):
-        rl = RootLocation(Point(1, 1), False, 123)
+        rl = RootLocation(Point(1, 1), 123)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)
 
@@ -299,7 +299,7 @@ class SchedulerEatingTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_eating_process_nothing_eaten(self):
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
 
@@ -320,7 +320,7 @@ class SchedulerEatingTest(TestCase):
         self.assertAlmostEqual(value_after_two_ticks, char.perception)
 
     def test_eating_applying_single_attr_food(self):
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
 
@@ -356,7 +356,7 @@ class SchedulerEatingTest(TestCase):
         self.assertAlmostEqual(1.09, EatingProcess.bonus_mult(values))
 
     def test_eating_applying_multi_attr_food(self):
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
 
@@ -375,7 +375,7 @@ class SchedulerEatingTest(TestCase):
     def test_death_of_starvation(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
 
@@ -395,7 +395,7 @@ class SchedulerDecayTest(TestCase):
     def test_simple_item_decay(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         carrot_type = ItemType("carrot", 5, stackable=True)
         axe_type = ItemType("axe", 5)
         axe = Item(axe_type, rl)
@@ -440,7 +440,7 @@ class SchedulerDecayTest(TestCase):
     def test_activity_decay(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         initiator = util.create_character("initiator", rl, util.create_player("abc"))
         axe_type = ItemType("axe", 5)
         axe = Item(axe_type, rl)

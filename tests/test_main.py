@@ -65,7 +65,7 @@ class RangeSpecTest(TestCase):
         loc_type = LocationType("building", 300)
         unlimited = PassageType("unlimited", True)
 
-        rl = RootLocation(Point(10, 20), False, 122)
+        rl = RootLocation(Point(10, 20), 122)
         loc1 = Location(rl, loc_type, unlimited)
         loc2 = Location(rl, loc_type)
         loc11 = Location(loc1, loc_type, unlimited)
@@ -75,7 +75,7 @@ class RangeSpecTest(TestCase):
 
         loc221 = Location(loc22, loc_type, unlimited)
 
-        orl = RootLocation(Point(20, 20), False, 100)
+        orl = RootLocation(Point(20, 20), 100)
         oloc1 = Location(orl, loc_type, unlimited)
         db.session.add_all([rl, loc_type, loc1, loc2, loc11, loc12, loc21, loc22, loc221, orl, oloc1])
 
@@ -168,7 +168,7 @@ class EventCreatorTest(TestCase):
         unlimited = PassageType("unlimited", True)
         db.session.add_all([et1, et2, et3])
 
-        rl = RootLocation(Point(10, 10), False, 103)
+        rl = RootLocation(Point(10, 10), 103)
         loc_type = LocationType("building", 200)
         loc1 = Location(rl, loc_type, unlimited)
         loc2 = Location(rl, loc_type, unlimited)
@@ -213,7 +213,7 @@ def test_event_for_observer_in_targets_location(self):
     et3 = EventType("slap_observer", EventType.NORMAL)
     db.session.add_all([et1, et2, et3])
 
-    rl = RootLocation(Point(10, 10), False, 103)
+    rl = RootLocation(Point(10, 10), 103)
     unlimited = PassageType("unlimited", True)
     loc_type = LocationType("building", 200)
     loc1 = Location(rl, loc_type, unlimited)

@@ -11,7 +11,7 @@ class EncoderTest(TestCase):
     create_app = util.set_up_app_with_database
 
     def setUp(self):
-        rl = models.RootLocation(Point(1, 1), False, 111)
+        rl = models.RootLocation(Point(1, 1), 111)
         pl = util.create_player('player1')
         self.character1 = util.create_character('char1', rl, pl)
         self.character2 = util.create_character('char2', rl, pl)

@@ -13,7 +13,7 @@ class ProductionIntegrationTest(TestCase):
 
     # kind of integration test
     def test_activity_process_for_axe_production(self):
-        rt = RootLocation(Point(1, 1), False, 134)
+        rt = RootLocation(Point(1, 1), 134)
 
         anvil_type = ItemType("anvil", 300)
         axe_type = ItemType("axe", 100)

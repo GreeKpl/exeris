@@ -122,7 +122,7 @@ def create_database():
     models.init_database_contents()
 
     if not models.RootLocation.query.count():
-        new_root = models.RootLocation(Point(1, 1), False, 123)
+        new_root = models.RootLocation(Point(1, 1), 123)
         db.session.add(new_root)
     if not models.GameDateCheckpoint.query.count():
         ch_pt = models.GameDateCheckpoint(game_date=0, real_date=datetime.datetime.now().timestamp())
@@ -358,7 +358,6 @@ def error_handler(exception):
         print(traceback.format_exc())
         client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
     return False,
-
 
 
 @app.errorhandler(Exception)

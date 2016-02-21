@@ -19,24 +19,24 @@ class LocationTest(TestCase):
 
     def test_insert_basic(self):
         pos = Point(10, 20)
-        root_loc = RootLocation(pos, False, 100)  # the simplest
+        root_loc = RootLocation(pos, 100)  # the simplest
         db.session.add(root_loc)
 
-        root_loc2 = RootLocation(pos, False, 370)  # normalize direction
+        root_loc2 = RootLocation(pos, 370)  # normalize direction
         self.assertEqual(10, root_loc2.direction)
         db.session.add(root_loc2)
         self.assertEqual(10, root_loc2.direction)
 
     def test_insert_validate_position(self):
         pos = Point(MAP_WIDTH + 20, 30)
-        root_loc = RootLocation(pos, False, 30)  # normalize position
+        root_loc = RootLocation(pos, 30)  # normalize position
         db.session.add(root_loc)
 
         self.assertAlmostEqual(20, root_loc.position.x, places=6)
         self.assertAlmostEqual(30, root_loc.position.y, places=6)
 
         pos2 = Point(20, MAP_HEIGHT + 30)
-        root_loc2 = RootLocation(pos2, False, 30)  # normalize position
+        root_loc2 = RootLocation(pos2, 30)  # normalize position
         db.session.add(root_loc2)
 
         self.assertAlmostEqual(MAP_WIDTH / 2 + 20, root_loc2.position.x, places=6)
@@ -44,7 +44,7 @@ class LocationTest(TestCase):
 
     def test_find_position(self):
         pos = Point(10, 20)
-        root_loc = RootLocation(pos, False, 100)  # the simplest
+        root_loc = RootLocation(pos, 100)  # the simplest
         db.session.add(root_loc)
 
         good_query_results = db.session.query(RootLocation).filter_by(position=from_shape(Point(10, 20))).all()
@@ -55,7 +55,7 @@ class LocationTest(TestCase):
 
     def test_find_root(self):
         pos = Point(10, 20)
-        root_loc = RootLocation(pos, False, 100)  # the simplest
+        root_loc = RootLocation(pos, 100)  # the simplest
 
         building_type = LocationType("building", 2000)
         farmyard_type = LocationType("farmyard", 0)
@@ -74,7 +74,7 @@ class LocationTest(TestCase):
         self.assertEqual(root_loc, room.get_root())
 
     def test_methods_get_items_characters_inside(self):
-        root_loc = RootLocation(Point(20, 20), False, 100)
+        root_loc = RootLocation(Point(20, 20), 100)
         building_type = LocationType("building", 2000)
         loc = Location(root_loc, building_type)
 
@@ -154,7 +154,7 @@ class EntityTest(TestCase):
         self.assertDictEqual({"very": True, "feel": "blue", "cookies": 0}, item.get_property("Sad"))
 
     def test_has_property_used_in_query(self):
-        rl = RootLocation(Point(1, 2), True, 31)
+        rl = RootLocation(Point(1, 2), 31)
         item_type = ItemType("hammer", 1)
         item = Item(item_type, rl, weight=100)
         item_without_properties = Item(item_type, rl, weight=100)
@@ -180,7 +180,7 @@ class EntityTest(TestCase):
         util.initialize_date()
 
         plr = util.create_player("jdiajw")
-        rl = RootLocation(Point(1, 1), True, 123)
+        rl = RootLocation(Point(1, 1), 123)
 
         char = Character("John", Character.SEX_MALE, plr, "en", GameDate(120), Point(1, 1), rl)
         self.assertEqual("John", char.name)
@@ -201,7 +201,7 @@ class PassageTest(TestCase):
 
     def test_accessibility(self):
         building_type = LocationType("building", 200)
-        rl = RootLocation(Point(10, 20), False, 213)
+        rl = RootLocation(Point(10, 20), 213)
         loc1 = Location(rl, building_type)
         loc2 = Location(rl, building_type)
 
@@ -319,7 +319,7 @@ class GroupTest(TestCase):
         hammer_type = ItemType("hammer", 100)
 
         tools_category = BuildMenuCategory("tools")
-        rl = RootLocation(Point(1, 1), True, 32)
+        rl = RootLocation(Point(1, 1), 32)
         db.session.add_all([rl, hammer_type, stone_type, tools_category])
         db.session.flush()
 
@@ -332,7 +332,8 @@ class GroupTest(TestCase):
 
         factory = ActivityFactory()
 
-        activity = factory.create_from_recipe(recipe, rl, initiator, 3, user_input={"item_name": "mloteczek", "amount": 1})
+        activity = factory.create_from_recipe(recipe, rl, initiator, 3,
+                                              user_input={"item_name": "mloteczek", "amount": 1})
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)

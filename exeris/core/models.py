@@ -1025,13 +1025,11 @@ class RootLocation(Location):
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
     _position = sql.Column(gis.Geometry("POINT"))
-    is_mobile = sql.Column(sql.Boolean)
     direction = sql.Column(sql.Integer)
 
-    def __init__(self, position, is_mobile, direction):
+    def __init__(self, position, direction):
         super().__init__(None, LocationType.by_name(Types.OUTSIDE), 0)
         self.position = position
-        self.is_mobile = is_mobile
         self.direction = direction
 
     @validates("direction")

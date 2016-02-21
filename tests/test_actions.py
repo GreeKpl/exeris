@@ -24,7 +24,7 @@ class CharacterActionsTest(TestCase):
     def test_simple_create_item_action(self):
         item_type = ItemType("hammer", 200)
         schema_type = ItemType("schema", 0)
-        rl = RootLocation(Point(1, 2), False, 123)
+        rl = RootLocation(Point(1, 2), 123)
         db.session.add_all([item_type, schema_type, rl])
 
         container = Item(schema_type, rl, weight=111)
@@ -59,7 +59,7 @@ class CharacterActionsTest(TestCase):
 
         item_type = ItemType("hammer", 200)
         schema_type = ItemType("schema", 0)
-        rl = RootLocation(Point(1, 2), False, 123)
+        rl = RootLocation(Point(1, 2), 123)
         db.session.add_all([item_type, schema_type, rl])
 
         container = Item(schema_type, rl, weight=111)
@@ -103,7 +103,7 @@ class CharacterActionsTest(TestCase):
         lock_type = ItemType("iron_lock", 200, portable=False)
         key_type = ItemType("key", 10)
 
-        rl = RootLocation(Point(1, 1), False, 213)
+        rl = RootLocation(Point(1, 1), 213)
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
 
@@ -155,7 +155,7 @@ class CharacterActionsTest(TestCase):
         self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
 
     def test_create_location_action(self):
-        rl = RootLocation(Point(1, 1), False, 33)
+        rl = RootLocation(Point(1, 1), 33)
         building_type = LocationType("building", 500)
         scaffolding_type = ItemType("scaffolding", 200, portable=False)
         scaffolding = Item(scaffolding_type, rl)
@@ -184,7 +184,7 @@ class CharacterActionsTest(TestCase):
     def test_drop_item_action_on_hammer(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
 
         plr = util.create_player("aaa")
         doer = util.create_character("John", rl, plr)
@@ -213,7 +213,7 @@ class CharacterActionsTest(TestCase):
     def test_drop_item_action_drop_stackable(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
 
         plr = util.create_player("aaa")
         doer = util.create_character("John", rl, plr)
@@ -253,7 +253,7 @@ class CharacterActionsTest(TestCase):
     def test_drop_item_action_on_stackable_with_parts(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         plr = util.create_player("aaa")
         doer = util.create_character("John", rl, plr)
         obs = util.create_character("obs", rl, plr)
@@ -301,7 +301,7 @@ class CharacterActionsTest(TestCase):
     def test_drop_action_failure_not_in_inv(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         char = util.create_character("John", rl, util.create_player("aaa"))
 
         hammer_type = ItemType("stone_hammer", 200)
@@ -317,7 +317,7 @@ class CharacterActionsTest(TestCase):
     def test_drop_action_failure_too_little_potatoes(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         char = util.create_character("John", rl, util.create_player("aaa"))
 
         # there are too little potatoes
@@ -334,7 +334,7 @@ class CharacterActionsTest(TestCase):
     def test_add_item_to_activity_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 111)
+        rl = RootLocation(Point(1, 1), 111)
         initiator = util.create_character("John", rl, util.create_player("aaa"))
         observer = util.create_character("obs", rl, util.create_player("abc"))
 
@@ -432,9 +432,9 @@ class CharacterActionsTest(TestCase):
     def test_say_aloud_action(self):
         util.initialize_date()
 
-        rl1 = RootLocation(Point(0, 0), False, 123)
-        rl2 = RootLocation(Point(0, 11), False, 123)
-        rl3 = RootLocation(Point(0, 21), False, 123)
+        rl1 = RootLocation(Point(0, 0), 123)
+        rl2 = RootLocation(Point(0, 11), 123)
+        rl3 = RootLocation(Point(0, 21), 123)
         building_type = LocationType("building", 200)
         building = Location(rl1, building_type)
         plr = util.create_player("eee")
@@ -482,7 +482,7 @@ class CharacterActionsTest(TestCase):
     def test_speak_to_somebody_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(13, 15), False, 123)
+        rl = RootLocation(Point(13, 15), 123)
 
         doer = util.create_character("doer", rl, util.create_player("eee1"))
         listener = util.create_character("listener", rl, util.create_player("eee2"))
@@ -502,7 +502,7 @@ class CharacterActionsTest(TestCase):
     def test_whisper_to_somebody_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(13, 15), False, 123)
+        rl = RootLocation(Point(13, 15), 123)
 
         doer = util.create_character("doer", rl, util.create_player("eee1"))
         listener = util.create_character("listener", rl, util.create_player("eee2"))
@@ -524,7 +524,7 @@ class CharacterActionsTest(TestCase):
         util.initialize_date()
 
         building_type = LocationType("building", 200)
-        rl = RootLocation(Point(1, 1), False, 222)
+        rl = RootLocation(Point(1, 1), 222)
         building = Location(rl, building_type, title="Small hut")
 
         char = util.create_character("John", rl, util.create_player("Eddy"))
@@ -544,7 +544,7 @@ class CharacterActionsTest(TestCase):
     def test_eat_action_success(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 222)
+        rl = RootLocation(Point(1, 1), 222)
         char = util.create_character("John", rl, util.create_player("Eddy"))
 
         potatoes_type = ItemType("potatoes", 10, stackable=True)
@@ -565,7 +565,7 @@ class CharacterActionsTest(TestCase):
     def test_create_open_then_close_then_open_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), False, 222)
+        rl = RootLocation(Point(1, 1), 222)
         strange_passage_type = PassageType("strange_passage", False)
         building_type = LocationType("building", 100)
         building = Location(rl, building_type, passage_type=strange_passage_type)
@@ -593,7 +593,7 @@ class CharacterActionsTest(TestCase):
     def test_give_stackable_item_action_give_6_and_then_try_to_give_too_much(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), True, 11)
+        rl = RootLocation(Point(1, 1), 11)
 
         plr = util.create_player("ala123")
         giver = util.create_character("postac", rl, plr)
@@ -618,7 +618,7 @@ class CharacterActionsTest(TestCase):
     def test_join_activity_action_try_join_too_far_away_and_then_success(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), True, 11)
+        rl = RootLocation(Point(1, 1), 11)
         worker = util.create_character("postac", rl, util.create_player("ala123"))
         anvil_type = ItemType("anvil", 300, portable=False)
         anvil = Item(anvil_type, rl)
@@ -637,7 +637,7 @@ class CharacterActionsTest(TestCase):
     def test_death_of_starvation_action(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(1, 1), True, 11)
+        rl = RootLocation(Point(1, 1), 11)
         char = util.create_character("postac", rl, util.create_player("ala123"))
 
         db.session.add(rl)
@@ -656,7 +656,7 @@ class PlayerActionsTest(TestCase):
 
     def test_create_character_action(self):
         util.initialize_date()
-        rl = RootLocation(Point(2, 3), False, 112)
+        rl = RootLocation(Point(2, 3), 112)
         plr = util.create_player("ala123")
 
         db.session.add(rl)
