@@ -226,7 +226,7 @@ class TypeGroup(EntityType):
         """
         if entity_type in self.children:
             return [self, entity_type]
-        child_groups = filter(lambda group: type(group) == TypeGroup, self.children)  # TODO, disgusting
+        child_groups = filter(lambda group: isinstance(group, TypeGroup), self.children)
         for group in child_groups:
             path = group.get_group_path(entity_type)
             if path:
@@ -775,6 +775,12 @@ class Activity(Entity):
     quality_ticks = sql.Column(sql.Integer, default=0)
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
+
+    damage = sql.Column(sql.Float, default=0)
+
+    @validates("damage")
+    def validate_damage(self, key, damage):
+        return max(0.0, min(1.0, damage))  # in range [0, 1]
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,

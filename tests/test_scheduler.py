@@ -1,7 +1,9 @@
+import copy
 from unittest.mock import patch
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
 from exeris.core import main
+from exeris.core.general import GameDate
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
@@ -390,29 +392,39 @@ class SchedulerDecayTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
-    def test_simple_stackable_decay(self):
+    def test_simple_item_decay(self):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), False, 111)
         carrot_type = ItemType("carrot", 5, stackable=True)
-        hammer_type = ItemType("hammer_to_ignore", 30)
+        axe_type = ItemType("axe", 5)
+        axe = Item(axe_type, rl)
+        hammer_type = ItemType("hammer_to_ignore", 30)  # it won't have DEGRADABLE property
         hammer = Item(hammer_type, rl)
         fresh_pile_of_carrots = Item(carrot_type, rl, amount=1000)  # only damage will be increased
 
         carrot_type.properties.append(
             EntityTypeProperty(P.DEGRADABLE, {"lifetime": 30 * 24 * 3600}))
 
-        db.session.add_all([rl, carrot_type, fresh_pile_of_carrots, hammer_type, hammer])
+        axe_type.properties.append(
+            EntityTypeProperty(P.DEGRADABLE, {"lifetime": 100 * 24 * 3600}))
+
+        db.session.add_all([rl, carrot_type, fresh_pile_of_carrots, axe_type, axe, hammer_type, hammer])
 
         process = DecayProcess()
         process.perform()
 
         self.assertAlmostEqual(1 / 30, fresh_pile_of_carrots.damage)
         self.assertEqual(1000, fresh_pile_of_carrots.amount)
-        self.assertEqual(0.0, hammer.damage)  # make sure non-stackables are not affected
+
+        self.assertAlmostEqual(1 / 100, axe.damage)
+
+        self.assertEqual(0.0, hammer.damage)  # make sure items without DEGRADABLE property are not affected
 
         old_pile_of_carrots = Item(carrot_type, rl, amount=1000)
         old_pile_of_carrots.damage = 0.99  #
+
+        axe.damage = 0.999  # it'll crumble
 
         db.session.add(old_pile_of_carrots)
 
@@ -421,3 +433,75 @@ class SchedulerDecayTest(TestCase):
 
         self.assertEqual(1, old_pile_of_carrots.damage)
         self.assertEqual(990, old_pile_of_carrots.amount)
+
+        self.assertEqual(GameDate.now(), axe.removal_game_date)
+        self.assertEqual(None, axe.being_in)
+
+    def test_activity_decay(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), False, 111)
+        initiator = util.create_character("initiator", rl, util.create_player("abc"))
+        axe_type = ItemType("axe", 5)
+        axe = Item(axe_type, rl)
+
+        hammer_type = ItemType("hammer", 30)
+        hammer_type.properties.append(
+            EntityTypeProperty(P.DEGRADABLE, {"lifetime": 2 * 24 * 3600}))
+
+        wood_type = ItemType("wood", 40, stackable=True)
+        wood_type.properties.append(
+            EntityTypeProperty(P.DEGRADABLE, {"lifetime": 10 * 24 * 3600}))
+
+        fuel_group = TypeGroup("group_fuel")
+        fuel_group.add_to_group(wood_type)
+
+        other_group = TypeGroup("group_other")
+        other_group.add_to_group(wood_type, efficiency=2.0)
+
+        input_req = {
+            "group_fuel": {"left": 50, "needed": 200, "used_type": "wood"},
+            "group_other": {"left": 0, "needed": 30000, "used_type": "wood"},
+            "hammer": {"left": 0, "needed": 1, "used_type": "hammer"},
+        }
+        activity = Activity(axe, "chopping wood", {},
+                            {"input": copy.deepcopy(input_req)}, 100, initiator)
+
+        wood = Item(wood_type, activity, amount=20000, role_being_in=False)
+        hammer = Item(hammer_type, activity, role_being_in=False)
+
+        activity.ticks_left = 50
+        activity.damage = 1.0  # it needs to be set in ActivitiesProgress
+
+        db.session.add_all([rl, axe_type, axe, activity, wood_type, wood, hammer_type, hammer])
+
+        process = DecayProcess()
+        process.perform()
+
+        self.assertEqual(50 + SingleActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_left)  # progress decreased
+        self.assertEqual(input_req, activity.requirements["input"])  # input req shouldn't change, because progress > 0
+        self.assertEqual(0.0, hammer.damage)  # input req shouldn't change, because progress > 0
+
+        activity.ticks_left = activity.ticks_needed  # progress = 0, so items will decay
+
+        process = DecayProcess()
+        process.perform()
+
+        self.assertEqual(activity.ticks_needed, activity.ticks_left)  # progress is 0.0
+        self.assertEqual(0.1, wood.damage)  # item used for activity starts to decay
+        self.assertEqual(0.5, hammer.damage)
+
+        wood.damage = 1.0  # wood in activity will start to decay
+
+        process = DecayProcess()
+        process.perform()
+
+        self.assertEqual(19800, wood.amount)
+        self.assertAlmostEqual(GameDate.now(), hammer.removal_game_date, delta=1)
+
+        input_req_after_decay = {
+            "group_fuel": {"left": 200, "needed": 200},
+            "group_other": {"left": 100, "needed": 30000, "used_type": "wood"},
+            "hammer": {"left": 1, "needed": 1}
+        }
+        self.assertEqual(input_req_after_decay, activity.requirements["input"])

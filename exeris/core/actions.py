@@ -296,6 +296,8 @@ class ActivitiesProgressProcess(ProcessAction):
 
 
 class SingleActivityProgressProcess(ProcessAction):
+    DEFAULT_PROGRESS = 5.0
+
     def __init__(self, activity):
         self.activity = activity
         self.entity_worked_on = self.activity.being_in
@@ -341,7 +343,7 @@ class SingleActivityProgressProcess(ProcessAction):
                 if "skill" in req:
                     self.check_skills(worker, req["skills"].items()[0])
 
-                self.progress_ratio += 5.0
+                self.progress_ratio += SingleActivityProgressProcess.DEFAULT_PROGRESS
                 active_workers.append(worker)
 
             if "max_workers" in req:
@@ -361,7 +363,7 @@ class SingleActivityProgressProcess(ProcessAction):
                 self.activity.quality_ticks += 1
 
         except Exception as e:
-            print(traceback.format_exc())
+            logger.error("Error processing activity %s", str(self.activity), e)
 
         if self.activity.ticks_left <= 0:
             self.finish_activity(self.activity)
@@ -526,23 +528,83 @@ class DecayProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = general.GameDate.SEC_IN_DAY
 
     def perform_action(self):
+        self.degrade_items()
+
+        self.decay_progress_of_activities()
+
+        self.decay_abandoned_activities()
+
+    def degrade_items(self):
         items_and_props = db.session.query(models.Item, models.EntityTypeProperty).join(models.ItemType).filter(
-            sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,
-                     models.ItemType.stackable == True,
+            sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,  # ON clause
                      models.Item.role == models.Item.ROLE_BEING_IN,
-                     models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all normal stackables
+                     models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all items
         for item, degradable_prop in items_and_props:
             item_lifetime = degradable_prop.data["lifetime"]
             damage_fraction_to_add_since_last_tick = DecayProcess.SCHEDULER_RUNNING_INTERVAL / item_lifetime
             item.damage += damage_fraction_to_add_since_last_tick
 
             if item.damage == 1.0:
-                self.decay_stackable_item(item)
+                if item.type.stackable:
+                    self.decay_stackable_item(item)
+                else:
+                    self.crumble_item(item)
 
     def decay_stackable_item(self, item):
         runs_per_day = DecayProcess.SCHEDULER_RUNNING_INTERVAL / general.GameDate.SEC_IN_DAY
         amount_left_fraction = (1 - DecayProcess.DAILY_STACKABLE_DECAY_FACTOR / runs_per_day)
         item.amount = util.round_probabilistic(item.amount * amount_left_fraction)
+
+    def crumble_item(self, item):
+        item.remove()
+
+    def decay_progress_of_activities(self):
+        # damage level for Activities is altered ONLY in ActivitiesProgressProcess
+        activities = models.Activity.query.filter(models.Activity.ticks_left < models.Activity.ticks_needed).all()
+        for activity in activities:  # decrease progress
+            activity.ticks_left += min(SingleActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_needed)
+
+    def decay_abandoned_activities(self):
+        # activities abandoned for a long time
+        activities = models.Activity.query.filter_by(damage=1.0) \
+            .filter(models.Activity.ticks_left == models.Activity.ticks_needed).all()
+        for activity in activities:
+            items_and_props = db.session.query(models.Item, models.EntityTypeProperty).join(models.ItemType).filter(
+                sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,  # ON clause
+                         models.Item.is_used_for(activity),
+                         models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all normal stackables
+            for item, degradable_prop in items_and_props:
+                item_lifetime = degradable_prop.data["lifetime"]
+                damage_fraction_to_add_since_last_tick = DecayProcess.SCHEDULER_RUNNING_INTERVAL / item_lifetime
+                item.damage += damage_fraction_to_add_since_last_tick
+
+                if item.damage == 1.0:
+                    if item.type.stackable:
+                        previous_amount = item.amount
+                        self.decay_stackable_item(item)
+                        amount_to_be_removed = previous_amount - item.amount
+                        self.update_activity_requirements(activity, amount_to_be_removed, item)
+                    else:
+                        self.crumble_item(item)
+                        self.update_activity_requirements(activity, 1, item)
+
+    def update_activity_requirements(self, activity, amount_to_be_removed, item):
+        input_req = activity.requirements.get("input", {})
+        # one item type can be used in many groups
+        for group_name, requirement_params in sorted(input_req.items()):  # deterministic order
+            if "used_type" in requirement_params and requirement_params["used_type"] == item.type_name:
+                item_to_group_multiplier = models.EntityType.by_name(group_name).efficiency(
+                    models.EntityType.by_name(requirement_params["used_type"]))
+                units_used = requirement_params["needed"] - requirement_params["left"]
+                units_of_group_to_be_removed = math.ceil(amount_to_be_removed * item_to_group_multiplier)
+                requirement_params["left"] += min(units_of_group_to_be_removed, units_used)
+                amount_which_was_just_removed = min(units_of_group_to_be_removed, units_used) / item_to_group_multiplier
+                amount_to_be_removed -= min(amount_which_was_just_removed, amount_to_be_removed)
+
+                if requirement_params["needed"] == requirement_params["left"]:
+                    del requirement_params["used_type"]  # allow any type to fulfill the group
+
+        activity.requirements = dict(activity.requirements)  # FORCE refresh
 
 
 #
