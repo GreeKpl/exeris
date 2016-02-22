@@ -16,6 +16,7 @@ from tests import util
 
 class LocationTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_insert_basic(self):
         pos = Point(10, 20)
@@ -42,7 +43,7 @@ class LocationTest(TestCase):
         self.assertAlmostEqual(MAP_WIDTH / 2 + 20, root_loc2.position.x, places=6)
         self.assertAlmostEqual(MAP_HEIGHT - 30, root_loc2.position.y, places=6)
 
-    def test_find_position(self):
+    def test_find_position_by_query(self):
         pos = Point(10, 20)
         root_loc = RootLocation(pos, 100)  # the simplest
         db.session.add(root_loc)
@@ -101,11 +102,10 @@ class LocationTest(TestCase):
 
         self.assertCountEqual([ch1], loc.get_characters_inside())
 
-    tearDown = util.tear_down_rollback
-
 
 class EntityTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_property_call_by_property(self):
         @properties_base.property_class
@@ -193,11 +193,111 @@ class EntityTest(TestCase):
         char.name = "James"
         self.assertEqual("James", char.name)
 
+
+class RootLocationTest(TestCase):
+    create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
+
+    def test_is_permanent_for_temporary_locations(self):
+        root_location = RootLocation(Point(30, 30), 23)
+        db.session.add_all([root_location])
+
+        # empty
+        self.assertFalse(root_location.is_permanent())
+
+        cart_type = LocationType("cart", 100)
+        cart_type.properties.append(EntityTypeProperty(P.MOBILE, {True: True}))
+        hammer_type = ItemType("hammer", 200)
+        hammer = Item(hammer_type, root_location)
+
+        cart = Location(root_location, cart_type)
+        db.session.add_all([hammer_type, hammer, cart_type, cart])
+
+        self.assertFalse(root_location.is_permanent())
+
+    def test_is_permanent_for_permanent_locations(self):
+        root_location = RootLocation(Point(30, 30), 23)
+        db.session.add(root_location)
+
+        # fixed item
+        landmark_type = ItemType("landmark", 200, portable=False)
+        landmark = Item(landmark_type, root_location)
+        db.session.add_all([landmark_type, landmark])
+
+        self.assertTrue(root_location.is_permanent())
+
+        root_location = RootLocation(Point(30, 30), 23)
+        db.session.add(root_location)
+
+        # not mobile building
+        building_type = LocationType("building", 100)
+        building = Location(root_location, building_type)
+        db.session.add_all([building_type, building])
+
+        self.assertTrue(root_location.is_permanent())
+
+    def _prepare_center(self, x=30, y=30):
+        center = RootLocation(Point(x, y), 23)
+        center.title = "center"
+        db.session.add(center)
+        return center
+
+    def test_can_be_permanent_true(self):
+        center = self._prepare_center()
+
+        # fixed item
+        landmark_type = ItemType("landmark", 200, portable=False)
+        hammer_type = ItemType("hammer", 200)
+
+        loc_being_too_far_away = RootLocation(Point(19, 30), 23)
+        loc_being_too_far_away.title = "too_far_away"
+        landmark = Item(landmark_type, loc_being_too_far_away)
+
+        loc_without_fixed_item = RootLocation(Point(20, 30), 23)
+        loc_without_fixed_item.title = "without_fixed_item"
+
+        hammer = Item(hammer_type, loc_without_fixed_item)
+
+        db.session.add_all([landmark_type, landmark, loc_being_too_far_away,
+                            loc_without_fixed_item, hammer_type, hammer])
+
+        self.assertTrue(center.can_be_permanent())
+
+        # center being parmanent doesn't affect can_be_permanent() state
+        building_type = LocationType("building", 100)
+        building = Location(center, building_type)
+        db.session.add_all([building_type, building])
+
+        self.assertTrue(center.can_be_permanent())
+
+    def test_can_be_permanent_false(self):
+        center = self._prepare_center()
+
+        # fixed item
+        landmark_type = ItemType("landmark", 200, portable=False)
+
+        loc_with_fixed_item = RootLocation(Point(20, 30), 23)
+        loc_with_fixed_item.title = "with_fixed_item"
+        landmark = Item(landmark_type, loc_with_fixed_item)
+
+        db.session.add_all([landmark_type, landmark, loc_with_fixed_item])
+
+        self.assertFalse(center.can_be_permanent())
+
+        center = self._prepare_center(40, 50)
+        loc_with_not_mobile_location = RootLocation(Point(50, 50), 23)
+        loc_with_not_mobile_location.title = "with_not_mobile_location"
+
+        building_type = LocationType("building", 100)
+        building = Location(loc_with_not_mobile_location, building_type)
+        db.session.add_all([building_type, building])
+
+        self.assertFalse(center.can_be_permanent())
 
 
 class PassageTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_accessibility(self):
         building_type = LocationType("building", 200)
@@ -214,8 +314,6 @@ class PassageTest(TestCase):
 
         self.assertTrue(passage1.is_accessible())
         self.assertFalse(passage2.is_accessible())
-
-    tearDown = util.tear_down_rollback
 
 
 class GroupTest(TestCase):

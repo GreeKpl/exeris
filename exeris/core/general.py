@@ -234,7 +234,7 @@ class TraversabilityBasedRange(RangeSpec):
 
 class ItemQueryHelper:
     @staticmethod
-    def all_of_types_in(types, being_in):
+    def query_all_types_in(types, being_in):
         """
         Return pre-prepared query which will filter Item query to specified types and "being_in" property
         :param types: list of ItemType instances or ItemType.type_name identifiers
@@ -245,7 +245,7 @@ class ItemQueryHelper:
         return models.Item.query.filter(models.Item.type_name.in_(type_names)).filter(models.Item.is_in(being_in))
 
     @staticmethod
-    def all_of_types_near(types, being_in):
+    def query_all_types_near(types, being_in):
         """
         Return pre-prepared query which will filter Item query to specified types and "being_in" property
         :param types: list of ItemType instances or ItemType.type_name identifiers

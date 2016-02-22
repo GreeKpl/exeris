@@ -14,6 +14,7 @@ class P:
     INVISIBLE_PASSAGE = "InvisiblePassage"
     DEATH_INFO = "DeathInfo"
     DEGRADABLE = "Degradable"
+    MOBILE = "Mobile"
 
 
 __registry = {}

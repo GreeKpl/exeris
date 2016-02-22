@@ -385,7 +385,7 @@ class SingleActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
+            tools = general.ItemQueryHelper.query_all_types_in(allowed_types, worker).all()
             if not tools:
                 raise main.NoToolForActivityException(tool_name=group.name)
 
@@ -400,7 +400,7 @@ class SingleActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            tools = general.ItemQueryHelper.all_of_types_in(allowed_types, worker).all()
+            tools = general.ItemQueryHelper.query_all_types_in(allowed_types, worker).all()
             if not tools:
                 continue
 
@@ -423,7 +423,7 @@ class SingleActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.all_of_types_near(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, self.entity_worked_on.being_in).all()
             if not machines:
                 raise main.NoMachineForActivityException(machine_name=group.name)
 
@@ -438,7 +438,7 @@ class SingleActivityProgressProcess(ProcessAction):
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.all_of_types_near(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, self.entity_worked_on.being_in).all()
             if not machines:
                 continue
 

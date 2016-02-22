@@ -6,7 +6,6 @@ import types
 import geoalchemy2 as gis
 import sqlalchemy as sql
 import sqlalchemy.dialects.postgresql as psql
-import sqlalchemy.orm
 from flask.ext.security import RoleMixin
 from flask.ext.security import UserMixin
 from geoalchemy2.shape import to_shape, from_shape
@@ -285,7 +284,7 @@ class Entity(db.Model):
 
     @being_in.expression
     def being_in(cls):
-        return cls.parent_entity == Entity.id
+        return cls.parent_entity
         # print(select(cls.id).where((cls.role == Item.ROLE_BEING_IN) & (cls.parent_entity == Item)))
         # return select(cls.parent_entity).where((cls.role == Entity.ROLE_BEING_IN) & (cls.parent_entity_id == Entity.id))
         # return case([(cls.role == Entity.ROLE_BEING_IN, cls.parent_entity_id)], else_=-1)
@@ -383,7 +382,7 @@ class Entity(db.Model):
         if kwargs:
             assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
             key, value = next(iter(kwargs.items()))
-            entity_json_data, type_json_data = cls.cast_to_correct_psql_type(key, value)
+            entity_json_data, type_json_data = cls._cast_to_correct_psql_type(key, value)
             entity_related_where_clause += [entity_json_data == value]
             type_related_where_clause += [type_json_data == value]
         return db.session.query(cls).distinct().outerjoin(Entity.properties).outerjoin(EntityType.properties).filter(
@@ -391,7 +390,7 @@ class Entity(db.Model):
                     sql.and_(*type_related_where_clause)))
 
     @staticmethod
-    def cast_to_correct_psql_type(key, value):
+    def _cast_to_correct_psql_type(key, value):
         entity_column_value = EntityProperty.data[key].astext
         type_column_value = EntityTypeProperty.data[key].astext
         if isinstance(value, int):
@@ -426,11 +425,23 @@ class Entity(db.Model):
         entity_property.data = dict(entity_property.data)  # force property's `data` marked as modified
         return entity_property
 
+    def is_empty(self):
+        """
+        Checks if there's anything inside (being_in) or directly neighbouring of this entity.
+        It yields correct results for any entity type excluding Activity.
+        For Location it says whether location has any neighbour (including parent).
+        It may not yield correct result for Activity (items used in activity have USED_FOR role).
+        :return: True if this entity stores any entity inside or has any neighbour
+        """
+        if type(self) is Location:  # Location (not RootLocation) must always have at least one passage to neighbour
+            return False
+        return not Entity.query.filter(Entity.is_in(self)).count()
+
     def get_position(self):
         return self.get_root().position
 
     def get_root(self):
-        if type(self) is RootLocation:
+        if isinstance(self, RootLocation):
             return self
         else:
             return self.being_in.get_root()
@@ -708,9 +719,12 @@ class Item(Entity):
             for item in items_inside:
                 item.being_in = self.being_in  # move outside
 
+        parent_entity = self.being_in
+
         self.being_in = None
         from exeris.core import general
         self.removal_game_date = general.GameDate.now()
+        main.call_hook(main.hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
@@ -999,6 +1013,13 @@ class Location(Entity):
     def get_items_inside(self):
         return Item.query.filter(Item.is_in(self)).all()
 
+    def remove(self):
+        raise NotImplemented("remove is not yet implemented for Location")
+        # TODO remove all passages to neighbours
+        # make sure the path to RootLocation to every neighbour exists
+        # or decide that all dependent locations will be destroyed
+        # self.being_in = None
+
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_LOCATION, location_id=self.id,
                           location_name=self.type_name)
@@ -1022,9 +1043,11 @@ class Location(Entity):
 class RootLocation(Location):
     __tablename__ = "root_locations"
 
+    PERMANENT_MIN_DISTANCE = 10
+
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    _position = sql.Column(gis.Geometry("POINT"))
+    _position = sql.Column(gis.Geometry("POINT"), nullable=True)
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, direction):
@@ -1057,12 +1080,38 @@ class RootLocation(Location):
     def position(cls):
         return cls._position
 
+    def is_permanent(self):
+        fixed_items = Item.query.join(ItemType).filter(Item.is_in(self)).filter(~ItemType.portable).all()
+        print(fixed_items)
+        if fixed_items:
+            return True
+
+        # query for neighbouring locations using RISKY being_in check
+        locations = Location.query.filter_by(parent_entity=self, role=Entity.ROLE_BEING_IN).all()
+
+        if any([not loc.has_property(P.MOBILE) for loc in locations]):
+            return True
+
+        return False
+
+    def can_be_permanent(self):
+        other_root_locations = RootLocation.query. \
+            filter(RootLocation.position.ST_DWithin(self.position.to_wkt(), RootLocation.PERMANENT_MIN_DISTANCE)).all()
+
+        return all(not loc.is_permanent() for loc in other_root_locations if loc != self)
+
     def get_terrain_type(self):
         top_terrain = TerrainArea.query.filter(sql.func.ST_CoveredBy(from_shape(self.position), TerrainArea._terrain)). \
             order_by(TerrainArea.priority.desc()).first()
         if not top_terrain:
             return TerrainType.by_name(Types.SEA)
         return top_terrain.type
+
+    def remove(self):
+        if not self.is_empty():
+            raise ValueError("trying to remove RootLocation (id: {}) which is not empty".format(self.id))
+
+        self._position = None  # just place it nowhere
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id,

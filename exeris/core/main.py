@@ -60,6 +60,7 @@ class Hooks:
     NEW_CHARACTER_NOTIFICATION = "new_character_notification"
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
     EXCEEDED_HUNGER_LEVEL = "exceeded_hunger_level"
+    ENTITY_CONTENTS_COUNT_DECREASED = "entity_contents_count_decreased"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
