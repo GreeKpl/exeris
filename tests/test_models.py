@@ -2,6 +2,7 @@ from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
+from exeris.core import actions
 from exeris.core import properties_base
 from exeris.core.general import GameDate
 from exeris.core.main import db
@@ -12,6 +13,9 @@ from exeris.core.models import RootLocation, Location, Item, EntityProperty, Ent
 from exeris.core.properties_base import EntityPropertyException, P
 from exeris.core.recipes import ActivityFactory
 from tests import util
+
+# noinspection PyUnresolvedReferences
+from exeris.core import hooks
 
 
 class LocationTest(TestCase):
@@ -293,6 +297,26 @@ class RootLocationTest(TestCase):
         db.session.add_all([building_type, building])
 
         self.assertFalse(center.can_be_permanent())
+
+    def test_root_location_removed_when_empty(self):
+        root_location = RootLocation(Point(1, 1), 23)
+        root_location_near = RootLocation(Point(1, 2), 23)
+        hammer_type = ItemType("hammer", 20)
+        hammer = Item(hammer_type, root_location)
+
+        taker_char = util.create_character("taker", root_location, util.create_player("abc"))
+
+        db.session.add_all([root_location, hammer_type, hammer])
+        actions.move_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
+
+        self.assertEqual(Point(1, 1), root_location.position)  # root location not removed
+
+        # move character away and hammer back on ground
+        hammer.being_in = root_location
+        taker_char.being_in = root_location_near
+
+        actions.move_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
+        self.assertIn(root_location, db.session.deleted)  # RootLocation was empty, so it got deleted
 
 
 class PassageTest(TestCase):

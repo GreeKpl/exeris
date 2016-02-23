@@ -724,7 +724,7 @@ class Item(Entity):
         self.being_in = None
         from exeris.core import general
         self.removal_game_date = general.GameDate.now()
-        main.call_hook(main.hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
+        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
@@ -1061,6 +1061,8 @@ class RootLocation(Location):
 
     @hybrid_property
     def position(self):
+        if self._position is None:
+            return None
         return to_shape(self._position)
 
     @position.setter
@@ -1111,7 +1113,7 @@ class RootLocation(Location):
         if not self.is_empty():
             raise ValueError("trying to remove RootLocation (id: {}) which is not empty".format(self.id))
 
-        self._position = None  # just place it nowhere
+        db.session.delete(self)  # remove itself from the database
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ROOT_LOCATION, location_id=self.id,

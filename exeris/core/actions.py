@@ -649,6 +649,7 @@ def move_between_entities(item, source, destination, amount, to_be_used_for=Fals
             item.used_for = destination
         else:
             item.being_in = destination
+        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=source)
     else:
         raise main.InvalidInitialLocationException(entity=item)
 
