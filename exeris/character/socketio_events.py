@@ -270,7 +270,7 @@ def form_add_item_to_activity(entity_id):
             for needed_type_name, req_data in activity.requirements["input"].items():
                 needed_type = models.EntityType.by_name(needed_type_name)
                 if needed_type.contains(entity_to_add.type):
-                    amount = req_data["left"] / needed_type.efficiency(entity_to_add.type)
+                    amount = req_data["left"] / needed_type.quantity_efficiency(entity_to_add.type)
                     activities_to_add += [
                         {"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
 

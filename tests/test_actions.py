@@ -95,7 +95,7 @@ class CharacterActionsTest(TestCase):
         util.initialize_date()
 
         iron_type = ItemType("iron", 4, stackable=True)
-        hard_metal_group = TypeGroup("group_hard_metal")
+        hard_metal_group = TypeGroup("group_hard_metal", stackable=True)
         steel_type = ItemType("steel", 5, stackable=True)
 
         hard_metal_group.add_to_group(steel_type, efficiency=0.5)
@@ -340,7 +340,7 @@ class CharacterActionsTest(TestCase):
 
         anvil_type = ItemType("anvil", 400, portable=False)
         anvil = Item(anvil_type, rl)
-        metal_group = TypeGroup("group_metal")
+        metal_group = TypeGroup("group_metal", stackable=True)
         iron_type = ItemType("iron", 10, stackable=True)
         metal_group.add_to_group(iron_type, efficiency=0.5)
 
@@ -373,8 +373,8 @@ class CharacterActionsTest(TestCase):
 
         # TEST TYPE MATCHING MULTIPLE REQUIREMENT GROUPS
 
-        wood_group = TypeGroup("group_wood")
-        fuel_group = TypeGroup("group_fuel")
+        wood_group = TypeGroup("group_wood", stackable=True)
+        fuel_group = TypeGroup("group_fuel", stackable=True)
         oak_type = ItemType("oak", 50, stackable=True)
         wood_group.add_to_group(oak_type)
         fuel_group.add_to_group(oak_type)
@@ -428,6 +428,36 @@ class CharacterActionsTest(TestCase):
             wood_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
         }, activity.requirements["input"])
         self.assertIsNotNone(oak.removal_game_date)
+
+    def test_add_nonstackable_item_to_activity(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 111)
+        initiator = util.create_character("John", rl, util.create_player("aaa"))
+
+        anvil_type = ItemType("anvil", 400, portable=False)
+        anvil = Item(anvil_type, rl)
+        tools_group = TypeGroup("group_tools", stackable=False)
+        hammer_type = ItemType("hammer", 10, stackable=False)
+        tools_group.add_to_group(hammer_type, efficiency=5.0)
+
+        hammer = Item(hammer_type, initiator)
+
+        db.session.add_all([rl, initiator, anvil_type, anvil, tools_group, hammer_type, hammer])
+        db.session.flush()
+
+        activity = Activity(anvil, "dummy_activity_name", {}, {
+            "input": {
+                tools_group.name: {"needed": 10, "left": 10}
+            }
+        }, 1, initiator)
+
+        action = AddEntityToActivityAction(initiator, hammer, activity, 1)
+        action.perform()
+
+        self.assertEqual({tools_group.name: {"needed": 10, "left": 9, "used_type": hammer_type.name}},
+                         activity.requirements["input"])
+        self.assertEqual(activity, hammer.used_for)
 
     def test_say_aloud_action(self):
         util.initialize_date()

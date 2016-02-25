@@ -103,7 +103,7 @@ class SchedulerActivityTest(TestCase):
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
 
-        hammers_group = TypeGroup("group_hammers")
+        hammers_group = TypeGroup("group_hammers", stackable=False)
         hammers_group.add_to_group(bone_hammer, efficiency=2.0)
 
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
@@ -141,7 +141,7 @@ class SchedulerActivityTest(TestCase):
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
 
-        hammers_group = TypeGroup("group_hammers")
+        hammers_group = TypeGroup("group_hammers", stackable=False)
         hammers_group.add_to_group(bone_hammer, efficiency=2.0)
 
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
@@ -191,7 +191,7 @@ class SchedulerActivityTest(TestCase):
         bucket_type = ItemType("bucket", 200, portable=False)
         wooden_spindle_type = ItemType("wooden_spindle", 300, portable=False)
 
-        spindles_group = TypeGroup("group_spindles")
+        spindles_group = TypeGroup("group_spindles", stackable=False)
         spindles_group.add_to_group(wooden_spindle_type, efficiency=2.0)
 
         db.session.add_all(
@@ -453,10 +453,10 @@ class SchedulerDecayTest(TestCase):
         wood_type.properties.append(
             EntityTypeProperty(P.DEGRADABLE, {"lifetime": 10 * 24 * 3600}))
 
-        fuel_group = TypeGroup("group_fuel")
+        fuel_group = TypeGroup("group_fuel", stackable=True)
         fuel_group.add_to_group(wood_type)
 
-        other_group = TypeGroup("group_other")
+        other_group = TypeGroup("group_other", stackable=True)
         other_group.add_to_group(wood_type, efficiency=2.0)
 
         input_req = {

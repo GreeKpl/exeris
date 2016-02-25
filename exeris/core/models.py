@@ -151,7 +151,8 @@ class TypeGroupElement(db.Model):
     parent = sql.orm.relationship("TypeGroup", foreign_keys=[parent_name], backref="_children_junction")
     child_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey('entity_types.name'), primary_key=True)
     child = sql.orm.relationship("EntityType", foreign_keys=[child_name], backref="_parent_groups_junction")
-    efficiency = sql.Column(sql.Float, default=1.0, nullable=False)  # how many of child is 1 unit of parent group
+    efficiency = sql.Column(sql.Float, default=1.0, nullable=False)
+    # holds quantity efficiency for stackables and quality efficiency for non-stackables
 
 
 class ItemType(EntityType):
@@ -169,7 +170,7 @@ class ItemType(EntityType):
     stackable = sql.Column(sql.Boolean)
     portable = sql.Column(sql.Boolean)
 
-    def efficiency(self, entity_type):  # quack quack
+    def quantity_efficiency(self, entity_type):  # quack quack
         if entity_type == self:
             return 1.0
         raise ValueError
@@ -189,6 +190,11 @@ class TypeGroup(EntityType):
     __tablename__ = "entity_type_groups"
 
     name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
+    stackable = sql.Column(sql.Boolean)
+
+    def __init__(self, name, stackable):
+        super().__init__(name)
+        self.stackable = stackable
 
     @hybrid_property
     def children(self):
@@ -232,7 +238,10 @@ class TypeGroup(EntityType):
                 return [self] + path
         return []
 
-    def efficiency(self, entity_type):
+    def quantity_efficiency(self, entity_type):
+        if not self.stackable:
+            return 1.0
+
         lst = self.get_group_path(entity_type)
         pairs = zip(lst[:-1], lst[1:])
         efficiency = 1.0
@@ -240,8 +249,16 @@ class TypeGroup(EntityType):
             efficiency *= TypeGroupElement.query.filter_by(parent=pair[0], child=pair[1]).one().efficiency
         return efficiency
 
-    def __init__(self, name):
-        super().__init__(name)
+    def quality_efficiency(self, entity_type):
+        if self.stackable:
+            return 1.0
+
+        lst = self.get_group_path(entity_type)
+        pairs = zip(lst[:-1], lst[1:])
+        efficiency = 1.0
+        for pair in pairs:
+            efficiency *= TypeGroupElement.query.filter_by(parent=pair[0], child=pair[1]).one().efficiency
+        return efficiency
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_GROUP,

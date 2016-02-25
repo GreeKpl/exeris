@@ -194,7 +194,7 @@ class CreateItemAction(ActivityAction):
                 real_material_type = models.ItemType.by_name(req_used_type_name)
                 required_material_type = models.EntityType.by_name(req_material_name)
 
-                amount = requirement_params["needed"] / required_material_type.efficiency(real_material_type)
+                amount = requirement_params["needed"] / required_material_type.quantity_efficiency(real_material_type)
 
                 item = models.Item.query.filter_by(type=real_material_type).one()
                 move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
@@ -593,7 +593,7 @@ class DecayProcess(ProcessAction):
         # one item type can be used in many groups
         for group_name, requirement_params in sorted(input_req.items()):  # deterministic order
             if "used_type" in requirement_params and requirement_params["used_type"] == item.type_name:
-                item_to_group_multiplier = models.EntityType.by_name(group_name).efficiency(
+                item_to_group_multiplier = models.EntityType.by_name(group_name).quantity_efficiency(
                     models.EntityType.by_name(requirement_params["used_type"]))
                 units_used = requirement_params["needed"] - requirement_params["left"]
                 units_of_group_to_be_removed = math.ceil(amount_to_be_removed * item_to_group_multiplier)
@@ -770,7 +770,7 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
                 continue
             if not required_group.contains(self.item.type):  # requirement cannot be fulfilled by this type
                 continue
-            type_efficiency_ratio = required_group.efficiency(self.item.type)
+            type_efficiency_ratio = required_group.quantity_efficiency(self.item.type)
             max_to_be_added = math.ceil(required_group_params["left"] / type_efficiency_ratio)
             amount_to_add = min(self.amount, max_to_be_added)
 

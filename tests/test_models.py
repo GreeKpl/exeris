@@ -346,7 +346,7 @@ class GroupTest(TestCase):
     def test_group_direct_modification(self):
         self._setup_hammers()
 
-        hammers = TypeGroup("group_hammers")
+        hammers = TypeGroup("group_hammers", stackable=False)
 
         hammers._children_junction.append(TypeGroupElement(self.stone_hammer))
         hammers._children_junction.append(TypeGroupElement(self.iron_hammer))
@@ -359,8 +359,8 @@ class GroupTest(TestCase):
     def test_group_modification(self):
         self._setup_hammers()
 
-        tools = TypeGroup("group_tools")
-        hammers = TypeGroup("group_hammers")
+        tools = TypeGroup("group_tools", stackable=False)
+        hammers = TypeGroup("group_hammers", stackable=False)
 
         hammers.add_to_group(self.stone_hammer)
         hammers.add_to_group(self.iron_hammer)
@@ -375,27 +375,28 @@ class GroupTest(TestCase):
         self.assertEqual([hammers], self.stone_hammer.parent_groups)
         self.assertEqual([tools], hammers.parent_groups)
 
-    def test_groups(self):
-        useful = TypeGroup("group_useful")
-        tools = TypeGroup("group_tools")
-        hammers = TypeGroup("group_hammers")
-        cookies = TypeGroup("group_cookies")
+    def test_groups_conclusion(self):
+        useful = TypeGroup("group_useful", stackable=False)
+        tools = TypeGroup("group_tools", stackable=False)
+        hammers = TypeGroup("group_hammers", stackable=False)
+        swords = TypeGroup("group_swords", stackable=False)
 
         useful.add_to_group(tools)
         tools.add_to_group(hammers)
 
-        db.session.add_all([useful, tools, hammers, cookies])
+        db.session.add_all([useful, tools, hammers, swords])
 
         self.assertTrue(tools.contains(hammers))
         self.assertTrue(useful.contains(hammers))
-        self.assertFalse(tools.contains(cookies))
+        self.assertFalse(tools.contains(swords))
         self.assertFalse(hammers.contains(tools))
 
         self.assertEqual([useful, tools, hammers], useful.get_group_path(hammers))
 
-        fuel = TypeGroup("group_fuel")
-        wood = TypeGroup("group_wood")
-        pine_wood = TypeGroup("group_pine_wood")
+    def test_groups_quantity_efficiency(self):
+        fuel = TypeGroup("group_fuel", stackable=True)
+        wood = TypeGroup("group_wood", stackable=True)
+        pine_wood = TypeGroup("group_pine_wood", stackable=True)
         old_pine_wood = ItemType("old_pine_wood", 50, stackable=True)
         fine_oak_wood = ItemType("fine_oak_wood", 70, stackable=True)
 
@@ -406,13 +407,30 @@ class GroupTest(TestCase):
 
         db.session.add_all([fuel, wood, pine_wood, old_pine_wood, fine_oak_wood])
 
-        self.assertEqual(0.5, fuel.efficiency(fine_oak_wood))
-        self.assertEqual(0.5625, fuel.efficiency(old_pine_wood))
+        self.assertEqual(0.5, fuel.quantity_efficiency(fine_oak_wood))
+        self.assertEqual(0.5625, fuel.quantity_efficiency(old_pine_wood))
+
+    def test_groups_quality_and_quantity_efficiency(self):
+        tools = TypeGroup("group_tools", stackable=False)
+        hammers = TypeGroup("group_hammers", stackable=False)
+        fruits = TypeGroup("group_fruits", stackable=True)
+        apple = ItemType("apple", 30, stackable=True)
+
+        tools.add_to_group(hammers, efficiency=2.0)
+        fruits.add_to_group(apple, efficiency=5.0)
+
+        db.session.add_all([tools, hammers, fruits, apple])
+
+        self.assertEqual(2.0, tools.quality_efficiency(hammers))
+        self.assertEqual(1.0, tools.quantity_efficiency(hammers))
+
+        self.assertEqual(1.0, fruits.quality_efficiency(apple))
+        self.assertEqual(5.0, fruits.quantity_efficiency(apple))
 
     def test_group_get_descending_types(self):
-        tools = TypeGroup("group_tools")
-        hammers = TypeGroup("group_hammer")
-        axes = TypeGroup("group_axes")
+        tools = TypeGroup("group_tools", stackable=False)
+        hammers = TypeGroup("group_hammer", stackable=False)
+        axes = TypeGroup("group_axes", stackable=False)
 
         stone_axe = ItemType("stone_axe", 100)
         bone_axe = ItemType("bone_axe", 200)

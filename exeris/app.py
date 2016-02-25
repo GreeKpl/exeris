@@ -239,7 +239,7 @@ def create_database():
         db.session.add_all([pig, horse])
 
     if not models.ItemType.by_name("granite"):
-        stone_group = models.TypeGroup("group_stone")
+        stone_group = models.TypeGroup("group_stone", stackable=True)
         granite_type = models.ItemType("granite", 20, stackable=True)
         sandstone_type = models.ItemType("sandstone", 10, stackable=True)
         marble_type = models.ItemType("marble", 30, stackable=True)
