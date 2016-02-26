@@ -327,12 +327,12 @@ class SingleActivityProgressProcess(ProcessAction):
             if "target_with_properties" in req:
                 pass
 
+            if "input" in req:
+                self.check_input_requirements(req["input"])
+
             active_workers = []
             for worker in workers:
                 self.check_worker_proximity(self.activity, worker)
-
-                if "input" in req:
-                    self.check_input_requirements(req["input"])
 
                 if "mandatory_tools" in req:
                     self.check_mandatory_tools(worker, req["mandatory_tools"])
@@ -361,6 +361,12 @@ class SingleActivityProgressProcess(ProcessAction):
             if len(self.machine_based_quality):
                 self.activity.quality_sum += mean(self.machine_based_quality)
                 self.activity.quality_ticks += 1
+
+            for group, params in req.get("input", {}).items():
+                print(group, params)
+                if "quality" in params:
+                    self.activity.quality_sum += params["quality"]
+                    self.activity.quality_ticks += 1
 
         except Exception as e:
             logger.error("Error processing activity %s", str(self.activity), e)
@@ -784,6 +790,11 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
 
             required_group_params["left"] = max(0, required_group_params["left"] - material_left_reduction)
             required_group_params["used_type"] = self.item.type_name
+            if not self.item.type.stackable:  # non-stackables affect quality
+                added_to_needed_fraction = material_left_reduction / required_group_params["needed"]
+                total_item_quality = required_group.quality_efficiency(self.item.type) * self.item.quality
+                required_group_params["quality"] = (total_item_quality * added_to_needed_fraction) \
+                                                   + required_group_params.get("quality", 0)
 
             overwrites = {}
             if self.item.type.stackable:

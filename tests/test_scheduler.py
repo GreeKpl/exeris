@@ -254,10 +254,11 @@ class SchedulerActivityTest(TestCase):
         target_item1 = Item(some_item_type, rl)
         target_item2 = Item(some_item_type, worker)
 
-        db.session.add_all([rl, far_away, worked_on_type, some_item_type, worked_on, target_item1, target_item2])
+        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
+        db.session.add_all(
+            [rl, far_away, worked_on_type, some_item_type, worked_on, target_item1, target_item2, activity])
         db.session.flush()
 
-        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
         process = SingleActivityProgressProcess(activity)
 
         process.check_target_proximity([target_item1.id, target_item2.id])
@@ -276,9 +277,10 @@ class SchedulerActivityTest(TestCase):
         worker1 = util.create_character("1", rl, plr)
         worker2 = util.create_character("2", rl, plr)
 
-        db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2])
-
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker1)
+
+        db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2, activity])
+
         process = SingleActivityProgressProcess(activity)
 
         workers = [worker1, worker2]
@@ -292,6 +294,31 @@ class SchedulerActivityTest(TestCase):
         process.check_max_workers(workers, 2)
         self.assertRaises(main.TooManyParticipantsException,
                           lambda: process.check_max_workers(workers, 1))
+
+    def test_input_nonstackable_affecting_result_quality(self):
+        rl = RootLocation(Point(1, 1), 123)
+        worked_on_type = ItemType("worked_on", 100)
+        worked_on = Item(worked_on_type, rl)
+        hammer_type = ItemType("hammer", 23)
+        axe_type = ItemType("axe", 23)
+
+        plr = util.create_player("ABC")
+        worker1 = util.create_character("1", rl, plr)
+
+        activity = Activity(worked_on, "name", {}, {"input": {
+            "hammer": {"left": 0, "needed": 1, "quality": 1.5},
+            "axe": {"left": 0, "needed": 1, "quality": 4.0},
+        }}, 1, worker1)
+        hammer = Item(hammer_type, activity, role_being_in=False)
+        axe = Item(axe_type, activity, role_being_in=False)
+
+        db.session.add_all([rl, worked_on_type, worked_on, worker1, hammer_type, hammer, axe, activity])
+
+        process = SingleActivityProgressProcess(activity)
+        process.perform()
+
+        self.assertEqual(5.5, activity.quality_sum)
+        self.assertEqual(2, activity.quality_ticks)
 
 
 class SchedulerEatingTest(TestCase):

@@ -441,7 +441,7 @@ class CharacterActionsTest(TestCase):
         hammer_type = ItemType("hammer", 10, stackable=False)
         tools_group.add_to_group(hammer_type, efficiency=5.0)
 
-        hammer = Item(hammer_type, initiator)
+        hammer = Item(hammer_type, initiator, quality=1.5)
 
         db.session.add_all([rl, initiator, anvil_type, anvil, tools_group, hammer_type, hammer])
         db.session.flush()
@@ -455,7 +455,7 @@ class CharacterActionsTest(TestCase):
         action = AddEntityToActivityAction(initiator, hammer, activity, 1)
         action.perform()
 
-        self.assertEqual({tools_group.name: {"needed": 10, "left": 9, "used_type": hammer_type.name}},
+        self.assertEqual({tools_group.name: {"needed": 10, "left": 9, "used_type": hammer_type.name, "quality": 0.75}},
                          activity.requirements["input"])
         self.assertEqual(activity, hammer.used_for)
 
