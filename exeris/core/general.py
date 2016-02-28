@@ -1,8 +1,12 @@
 import collections
 import copy
 import logging
+import math
 import time
 from collections import deque
+
+from geoalchemy2.shape import to_shape
+from shapely.geometry import Polygon, LineString
 
 from exeris.core import models, main
 from exeris.core.main import db
@@ -184,20 +188,22 @@ def visit_subgraph(node, only_through_unlimited=False):
     return {loc for loc in visited_locations if number_of_door_passed[loc] <= 2}
 
 
-class VisibilityBasedRange(RangeSpec):
+class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the map
     def __init__(self, distance, only_through_unlimited=False):
         self.distance = distance
         self.only_through_unlimited = only_through_unlimited
 
     def locations_near(self, entity):
-
         locs = visit_subgraph(entity, self.only_through_unlimited)
 
-        roots = [r for r in locs if type(r) is models.RootLocation]
+        roots = [r for r in locs if isinstance(r, models.RootLocation)]
         if len(roots):
             root = roots[0]
+
+            area = self.create_circular_area(root.position, self.distance)
+
             other_locs = models.RootLocation.query. \
-                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)). \
+                filter(models.RootLocation.position.ST_Intersects(area.wkt)). \
                 filter(models.RootLocation.id != root.id).all()
 
             for other_loc in other_locs:
@@ -205,31 +211,133 @@ class VisibilityBasedRange(RangeSpec):
 
         return locs
 
-    def __repr__(self):
-        return "{{VisibilityBasedRange, distance={}, only_through_unlimited={}}}".format(self.distance,
-                                                                                   self.only_through_unlimited)
+    def create_circular_area(self, center_pos, distance):
+        """
+        Real circular range from center (based on "toughness" of passing certain property area)
+        calculated as 8-point polygon being approximation of a circle.
+        First, 8 lines from center to candidate vertices are created. Then all PropertyAreas of the specific kind
+        intersecting with the line are taken from the database. Then it's calculated how much can be passed considering
+        the "toughness" of the highest priority on the interval.
+        Example:
+        Line from center (0, 0) to (0, 10); distance = 5 (because line length * global_max_traversability = 10)
+
+        The lines taken from intersecting areas are:
+         1. (0, 0) to (0, 5) having traversability value = 1, priority = 1
+         2. (0, 5) to (0, 10) having traversability value = 0.5, priority = 1
+         3. (0, 1) to (0, 4) having traversability value = 2, priority = 2
+         4. (0, 2) to (0, 3) having traversability value = 1, priority = 3
+
+        So we start with distance_left = distance = 5
+        For (0,0) to (0,1) take 1. (value = 1);
+                it consumed 1 (len / value) point so distance_left = 4
+        For (0, 1) to (0, 2) we take 3. (value = 2) because it has higher priority than 1.;
+                it consumed 0.5 (len / value) so distance_left = 3.5
+        For (0, 2) to (0, 3) we take 4. (value = 1) because it has higher priority than 3.;
+                it consumed 1 (len / value) so distance_left = 2.5
+        For (0, 3) to (0, 4) we take 3. (value = 2), because it has the best priority on this range;
+                it consumed 0.5 (len / value) so distance_left = 2
+        For (0, 4) to (0, 5) we take 1. (value = 1) because it's the only interval on this range;
+                it consumed 1 (len / value) so distance_left = 1
+        For (0, 5) to (0, 6) we take 2. (value = 1) because it's the only interval on this range;
+                it consumed 1 (len / value) so distance_left = 0
+        distance_left = 0, so it's over. It means the real point is (0, 6)
+        It's done for every of 8 points, so polygon is created.
+
+        :param center_pos:
+        :param distance:
+        :return:
+        """
+        points = []
+        for angle in range(0, 360, 45):
+            max_estimated_radius = self.MAX_RANGE_MULTIPLIER * distance
+
+            map_distance = self.get_real_range_from_estimate(center_pos, angle, distance, max_estimated_radius)
+
+            threshold_x = center_pos.x + math.sin(math.radians(angle)) * map_distance
+            threshold_y = center_pos.y + math.cos(math.radians(angle)) * map_distance
+
+            points += [(threshold_x, threshold_y)]
+        return Polygon(points)
+
+    def get_real_range_from_estimate(self, center_pos, angle, distance, max_estimated_radius):
+        x = center_pos.x + math.sin(math.radians(angle)) * max_estimated_radius
+        y = center_pos.y + math.cos(math.radians(angle)) * max_estimated_radius
+        radius_line = LineString([center_pos.coords[0], (x, y)])
+        logger.debug("x: %s, y: %s, radius: %s", x, y, radius_line)
+        intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_line.wkt),
+                                              models.PropertyArea) \
+            .filter(models.PropertyArea.area.ST_Intersects(radius_line.wkt)) \
+            .filter_by(kind=self.AREA_KIND) \
+            .all()
+
+        BEGIN = 1
+        END = 2
+
+        changes = []
+        for intersection_wkb, area in intersecting_areas:
+            intersection = to_shape(intersection_wkb)
+            if intersection.geom_type == "Point":
+                continue  # points have no meaning
+            logger.debug("intersection: %s", intersection)
+
+            def distance_for_intersection(index):
+                return self.point_to_distance(center_pos.coords[0], intersection.coords[index])
+
+            begin_distance = min(distance_for_intersection(0), distance_for_intersection(1))
+            end_distance = max(distance_for_intersection(0), distance_for_intersection(1))
+
+            changes.append((begin_distance, area.priority, BEGIN, area.value))
+            changes.append((end_distance, area.priority, END, area.value))
+
+        DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
+
+        current_intervals = []
+        distance_left = distance
+        real_length = 0
+        last_checkpoint_distance = 0
+        for change in sorted(changes):
+            logger.debug("### change %s", change)
+            current_intervals.sort()
+            if distance_left and current_intervals:
+                interval_length = change[DISTANCE] - last_checkpoint_distance
+                logger.debug("interval length: %s", interval_length)
+                value_with_top_prio = current_intervals[-1][1]
+                logger.debug("value with top prio: %s", value_with_top_prio)
+                interval_cost = interval_length / value_with_top_prio
+                logger.debug("interval cost: %s", interval_cost)
+                logger.debug("distance left: %s", distance_left)
+                if distance_left >= interval_cost:
+                    logger.debug("decrease distance_left by %s", interval_cost)
+                    distance_left -= interval_cost
+                    real_length = change[DISTANCE]
+                else:
+                    real_length = last_checkpoint_distance + distance_left * value_with_top_prio
+                    distance_left = 0
+                last_checkpoint_distance = change[DISTANCE]
+
+            if change[TYPE] == BEGIN:
+                current_intervals.append((change[PRIORITY], change[VALUE]))
+            else:
+                current_intervals.remove((change[PRIORITY], change[VALUE]))
+
+        return real_length
+
+    def point_to_distance(self, center_pos, point):
+        return math.sqrt(abs(center_pos[0] - point[0]) ** 2 + abs(center_pos[1] - point[1]) ** 2)
 
 
-class TraversabilityBasedRange(RangeSpec):
+class VisibilityBasedRange(AreaRangeSpec):
     def __init__(self, distance, only_through_unlimited=False):
-        self.distance = distance
-        self.only_through_unlimited = only_through_unlimited
+        super().__init__(distance, only_through_unlimited)
+        self.AREA_KIND = models.AREA_KIND_VISIBILITY
+        self.MAX_RANGE_MULTIPLIER = 1.0
 
-    def locations_near(self, entity):
 
-        locs = visit_subgraph(entity, self.only_through_unlimited)
-
-        roots = [r for r in locs if type(r) is models.RootLocation]
-        if len(roots):
-            root = roots[0]
-            other_locs = models.RootLocation.query. \
-                filter(models.RootLocation.position.ST_DWithin(root.position.to_wkt(), self.distance)). \
-                filter(models.RootLocation.id != root.id).all()
-
-            for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
-
-        return locs
+class TraversabilityBasedRange(AreaRangeSpec):
+    def __init__(self, distance, only_through_unlimited=False):
+        super().__init__(distance, only_through_unlimited)
+        self.AREA_KIND = models.AREA_KIND_TRAVERSABILITY
+        self.MAX_RANGE_MULTIPLIER = 1.0
 
 
 class ItemQueryHelper:

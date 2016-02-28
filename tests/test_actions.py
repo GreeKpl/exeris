@@ -1,18 +1,18 @@
 from unittest.mock import patch
 
 from flask.ext.testing import TestCase
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 
 from exeris.core import deferred
 
-from exeris.core import main
+from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
-    LocationType, Passage, EntityTypeProperty, PassageType, Character
+    LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea
 from exeris.core.properties import P
 from tests import util
 
@@ -461,6 +461,13 @@ class CharacterActionsTest(TestCase):
 
     def test_say_aloud_action(self):
         util.initialize_date()
+
+        grass_type = TerrainType("grass")
+        grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
+        grass_terrain = TerrainArea(grass_poly, grass_type)
+        grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly)
+
+        db.session.add_all([grass_type, grass_terrain, grass_visibility_area])
 
         rl1 = RootLocation(Point(0, 0), 123)
         rl2 = RootLocation(Point(0, 11), 123)

@@ -1489,15 +1489,22 @@ AREA_KIND_VISIBILITY = 1
 AREA_KIND_TRAVERSABILITY = 2
 
 
-class PropertyArea:
+class PropertyArea(db.Model):
     """
     For example traversability or visibility
     """
     __tablename__ = "property_areas"
 
-    id = sql.Column(sql.Integer)
+    id = sql.Column(sql.Integer, primary_key=True)
 
-    terrain_area_id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"))
+    def __init__(self, kind, value, priority, area, terrain_area=None):
+        self.kind = kind
+        self.value = value
+        self.priority = priority
+        self.area = area
+        self.terrain_area = terrain_area
+
+    terrain_area_id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), nullable=True)
     terrain_area = sql.orm.relationship(TerrainArea, uselist=False)
 
     kind = sql.Column(sql.SmallInteger)
@@ -1508,11 +1515,23 @@ class PropertyArea:
 
     @hybrid_property
     def area(self):
-        return self._area
+        if self._area is None:
+            return None
+        return to_shape(self._area)
 
     @area.setter
     def area(self, value):
-        self._area = from_shape(value)
+        if value:
+            value = from_shape(value)
+        self._area = value
+
+    @area.expression
+    def area(cls):
+        return cls._area
+
+    def __repr__(self):
+        short_type_name = "trav" if self.kind == AREA_KIND_TRAVERSABILITY else "vis"
+        return "{{PropertyArea {} prio={}, value={}, area={}}}".format(short_type_name, self.priority, self.value, self.area)
 
 
 class ResultantPropertyArea:  # no overlays
