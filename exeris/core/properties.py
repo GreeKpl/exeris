@@ -117,6 +117,4 @@ class ReadablePropertyType(PropertyType):
             text_content.html = text
 
 
-print("metody: ")
-for prop in __registry.items():
-    print(prop)
+print("metody: ", __registry.keys())

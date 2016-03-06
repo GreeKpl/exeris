@@ -56,7 +56,9 @@ When character dies, then their death is permanent and they cannot be revived in
 
 Development
 -----------
-Development progress and wiki are available on [Taiga.io](https://tree.taiga.io/project/greekpl-exeris/).
+Development progress available on [Taiga.io](https://tree.taiga.io/project/greekpl-exeris/).
+
+Wiki also on [Taiga.io](https://tree.taiga.io/project/greekpl-exeris/wiki/home).
 
 
 Main principles

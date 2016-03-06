@@ -150,7 +150,7 @@ class CreateItemAction(ActivityAction):
         self.initiator = injected_args["initiator"]
         self.amount = amount
         self.used_materials = used_materials
-        self.kwargs = injected_args
+        self.injected_args = injected_args
         self.properties = properties
         self.visible_material = visible_material if visible_material else {}
 
@@ -211,8 +211,9 @@ class RemoveItemAction(ActivityAction):
 
 
 class RemoveActivityContainerAction(ActivityAction):
-    def __init__(self, **injected_args):
-        self.activity = injected_args["activity"]
+    def __init__(self, activity, **injected_args):
+        self.activity = activity
+        self.injected_args = injected_args
 
     def perform_action(self):
         self.activity.being_in.remove(True)
@@ -225,7 +226,7 @@ class CreateLocationAction(ActivityAction):
         self.used_materials = used_materials
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
-        self.kwargs = injected_args
+        self.injected_args = injected_args
         self.properties = properties
         self.visible_material = visible_material if visible_material else {}
 

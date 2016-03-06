@@ -461,7 +461,7 @@ class SchedulerDecayTest(TestCase):
         self.assertEqual(1, old_pile_of_carrots.damage)
         self.assertEqual(990, old_pile_of_carrots.amount)
 
-        self.assertEqual(GameDate.now(), axe.removal_game_date)
+        self.assertAlmostEqual(GameDate.now(), axe.removal_game_date, delta=2)
         self.assertEqual(None, axe.being_in)
 
     def test_activity_decay(self):
