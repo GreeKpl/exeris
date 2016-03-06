@@ -4,17 +4,78 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import deferred
-
 from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
-    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction
+    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction, \
+    AbstractAction, Action
+from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea
 from exeris.core.properties import P
 from tests import util
+
+
+class ExampleAction(AbstractAction):
+    pass
+
+
+class ActionsSerializationTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_parameterless_serialization(self):
+        action = ExampleAction()
+
+        serialized = deferred.serialize(action)  # serialized into two-element list: [qualname, dict with args]
+
+        self.assertEqual("tests.test_actions.ExampleAction", serialized[0])
+        self.assertEqual({}, serialized[1])
+
+    def test_entity_parameter_serialization(self):
+        hammer_type = ItemType("hammer", 30)
+        hammer = Item(hammer_type, None)
+        db.session.add_all([hammer_type, hammer])
+        db.session.flush()
+
+        action = RemoveItemAction(hammer)
+
+        serialized = deferred.serialize(action)  # serialized into two-element list: [qualname, dict with args]
+
+        self.assertEqual("exeris.core.actions.RemoveItemAction", serialized[0])
+        self.assertEqual({"item": hammer.id, "gracefully": True}, serialized[1])
+
+    def test_nested_action_serialization(self):
+        class GoAndPerformAction(Action):
+            @convert(executor=Character, action=Action)
+            def __init__(self, executor, direction, action):
+                super().__init__(executor)
+                self.direction = direction
+                self.action = action
+
+        rl = RootLocation(Point(1, 1), 35)
+        character = util.create_character("abc", rl, util.create_player("AHA"))
+        hammer_type = ItemType("hammer", 30)
+        hammer = Item(hammer_type, character)
+        db.session.add_all([hammer_type, hammer, rl])
+        db.session.flush()
+
+        action = GoAndPerformAction(character, 130, RemoveItemAction(hammer, False))
+
+        serialized = deferred.serialize(action)  # serialized into two-element list: [qualname, dict with args]
+
+        self.assertEqual(
+            "tests.test_actions.ActionsSerializationTest.test_nested_action_serialization.<locals>.GoAndPerformAction",
+            serialized[0])
+        self.assertEqual({
+            "executor": character.id,
+            "direction": 130,
+            "action": [
+                "exeris.core.actions.RemoveItemAction",
+                {"item": hammer.id, "gracefully": False}
+            ]}, serialized[1])
 
 
 class CharacterActionsTest(TestCase):

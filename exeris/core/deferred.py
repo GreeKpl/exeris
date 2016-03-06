@@ -1,3 +1,9 @@
+import inspect
+
+import wrapt
+
+import project_root
+from exeris.core import models
 from exeris.core.main import db
 
 
@@ -11,32 +17,73 @@ def object_import(name):
 
 
 def call(json_to_call, **injected_args):
+    if not isinstance(json_to_call, list):
+        raise AssertionError("'{}' is not a list to be called".format(json_to_call))
 
-    if type(json_to_call) is list:
-        function_id, kwargs = json_to_call[0], json_to_call[1]
+    function_id, kwargs = json_to_call[0], json_to_call[1]
 
-        func = object_import(function_id)
-        kwargs.update(injected_args)
-        return func(**kwargs)
-
-    raise AssertionError("'{}' is not a list to be called".format(json_to_call))
+    func = object_import(function_id)
+    kwargs.update(injected_args)
+    return func(**kwargs)
 
 
-def convert(**fun_types):
-    def inner(f):
-        def g(*args, **kwargs):
-            converted_args = {}
-            for arg_name, arg_value in kwargs.items():
+def serialize(obj):
+    def remove_last_part(text):
+        return "/".join(text.split("/")[:-1])
 
-                if arg_name in fun_types and fun_types[arg_name] is not None \
-                        and issubclass(fun_types[arg_name], db.Model) and type(arg_value) in (int, str):
-                    converted_args[arg_name] = fun_types[arg_name].query.get(arg_value)
-                else:
-                    converted_args[arg_name] = arg_value
+    class_module = inspect.getmodule(obj)
+    root_path = remove_last_part(project_root.__file__)
 
-            return f(*args, **converted_args)
-        return g
-    return inner
+    path_in_project = class_module.__file__.replace(root_path, "")
+    module_path = path_in_project.replace("/", ".").strip(".").replace(".py", "")
+
+    full_qualified_name = module_path + "." + obj.__class__.__qualname__
+
+    inspected_init_args = inspect.getargspec(obj.__class__.__init__).args
+
+    inspected_init_args.pop(0)  # remove 'self'
+
+    args_to_serialize = {}
+    for arg_name in inspected_init_args:
+        arg_value_to_serialize = getattr(obj, arg_name)
+
+        from exeris.core import actions
+        # need to be subject of argument type conversion as specified by 'convert' decorator
+        if isinstance(arg_value_to_serialize, models.Entity):
+            arg_value_to_serialize = arg_value_to_serialize.id
+        elif isinstance(arg_value_to_serialize, models.EntityType):
+            arg_value_to_serialize = arg_value_to_serialize.name
+        elif isinstance(arg_value_to_serialize, actions.AbstractAction):
+            arg_value_to_serialize = serialize(arg_value_to_serialize)
+
+        args_to_serialize[arg_name] = arg_value_to_serialize
+
+    return [full_qualified_name, args_to_serialize]
+
+
+def convert(**argument_types):
+    @wrapt.decorator
+    def wrapper(wrapped, instance, args, kwargs):
+        converted_args = {}
+
+        for arg_name, arg_value in kwargs.items():
+
+            def arg_exists(arg_name):
+                return arg_name in argument_types and argument_types[arg_name] is not None
+
+            from exeris.core import actions
+            if arg_exists(arg_name) and issubclass(argument_types[arg_name], db.Model) \
+                    and type(arg_value) in (int, str):
+                converted_args[arg_name] = argument_types[arg_name].query.get(arg_value)
+            elif arg_exists(arg_name) and issubclass(argument_types[arg_name], actions.AbstractAction) \
+                    and isinstance(arg_value, list):
+                converted_args[arg_name] = wrapper(wrapped, instance, args, arg_value[1])
+            else:
+                converted_args[arg_name] = arg_value
+
+        return wrapped(*args, **converted_args)
+
+    return wrapper
 
 
 class NameInput:
