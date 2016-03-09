@@ -715,10 +715,10 @@ class TakeItemAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
-        if not self.executor.has_access(self.item, rng=general.InsideRange()):
+        if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.item)
 
-        if self.amount > self.item.amount:
+        if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
         move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)

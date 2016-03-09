@@ -92,3 +92,28 @@ class NameInput:
 
 class AmountInput:
     pass
+
+
+def perform_or_defer_as_intention(action, entity, intent_type, exception, priority=1):
+    """
+    Method tries to execute `perform` method on specified action.
+    If it doesn't succeed and result in  throwing on throwing exception of specified class, then
+    action is serialized and turned into EntityIntention for specified entity.
+    If any unlisted exception is raised then it's propagated.
+    It means the action needs to be serializable and deserializable.
+    :param action: action that is tried to be performed
+    :param entity: entity being actor (executor) for this action. Not only Character. Used in intent.
+    :param intent_type: name of the queue to which the intent will go
+    :param exception: exception class or tuple of exception classes which, when raised, should lead to creating intent
+        to perform the action in intent's specific circumstances
+    :param priority: int, used in intent. Priorities with higher prio are handled earlier (it matters especially
+        when there's limited number of intents to complete at the time).
+    """
+    db.session.begin_nested()
+    try:
+        result = action.perform()
+        db.session.commit()  # commit savepoint
+        return result
+    except exception:
+        db.session.rollback()  # rollback to savepoint
+        db.session.add(models.EntityIntent(entity, intent_type, priority, serialize(action)))

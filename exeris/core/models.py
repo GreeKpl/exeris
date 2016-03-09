@@ -484,6 +484,27 @@ class Entity(db.Model):
         return str(self.__class__) + str(self.__dict__)
 
 
+class EntityIntent(db.Model):
+    """
+    Represents entity's will or plan to perform certain action (which is not necessarily possible at the moment)
+    """
+
+    id = sql.Column(sql.Integer, primary_key=True)
+
+    def __init__(self, entity, intent_type, priority, action):
+        self.entity = entity
+        self.type = intent_type
+        self.priority = priority
+        self.action = action
+
+    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
+    entity = sql.orm.relationship(Entity, uselist=False, backref="intents")
+
+    type = sql.Column(sql.String(20))
+    priority = sql.Column(sql.Integer)
+    action = sql.Column(psql.JSONB)  # single action
+
+
 class LocationType(EntityType):
     __tablename__ = "location_types"
 
@@ -1531,7 +1552,8 @@ class PropertyArea(db.Model):
 
     def __repr__(self):
         short_type_name = "trav" if self.kind == AREA_KIND_TRAVERSABILITY else "vis"
-        return "{{PropertyArea {} prio={}, value={}, area={}}}".format(short_type_name, self.priority, self.value, self.area)
+        return "{{PropertyArea {} prio={}, value={}, area={}}}".format(short_type_name, self.priority, self.value,
+                                                                       self.area)
 
 
 class ResultantPropertyArea:  # no overlays

@@ -11,6 +11,7 @@ app = None
 
 logger = logging.getLogger(__name__)
 
+
 class Errors:
     TOO_LOW_SKILL = "error_too_low_skill"
     NO_INPUT_MATERIALS = "error_no_input_materials"
@@ -61,6 +62,12 @@ class Hooks:
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
     EXCEEDED_HUNGER_LEVEL = "exceeded_hunger_level"
     ENTITY_CONTENTS_COUNT_DECREASED = "entity_contents_count_decreased"
+
+
+class Intents:
+    TRAVEL = "travel"
+    COMBAT_TICK = "combat_tick"
+    COMBAT = "combat"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):

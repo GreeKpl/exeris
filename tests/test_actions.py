@@ -8,12 +8,13 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction, \
-    AbstractAction, Action
+    AbstractAction, Action, TakeItemAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
-    LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea
+    LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
+    EntityIntent
 from exeris.core.properties import P
 from tests import util
 
@@ -746,6 +747,40 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
         self.assertEqual(Character.DEATH_STARVATION, char.get_property(P.DEATH_INFO)["cause"])
         self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
+
+
+class IntentTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_perform_deferrable_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+        rl_very_far_away = RootLocation(Point(200, 200), 11)
+        char = util.create_character("postac", rl, util.create_player("ala123"))
+
+        hammer_type = ItemType("stone_hammer", 200)
+
+        # hammer is already on the ground
+        hammer = Item(hammer_type, rl_very_far_away)
+        db.session.add_all([rl, rl_very_far_away, hammer_type, hammer])
+
+        take_action = TakeItemAction(char, hammer)
+        deferred.perform_or_defer_as_intention(take_action, char, main.Intents.TRAVEL,
+                                               main.EntityTooFarAwayException)
+
+        self.assertEqual(1, EntityIntent.query.count())
+        self.assertEqual(["exeris.core.actions.TakeItemAction",
+                          {"executor": char.id, "item": hammer.id, "amount": 1}],
+                         EntityIntent.query.one().action)
+
+        hammer.being_in = rl
+        take_action = TakeItemAction(char, hammer, amount=-1)
+
+        self.assertRaises(main.InvalidAmountException,
+                          lambda: deferred.perform_or_defer_as_intention(take_action, char, main.Intents.TRAVEL,
+                                                                         main.EntityTooFarAwayException))
 
 
 class PlayerActionsTest(TestCase):
