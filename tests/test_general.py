@@ -4,7 +4,7 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import models
-from exeris.core.main import db
+from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     TraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
@@ -240,46 +240,45 @@ class EventCreatorTest(TestCase):
             "target": target.pyslatize()
         }}, event_obs.event.params)
 
+    def test_event_for_observer_in_targets_location(self):
+        util.initialize_date()
 
-def test_event_for_observer_in_targets_location(self):
-    util.initialize_date()
+        et1 = EventType("slap_doer", EventType.IMPORTANT)
+        et2 = EventType("slap_target", EventType.IMPORTANT)
+        et3 = EventType("slap_observer", EventType.NORMAL)
+        db.session.add_all([et1, et2, et3])
 
-    et1 = EventType("slap_doer", EventType.IMPORTANT)
-    et2 = EventType("slap_target", EventType.IMPORTANT)
-    et3 = EventType("slap_observer", EventType.NORMAL)
-    db.session.add_all([et1, et2, et3])
+        rl = RootLocation(Point(10, 10), 103)
+        unlimited = PassageType("unlimited", True)
+        loc_type = LocationType("building", 200)
+        loc1 = Location(rl, loc_type, unlimited)
+        loc2 = Location(rl, loc_type, unlimited)
 
-    rl = RootLocation(Point(10, 10), 103)
-    unlimited = PassageType("unlimited", True)
-    loc_type = LocationType("building", 200)
-    loc1 = Location(rl, loc_type, unlimited)
-    loc2 = Location(rl, loc_type, unlimited)
+        plr = util.create_player("plr1")
+        doer = util.create_character("doer", loc1, plr)
+        target = util.create_character("target", loc2, plr)
+        observer = util.create_character("observer", loc2, plr)
+        observer_in_root_loc = util.create_character("observer_too_far_away", rl, plr)
 
-    plr = util.create_player("plr1")
-    doer = util.create_character("doer", loc1, plr)
-    target = util.create_character("target", loc2, plr)
-    observer = util.create_character("observer", loc2, plr)
-    observer_in_root_loc = util.create_character("observer_too_far_away", rl, plr)
+        db.session.add_all([rl, loc_type, loc1, loc2])
 
-    db.session.add_all([rl, loc_type, loc1, loc2])
+        psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
+        psg1.type = PassageType.by_name(Types.INVISIBLE_PASSAGE)
+        psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
+        psg2.type = PassageType.by_name(Types.INVISIBLE_PASSAGE)
+        db.session.add_all([psg1, psg2])
 
-    psg1 = Passage.query.filter(Passage.between(rl, loc1)).first()
-    psg1.properties.append(EntityProperty(P.unlimited))
-    psg2 = Passage.query.filter(Passage.between(rl, loc2)).first()
-    psg2.properties.append(EntityProperty(P.unlimited))
-    db.session.add_all([psg1, psg2])
+        EventCreator.base("slap", doer=doer, target=target,
+                          rng=SameLocationRange())
 
-    EventCreator.base("slap", doer=doer, target=target,
-                      rng=SameLocationRange())
+        event_doer = EventObserver.query.filter_by(observer=doer).one()
+        self.assertEqual(et1, event_doer.event.type)
 
-    event_doer = EventObserver.query.filter_by(observer=doer).one()
-    self.assertEqual(et1, event_doer.event.type)
+        event_target = EventObserver.query.filter_by(observer=target).one()
+        self.assertEqual(et2, event_target.event.type)
 
-    event_target = EventObserver.query.filter_by(observer=target).one()
-    self.assertEqual(et2, event_target.event.type)
+        event_obs = EventObserver.query.filter_by(observer=observer).one()
+        self.assertEqual(et3, event_obs.event.type)
 
-    event_obs = EventObserver.query.filter_by(observer=observer).one()
-    self.assertEqual(et3, event_obs.event.type)
-
-    observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
-    self.assertEqual(0, observer_in_root_loc_count)
+        observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
+        self.assertEqual(0, observer_in_root_loc_count)

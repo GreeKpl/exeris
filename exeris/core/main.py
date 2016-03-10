@@ -30,6 +30,7 @@ class Types:
     ITEM = "item"  # generic item
     SEA = "sea"
     DOOR = "door"
+    INVISIBLE_PASSAGE = "invisible_passage"
     OUTSIDE = "outside"
     ALIVE_CHARACTER = "alive_character"
     DEAD_CHARACTER = "dead_character"

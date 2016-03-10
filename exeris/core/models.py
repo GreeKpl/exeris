@@ -1587,6 +1587,11 @@ def init_database_contents():
         door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
         door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
+    if not PassageType.by_name(Types.INVISIBLE_PASSAGE):
+        invisible_passage = PassageType(Types.INVISIBLE_PASSAGE, True)
+        invisible_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
+        invisible_passage.properties.append(EntityTypeProperty(P.INVISIBLE_PASSAGE))
+        db.session.add(invisible_passage)
     db.session.merge(EntityType(Types.ALIVE_CHARACTER))
     db.session.merge(EntityType(Types.DEAD_CHARACTER))
     db.session.merge(EntityType(Types.ACTIVITY))
