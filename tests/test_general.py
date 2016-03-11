@@ -6,7 +6,7 @@ from shapely.geometry import Point, Polygon
 from exeris.core import models
 from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
-    TraversabilityBasedRange, EventCreator
+    LandTraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
     EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea
 from exeris.core.properties import P
@@ -65,19 +65,19 @@ class RangeSpecTest(TestCase):
         road_type = TerrainType("road")
         forest_type = TerrainType("forest")
 
-        area1 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+        area1 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1,
                              Polygon([(0, 0), (0, 5), (3, 5), (3, 0), (0, 0)]))
-        area2 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 0.5, 1,
+        area2 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 0.5, 1,
                              Polygon([(0, 5), (0, 10), (2, 10), (3, 0), (0, 5)]))
-        area3 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 2,
+        area3 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2,
                              Polygon([(0, 1), (0, 4), (3, 4), (3, 0), (0, 1)]))
-        area4 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 3,
+        area4 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 3,
                              Polygon([(0, 2), (0, 3), (3, 3), (3, 0), (0, 2)]))
 
         db.session.add_all([area1, area2, area3, area4])
         db.session.add_all([grass_type, road_type, forest_type])
 
-        rng = TraversabilityBasedRange(20)
+        rng = LandTraversabilityBasedRange(20)
 
         self.assertEqual(5.5, rng.get_real_range_from_estimate(Point(0, 0), 0, 5, 10))  # 1 + 1 + 1 + 1 + 1 + 0.5
 
@@ -99,7 +99,7 @@ class RangeSpecTest(TestCase):
         grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
         grass_terrain = TerrainArea(grass_poly, grass_type)
         grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly)
-        grass_traversability_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, grass_poly)
+        grass_traversability_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, grass_poly)
 
         db.session.add_all([grass_type, grass_terrain, grass_visibility_area, grass_traversability_area])
 
@@ -175,17 +175,17 @@ class RangeSpecTest(TestCase):
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2], items)
 
-        rng = TraversabilityBasedRange(100, only_through_unlimited=True)
+        rng = LandTraversabilityBasedRange(100, only_through_unlimited=True)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, i21_1], items)
 
-        rng = TraversabilityBasedRange(100, only_through_unlimited=True)
+        rng = LandTraversabilityBasedRange(100, only_through_unlimited=True)
         items = rng.items_near(loc1)
 
         self.assertCountEqual([irl_1, i11_1, i11_2, iorl_1, io1_1], items)
 
-        rng = TraversabilityBasedRange(100, only_through_unlimited=False)
+        rng = LandTraversabilityBasedRange(100, only_through_unlimited=False)
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)

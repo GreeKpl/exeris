@@ -1446,13 +1446,21 @@ class ResourceArea(db.Model):
 class TerrainType(EntityType):
     __tablename__ = "terrain_types"
 
+    TRAVEL_LAND = "land"
+    TRAVEL_WATER = "water"
+    TRAVEL_NONE = "none"
+
     name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
 
-    def __init__(self, name):
+    def __init__(self, name, visibility=1.0, traversability=1.0, travel_type=TRAVEL_LAND):
         super().__init__(name)
+        self.visibility = visibility
+        self.traversability = traversability
+        self.travel_type = travel_type
 
     visibility = sql.Column(sql.Float)
     traversability = sql.Column(sql.Float)
+    travel_type = sql.Column(sql.String)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_TERRAIN_AREA,
@@ -1507,7 +1515,8 @@ class ResultantTerrainArea(db.Model):  # no overlays
 
 
 AREA_KIND_VISIBILITY = 1
-AREA_KIND_TRAVERSABILITY = 2
+AREA_KIND_LAND_TRAVERSABILITY = 2
+AREA_KIND_WATER_TRAVERSABILITY = 3
 
 
 class PropertyArea(db.Model):
@@ -1551,7 +1560,7 @@ class PropertyArea(db.Model):
         return cls._area
 
     def __repr__(self):
-        short_type_name = "trav" if self.kind == AREA_KIND_TRAVERSABILITY else "vis"
+        short_type_name = "trav" if self.kind == AREA_KIND_LAND_TRAVERSABILITY else "vis"
         return "{{PropertyArea {} prio={}, value={}, area={}}}".format(short_type_name, self.priority, self.value,
                                                                        self.area)
 
