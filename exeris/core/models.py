@@ -139,6 +139,9 @@ class EntityType(db.Model):
         "polymorphic_on": discriminator_type,
     }
 
+    def __repr__(self):
+        return "{{EntityType, name: {}}}".format(self.name)
+
 
 class TypeGroupElement(db.Model):
     __tablename__ = "entity_group_elements"
@@ -1126,7 +1129,7 @@ class RootLocation(Location):
         if fixed_items:
             return True
 
-        # query for neighbouring locations using RISKY being_in check
+        # query for neighbouring locations using RISKY `being_in` check
         locations = Location.query.filter_by(parent_entity=self, role=Entity.ROLE_BEING_IN).all()
 
         if any([not loc.has_property(P.MOBILE) for loc in locations]):
@@ -1601,7 +1604,13 @@ def init_database_contents():
         invisible_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         invisible_passage.properties.append(EntityTypeProperty(P.INVISIBLE_PASSAGE))
         db.session.add(invisible_passage)
-    db.session.merge(EntityType(Types.ALIVE_CHARACTER))
+    if not EntityType.by_name(Types.ALIVE_CHARACTER):
+        alive_character = EntityType(Types.ALIVE_CHARACTER)
+        alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
+        alive_character.properties.append(
+            EntityTypeProperty(P.MOBILE, data={"speed": 10, "traversable_terrains": [TerrainType.TRAVEL_LAND]}))
+        db.session.add(alive_character)
+
     db.session.merge(EntityType(Types.DEAD_CHARACTER))
     db.session.merge(EntityType(Types.ACTIVITY))
     db.session.merge(LocationType(Types.OUTSIDE, 0))

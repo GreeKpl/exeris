@@ -15,6 +15,8 @@ class P:
     DEATH_INFO = "DeathInfo"
     DEGRADABLE = "Degradable"
     MOBILE = "Mobile"
+    LINE_OF_SIGHT = "LineOfSight"
+    AFFECT_LINE_OF_SIGHT = "AffectLineOfSight"
 
 
 __registry = {}

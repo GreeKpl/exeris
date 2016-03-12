@@ -55,6 +55,34 @@ class SkillsPropertyType(PropertyType):
 
 
 @property_class
+class MobilePropertyType(PropertyType):
+    __property__ = P.MOBILE
+
+    @property_method
+    def get_max_speed(self):
+        mobile_property = self.get_property(P.MOBILE)
+
+        return mobile_property["speed"]
+
+
+@property_class
+class LineOfSightPropertyType(PropertyType):
+    __property__ = P.LINE_OF_SIGHT
+
+    @property_method
+    def get_line_of_sight(self):
+        mobile_property = self.get_property(P.LINE_OF_SIGHT)
+        items_affecting_vision = models.Item.query_entities_having_property(P.AFFECT_LINE_OF_SIGHT) \
+            .filter(models.Entity.is_in(self)).all()
+
+        base_range = mobile_property["base_range"]
+        item_effect_multiplier = max(
+            [item.get_property(P.AFFECT_LINE_OF_SIGHT)["multiplier"] for item in items_affecting_vision], default=1.0)
+
+        return base_range * item_effect_multiplier
+
+
+@property_class
 class EdiblePropertyType(PropertyType):
     __property__ = P.EDIBLE
 

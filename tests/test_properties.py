@@ -85,3 +85,41 @@ class ItemPropertiesTest(TestCase):
         book.alter_contents("NEW TITLE", "**abc** hehe", TextContent.FORMAT_MD)
         self.assertEqual("<p><strong>abc</strong> hehe</p>", book.read_contents())
         self.assertEqual("**abc** hehe", book.read_raw_contents())
+
+
+class CharacterPropertiesTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_line_of_sight_property_to_affect_visibility_based_range(self):
+        rl = RootLocation(Point(1, 1), 122)
+        char = util.create_character("test1", rl, util.create_player("ala123"))
+
+        db.session.add_all([rl])
+
+        self.assertEqual(10, char.get_line_of_sight())
+
+        spyglass_type = ItemType("spyglass", 300)
+        spyglass_type.properties.append(EntityTypeProperty(P.AFFECT_LINE_OF_SIGHT, data={"multiplier": 3}))
+        spyglass = Item(spyglass_type, char)
+
+        db.session.add_all([spyglass_type, spyglass])
+
+        self.assertEqual(30, char.get_line_of_sight())
+
+    def test_mobile_property_to_affect_land_traversability_based_range(self):
+        rl = RootLocation(Point(1, 1), 122)
+        char = util.create_character("test1", rl, util.create_player("ala123"))
+
+        cart_type = LocationType("cart", 500)
+        cart_type.properties.append(EntityTypeProperty(P.MOBILE, data={"speed": 20}))
+        cart = Location(rl, cart_type)
+
+        db.session.add_all([rl, cart_type, cart])
+
+        self.assertEqual(10, char.get_max_speed())
+
+        self.assertEqual(20, cart.get_max_speed())
+
+
+
