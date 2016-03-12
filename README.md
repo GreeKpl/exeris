@@ -15,10 +15,14 @@ It has lead me to the idea that I'm the only person that can create the game I w
 That's why I'm not looking for anybody to help me in programming (or telling me what to do),
 but suggestions, bug reports and proposals of bug fixes are welcome.
 
-The game should be **able to be extremely challenging**, **self-managing**, not **time-restricted** (open-endness), **slow paced** (good for busy people)
-with **elastic time requirements** and **full of surprises**.
+The game should be **able to be extremely challenging**, **self-managing**, not **time-restricted** (open-endness),
+**slow paced** with **elastic time requirements** (good for busy people) and **full of surprises**.
+
+Plans
+-----
 
 There is no goal to run pre-alpha version of the game as soon as possible.
+Most of the backend code is validated by automatic tests, so there's no need to have a running game server.
 
 There is no planned release date.
 
@@ -40,7 +44,8 @@ or compete with characters of other players to collect resources and use them to
 more advanced tools, machines, buildings or ships.
 There are two main continents, called **Old** and **New World**.
 
-**The Old World** is a persistent group of islands where most of the new players start. It's not very 
+**The Old World** is a persistent group of islands where most of the new players start.
+It's not very rich or large, but it's relatively safe to live there and easy to prepare basic tools.
 
 The most wealthy and fertile area is **The New World** - a land ready to be explored and settled to get its riches.
 But after finite amount of time all the new world would be mapped and fully developed, so where would open-endness be?

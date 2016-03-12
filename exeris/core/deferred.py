@@ -17,6 +17,12 @@ def object_import(name):
 
 
 def call(json_to_call, **injected_args):
+    """
+    Call the list which is the class-arguments pair.
+    :param json_to_call: list being: [full path string to class, dict of arguments to call class' constructor]
+    :param injected_args: Additional args to add to specified json args. Injected args can overwrite values from json
+    :return: instance of class specified in json constructed with specified args
+    """
     if not isinstance(json_to_call, list):
         raise AssertionError("'{}' is not a list to be called".format(json_to_call))
 
