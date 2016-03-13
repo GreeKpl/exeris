@@ -92,14 +92,6 @@ def convert(**argument_types):
     return wrapper
 
 
-class NameInput:
-    pass
-
-
-class AmountInput:
-    pass
-
-
 def perform_or_defer_as_intention(action, entity, intent_type, exception, priority=1):
     """
     Method tries to execute `perform` method on specified action.

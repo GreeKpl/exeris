@@ -334,25 +334,28 @@ class VisibilityBasedRange(AreaRangeSpec):
 
 
 class TraversabilityBasedRange(AreaRangeSpec):
+    AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY,
+                  models.AREA_KIND_WATER_TRAVERSABILITY]
+    MAX_RANGE_MULTIPLIER = 2.0
+
     def __init__(self, distance, only_through_unlimited=False):
         super().__init__(distance, only_through_unlimited)
-        self.AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY,
-                           models.AREA_KIND_WATER_TRAVERSABILITY]
-        self.MAX_RANGE_MULTIPLIER = 1.0
 
 
 class LandTraversabilityBasedRange(AreaRangeSpec):
+    AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY]
+    MAX_RANGE_MULTIPLIER = 2.0
+
     def __init__(self, distance, only_through_unlimited=False):
         super().__init__(distance, only_through_unlimited)
-        self.AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY]
-        self.MAX_RANGE_MULTIPLIER = 1.0
 
 
 class WaterTraversabilityBasedRange(AreaRangeSpec):
+    AREA_KINDS = [models.AREA_KIND_WATER_TRAVERSABILITY]
+    MAX_RANGE_MULTIPLIER = 1.0
+
     def __init__(self, distance, only_through_unlimited=False):
         super().__init__(distance, only_through_unlimited)
-        self.AREA_KINDS = [models.AREA_KIND_WATER_TRAVERSABILITY]
-        self.MAX_RANGE_MULTIPLIER = 1.0
 
 
 class ItemQueryHelper:

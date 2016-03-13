@@ -1,5 +1,4 @@
 import math
-import traceback
 from statistics import mean
 
 import sqlalchemy as sql
@@ -8,7 +7,7 @@ from shapely.geometry import Point
 from sqlalchemy import func
 
 from exeris.core import deferred, main, util
-from exeris.core import models, general, properties
+from exeris.core import models, general, properties, recipes
 from exeris.core.deferred import convert
 from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.main import db, Events
@@ -141,7 +140,7 @@ def set_visible_material(activity, visible_material, entity):
     entity.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
 
-@form_on_setup(amount=deferred.AmountInput)
+@form_on_setup(amount=recipes.AmountInput)
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
@@ -197,7 +196,7 @@ class CreateItemAction(ActivityAction):
                 amount = requirement_params["needed"] / required_material_type.quantity_efficiency(real_material_type)
 
                 item = models.Item.query.filter_by(type=real_material_type).one()
-                move_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
+                move_item_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
 
 class RemoveItemAction(ActivityAction):
@@ -250,7 +249,7 @@ class CreateLocationAction(ActivityAction):
         return [new_location]
 
 
-@form_on_setup(entity_name=deferred.NameInput)
+@form_on_setup(entity_name=recipes.NameInput)
 class AddNameToEntityAction(ActivityAction):
     def __init__(self, *, entity_name, results_index=-1, **injected_args):
         self.entity_name = entity_name
@@ -364,7 +363,6 @@ class SingleActivityProgressProcess(ProcessAction):
                 self.activity.quality_ticks += 1
 
             for group, params in req.get("input", {}).items():
-                print(group, params)
                 if "quality" in params:
                     self.activity.quality_sum += params["quality"]
                     self.activity.quality_ticks += 1
@@ -647,7 +645,7 @@ class CreateCharacterAction(PlayerAction):
 ##############################
 
 
-def move_between_entities(item, source, destination, amount, to_be_used_for=False):
+def move_item_between_entities(item, source, destination, amount, to_be_used_for=False):
     if item.parent_entity == source:
         if item.type.stackable:
             weight = amount * item.type.unit_weight
@@ -702,7 +700,7 @@ class DropItemAction(ActionOnItem):
         if self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        move_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
+        move_item_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
 
@@ -721,7 +719,7 @@ class TakeItemAction(ActionOnItem):
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        move_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
+        move_item_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
         EventCreator.base(Events.TAKE_ITEM, self.rng, event_args, self.executor)
@@ -742,7 +740,7 @@ class GiveItemAction(ActionOnItemAndCharacter):
         if not self.character:  # has not enough space in inventory
             raise main.OwnInventoryExceededException()
 
-        move_between_entities(self.item, self.executor, self.character, self.amount)
+        move_item_between_entities(self.item, self.executor, self.character, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
         EventCreator.base(Events.GIVE_ITEM, self.rng, event_args,
@@ -785,7 +783,7 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
             if self.item.being_in == self.executor:  # in inventory
                 source = self.executor
 
-            move_between_entities(self.item, source, self.activity, amount_to_add, to_be_used_for=True)
+            move_item_between_entities(self.item, source, self.activity, amount_to_add, to_be_used_for=True)
 
             material_left_reduction = amount_to_add * type_efficiency_ratio
 

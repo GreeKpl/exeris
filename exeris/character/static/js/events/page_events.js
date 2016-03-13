@@ -78,7 +78,7 @@ FRAGMENTS.speaking = (function($, socket) {
                 socket.emit("say_aloud", message_text, function() {
                 });
             } else if (speak_type == "SAY_TO_SOMEBODY") {
-                socket.emit("say_to_somebody", target, message_tex, function() {
+                socket.emit("say_to_somebody", target, message_text, function() {
                 });
             } else if (speak_type == "WHISPER") {
                 socket.emit("whisper", target, message_text, function() {

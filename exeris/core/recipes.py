@@ -96,11 +96,45 @@ class ActivityFactory:
     def result_actions_list_from_result_entity(cls, entity_type, user_input):
         if entity_type is None:
             return []
-        elif isinstance(entity_type, models.ItemType):
-            standard_actions = [["exeris.core.actions.CreateItemAction",
-                                 {"item_type": entity_type.name, "properties": {}, "used_materials": "all"}]]
-            return cls._enhance_actions(standard_actions, user_input)
+        result_entity_action = ActivityFactory.action_from_result_entity(entity_type)
+        if result_entity_action:
+            return cls._enhance_actions([result_entity_action], user_input)
+
+    @classmethod
+    def action_from_result_entity(cls, entity_type):
+        if isinstance(entity_type, models.ItemType):
+            return ["exeris.core.actions.CreateItemAction",
+                    {"item_type": entity_type.name, "properties": {}, "used_materials": "all"}]
         elif isinstance(entity_type, models.LocationType):
-            standard_actions = [["exeris.core.actions.CreateLocationAction",
-                                 {"location_type": entity_type.name, "properties": {}, "used_materials": "all"}]]
-            return cls._enhance_actions(standard_actions, user_input)
+            return ["exeris.core.actions.CreateLocationAction",
+                    {"location_type": entity_type.name, "properties": {}, "used_materials": "all"}]
+        return None
+
+    @classmethod
+    def get_user_inputs_for_recipe(cls, recipe):
+        result_actions_and_args = [(deferred.object_import(x[0]), x[1]) for x in recipe.result]
+        result_actions_requiring_input = [x for x in result_actions_and_args if hasattr(x[0], "_form_inputs")]
+        if recipe.result_entity:
+            result_entity_action_and_args = ActivityFactory.action_from_result_entity(recipe.result_entity)
+            result_entity_action_and_args[0] = deferred.object_import(result_entity_action_and_args[0])
+            if hasattr(result_entity_action_and_args[0], "_form_inputs"):
+                result_actions_requiring_input.append(result_entity_action_and_args)
+        form_inputs = {}
+        for action_and_args in result_actions_requiring_input:
+            form_inputs.update(
+                {k: v for k, v in action_and_args[0]._form_inputs.items() if
+                 k not in action_and_args[1]})  # show inputs unless the parameter was already set explicitly
+        return form_inputs
+
+
+class InputField:
+    pass
+
+
+class NameInput(InputField):
+    CAST_FUNCTION = str
+
+
+class AmountInput(InputField):
+    CAST_FUNCTION = int
+

@@ -8,13 +8,13 @@
             </div>
             <div class="modal-body">
                 {% for form_field, field_type in form_inputs.items() %}
-                    {% if field_type == "NameInput" %}
+                    {% if field_type.__name__ == "NameInput" %}
                     <label>
                         {{ form_field }}:
                         <input class="recipe_input" name="{{ form_field }}" type="text">
                     </label>
                     {% endif %}
-                    {% if field_type == "AmountInput" %}
+                    {% if field_type.__name__ == "AmountInput" %}
                     <label>
                         {{ form_field }}:
                         <input class="recipe_input" name="{{ form_field }}" type="number">

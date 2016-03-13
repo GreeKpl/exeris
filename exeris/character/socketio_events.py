@@ -359,14 +359,7 @@ def activity_from_recipe_setup(recipe_id):
     recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
-    result_actions_and_args = [(deferred.object_import(x[0]), x[1]) for x in recipe.result]
-    result_actions_requiring_input_and_args = [x for x in result_actions_and_args if hasattr(x, "_form_inputs")]
-
-    form_inputs = {}
-    for action_and_args in result_actions_requiring_input_and_args:
-        form_inputs.update(
-            {k: v.__name__ for k, v in action_and_args[0]._form_inputs.items() if
-             k not in action_and_args[1]})  # show inputs unless the parameter was already set explicitly
+    form_inputs = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
 
     rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
                                      recipe_id=recipe_id)
@@ -379,6 +372,9 @@ def create_activity_from_recipe(recipe_id, user_input):
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
     activity_factory = recipes.ActivityFactory()
+    form_input_type_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
+
+    user_input = {name: form_input_type_by_name[name].CAST_FUNCTION(value) for name, value in user_input.items()}
 
     activity = activity_factory.create_from_recipe(recipe, g.character.being_in, g.character, user_input=user_input)
 

@@ -445,17 +445,20 @@ class Entity(db.Model):
         entity_property.data = dict(entity_property.data)  # force property's `data` marked as modified
         return entity_property
 
-    def is_empty(self):
+    def is_empty(self, excluding=None):
         """
         Checks if there's anything inside (being_in) or directly neighbouring of this entity.
         It yields correct results for any entity type excluding Activity.
         For Location it says whether location has any neighbour (including parent).
         It may not yield correct result for Activity (items used in activity have USED_FOR role).
+        :param excluding: list of entities which are not taken into account
         :return: True if this entity stores any entity inside or has any neighbour
         """
-        if type(self) is Location:  # Location (not RootLocation) must always have at least one passage to neighbour
+        excluding = [obj.id for obj in (excluding if excluding else [])]
+        if type(self) is Location:  # Location (not RootLocation) must always
+            # have at least one passage to neighbour ("parent" leading to RootLocation)
             return False
-        return not Entity.query.filter(Entity.is_in(self)).count()
+        return not Entity.query.filter(Entity.is_in(self)).filter(~Entity.id.in_(excluding)).count()
 
     def get_position(self):
         return self.get_root().position
@@ -506,6 +509,9 @@ class EntityIntent(db.Model):
     type = sql.Column(sql.String(20))
     priority = sql.Column(sql.Integer)
     action = sql.Column(psql.JSONB)  # single action
+
+    def __repr__(self):
+        return "{{EntityIntent, entity: {}, type: {}, action: {}}}".format(self.entity, self.type, self.action)
 
 
 class LocationType(EntityType):
@@ -1125,7 +1131,6 @@ class RootLocation(Location):
 
     def is_permanent(self):
         fixed_items = Item.query.join(ItemType).filter(Item.is_in(self)).filter(~ItemType.portable).all()
-        print(fixed_items)
         if fixed_items:
             return True
 
@@ -1162,6 +1167,11 @@ class RootLocation(Location):
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
         return dict(pyslatized, **overwrites)
+
+    def __repr__(self):
+        return "{{RootLocation id={}, title={}, pos={}, direction={}, type={}}}".format(self.id, self.title,
+                                                                                        self.position, self.direction,
+                                                                                        self.type_name)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
