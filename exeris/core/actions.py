@@ -273,15 +273,71 @@ class ProcessAction(AbstractAction):
 
 
 class TravelProcess(ProcessAction):
+    SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
+
     def __init__(self):
         pass
 
     def perform_action(self):
-        mobile_locs = models.RootLocation.query.filter_by(is_mobile=True).all()
-        for loc in mobile_locs:
-            pos = loc.position
-            point = Point(pos.x + 1, pos.y + 1)
-            loc.position = point
+        travel_intents = models.EntityIntent.query.filter_by(type=main.Intents.TRAVEL).order_by(
+            models.EntityIntent.priority.desc()).all()
+
+        for travel_intent in travel_intents:
+            # really it shouldn't move anything, it should store intermediate data about direction and speed for each
+            # RootLocation, because there can be multi-location vehicles.
+            # But there can also be 2 separate veh in one RootLocation
+            action_to_perform = deferred.call(travel_intent.action)
+            try:
+                action_to_perform.perform()
+            except:
+                logger.warn("Unable to perform action %s", str(action_to_perform.__class__), exc_info=True)
+
+
+class TravelInDirectionProcess(ProcessAction):
+    @convert(entity=models.Entity)
+    def __init__(self, entity, direction):
+        self.entity = entity
+        self.direction = direction
+
+    def perform_action(self):
+        speed = self.entity.get_max_speed()
+
+        initial_pos = self.entity.get_root().position
+
+        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
+        speed_per_tick = speed / ticks_per_day
+
+        max_potential_distance = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+
+        rng = general.LandTraversabilityBasedRange(speed_per_tick)
+        travel_distance_per_tick = rng.get_real_range_from_estimate(initial_pos, self.direction, speed_per_tick,
+                                                                    max_potential_distance)
+
+        destination_pos = Point(initial_pos.x + math.sin(math.radians(self.direction)) * travel_distance_per_tick,
+                                initial_pos.y + math.cos(math.radians(self.direction)) * travel_distance_per_tick)
+
+        logger.info("Travel of %s from %s to %s [speed: %s]", self.entity, initial_pos, destination_pos, speed_per_tick)
+
+        self._move_entity_to_position(destination_pos)
+
+    def _move_entity_to_position(self, target_position):
+        entity_root = self.entity.get_root()
+
+        if entity_root.is_empty(excluding=[self.entity]):
+            # nothing else, so we can move this RootLocation
+            entity_root.position = target_position
+            entity_root.direction = self.direction
+        else:
+            new_root_location = models.RootLocation(target_position, self.direction)
+            db.session.add(new_root_location)
+            self.entity.being_in = new_root_location
+            main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=self.entity)
+
+
+class TravelToEntityAndPerformActionProcess(ProcessAction):
+    @convert(entity=models.Entity, action=Action)
+    def __init__(self):
+        pass
 
 
 class ActivitiesProgressProcess(ProcessAction):

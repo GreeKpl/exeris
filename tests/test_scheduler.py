@@ -1,14 +1,17 @@
 import copy
 from unittest.mock import patch
+
+import math
 from flask.ext.testing import TestCase
-from shapely.geometry import Point
-from exeris.core import main
+from shapely.geometry import Point, Polygon
+from exeris.core import main, deferred, models
 from exeris.core.general import GameDate
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
-    EntityProperty, SkillType, Character, EntityTypeProperty
-from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess
+    EntityProperty, SkillType, Character, EntityTypeProperty, EntityIntent, PropertyArea
+from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess, \
+    TravelInDirectionProcess, TravelProcess
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from tests import util
@@ -18,8 +21,27 @@ class SchedulerTravelTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
-    def test_travel_process(self):
-        pass
+    def test_character_travel_process(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 123)
+        traversability_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
+        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area)
+        traveler = util.create_character("John", rl, util.create_player("ABC"))
+
+        travel_action = TravelInDirectionProcess(traveler, 45)
+        travel_intent = EntityIntent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+
+        db.session.add_all([rl, land_trav_area, travel_intent])
+
+        travel_process = TravelProcess()
+        travel_process.perform()
+
+        distance_per_tick = 10 * TravelProcess.SCHEDULER_RUNNING_INTERVAL / GameDate.SEC_IN_DAY
+        distance_on_diagonal = distance_per_tick / math.sqrt(2)
+
+        self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.x, delta=0.01)
+        self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.y, delta=0.01)
 
 
 class SchedulerActivityTest(TestCase):

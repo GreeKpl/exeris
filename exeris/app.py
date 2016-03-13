@@ -179,22 +179,28 @@ def create_database():
         db.session.add_all([hut_type, recipe])
 
     if not models.TerrainArea.query.count():
-        tt1 = models.TerrainType("grass")
-        tt2 = models.TerrainType("water")
-        road_type = models.TerrainType("road")
-        db.session.add_all([tt1, tt2])
+        grass_terrain = models.TerrainType("grass")
+        water_terrain = models.TerrainType("water")
+        road_terrain = models.TerrainType("road")
+        db.session.add_all([grass_terrain, water_terrain])
 
-        poly1 = Polygon([(0, 0), (0, 2), (1, 2), (3, 1), (0, 0)])
-        poly2 = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
-        poly3 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
-        poly4 = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
+        poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])
+        poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
+        poly_grass2 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
+        poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
 
-        t1 = models.TerrainArea(poly1, tt1)
-        t2 = models.TerrainArea(poly2, tt2, priority=0)
-        t3 = models.TerrainArea(poly3, tt1)
-        road = models.TerrainArea(poly4, road_type)
+        grass = models.TerrainArea(poly_grass, grass_terrain)
+        water = models.TerrainArea(poly_water, water_terrain, priority=0)
+        grass2 = models.TerrainArea(poly_grass2, grass_terrain)
+        road = models.TerrainArea(poly_road, road_terrain)
 
-        db.session.add_all([t1, t2, t3, road])
+        land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
+        land_trav2 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
+
+        poly_road_trav = Polygon([(1.2, 0.8), (0.7, 1.3), (3.7, 4.3), (4.2, 3.8)])
+        land_trav_road = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
+
+        db.session.add_all([grass, water, grass2, road, land_trav1, land_trav2, land_trav_road])
 
     if not models.ItemType.by_name("tablet"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
@@ -338,10 +344,9 @@ def on_connect():
 
     if current_user.is_authenticated():
         socketio_users.add_for_player_id(request.sid, current_user.id)
-        if character_id:
-            character = models.Character.by_id(character_id)
-            if character.player == current_user and character.is_alive:
-                socketio_users.add_for_character_id(request.sid, character_id)
+        character = models.Character.by_id(character_id)
+        if character and character.player == current_user and character.is_alive:
+            socketio_users.add_for_character_id(request.sid, character_id)
 
 
 @socketio.on("disconnect")

@@ -78,7 +78,7 @@ def create_app(database=db, config_object_module="exeris.config.DevelopmentConfi
     app.config.from_object(config_object_module)
 
     if app.config["DEBUG"]:
-        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+        logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     else:
         pass  # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
