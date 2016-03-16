@@ -186,5 +186,11 @@ data = {
     },
     "option_close": {
         "en": "Close",
+    },
+    "entity_invisible_to_animal": {
+        "en": ""
+    },
+    "entity_impassable_to_animal": {
+        "en": ""
     }
 }

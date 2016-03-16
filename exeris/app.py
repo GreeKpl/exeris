@@ -180,9 +180,14 @@ def create_database():
 
     if not models.TerrainArea.query.count():
         grass_terrain = models.TerrainType("grass")
-        water_terrain = models.TerrainType("water")
+        deep_water_terrain = models.TerrainType("deep_water")
         road_terrain = models.TerrainType("road")
-        db.session.add_all([grass_terrain, water_terrain])
+        db.session.add_all([grass_terrain, deep_water_terrain])
+        land_terrain_type = models.TypeGroup.by_name(Types.LAND_TERRAIN)
+        land_terrain_type.add_to_group(grass_terrain)
+        land_terrain_type.add_to_group(road_terrain)
+        water_terrain_type = models.TypeGroup.by_name(Types.WATER_TERRAIN)
+        water_terrain_type.add_to_group(deep_water_terrain)
 
         poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])
         poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
@@ -190,7 +195,7 @@ def create_database():
         poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
 
         grass = models.TerrainArea(poly_grass, grass_terrain)
-        water = models.TerrainArea(poly_water, water_terrain, priority=0)
+        water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
         grass2 = models.TerrainArea(poly_grass2, grass_terrain)
         road = models.TerrainArea(poly_road, road_terrain)
 
@@ -200,7 +205,12 @@ def create_database():
         poly_road_trav = Polygon([(1.2, 0.8), (0.7, 1.3), (3.7, 4.3), (4.2, 3.8)])
         land_trav_road = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
 
-        db.session.add_all([grass, water, grass2, road, land_trav1, land_trav2, land_trav_road])
+        visibility_poly = Polygon([(0, 0), (0, 50), (50, 50), (50, 0)])
+        land_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)
+
+        db.session.add_all(
+            [grass_terrain, deep_water_terrain, road_terrain, grass, water, grass2, road, land_trav1, land_trav2,
+             land_trav_road, land_visibility])
 
     if not models.ItemType.by_name("tablet"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()

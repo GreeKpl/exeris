@@ -9,7 +9,7 @@ from exeris.core.general import GameDate
 
 from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
-    EntityProperty, SkillType, Character, EntityTypeProperty, EntityIntent, PropertyArea
+    EntityProperty, SkillType, Character, EntityTypeProperty, EntityIntent, PropertyArea, TerrainType, TerrainArea
 from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess, \
     TravelInDirectionProcess, TravelProcess
 from exeris.core.properties_base import P
@@ -25,14 +25,19 @@ class SchedulerTravelTest(TestCase):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), 123)
+        grass_type = TerrainType("grass")
+        land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
+        land_terrain_type.add_to_group(grass_type)
         traversability_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
-        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area)
+        grass_terrain = TerrainArea(traversability_area, grass_type)
+
+        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area, terrain_area=grass_terrain)
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 45)
         travel_intent = EntityIntent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
 
-        db.session.add_all([rl, land_trav_area, travel_intent])
+        db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, travel_intent])
 
         travel_process = TravelProcess()
         travel_process.perform()

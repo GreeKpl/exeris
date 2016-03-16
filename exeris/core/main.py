@@ -26,6 +26,9 @@ class Errors:
 
 
 class Types:
+    LAND_TERRAIN = "group_land_terrain"
+    WATER_TERRAIN = "group_water_terrain"
+    ANY_TERRAIN = "group_any_terrain"
     ACTIVITY = "activity"
     ITEM = "item"  # generic item
     SEA = "sea"

@@ -8,7 +8,7 @@ from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     LandTraversabilityBasedRange, EventCreator
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
-    EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea
+    EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea, TypeGroup
 from exeris.core.properties import P
 from tests import util
 
@@ -64,30 +64,73 @@ class RangeSpecTest(TestCase):
         grass_type = TerrainType("grass")
         road_type = TerrainType("road")
         forest_type = TerrainType("forest")
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        land_terrain.add_to_group(grass_type)
+        land_terrain.add_to_group(road_type)
+        land_terrain.add_to_group(forest_type)
 
+        area1_poly = Polygon([(0, 0), (0, 5), (3, 5), (3, 0), (0, 0)])
+        area1_terrain = TerrainArea(area1_poly, grass_type)
         area1 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1,
-                             Polygon([(0, 0), (0, 5), (3, 5), (3, 0), (0, 0)]))
+                             area1_poly, terrain_area=area1_terrain)
+        area2_poly = Polygon([(0, 5), (0, 10), (2, 10), (3, 0), (0, 5)])
+        area2_terrain = TerrainArea(area2_poly, forest_type)
         area2 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 0.5, 1,
-                             Polygon([(0, 5), (0, 10), (2, 10), (3, 0), (0, 5)]))
+                             area2_poly, terrain_area=area2_terrain)
+        area3_poly = Polygon([(0, 1), (0, 4), (3, 4), (3, 0), (0, 1)])
+        area3_terrain = TerrainArea(area3_poly, road_type)
         area3 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2,
-                             Polygon([(0, 1), (0, 4), (3, 4), (3, 0), (0, 1)]))
+                             area3_poly, terrain_area=area3_terrain)
+        area4_poly = Polygon([(0, 2), (0, 3), (3, 3), (3, 0), (0, 2)])
+        area4_terrain = TerrainArea(area4_poly, grass_type)
         area4 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 3,
-                             Polygon([(0, 2), (0, 3), (3, 3), (3, 0), (0, 2)]))
+                             area4_poly, terrain_area=area4_terrain)
 
         db.session.add_all([area1, area2, area3, area4])
         db.session.add_all([grass_type, road_type, forest_type])
 
         rng = LandTraversabilityBasedRange(20)
 
-        self.assertEqual(5.5, rng.get_real_range_from_estimate(Point(0, 0), 0, 5, 10))  # 1 + 1 + 1 + 1 + 1 + 0.5
+        self.assertEqual(5.5, rng.get_maximum_range_from_estimate(Point(0, 0), 0, 5, 10))  # 1 + 1 + 1 + 1 + 1 + 0.5
 
-        self.assertEqual(5, rng.get_real_range_from_estimate(Point(0, 0), 0, 4, 8))  # 1 + 1 + 1 + 1 + 1 + 0.5
+        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 0), 0, 4, 8))  # 1 + 1 + 1 + 1 + 1 + 0.5
 
-        self.assertEqual(1.5, rng.get_real_range_from_estimate(Point(0, 1), 0, 1, 2))  # 1 + 0.5
+        self.assertEqual(1.5, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 1, 2))  # 1 + 0.5
 
-        self.assertEqual(1, rng.get_real_range_from_estimate(Point(0, 2), 0, 1, 2))  # 1
+        self.assertEqual(1, rng.get_maximum_range_from_estimate(Point(0, 2), 0, 1, 2))  # 1
 
-        self.assertEqual(2.5, rng.get_real_range_from_estimate(Point(0, 5), 0, 5, 10))  # 5 * 0.5
+        self.assertEqual(2.5, rng.get_maximum_range_from_estimate(Point(0, 5), 0, 5, 10))  # 5 * 0.5
+
+    def test_terrain_based_limitation_for_traversability(self):
+        lava_type = TerrainType("lava")
+        forest_type = TerrainType("forest")
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        # lava is not an element of "land terrain" group
+        land_terrain.add_to_group(forest_type)
+
+        area_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
+        area1_terrain = TerrainArea(area_poly, lava_type)
+        area1 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 1,  # you'd run faster on lava, but you can't
+                             area_poly, terrain_area=area1_terrain)
+
+        area2_terrain = TerrainArea(area_poly, forest_type)
+        area2 = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 0.5, 1,
+                             area_poly, terrain_area=area2_terrain)
+
+        db.session.add_all([lava_type, forest_type, land_terrain, area1, area2, area1_terrain, area2_terrain])
+
+        rng = LandTraversabilityBasedRange(20)
+
+        # lava would allow to pass 20 units on map, but it's not a subtype of land terrain
+        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 10, 20))
+
+        rng = LandTraversabilityBasedRange(20, allowed_terrain_types=["forest"])
+        # check the same again, this time terrain set explicitly
+        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 10, 20))
+
+        rng = LandTraversabilityBasedRange(20, allowed_terrain_types=["lava"])
+        # now we wear lava-walking boots
+        self.assertEqual(20, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 10, 20))
 
     def test_entities_near(self):
         self.maxDiff = None
@@ -96,10 +139,11 @@ class RangeSpecTest(TestCase):
         unlimited = PassageType("unlimited", True)
 
         grass_type = TerrainType("grass")
+        TypeGroup.by_name(Types.LAND_TERRAIN).add_to_group(grass_type)
         grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
         grass_terrain = TerrainArea(grass_poly, grass_type)
-        grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly)
-        grass_traversability_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, grass_poly)
+        grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly, grass_terrain)
+        grass_traversability_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, grass_poly, grass_terrain)
 
         db.session.add_all([grass_type, grass_terrain, grass_visibility_area, grass_traversability_area])
 

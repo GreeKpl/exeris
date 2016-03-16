@@ -10,7 +10,7 @@ MAP_PER_PX = 100
 
 VIEW_SIZE = 500
 
-COLORS = {"grass": "green", "water": "blue", "sea": "blue", "road": "brown"}
+COLORS = {"grass": "green", "deep_water": "blue", "shallow_water": "blue", "road": "brown"}
 
 
 def get_map():

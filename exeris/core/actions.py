@@ -310,8 +310,8 @@ class TravelInDirectionProcess(ProcessAction):
         max_potential_distance = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
 
         rng = general.LandTraversabilityBasedRange(speed_per_tick)
-        travel_distance_per_tick = rng.get_real_range_from_estimate(initial_pos, self.direction, speed_per_tick,
-                                                                    max_potential_distance)
+        travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, self.direction, speed_per_tick,
+                                                                       max_potential_distance)
 
         destination_pos = Point(initial_pos.x + math.sin(math.radians(self.direction)) * travel_distance_per_tick,
                                 initial_pos.y + math.cos(math.radians(self.direction)) * travel_distance_per_tick)

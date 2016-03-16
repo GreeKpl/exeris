@@ -134,6 +134,9 @@ class EntityType(db.Model):
     def by_name(cls, type_name):
         return cls.query.get(type_name)
 
+    def contains(self, entity_type):
+        return entity_type == self  # is member of "itself" group
+
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
         "polymorphic_on": discriminator_type,
@@ -195,7 +198,7 @@ class TypeGroup(EntityType):
     name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), primary_key=True)
     stackable = sql.Column(sql.Boolean)
 
-    def __init__(self, name, stackable):
+    def __init__(self, name, stackable=False):
         super().__init__(name)
         self.stackable = stackable
 
@@ -1621,8 +1624,17 @@ def init_database_contents():
             EntityTypeProperty(P.MOBILE, data={"speed": 10, "traversable_terrains": [TerrainType.TRAVEL_LAND]}))
         db.session.add(alive_character)
 
+    if not TypeGroup.by_name(Types.ANY_TERRAIN):
+        group_any_terrain = TypeGroup(Types.ANY_TERRAIN)
+        group_land_terrain = TypeGroup(Types.LAND_TERRAIN)
+        group_water_terrain = TypeGroup(Types.WATER_TERRAIN)
+        group_any_terrain.add_to_group(group_land_terrain)
+        group_any_terrain.add_to_group(group_water_terrain)
+        db.session.add_all([group_any_terrain, group_land_terrain, group_water_terrain])
+
     db.session.merge(EntityType(Types.DEAD_CHARACTER))
     db.session.merge(EntityType(Types.ACTIVITY))
+
     db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType("sea"))
 

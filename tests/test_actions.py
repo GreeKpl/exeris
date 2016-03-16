@@ -525,9 +525,10 @@ class CharacterActionsTest(TestCase):
         util.initialize_date()
 
         grass_type = TerrainType("grass")
+        TypeGroup.by_name(main.Types.LAND_TERRAIN).add_to_group(grass_type)
         grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
         grass_terrain = TerrainArea(grass_poly, grass_type)
-        grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly)
+        grass_visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly, grass_terrain)
 
         db.session.add_all([grass_type, grass_terrain, grass_visibility_area])
 

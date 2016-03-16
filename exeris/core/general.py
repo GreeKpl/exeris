@@ -189,37 +189,64 @@ def visit_subgraph(node, only_through_unlimited=False):
 
 
 class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the map
-    def __init__(self, distance, only_through_unlimited=False):
+    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+        """
+        Abstract class for creating all area-based range specifications (Visbibility, Traversability)
+        which is based on distance on map between RootLocations. It also visits all the locations in every RootLocation
+        :param distance: max distance cost to RootLocation from center that should be accepted
+        :param only_through_unlimited: true when only "unlimited" passages between Locations should be passed (not door)
+        :param allowed_terrain_types: list of terrain type names (or group names) which should be passable.
+            Defaults to any terrain type.
+        :return: object of specific subclass
+        """
         self.distance = distance
         self.only_through_unlimited = only_through_unlimited
+        if allowed_terrain_types:
+            self.allowed_terrain_types = [models.EntityType.by_name(terrain_type) for terrain_type in
+                                          allowed_terrain_types]
+        else:
+            self.allowed_terrain_types = [models.EntityType.by_name(main.Types.ANY_TERRAIN)]
 
     def locations_near(self, entity):
         locs = visit_subgraph(entity, self.only_through_unlimited)
 
         roots = [r for r in locs if isinstance(r, models.RootLocation)]
+
+        assert len(roots) <= 1
+
         if len(roots):
             root = roots[0]
 
-            area = self.create_circular_area(root.position, self.distance)
+            max_estimated_distance = self.MAX_RANGE_MULTIPLIER * self.distance
 
             other_locs = models.RootLocation.query. \
-                filter(models.RootLocation.position.ST_Intersects(area.wkt)). \
-                filter(models.RootLocation.id != root.id).all()
+                filter(models.RootLocation.position.ST_DWithin(root.position.wkt, max_estimated_distance)). \
+                filter(models.RootLocation.id != root.id).all()  # get RootLocations in big circle
 
             for other_loc in other_locs:
-                locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
+                direction_from_center = math.asin(
+                    (root.position.x - other_loc.position.x) /
+                    math.sqrt((other_loc.position.x - root.position.x) ** 2 +
+                              (other_loc.position.y - root.position.y) ** 2))
+
+                distance_to_point = math.sqrt(
+                    (root.position.y - other_loc.position.y) ** 2 + (root.position.x - other_loc.position.x) ** 2)
+
+                if self.get_maximum_range_from_estimate(root.position, math.degrees(direction_from_center),
+                                                        self.distance, distance_to_point) >= distance_to_point:
+                    locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
 
-    def create_circular_area(self, center_pos, distance):
+    def get_maximum_range_from_estimate(self, center_pos, direction, distance_cost, max_possible_radius):
         """
-        Real circular range from center (based on "toughness" of passing certain property area)
-        calculated as 8-point polygon being approximation of a circle.
-        First, 8 lines from center to candidate vertices are created. Then all PropertyAreas of the specific kind
+        Real maximum distance taken from center (based on toughness/cost of passing certain property area)
+        that can be passed when going into certain direction. To do it, all PropertyAreas of the specific kind
         intersecting with the line are taken from the database. Then it's calculated how much can be passed considering
-        the "toughness" of the highest priority on the interval.
+        the "toughness" of the intersection with the highest priority on the interval.
         Example:
-        Line from center (0, 0) to (0, 10); distance = 5 (because line length * global_max_traversability = 10)
+        Line from center (0, 0) to (0, 10); distance cost = 5
+            (we know it's not possible to pass more than 10 units with 5 distance cost points)
 
         The lines taken from intersecting areas are:
          1. (0, 0) to (0, 5) having traversability value = 1, priority = 1
@@ -240,28 +267,14 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 it consumed 1 (len / value) so distance_left = 1
         For (0, 5) to (0, 6) we take 2. (value = 1) because it's the only interval on this range;
                 it consumed 1 (len / value) so distance_left = 0
-        distance_left = 0, so it's over. It means the real point is (0, 6)
-        It's done for every of 8 points, so polygon is created.
-
-        :param center_pos:
-        :param distance:
-        :return:
+        distance_left = 0, so it's over. It means the real point is (0, 6).
+        :param max_possible_radius: estimated value (upper bound) which is never lower than potential function result.
+        :param distance_cost: number of "passability" points that can be consumed to "move forward"
+        :param direction: angle (from beginning of coord system) in which the line starting in center should go
+        :param center_pos: point where the line should be started
         """
-        points = []
-        for angle in range(0, 360, 45):
-            max_estimated_radius = self.MAX_RANGE_MULTIPLIER * distance
-
-            map_distance = self.get_real_range_from_estimate(center_pos, angle, distance, max_estimated_radius)
-
-            threshold_x = center_pos.x + math.sin(math.radians(angle)) * map_distance
-            threshold_y = center_pos.y + math.cos(math.radians(angle)) * map_distance
-
-            points += [(threshold_x, threshold_y)]
-        return Polygon(points)
-
-    def get_real_range_from_estimate(self, center_pos, angle, distance, max_estimated_radius):
-        x = center_pos.x + math.sin(math.radians(angle)) * max_estimated_radius
-        y = center_pos.y + math.cos(math.radians(angle)) * max_estimated_radius
+        x = center_pos.x + math.sin(math.radians(direction)) * max_possible_radius
+        y = center_pos.y + math.cos(math.radians(direction)) * max_possible_radius
         radius_line = LineString([center_pos.coords[0], (x, y)])
         logger.debug("x: %s, y: %s, radius: %s", x, y, radius_line)
         intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_line.wkt),
@@ -280,6 +293,10 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 continue  # points have no meaning
             logger.debug("intersection: %s", intersection)
 
+            # the intersection must be of an acceptable terrain type
+            if not any([terrain_type.contains(area.terrain_area.type) for terrain_type in self.allowed_terrain_types]):
+                continue
+
             def distance_for_intersection(index):
                 return self.point_to_distance(center_pos.coords[0], intersection.coords[index])
 
@@ -292,7 +309,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
         DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
 
         current_intervals = []
-        distance_left = distance
+        distance_left = distance_cost
         real_length = 0
         last_checkpoint_distance = 0
         for change in sorted(changes):
@@ -327,10 +344,11 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
 
 
 class VisibilityBasedRange(AreaRangeSpec):
-    def __init__(self, distance, only_through_unlimited=False):
-        super().__init__(distance, only_through_unlimited)
-        self.AREA_KINDS = [models.AREA_KIND_VISIBILITY]
-        self.MAX_RANGE_MULTIPLIER = 1.0
+    AREA_KINDS = [models.AREA_KIND_VISIBILITY]
+    MAX_RANGE_MULTIPLIER = 1.0
+
+    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
 
 
 class TraversabilityBasedRange(AreaRangeSpec):
@@ -338,24 +356,24 @@ class TraversabilityBasedRange(AreaRangeSpec):
                   models.AREA_KIND_WATER_TRAVERSABILITY]
     MAX_RANGE_MULTIPLIER = 2.0
 
-    def __init__(self, distance, only_through_unlimited=False):
-        super().__init__(distance, only_through_unlimited)
+    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
 
 
 class LandTraversabilityBasedRange(AreaRangeSpec):
     AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY]
     MAX_RANGE_MULTIPLIER = 2.0
 
-    def __init__(self, distance, only_through_unlimited=False):
-        super().__init__(distance, only_through_unlimited)
+    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
 
 
 class WaterTraversabilityBasedRange(AreaRangeSpec):
     AREA_KINDS = [models.AREA_KIND_WATER_TRAVERSABILITY]
     MAX_RANGE_MULTIPLIER = 1.0
 
-    def __init__(self, distance, only_through_unlimited=False):
-        super().__init__(distance, only_through_unlimited)
+    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
 
 
 class ItemQueryHelper:
