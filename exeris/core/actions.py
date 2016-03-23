@@ -9,7 +9,6 @@ from sqlalchemy import func
 from exeris.core import deferred, main, util
 from exeris.core import models, general, properties, recipes
 from exeris.core.deferred import convert
-from exeris.core.general import SameLocationRange, EventCreator, VisibilityBasedRange
 from exeris.core.main import db, Events
 from exeris.core.properties import P
 
@@ -56,7 +55,7 @@ class ActionOnSelf(Action):
         super().__init__(executor)
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange()
+            self.rng = general.SameLocationRange()
 
 
 class ActionOnEntity(Action):
@@ -64,7 +63,7 @@ class ActionOnEntity(Action):
         super().__init__(executor)
         self.entity = entity
         if not rng:
-            rng = SameLocationRange()
+            rng = general.SameLocationRange()
         self.rng = rng
 
 
@@ -99,7 +98,7 @@ class ActionOnItemAndActivity(Action):
         self.activity = activity
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange()
+            self.rng = general.SameLocationRange()
 
 
 class ActionOnItemAndCharacter(Action):
@@ -109,7 +108,7 @@ class ActionOnItemAndCharacter(Action):
         self.character = character
         self.rng = rng
         if not rng:
-            self.rng = SameLocationRange()
+            self.rng = general.SameLocationRange()
 
 
 ####################
@@ -196,7 +195,7 @@ class CreateItemAction(ActivityAction):
                 amount = requirement_params["needed"] / required_material_type.quantity_efficiency(real_material_type)
 
                 item = models.Item.query.filter_by(type=real_material_type).one()
-                move_item_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
+                move_entity_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
 
 class RemoveItemAction(ActivityAction):
@@ -293,6 +292,20 @@ class TravelProcess(ProcessAction):
                 logger.warn("Unable to perform action %s", str(action_to_perform.__class__), exc_info=True)
 
 
+def move_entity_to_position(entity, direction, target_position):
+    entity_root = entity.get_root()
+
+    if entity_root.is_empty(excluding=[entity]):
+        # nothing else, so we can move this RootLocation
+        entity_root.position = target_position
+        entity_root.direction = direction
+    else:
+        new_root_location = models.RootLocation(target_position, direction)
+        db.session.add(new_root_location)
+        entity.being_in = new_root_location
+        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=entity)
+
+
 class TravelInDirectionProcess(ProcessAction):
     @convert(entity=models.Entity)
     def __init__(self, entity, direction):
@@ -313,31 +326,12 @@ class TravelInDirectionProcess(ProcessAction):
         travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, self.direction, speed_per_tick,
                                                                        max_potential_distance)
 
-        destination_pos = Point(initial_pos.x + math.sin(math.radians(self.direction)) * travel_distance_per_tick,
-                                initial_pos.y + math.cos(math.radians(self.direction)) * travel_distance_per_tick)
+        destination_pos = util.pos_for_distance_in_direction(initial_pos, self.direction, travel_distance_per_tick)
 
         logger.info("Travel of %s from %s to %s [speed: %s]", self.entity, initial_pos, destination_pos, speed_per_tick)
 
-        self._move_entity_to_position(destination_pos)
-
-    def _move_entity_to_position(self, target_position):
-        entity_root = self.entity.get_root()
-
-        if entity_root.is_empty(excluding=[self.entity]):
-            # nothing else, so we can move this RootLocation
-            entity_root.position = target_position
-            entity_root.direction = self.direction
-        else:
-            new_root_location = models.RootLocation(target_position, self.direction)
-            db.session.add(new_root_location)
-            self.entity.being_in = new_root_location
-            main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=self.entity)
-
-
-class TravelToEntityAndPerformActionProcess(ProcessAction):
-    @convert(entity=models.Entity, action=Action)
-    def __init__(self):
-        pass
+        move_entity_to_position(self.entity, self.direction, destination_pos)
+        return False
 
 
 class ActivitiesProgressProcess(ProcessAction):
@@ -526,7 +520,7 @@ class SingleActivityProgressProcess(ProcessAction):
     def check_target_proximity(self, target_ids):
         targets = models.Entity.query.filter(models.Entity.id.in_(target_ids)).all()
         for target in targets:
-            rng = SameLocationRange()
+            rng = general.SameLocationRange()
             if not rng.is_near(self.entity_worked_on, target):
                 raise main.ActivityTargetTooFarAwayException(entity=target)
 
@@ -701,18 +695,22 @@ class CreateCharacterAction(PlayerAction):
 ##############################
 
 
-def move_item_between_entities(item, source, destination, amount, to_be_used_for=False):
-    if item.parent_entity == source:
-        if item.type.stackable:
-            weight = amount * item.type.unit_weight
-            move_stackable_resource(item, source, destination, weight, to_be_used_for)
+def move_entity_between_entities(entity, source, destination, amount=1, to_be_used_for=False):
+    if entity.parent_entity == source:
+
+        assert isinstance(entity, models.Entity) and not isinstance(entity,
+                                                                    models.Location), "moving locations not supported"
+
+        if isinstance(entity, models.Item) and entity.type.stackable:
+            weight = amount * entity.type.unit_weight
+            move_stackable_resource(entity, source, destination, weight, to_be_used_for)
         elif to_be_used_for:
-            item.used_for = destination
+            entity.used_for = destination
         else:
-            item.being_in = destination
+            entity.being_in = destination
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=source)
     else:
-        raise main.InvalidInitialLocationException(entity=item)
+        raise main.InvalidInitialLocationException(entity=entity)
 
 
 def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
@@ -756,11 +754,11 @@ class DropItemAction(ActionOnItem):
         if self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        move_item_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
+        move_entity_between_entities(self.item, self.executor, self.executor.being_in, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
 
-        EventCreator.base(Events.DROP_ITEM, self.rng, event_args, self.executor)
+        general.EventCreator.base(Events.DROP_ITEM, self.rng, event_args, self.executor)
 
 
 class TakeItemAction(ActionOnItem):
@@ -775,10 +773,10 @@ class TakeItemAction(ActionOnItem):
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        move_item_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
+        move_entity_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
-        EventCreator.base(Events.TAKE_ITEM, self.rng, event_args, self.executor)
+        general.EventCreator.base(Events.TAKE_ITEM, self.rng, event_args, self.executor)
 
 
 class GiveItemAction(ActionOnItemAndCharacter):
@@ -796,11 +794,11 @@ class GiveItemAction(ActionOnItemAndCharacter):
         if not self.character:  # has not enough space in inventory
             raise main.OwnInventoryExceededException()
 
-        move_item_between_entities(self.item, self.executor, self.character, self.amount)
+        move_entity_between_entities(self.item, self.executor, self.character, self.amount)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
-        EventCreator.base(Events.GIVE_ITEM, self.rng, event_args,
-                          self.executor, self.character)
+        general.EventCreator.base(Events.GIVE_ITEM, self.rng, event_args,
+                                  self.executor, self.character)
 
 
 class AddEntityToActivityAction(ActionOnItemAndActivity):
@@ -810,10 +808,10 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
 
     def perform_action(self):
 
-        if not self.executor.has_access(self.item, rng=SameLocationRange()):
+        if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
             raise main.EntityNotInInventoryException(entity=self.item)
 
-        if not self.executor.has_access(self.activity, rng=SameLocationRange()):
+        if not self.executor.has_access(self.activity, rng=general.SameLocationRange()):
             raise main.TooFarFromActivityException(activity=self.activity)
 
         if self.amount > self.item.amount:
@@ -839,7 +837,7 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
             if self.item.being_in == self.executor:  # in inventory
                 source = self.executor
 
-            move_item_between_entities(self.item, source, self.activity, amount_to_add, to_be_used_for=True)
+            move_entity_between_entities(self.item, source, self.activity, amount_to_add, to_be_used_for=True)
 
             material_left_reduction = amount_to_add * type_efficiency_ratio
 
@@ -860,7 +858,7 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
                 "item": item_info,
                 "activity": self.activity.pyslatize()
             }}
-            EventCreator.base(Events.ADD_TO_ACTIVITY, self.rng, event_args, doer=self.executor)
+            general.EventCreator.base(Events.ADD_TO_ACTIVITY, self.rng, event_args, doer=self.executor)
             break
         else:
             raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
@@ -872,12 +870,12 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
 
 class EatAction(ActionOnItem):
     def __init__(self, executor, item, amount):
-        super().__init__(executor, item, rng=SameLocationRange())
+        super().__init__(executor, item, rng=general.VisibilityBasedRange(20))
         self.amount = amount
 
     def perform_action(self):
 
-        if not self.executor.has_access(self.item, rng=SameLocationRange()):
+        if not self.executor.has_access(self.item, rng=general.LandTraversabilityBasedRange(10)):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.item.amount < self.amount:
@@ -891,46 +889,46 @@ class EatAction(ActionOnItem):
         self.item.eat(self.executor, self.amount)
 
         food_item_info = self.item.pyslatize(item_amount=self.amount, detailed=False)
-        EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
+        general.EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
 
         main.call_hook(main.Hooks.EATEN, character=self.executor, item=self.item, amount=self.amount)
 
 
 class SayAloudAction(ActionOnSelf):
     def __init__(self, executor, message):
-        super().__init__(executor, rng=VisibilityBasedRange(20))
+        super().__init__(executor, rng=general.VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
-        EventCreator.base(Events.SAY_ALOUD, self.rng, {"message": self.message}, doer=self.executor)
+        general.EventCreator.base(Events.SAY_ALOUD, self.rng, {"message": self.message}, doer=self.executor)
 
         main.call_hook(main.Hooks.SPOKEN_ALOUD, character=self.executor)
 
 
 class SpeakToSomebodyAction(ActionOnCharacter):
     def __init__(self, executor, character, message):
-        super().__init__(executor, character, rng=VisibilityBasedRange(20))
+        super().__init__(executor, character, rng=general.VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
-        if not self.executor.has_access(self.character, rng=VisibilityBasedRange(20)):
+        if not self.executor.has_access(self.character, rng=general.VisibilityBasedRange(20)):
             raise main.EntityTooFarAwayException(entity=self.character)
 
-        EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor,
-                          target=self.character)
+        general.EventCreator.base(Events.SPEAK_TO_SOMEBODY, self.rng, {"message": self.message}, doer=self.executor,
+                                  target=self.character)
 
 
 class WhisperToSomebodyAction(ActionOnCharacter):
     def __init__(self, executor, character, message):
-        super().__init__(executor, character, rng=VisibilityBasedRange(20))
+        super().__init__(executor, character, rng=general.VisibilityBasedRange(20))
         self.message = message
 
     def perform_action(self):
-        if not self.executor.has_access(self.character, rng=SameLocationRange()):
+        if not self.executor.has_access(self.character, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.character)
 
-        EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor,
-                          target=self.character)
+        general.EventCreator.base(Events.WHISPER, self.rng, {"message": self.message}, doer=self.executor,
+                                  target=self.character)
 
         main.call_hook(main.Hooks.WHISPERED, character=self.executor, to_character=self.character)
 
@@ -940,7 +938,7 @@ class JoinActivityAction(ActionOnActivity):
         super().__init__(executor, activity, rng=None)
 
     def perform_action(self):
-        if not self.executor.has_access(self.activity, rng=SameLocationRange()):
+        if not self.executor.has_access(self.activity, rng=general.SameLocationRange()):
             raise main.TooFarFromActivityException(activity=self.activity)
 
         self.executor.activity = self.activity
@@ -952,7 +950,7 @@ class MoveToLocationAction(ActionOnLocation):
             location = passage.right_location
         else:
             location = passage.left_location
-        super().__init__(executor, location, rng=SameLocationRange())
+        super().__init__(executor, location, rng=general.SameLocationRange())
         self.passage = passage
 
     def perform_action(self):
@@ -966,15 +964,16 @@ class MoveToLocationAction(ActionOnLocation):
         if not self.passage.between(from_loc, self.location):
             raise main.EntityTooFarAwayException(entity=self.location)  # TODO Better event?
 
-        EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
-                                                             "destination": self.location.pyslatize()}},
-                          doer=self.executor)
+        general.EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
+                                                                     "destination": self.location.pyslatize()}},
+                                  doer=self.executor)
 
         self.executor.being_in = self.location
 
-        EventCreator.create(rng=SameLocationRange(), tag_observer=Events.MOVE + "_observer",
-                            params={"groups": {"from": from_loc.pyslatize(), "destination": self.location.pyslatize()}},
-                            doer=self.executor)
+        general.EventCreator.create(rng=general.SameLocationRange(), tag_observer=Events.MOVE + "_observer",
+                                    params={"groups": {"from": from_loc.pyslatize(),
+                                                       "destination": self.location.pyslatize()}},
+                                    doer=self.executor)
 
         main.call_hook(main.Hooks.LOCATION_ENTERED, character=self.executor, from_loc=from_loc, to_loc=self.location)
 
@@ -999,7 +998,8 @@ class ToggleCloseableAction(ActionOnEntity):
         else:
             event_name = Events.CLOSE_ENTITY
 
-        EventCreator.base(event_name, self.rng, {"groups": {"entity": self.entity.pyslatize()}}, doer=self.executor)
+        general.EventCreator.base(event_name, self.rng, {"groups": {"entity": self.entity.pyslatize()}},
+                                  doer=self.executor)
 
 
 class DeathAction(Action):
@@ -1020,7 +1020,8 @@ class DeathOfStarvationAction(DeathAction):
         super().__init__(executor)
 
     def perform_action(self):
-        EventCreator.base(main.Events.DEATH_OF_STARVATION, rng=general.VisibilityBasedRange(30), doer=self.executor)
+        general.EventCreator.base(main.Events.DEATH_OF_STARVATION, rng=general.VisibilityBasedRange(30),
+                                  doer=self.executor)
 
         death_prop = self.create_death_info_property()
         death_prop.data["cause"] = models.Character.DEATH_STARVATION
@@ -1035,8 +1036,8 @@ class DeathOfDamageAction(DeathAction):
         self.weapon = weapon
 
     def perform_action(self):
-        EventCreator.base(main.Events.DEATH_OF_DAMAGE, rng=general.VisibilityBasedRange(30), doer=self.executor,
-                          params=dict(killer=self.killer, weapon=self.weapon))
+        general.EventCreator.base(main.Events.DEATH_OF_DAMAGE, rng=general.VisibilityBasedRange(30), doer=self.executor,
+                                  params=dict(killer=self.killer, weapon=self.weapon))
 
         death_prop = self.create_death_info_property()
         death_prop.data["cause"] = models.Character.DEATH_WEAPON

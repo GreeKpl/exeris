@@ -1,9 +1,8 @@
 import io
-from PIL import ImageDraw
-from shapely.geometry import Polygon, Point
 
 from PIL import Image
-from exeris.core.main import db
+from PIL import ImageDraw
+
 from exeris.core import models
 
 MAP_PER_PX = 100

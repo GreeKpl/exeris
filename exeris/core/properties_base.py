@@ -30,15 +30,10 @@ def get_method(name):
     return __registry[name]
 
 
-def property_method(function):
-    function.property_method = True
-    return function
-
-
 def property_class(clazz):
     for cls in inspect.getmro(clazz):
         for attr in cls.__dict__.values():
-            if hasattr(attr, "__call__") and hasattr(attr, "property_method"):
+            if hasattr(attr, "__call__") and not attr.__name__.startswith("__"):
                 def check_property(fun, prop_name):
                     def inner(entity, *args, **kwargs):
                         if not entity.has_property(prop_name):

@@ -5,14 +5,13 @@ import markdown
 
 from exeris.core import models
 from exeris.core.main import db
-from exeris.core.properties_base import property_class, PropertyType, property_method, __registry, P
+from exeris.core.properties_base import property_class, PropertyType, __registry, P
 
 
 @property_class
 class DynamicNameablePropertyType(PropertyType):
     __property__ = P.DYNAMIC_NAMEABLE
 
-    @property_method
     def set_dynamic_name(self, observer, name):
         if not observer:
             raise ValueError
@@ -31,12 +30,10 @@ class SkillsPropertyType(PropertyType):
 
     SKILL_DEFAULT_VALUE = 0.1
 
-    @property_method
     def get_raw_skill(self, skill_name):
         skills = self.get_property(P.SKILLS)
         return skills.get(skill_name, SkillsPropertyType.SKILL_DEFAULT_VALUE)
 
-    @property_method
     def get_skill_factor(self, specific_skill):
         skills = self.get_property(P.SKILLS)
 
@@ -46,7 +43,6 @@ class SkillsPropertyType(PropertyType):
 
         return statistics.mean([specific_skill_value, general_skill_value])
 
-    @property_method
     def alter_skill_by(self, skill_name, change):
         skills_prop = models.EntityProperty.query.filter_by(name=P.SKILLS, entity=self).one()
 
@@ -58,7 +54,6 @@ class SkillsPropertyType(PropertyType):
 class MobilePropertyType(PropertyType):
     __property__ = P.MOBILE
 
-    @property_method
     def get_max_speed(self):
         mobile_property = self.get_property(P.MOBILE)
 
@@ -69,7 +64,6 @@ class MobilePropertyType(PropertyType):
 class LineOfSightPropertyType(PropertyType):
     __property__ = P.LINE_OF_SIGHT
 
-    @property_method
     def get_line_of_sight(self):
         mobile_property = self.get_property(P.LINE_OF_SIGHT)
         items_affecting_vision = models.Item.query_entities_having_property(P.AFFECT_LINE_OF_SIGHT) \
@@ -88,13 +82,11 @@ class EdiblePropertyType(PropertyType):
 
     FOOD_BASED_ATTR = ["strength", "durability", "fitness", "perception"]
 
-    @property_method
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
         satiation_left = (1 - eater.satiation)
         return math.floor(satiation_left / edible_prop["satiation"])
 
-    @property_method
     def eat(self, eater, amount):
         edible_prop = self.get_property(P.EDIBLE)
 
@@ -111,30 +103,18 @@ class EdiblePropertyType(PropertyType):
 class ReadablePropertyType(PropertyType):
     __property__ = P.READABLE
 
-    @property_method
-    def _fetch_text_content(self):
-        text_content = models.TextContent.query.filter_by(entity=self).first()
-        if not text_content:
-            text_content = models.TextContent(self)
-            db.session.add(text_content)
-        return text_content
-
-    @property_method
     def read_title(self):
         text_content = self._fetch_text_content()
         return text_content.title or ""
 
-    @property_method
     def read_contents(self):
         md = markdown.Markdown()
         return md.convert(self.read_raw_contents())
 
-    @property_method
     def read_raw_contents(self):
         text_content = self._fetch_text_content()
         return text_content.md_text or ""
 
-    @property_method
     def alter_contents(self, title, text, text_format):
         text_content = self._fetch_text_content()
         text_content.title = title
@@ -143,6 +123,13 @@ class ReadablePropertyType(PropertyType):
             text_content.md_text = text
         else:
             text_content.html = text
+
+    def _fetch_text_content(self):
+        text_content = models.TextContent.query.filter_by(entity=self).first()
+        if not text_content:
+            text_content = models.TextContent(self)
+            db.session.add(text_content)
+        return text_content
 
 
 print("metody: ", __registry.keys())

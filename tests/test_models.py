@@ -116,7 +116,6 @@ class EntityTest(TestCase):
         class HappyPropertyType(properties_base.PropertyType):
             __property__ = "Happy"
 
-            @properties_base.property_method
             def be_happy(self):
                 pass
 
@@ -143,7 +142,6 @@ class EntityTest(TestCase):
         class SadPropertyType(properties_base.PropertyType):
             __property__ = "Sad"
 
-            @properties_base.property_method
             def be_sad(self):
                 pass
 
@@ -307,7 +305,7 @@ class RootLocationTest(TestCase):
         taker_char = util.create_character("taker", root_location, util.create_player("abc"))
 
         db.session.add_all([root_location, hammer_type, hammer])
-        actions.move_item_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
+        actions.move_entity_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
 
         self.assertEqual(Point(1, 1), root_location.position)  # root location not removed
 
@@ -315,7 +313,7 @@ class RootLocationTest(TestCase):
         hammer.being_in = root_location
         taker_char.being_in = root_location_near
 
-        actions.move_item_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
+        actions.move_entity_between_entities(hammer, root_location, taker_char, 1)  # item taken by character
         self.assertIn(root_location, db.session.deleted)  # RootLocation was empty, so it got deleted
 
 

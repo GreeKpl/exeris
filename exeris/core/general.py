@@ -6,9 +6,9 @@ import time
 from collections import deque
 
 from geoalchemy2.shape import to_shape
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import LineString
 
-from exeris.core import models, main
+from exeris.core import models, main, util
 from exeris.core.main import db
 
 logger = logging.getLogger(__name__)
@@ -224,10 +224,8 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 filter(models.RootLocation.id != root.id).all()  # get RootLocations in big circle
 
             for other_loc in other_locs:
-                direction_from_center = math.asin(
-                    (root.position.x - other_loc.position.x) /
-                    math.sqrt((other_loc.position.x - root.position.x) ** 2 +
-                              (other_loc.position.y - root.position.y) ** 2))
+                direction_from_center = util.direction(root.position, other_loc.position)
+                distance_to_point = util.distance(root.position, other_loc.position)
 
                 distance_to_point = math.sqrt(
                     (root.position.y - other_loc.position.y) ** 2 + (root.position.x - other_loc.position.x) ** 2)
