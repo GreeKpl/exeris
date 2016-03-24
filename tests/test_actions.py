@@ -768,13 +768,14 @@ class IntentTest(TestCase):
         db.session.add_all([rl, rl_very_far_away, hammer_type, hammer])
 
         take_action = TakeItemAction(char, hammer)
-        deferred.perform_or_defer_as_intention(take_action, char, main.Intents.TRAVEL,
-                                               main.EntityTooFarAwayException)
+        deferred.perform_or_defer_as_intention(take_action, char)
 
+        # check if intent parameters were correctly guessed
         self.assertEqual(1, EntityIntent.query.count())
         self.assertEqual(["exeris.core.actions.TakeItemAction",
                           {"executor": char.id, "item": hammer.id, "amount": 1}],
                          EntityIntent.query.one().action)
+        self.assertEqual(main.Intents.TRAVEL, EntityIntent.query.one().type)
 
         hammer.being_in = rl
         take_action = TakeItemAction(char, hammer, amount=-1)
@@ -782,6 +783,10 @@ class IntentTest(TestCase):
         self.assertRaises(main.InvalidAmountException,
                           lambda: deferred.perform_or_defer_as_intention(take_action, char, main.Intents.TRAVEL,
                                                                          main.EntityTooFarAwayException))
+
+        # the same when guessing the intent type
+        self.assertRaises(main.InvalidAmountException,
+                          lambda: deferred.perform_or_defer_as_intention(take_action, char))
 
 
 class PlayerActionsTest(TestCase):

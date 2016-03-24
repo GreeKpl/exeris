@@ -762,6 +762,10 @@ class DropItemAction(ActionOnItem):
 
 
 class TakeItemAction(ActionOnItem):
+    EXCEPTIONS_CREATING_INTENT = {
+        main.Intents.TRAVEL: [main.EntityTooFarAwayException]
+    }
+
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
         self.amount = amount
