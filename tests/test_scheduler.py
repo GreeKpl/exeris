@@ -11,7 +11,7 @@ from exeris.core.main import db
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityType, \
     EntityProperty, SkillType, Character, EntityTypeProperty, EntityIntent, PropertyArea, TerrainType, TerrainArea
 from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess, \
-    TravelInDirectionProcess, TravelProcess
+    TravelInDirectionProcess, TravelProcess, TravelToEntityAndPerformActionProcess, EatAction
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from tests import util
@@ -31,7 +31,8 @@ class SchedulerTravelTest(TestCase):
         traversability_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
         grass_terrain = TerrainArea(traversability_area, grass_type)
 
-        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area, terrain_area=grass_terrain)
+        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area,
+                                      terrain_area=grass_terrain)
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 45)
@@ -47,6 +48,54 @@ class SchedulerTravelTest(TestCase):
 
         self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.x, delta=0.01)
         self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.y, delta=0.01)
+
+    def test_character_go_to_location_to_perform_action(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(2.85, 2.85), 123)
+        grass_type = TerrainType("grass")
+        land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
+        land_terrain_type.add_to_group(grass_type)
+        accessible_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
+        grass_terrain = TerrainArea(accessible_area, grass_type)
+
+        potato_loc = RootLocation(Point(10, 10), 55)
+        potato_type = ItemType("potato", 10, stackable=True)
+        potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {"satiation": 0.1, "strength": 0.01}))
+        potatoes = Item(potato_type, potato_loc, amount=10)
+
+        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, accessible_area,
+                                      terrain_area=grass_terrain)
+        visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, accessible_area,
+                                       terrain_area=grass_terrain)
+        traveler = util.create_character("John", rl, util.create_player("ABC"))
+
+        eat_action = EatAction(traveler, potatoes, 5)
+
+        go_to_entity_and_eat_action = TravelToEntityAndPerformActionProcess(traveler, potatoes, eat_action)
+
+        db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
+                            potato_loc, potato_type, potatoes])
+
+        for i in range(2):  # come closer
+            go_to_entity_and_eat_action.perform()
+
+        self.assertEqual(0, traveler.satiation)
+        self.assertAlmostEqual(2.851909632081694, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.988875760044993, traveler.get_root().position.y)
+
+        go_to_entity_and_eat_action.perform()  # eat half of potatoes
+        # food is eaten
+        self.assertEqual(0.5, traveler.satiation)
+        # should go forward because 5 potatoes still exist and will eat another 5 potatoes
+
+        go_to_entity_and_eat_action.perform()  # eat the rest of potatoes
+        self.assertEqual(1, traveler.satiation)
+
+        self.assertIsNotNone(potatoes.removal_game_date)
+
+        # all potatoes are eaten, so they don't exist
+        self.assertRaises(main.EntityTooFarAwayException, lambda: go_to_entity_and_eat_action.perform())
 
 
 class SchedulerActivityTest(TestCase):

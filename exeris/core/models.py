@@ -760,7 +760,10 @@ class Item(Entity):
     def amount(self, new_amount):
         if not self.type.stackable:
             raise ValueError("it's impossible to alter amount for non-stackable")
-        self.weight = new_amount * self.type.unit_weight
+        if new_amount > 0:
+            self.weight = new_amount * self.type.unit_weight
+        else:
+            self.remove()
 
     def remove(self, move_contents=True):
         if move_contents:

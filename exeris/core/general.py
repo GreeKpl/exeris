@@ -13,6 +13,9 @@ from exeris.core.main import db
 
 logger = logging.getLogger(__name__)
 
+# monkey-patch math module to contain function from python3.5
+math.isclose = lambda a, b, rel_tol=1e-09, abs_tol=0.0: abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
 
 class GameDate:
     """
@@ -111,9 +114,12 @@ class RangeSpec:
         :param entity_b:
         :return:
         """
-        for a in self._locationize(entity_a):
-            locations_near_a = self.locations_near(a)
-            return any([True for b in self._locationize(entity_b) if b in locations_near_a])
+        try:
+            for a in self._locationize(entity_a):
+                locations_near_a = self.locations_near(a)
+                return any([True for b in self._locationize(entity_b) if b in locations_near_a])
+        except:
+            return False
 
     def _locationize(self, entity):
         """
@@ -227,11 +233,12 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 direction_from_center = util.direction(root.position, other_loc.position)
                 distance_to_point = util.distance(root.position, other_loc.position)
 
-                distance_to_point = math.sqrt(
-                    (root.position.y - other_loc.position.y) ** 2 + (root.position.x - other_loc.position.x) ** 2)
+                maximum_accessible_range = self.get_maximum_range_from_estimate(root.position,
+                                                                                math.degrees(direction_from_center),
+                                                                                self.distance, distance_to_point)
+                if maximum_accessible_range > distance_to_point or math.isclose(maximum_accessible_range,
+                                                                                distance_to_point):
 
-                if self.get_maximum_range_from_estimate(root.position, math.degrees(direction_from_center),
-                                                        self.distance, distance_to_point) >= distance_to_point:
                     locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs

@@ -3,7 +3,6 @@ from statistics import mean
 
 import sqlalchemy as sql
 from flask import logging
-from shapely.geometry import Point
 from sqlalchemy import func
 
 from exeris.core import deferred, main, util
@@ -332,6 +331,54 @@ class TravelInDirectionProcess(ProcessAction):
 
         move_entity_to_position(self.entity, self.direction, destination_pos)
         return False
+
+
+class TravelToEntityAndPerformActionProcess(ProcessAction):
+    @convert(executor=models.Character, entity=models.Entity, action=Action)
+    def __init__(self, executor, entity, action):
+        self.executor = executor
+        self.entity = entity
+        self.action = action
+
+    def perform_action(self):
+        speed = self.executor.get_max_speed()
+
+        seeing_entity_range = general.VisibilityBasedRange(20)
+        if not seeing_entity_range.is_near(self.executor, self.entity):
+            raise main.EntityTooFarAwayException(entity=self.entity)
+
+        target_entity_root = self.entity.get_root()
+        initial_pos = self.executor.get_root().position
+
+        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
+        speed_per_tick = speed / ticks_per_day
+
+        traversability = general.LandTraversabilityBasedRange(speed_per_tick)
+        if traversability.is_near(self.executor, self.entity):  # move to the same root location
+            move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
+        else:  # come closer
+            direction_to_destination = util.direction(initial_pos, target_entity_root.position)
+            max_potential_range = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+            distance_traversed = traversability.get_maximum_range_from_estimate(initial_pos, direction_to_destination,
+                                                                                speed_per_tick,
+                                                                                max_potential_range)
+
+            target_position = util.pos_for_distance_in_direction(initial_pos, direction_to_destination,
+                                                                 distance_traversed)
+
+            move_entity_to_position(self.executor, direction_to_destination, target_position)
+
+        self.try_to_perform_action()
+
+    def try_to_perform_action(self):
+        exceptions = tuple(self.action.EXCEPTIONS_CREATING_INTENT[main.Intents.TRAVEL])
+        db.session.begin_nested()
+        try:
+            result = self.action.perform()
+            db.session.commit()  # commit savepoint
+            return result
+        except exceptions:
+            db.session.rollback()  # rollback to savepoint
 
 
 class ActivitiesProgressProcess(ProcessAction):
@@ -873,6 +920,10 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
 
 
 class EatAction(ActionOnItem):
+    EXCEPTIONS_CREATING_INTENT = {
+        main.Intents.TRAVEL: [main.EntityTooFarAwayException]
+    }
+
     def __init__(self, executor, item, amount):
         super().__init__(executor, item, rng=general.VisibilityBasedRange(20))
         self.amount = amount
