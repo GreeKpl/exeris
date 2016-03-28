@@ -277,18 +277,29 @@ class TravelProcess(ProcessAction):
         pass
 
     def perform_action(self):
-        travel_intents = models.EntityIntent.query.filter_by(type=main.Intents.TRAVEL).order_by(
-            models.EntityIntent.priority.desc()).all()
+        travel_intents = models.Intent.query.filter_by(type=main.Intents.TRAVEL).order_by(
+            models.Intent.priority.desc()).all()
 
         for travel_intent in travel_intents:
-            # really it shouldn't move anything, it should store intermediate data about direction and speed for each
+            # in fact it shouldn't move anything, it should store intermediate data about direction and speed for each
             # RootLocation, because there can be multi-location vehicles.
             # But there can also be 2 separate veh in one RootLocation
             action_to_perform = deferred.call(travel_intent.action)
             try:
-                action_to_perform.perform()
-            except:
-                logger.warn("Unable to perform action %s", str(action_to_perform.__class__), exc_info=True)
+                db.session.begin_nested()
+                result = action_to_perform.perform()
+
+                if result:  # action finished successfully and should be removed
+                    logger.info("Intent %s of %s finished successfully. Removing it",
+                                str(action_to_perform), str(travel_intent.executor))
+                    db.session.delete(travel_intent)
+                db.session.commit()
+            except main.TurningIntoIntentExceptionMixin:
+                db.session.rollback()  # it will try again next tick
+            except:  # action failed for unknown (probably not temporary) reason
+                db.session.rollback()
+                logger.warn("Unable to perform action %s. Action removed", str(action_to_perform), exc_info=True)
+                db.session.delete(travel_intent)
 
 
 def move_entity_to_position(entity, direction, target_position):
@@ -353,10 +364,15 @@ class TravelToEntityAndPerformActionProcess(ProcessAction):
         ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
 
+        self.come_closer_to_entity(initial_pos, speed_per_tick, target_entity_root)
+
+        return self.try_to_perform_action()
+
+    def come_closer_to_entity(self, initial_pos, speed_per_tick, target_entity_root):
         traversability = general.LandTraversabilityBasedRange(speed_per_tick)
         if traversability.is_near(self.executor, self.entity):  # move to the same root location
             move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
-        else:  # come closer
+        else:
             direction_to_destination = util.direction(initial_pos, target_entity_root.position)
             max_potential_range = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
             distance_traversed = traversability.get_maximum_range_from_estimate(initial_pos, direction_to_destination,
@@ -368,17 +384,15 @@ class TravelToEntityAndPerformActionProcess(ProcessAction):
 
             move_entity_to_position(self.executor, direction_to_destination, target_position)
 
-        self.try_to_perform_action()
-
     def try_to_perform_action(self):
-        exceptions = tuple(self.action.EXCEPTIONS_CREATING_INTENT[main.Intents.TRAVEL])
-        db.session.begin_nested()
         try:
-            result = self.action.perform()
+            db.session.begin_nested()
+            self.action.perform()
             db.session.commit()  # commit savepoint
-            return result
-        except exceptions:
+            return True
+        except main.TurningIntoIntentExceptionMixin:  # these exceptions result in rollback, not removal of intent
             db.session.rollback()  # rollback to savepoint
+            return False
 
 
 class ActivitiesProgressProcess(ProcessAction):
@@ -809,10 +823,6 @@ class DropItemAction(ActionOnItem):
 
 
 class TakeItemAction(ActionOnItem):
-    EXCEPTIONS_CREATING_INTENT = {
-        main.Intents.TRAVEL: [main.EntityTooFarAwayException]
-    }
-
     def __init__(self, executor, item, amount=1):
         super().__init__(executor, item)
         self.amount = amount
@@ -920,10 +930,7 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
 
 
 class EatAction(ActionOnItem):
-    EXCEPTIONS_CREATING_INTENT = {
-        main.Intents.TRAVEL: [main.EntityTooFarAwayException]
-    }
-
+    @convert(executor=models.Character, item=models.Item)
     def __init__(self, executor, item, amount):
         super().__init__(executor, item, rng=general.VisibilityBasedRange(20))
         self.amount = amount

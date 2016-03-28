@@ -163,6 +163,16 @@ class PlayerException(GameException):
     pass
 
 
+class TurningIntoIntentExceptionMixin(Exception):
+    """
+    This class guarantees that exception class has turn_into_intent method, which creates instance of Intent
+        of correct type for a correct (possibly exception-specific) action
+    """
+
+    def turn_into_intent(self, entity, action, priority=1):
+        raise NotImplementedError("should be implemented in subclass")
+
+
 class InvalidAmountException(ItemException):
     def __init__(self, *, amount):
         super().__init__(Errors.INVALID_AMOUNT, amount=amount)
@@ -173,9 +183,15 @@ class OwnInventoryExceededException(GameException):
         super().__init__(Errors.OWN_INVENTORY_CAPACITY_EXCEEDED)
 
 
-class EntityTooFarAwayException(GameException):
+class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
     def __init__(self, *, entity):
         super().__init__(Errors.ENTITY_TOO_FAR_AWAY, **entity.pyslatize())
+        self.entity = entity
+
+    def turn_into_intent(self, executor, action, priority=1):
+        from exeris.core import models, actions, deferred
+        travel_action = actions.TravelToEntityAndPerformActionProcess(executor, self.entity, action)
+        return models.Intent(action.executor, Intents.TRAVEL, priority, deferred.serialize(travel_action))
 
 
 class EntityNotInInventoryException(GameException):

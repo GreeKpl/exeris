@@ -14,7 +14,7 @@ from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
-    EntityIntent
+    Intent
 from exeris.core.properties import P
 from tests import util
 
@@ -768,25 +768,26 @@ class IntentTest(TestCase):
         db.session.add_all([rl, rl_very_far_away, hammer_type, hammer])
 
         take_action = TakeItemAction(char, hammer)
-        deferred.perform_or_defer_as_intention(take_action, char)
+        deferred.perform_or_turn_into_intent(char, take_action)
 
         # check if intent parameters were correctly guessed
-        self.assertEqual(1, EntityIntent.query.count())
-        self.assertEqual(["exeris.core.actions.TakeItemAction",
-                          {"executor": char.id, "item": hammer.id, "amount": 1}],
-                         EntityIntent.query.one().action)
-        self.assertEqual(main.Intents.TRAVEL, EntityIntent.query.one().type)
+        self.assertEqual(1, Intent.query.count())
+
+        self.assertEqual(
+            ["exeris.core.actions.TravelToEntityAndPerformActionProcess", {"executor": char.id, "entity": hammer.id,
+                                                                           "action": [
+                                                                               "exeris.core.actions.TakeItemAction",
+                                                                               {"executor": char.id,
+                                                                                "item": hammer.id, "amount": 1}]}],
+            Intent.query.one().action)
+        self.assertEqual(main.Intents.TRAVEL, Intent.query.one().type)
 
         hammer.being_in = rl
         take_action = TakeItemAction(char, hammer, amount=-1)
 
+        # InvalidAmountException cannot be turned into intent
         self.assertRaises(main.InvalidAmountException,
-                          lambda: deferred.perform_or_defer_as_intention(take_action, char, main.Intents.TRAVEL,
-                                                                         main.EntityTooFarAwayException))
-
-        # the same when guessing the intent type
-        self.assertRaises(main.InvalidAmountException,
-                          lambda: deferred.perform_or_defer_as_intention(take_action, char))
+                          lambda: deferred.perform_or_turn_into_intent(char, take_action))
 
 
 class PlayerActionsTest(TestCase):

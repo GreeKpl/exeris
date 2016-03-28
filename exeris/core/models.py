@@ -493,28 +493,28 @@ class Entity(db.Model):
         return str(self.__class__) + str(self.__dict__)
 
 
-class EntityIntent(db.Model):
+class Intent(db.Model):
     """
-    Represents entity's will or plan to perform certain action (which is not necessarily possible at the moment)
+    Represents entity's will or plan to perform certain action (which can be impossible at the moment)
     """
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, entity, intent_type, priority, action):
-        self.entity = entity
+    def __init__(self, executor, intent_type, priority, action):
+        self.executor = executor
         self.type = intent_type
         self.priority = priority
         self.action = action
 
-    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
-    entity = sql.orm.relationship(Entity, uselist=False, backref="intents")
+    executor_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
+    executor = sql.orm.relationship(Entity, uselist=False, backref="intents")
 
     type = sql.Column(sql.String(20))
     priority = sql.Column(sql.Integer)
     action = sql.Column(psql.JSONB)  # single action
 
     def __repr__(self):
-        return "{{EntityIntent, entity: {}, type: {}, action: {}}}".format(self.entity, self.type, self.action)
+        return "{{Intent, executor: {}, type: {}, action: {}}}".format(self.executor, self.type, self.action)
 
 
 class LocationType(EntityType):

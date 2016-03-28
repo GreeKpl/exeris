@@ -1,10 +1,9 @@
 import inspect
 
-import itertools
 import wrapt
 
 import project_root
-from exeris.core import models
+from exeris.core import main, models
 from exeris.core.main import db
 
 
@@ -93,36 +92,26 @@ def convert(**argument_types):
     return wrapper
 
 
-def perform_or_defer_as_intention(action, entity, intent_type=None, exceptions=None, priority=1):
+def perform_or_turn_into_intent(entity, action, priority=1):
     """
     Method tries to execute `perform` method on specified action.
     If it doesn't succeed and result in  throwing on throwing exception of specified class, then
     action is serialized and turned into EntityIntention for specified entity.
     If any unlisted exception is raised then it's propagated.
     It means the action needs to be serializable and deserializable.
+    :param entity: entity (not only Character) being actor (executor) for this action. Used in intent.
     :param action: action that is tried to be performed
-    :param entity: entity being actor (executor) for this action. Not only Character. Used in intent.
-    :param intent_type: name of the queue to which the intent will go, if unspecified then guessed based on exceptions
-    :param exceptions: exception class or tuple of exception classes which, when raised, should lead to creating intent
-        to perform the action in intent's specific circumstances. If unspecified then based on Action-specific list
-    :param priority: int, used in intent. Priorities with higher prio are handled earlier (it matters especially
+    :param priority: int, used in intent. Intents with higher prio are handled earlier (it matters especially
         when there's limited number of intents to complete at the time).
     """
-
-    if exceptions is None:  # intent type needs to be guessed so any exception can be thrown
-        assert hasattr(action, "EXCEPTIONS_CREATING_INTENT"), "action {} unable to guess exception types that could " \
-                                                              "result in creating an intent".format(action.__class__)
-        exceptions = tuple(itertools.chain.from_iterable(action.EXCEPTIONS_CREATING_INTENT.values()))
 
     db.session.begin_nested()
     try:
         result = action.perform()
         db.session.commit()  # commit savepoint
         return result
-    except exceptions as raised_exception:
+    except main.TurningIntoIntentExceptionMixin as exception:
         db.session.rollback()  # rollback to savepoint
 
-        if intent_type is None:  # get intent_type connected to the raised_exception
-            intent_type = [type_name for type_name, type_exceptions in action.EXCEPTIONS_CREATING_INTENT.items() if
-                           raised_exception.__class__ in type_exceptions][0]
-        db.session.add(models.EntityIntent(entity, intent_type, priority, serialize(action)))
+        entity_intent = exception.turn_into_intent(entity, action, priority)
+        db.session.add(entity_intent)

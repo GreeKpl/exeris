@@ -386,17 +386,17 @@ def create_activity_from_recipe(recipe_id, user_input):
 @socketio_character_event("character.travel_in_direction")
 def character_travel_in_direction(direction):
     # delete previous
-    models.EntityIntent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
 
     travel_action = actions.TravelInDirectionProcess(g.character, int(direction))
-    intent = models.EntityIntent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+    intent = models.Intent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
     db.session.add(intent)
     db.session.commit()
 
 
 @socketio_character_event("character.stop_travel")
 def character_stop_travel():
-    models.EntityIntent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
     db.session.commit()
 
 
