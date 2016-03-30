@@ -83,7 +83,7 @@ def convert(**argument_types):
                 converted_args[arg_name] = argument_types[arg_name].query.get(arg_value)
             elif arg_exists(arg_name) and issubclass(argument_types[arg_name], actions.AbstractAction) \
                     and isinstance(arg_value, list):
-                converted_args[arg_name] = wrapper(wrapped, instance, args, arg_value[1])
+                converted_args[arg_name] = call(arg_value)  # recursively deserialize JSON into python Action object
             else:
                 converted_args[arg_name] = arg_value
 
@@ -92,14 +92,14 @@ def convert(**argument_types):
     return wrapper
 
 
-def perform_or_turn_into_intent(entity, action, priority=1):
+def perform_or_turn_into_intent(executor, action, priority=1):
     """
     Method tries to execute `perform` method on specified action.
     If it doesn't succeed and result in  throwing on throwing exception of specified class, then
     action is serialized and turned into EntityIntention for specified entity.
     If any unlisted exception is raised then it's propagated.
     It means the action needs to be serializable and deserializable.
-    :param entity: entity (not only Character) being actor (executor) for this action. Used in intent.
+    :param executor: entity (not only Character) being actor (executor) for this action. Used in intent.
     :param action: action that is tried to be performed
     :param priority: int, used in intent. Intents with higher prio are handled earlier (it matters especially
         when there's limited number of intents to complete at the time).
@@ -113,5 +113,5 @@ def perform_or_turn_into_intent(entity, action, priority=1):
     except main.TurningIntoIntentExceptionMixin as exception:
         db.session.rollback()  # rollback to savepoint
 
-        entity_intent = exception.turn_into_intent(entity, action, priority)
+        entity_intent = exception.turn_into_intent(executor, action, priority)
         db.session.add(entity_intent)
