@@ -403,7 +403,14 @@ class ActivitiesProgressProcess(ProcessAction):
         activities = models.Activity.query.all()
         for activity in activities:
             activity_progress = SingleActivityProgressProcess(activity)
-            activity_progress.perform()
+            try:
+                db.session.begin_nested()
+                activity_progress.perform()
+                db.session.commit()
+            except main.GameException:
+                db.session.rollback()  # add some user notification
+            except:
+                db.session.rollback()
 
 
 class SingleActivityProgressProcess(ProcessAction):
@@ -420,66 +427,62 @@ class SingleActivityProgressProcess(ProcessAction):
         logger.info("progress of %s", self.activity)
         workers = models.Character.query.filter_by(activity=self.activity).all()
 
-        try:
-            req = self.activity.requirements
+        req = self.activity.requirements
 
-            if "mandatory_machines" in req:
-                logger.info("checking mandatory_machines")
-                self.check_mandatory_machines(req["mandatory_machines"])
+        if "mandatory_machines" in req:
+            logger.info("checking mandatory_machines")
+            self.check_mandatory_machines(req["mandatory_machines"])
 
-            if "optional_machines" in req:
-                logger.info("checking optional_machines")
-                self.check_optional_machines(req["optional_machines"])
+        if "optional_machines" in req:
+            logger.info("checking optional_machines")
+            self.check_optional_machines(req["optional_machines"])
 
-            if "targets" in req:
-                logger.info("checking targets")
-                self.check_target_proximity(req["targets"])
+        if "targets" in req:
+            logger.info("checking targets")
+            self.check_target_proximity(req["targets"])
 
-            if "target_with_properties" in req:
-                pass
+        if "target_with_properties" in req:
+            pass
 
-            if "input" in req:
-                self.check_input_requirements(req["input"])
+        if "input" in req:
+            self.check_input_requirements(req["input"])
 
-            active_workers = []
-            for worker in workers:
-                self.check_worker_proximity(self.activity, worker)
+        active_workers = []
+        for worker in workers:
+            self.check_worker_proximity(self.activity, worker)
 
-                if "mandatory_tools" in req:
-                    self.check_mandatory_tools(worker, req["mandatory_tools"])
+            if "mandatory_tools" in req:
+                self.check_mandatory_tools(worker, req["mandatory_tools"])
 
-                if "optional_tools" in req:
-                    self.check_optional_tools(worker, req["optional_tools"])
+            if "optional_tools" in req:
+                self.check_optional_tools(worker, req["optional_tools"])
 
-                if "skill" in req:
-                    self.check_skills(worker, req["skills"].items()[0])
+            if "skill" in req:
+                self.check_skills(worker, req["skills"].items()[0])
 
-                self.progress_ratio += SingleActivityProgressProcess.DEFAULT_PROGRESS
-                active_workers.append(worker)
+            self.progress_ratio += SingleActivityProgressProcess.DEFAULT_PROGRESS
+            active_workers.append(worker)
 
-            if "max_workers" in req:
-                self.check_min_workers(active_workers, req["min_workers"])
+        if "max_workers" in req:
+            self.check_min_workers(active_workers, req["min_workers"])
 
-            if "min_workers" in req:
-                self.check_max_workers(active_workers, req["max_workers"])
+        if "min_workers" in req:
+            self.check_max_workers(active_workers, req["max_workers"])
 
-            self.activity.ticks_left -= self.progress_ratio
+        self.activity.ticks_left -= self.progress_ratio
 
-            if len(self.tool_based_quality):
-                self.activity.quality_sum += mean(self.tool_based_quality)
+        if len(self.tool_based_quality):
+            self.activity.quality_sum += mean(self.tool_based_quality)
+            self.activity.quality_ticks += 1
+
+        if len(self.machine_based_quality):
+            self.activity.quality_sum += mean(self.machine_based_quality)
+            self.activity.quality_ticks += 1
+
+        for group, params in req.get("input", {}).items():
+            if "quality" in params:
+                self.activity.quality_sum += params["quality"]
                 self.activity.quality_ticks += 1
-
-            if len(self.machine_based_quality):
-                self.activity.quality_sum += mean(self.machine_based_quality)
-                self.activity.quality_ticks += 1
-
-            for group, params in req.get("input", {}).items():
-                if "quality" in params:
-                    self.activity.quality_sum += params["quality"]
-                    self.activity.quality_ticks += 1
-
-        except Exception as e:
-            logger.error("Error processing activity %s", str(self.activity), e)
 
         if self.activity.ticks_left <= 0:
             self.finish_activity(self.activity)
