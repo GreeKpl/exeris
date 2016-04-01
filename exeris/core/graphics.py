@@ -12,14 +12,18 @@ VIEW_SIZE = 500
 COLORS = {"grass": "green", "deep_water": "blue", "shallow_water": "blue", "road": "brown"}
 
 
+def transpose(y):
+    return VIEW_SIZE - y
+
+
 def get_map():
-    im = Image.new("RGB", (500, 500), "white")
+    im = Image.new("RGB", (VIEW_SIZE, VIEW_SIZE), "white")
 
     terrains = models.TerrainArea.query.order_by(models.TerrainArea.priority.asc()).all()
     draw = ImageDraw.Draw(im)
     for t in terrains:
         coords = t.terrain.exterior.coords[:-1]
-        coords = [(c * MAP_PER_PX, d * MAP_PER_PX) for c, d in coords]
+        coords = [(x * MAP_PER_PX, transpose(y * MAP_PER_PX)) for x, y in coords]
 
         draw.polygon(coords, fill=COLORS[t.type_name])
         # im.paste(black, (int(pos[0] * MAP_PER_PX), int(pos[1] * MAP_PER_PX)))
@@ -28,8 +32,8 @@ def get_map():
 
     for rl in root_locs:
         p = rl.position.coords[0]
-        low = (p[0] - 0.05) * MAP_PER_PX, (p[1] - 0.05) * MAP_PER_PX
-        upp = (p[0] + 0.05) * MAP_PER_PX, (p[1] + 0.05) * MAP_PER_PX
+        low = (p[0] - 0.05) * MAP_PER_PX, transpose((p[1] + 0.05) * MAP_PER_PX)
+        upp = (p[0] + 0.05) * MAP_PER_PX, transpose((p[1] - 0.05) * MAP_PER_PX)
 
         draw.pieslice([low, upp], 0, 360, fill="black")
 
