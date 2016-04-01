@@ -500,21 +500,21 @@ class Intent(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, executor, intent_type, priority, action):
+    def __init__(self, executor, intent_type, priority, serialized_action):
         self.executor = executor
         self.type = intent_type
         self.priority = priority
-        self.action = action
+        self.serialized_action = serialized_action
 
     executor_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     executor = sql.orm.relationship(Entity, uselist=False, backref="intents")
 
     type = sql.Column(sql.String(20))
     priority = sql.Column(sql.Integer)
-    action = sql.Column(psql.JSONB)  # single action
+    serialized_action = sql.Column(psql.JSONB)  # single action
 
     def __repr__(self):
-        return "{{Intent, executor: {}, type: {}, action: {}}}".format(self.executor, self.type, self.action)
+        return "{{Intent, executor: {}, type: {}, action: {}}}".format(self.executor, self.type, self.serialized_action)
 
 
 class LocationType(EntityType):

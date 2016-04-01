@@ -151,6 +151,22 @@ def eat(entity_id, amount=None):
         return entity_info, amount
 
 
+@socketio_character_event("character.go_to_location")
+def character_goto_location(entity_id):
+    entity_id = app.decode(entity_id)
+    entity = models.Entity.by_id(entity_id)
+
+    assert isinstance(entity, models.Location)
+
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
+
+    travel_to_entity_action = actions.TravelToEntityAction(g.character, entity)
+    travel_intent = models.Intent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_to_entity_action))
+    db.session.add(travel_intent)
+
+    db.session.commit()
+
+
 @socketio_character_event("open_readable_contents")
 def open_readable_contents(entity_id):
     entity_id = app.decode(entity_id)
@@ -386,7 +402,7 @@ def create_activity_from_recipe(recipe_id, user_input):
 @socketio_character_event("character.travel_in_direction")
 def character_travel_in_direction(direction):
     # delete previous
-    models.Intent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
 
     travel_action = actions.TravelInDirectionProcess(g.character, int(direction))
     intent = models.Intent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
@@ -396,7 +412,7 @@ def character_travel_in_direction(direction):
 
 @socketio_character_event("character.stop_travel")
 def character_stop_travel():
-    models.Intent.query.filter_by(entity=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
     db.session.commit()
 
 

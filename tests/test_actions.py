@@ -779,7 +779,7 @@ class IntentTest(TestCase):
                                                                                "exeris.core.actions.TakeItemAction",
                                                                                {"executor": char.id,
                                                                                 "item": hammer.id, "amount": 1}]}],
-            Intent.query.one().action)
+            Intent.query.one().serialized_action)
         self.assertEqual(main.Intents.TRAVEL, Intent.query.one().type)
 
         hammer.being_in = rl

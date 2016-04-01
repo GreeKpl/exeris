@@ -284,7 +284,7 @@ class TravelProcess(ProcessAction):
             # in fact it shouldn't move anything, it should store intermediate data about direction and speed for each
             # RootLocation, because there can be multi-location vehicles.
             # But there can also be 2 separate veh in one RootLocation
-            action_to_perform = deferred.call(travel_intent.action)
+            action_to_perform = deferred.call(travel_intent.serialized_action)
             try:
                 db.session.begin_nested()
                 result = action_to_perform.perform()
@@ -317,15 +317,15 @@ def move_entity_to_position(entity, direction, target_position):
 
 
 class TravelInDirectionProcess(ProcessAction):
-    @convert(entity=models.Entity)
-    def __init__(self, entity, direction):
-        self.entity = entity
+    @convert(executor=models.Entity)
+    def __init__(self, executor, direction):
+        self.executor = executor
         self.direction = direction
 
     def perform_action(self):
-        speed = self.entity.get_max_speed()
+        speed = self.executor.get_max_speed()
 
-        initial_pos = self.entity.get_root().position
+        initial_pos = self.executor.get_root().position
 
         ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
@@ -338,10 +338,58 @@ class TravelInDirectionProcess(ProcessAction):
 
         destination_pos = util.pos_for_distance_in_direction(initial_pos, self.direction, travel_distance_per_tick)
 
-        logger.info("Travel of %s from %s to %s [speed: %s]", self.entity, initial_pos, destination_pos, speed_per_tick)
+        logger.info("Travel of %s from %s to %s [speed: %s]", self.executor, initial_pos, destination_pos,
+                    speed_per_tick)
 
-        move_entity_to_position(self.entity, self.direction, destination_pos)
+        move_entity_to_position(self.executor, self.direction, destination_pos)
         return False
+
+
+class TravelToEntityAction(ActionOnEntity):
+    """
+    Responsible for moving a mobile executor to the target entity.
+    """
+
+    @convert(executor=models.Entity, entity=models.Entity)
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity)
+
+    def perform_action(self):
+        seeing_entity_range = general.VisibilityBasedRange(20)
+        if not seeing_entity_range.is_near(self.executor, self.entity):
+            raise main.EntityTooFarAwayException(entity=self.entity)
+
+        initial_pos = self.executor.get_root().position
+        target_entity_root = self.entity.get_root()
+
+        speed_per_tick = self.get_speed_per_tick()
+
+        return self.come_closer_to_entity(initial_pos, speed_per_tick, target_entity_root)
+
+    def get_speed_per_tick(self):
+        speed = self.executor.get_max_speed()
+        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
+        speed_per_tick = speed / ticks_per_day
+        return speed_per_tick
+
+    def come_closer_to_entity(self, initial_position, speed_per_tick, target_entity_root):
+        traversability = general.LandTraversabilityBasedRange(speed_per_tick)
+        if traversability.is_near(self.executor, self.entity):  # move to the same root location
+            move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
+            return True
+        else:
+            direction_to_destination = util.direction_degrees(initial_position, target_entity_root.position)
+            max_potential_range = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+            distance_traversed = traversability.get_maximum_range_from_estimate(initial_position,
+                                                                                direction_to_destination,
+                                                                                speed_per_tick,
+                                                                                max_potential_range)
+
+            target_position = util.pos_for_distance_in_direction(initial_position, direction_to_destination,
+                                                                 distance_traversed)
+
+            move_entity_to_position(self.executor, direction_to_destination, target_position)
+            return False
 
 
 class TravelToEntityAndPerformActionProcess(ProcessAction):
@@ -352,37 +400,11 @@ class TravelToEntityAndPerformActionProcess(ProcessAction):
         self.action = action
 
     def perform_action(self):
-        speed = self.executor.get_max_speed()
 
-        seeing_entity_range = general.VisibilityBasedRange(20)
-        if not seeing_entity_range.is_near(self.executor, self.entity):
-            raise main.EntityTooFarAwayException(entity=self.entity)
-
-        target_entity_root = self.entity.get_root()
-        initial_pos = self.executor.get_root().position
-
-        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
-        speed_per_tick = speed / ticks_per_day
-
-        self.come_closer_to_entity(initial_pos, speed_per_tick, target_entity_root)
+        travel_to_entity_action = TravelToEntityAction(self.executor, self.entity)
+        travel_to_entity_action.perform()
 
         return self.try_to_perform_action()
-
-    def come_closer_to_entity(self, initial_pos, speed_per_tick, target_entity_root):
-        traversability = general.LandTraversabilityBasedRange(speed_per_tick)
-        if traversability.is_near(self.executor, self.entity):  # move to the same root location
-            move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
-        else:
-            direction_to_destination = util.direction(initial_pos, target_entity_root.position)
-            max_potential_range = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
-            distance_traversed = traversability.get_maximum_range_from_estimate(initial_pos, direction_to_destination,
-                                                                                speed_per_tick,
-                                                                                max_potential_range)
-
-            target_position = util.pos_for_distance_in_direction(initial_pos, direction_to_destination,
-                                                                 distance_traversed)
-
-            move_entity_to_position(self.executor, direction_to_destination, target_position)
 
     def try_to_perform_action(self):
         try:

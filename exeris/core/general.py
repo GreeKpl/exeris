@@ -230,11 +230,11 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 filter(models.RootLocation.id != root.id).all()  # get RootLocations in big circle
 
             for other_loc in other_locs:
-                direction_from_center = util.direction(root.position, other_loc.position)
+                direction_from_center = util.direction_degrees(root.position, other_loc.position)
                 distance_to_point = util.distance(root.position, other_loc.position)
 
                 maximum_accessible_range = self.get_maximum_range_from_estimate(root.position,
-                                                                                math.degrees(direction_from_center),
+                                                                                direction_from_center,
                                                                                 self.distance, distance_to_point)
                 if maximum_accessible_range > distance_to_point or math.isclose(maximum_accessible_range,
                                                                                 distance_to_point):

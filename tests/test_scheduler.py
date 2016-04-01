@@ -52,7 +52,7 @@ class SchedulerTravelTest(TestCase):
     def test_character_go_to_location_to_perform_action_process(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(2.85, 2.85), 123)
+        rl = RootLocation(Point(2.8, 2.8), 123)
         grass_type = TerrainType("grass")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_type)
@@ -81,8 +81,8 @@ class SchedulerTravelTest(TestCase):
             go_to_entity_and_eat_action.perform()
 
         self.assertEqual(0, traveler.satiation)
-        self.assertAlmostEqual(2.851909632081694, traveler.get_root().position.x)
-        self.assertAlmostEqual(2.988875760044993, traveler.get_root().position.y)
+        self.assertAlmostEqual(2.89820927, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.89820927, traveler.get_root().position.y)
 
         go_to_entity_and_eat_action.perform()  # eat half of potatoes
         # food is eaten
@@ -100,7 +100,7 @@ class SchedulerTravelTest(TestCase):
     def test_integration_character_go_and_perform_action_in_travel_process(self):
         util.initialize_date()
 
-        rl = RootLocation(Point(2.85, 2.85), 123)
+        rl = RootLocation(Point(2.8, 2.8), 123)
         far_away_loc = RootLocation(Point(40, 40), 12)
         grass_type = TerrainType("grass")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
@@ -131,7 +131,7 @@ class SchedulerTravelTest(TestCase):
 
         go_and_perform_action_intent = Intent.query.one()
 
-        go_and_perform_action = deferred.call(go_and_perform_action_intent.action)
+        go_and_perform_action = deferred.call(go_and_perform_action_intent.serialized_action)
 
         self.assertEqual(TravelToEntityAndPerformActionProcess, go_and_perform_action.__class__)
 
@@ -155,20 +155,21 @@ class SchedulerTravelTest(TestCase):
         # intent was removed
         self.assertEqual(0, Intent.query.count())
 
-        self.assertAlmostEqual(2.85287325, traveler.get_root().position.x)
-        self.assertAlmostEqual(3.05831351, traveler.get_root().position.y)
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
 
         eat_too_far_away_action = EatAction(traveler, potatoes_away, 3)
         deferred.perform_or_turn_into_intent(traveler, eat_too_far_away_action)
 
-        self.assertEqual("exeris.core.actions.TravelToEntityAndPerformActionProcess", Intent.query.one().action[0])
+        self.assertEqual("exeris.core.actions.TravelToEntityAndPerformActionProcess",
+                         Intent.query.one().serialized_action[0])
 
         travel_process.perform()  # nothing will happen, because potatoes are not on line of sight
         # (but LoS can be hard to define!!!!)
 
         # intent executor is still located on the same position
-        self.assertAlmostEqual(2.85287325, traveler.get_root().position.x)
-        self.assertAlmostEqual(3.05831351, traveler.get_root().position.y)
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
 
         # the intent is still there, because action was stopped by subclass of TurningIntoIntentExceptionMixin
         # so the error preventing going there is potentially only temporary

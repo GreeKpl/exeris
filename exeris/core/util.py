@@ -19,11 +19,12 @@ def distance(point_a, point_b):
     return math.sqrt((point_a.x - point_b.x) ** 2 + (point_a.y - point_b.y) ** 2)
 
 
-def direction(first_loc_pos, second_loc_pos):
-    return math.asin(
-        (second_loc_pos.x - first_loc_pos.x) / distance(first_loc_pos, second_loc_pos))
+def direction_degrees(first_loc_pos, second_loc_pos):
+    x_difference = second_loc_pos.x - first_loc_pos.x
+    y_difference = second_loc_pos.y - first_loc_pos.y
+    return (360 + math.degrees(math.atan2(y_difference, x_difference))) % 360
 
 
-def pos_for_distance_in_direction(initial_pos, direction, distance):
-    return Point(initial_pos.x + math.sin(math.radians(direction)) * distance,
-                 initial_pos.y + math.cos(math.radians(direction)) * distance)
+def pos_for_distance_in_direction(initial_pos, direction_deg, distance):
+    return Point(initial_pos.x + math.cos(math.radians(direction_deg)) * distance,
+                 initial_pos.y + math.sin(math.radians(direction_deg)) * distance)

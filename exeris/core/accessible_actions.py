@@ -17,6 +17,8 @@ ACTIONS_ON_GROUND = [
     ActionRecord("read", "image", P.READABLE, "open_readable_contents"),
     ActionRecord("add_to_activity", "image", "any", "form_add_item_to_activity",
                  lambda x: isinstance(x, models.Item)),
+    ActionRecord("go_to_location", "image", "any", "character.go_to_location",
+                 lambda x: isinstance(x, models.Location)),
     ActionRecord("open", "image", P.CLOSEABLE, "toggle_closeable",
                  lambda x: x.has_property(P.CLOSEABLE, closed=True)),
     ActionRecord("close", "image", P.CLOSEABLE, "toggle_closeable",
