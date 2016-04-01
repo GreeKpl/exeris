@@ -6,5 +6,6 @@
     {% endfor %}
     {{ g.character.states }} | {{ g.character.eating_queue }} |
     <span id="top_bar_current_activity">{{ activity_name }}</span> |
-    intents: {{ g.character.intents }}, pos: {{ g.character.get_root().position }}
+    intents: {% for intent in g.character.intents %} {{ intent.serialized_action }} {% endfor %},
+    pos: {{ g.character.get_root().position }}
 </div>
