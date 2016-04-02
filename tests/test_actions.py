@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import sqlalchemy as sql
 from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
@@ -84,10 +85,10 @@ class CharacterActionsTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_simple_create_item_action(self):
-        item_type = ItemType("hammer", 200)
+        hammer_type = ItemType("hammer", 200)
         schema_type = ItemType("schema", 0)
         rl = RootLocation(Point(1, 2), 123)
-        db.session.add_all([item_type, schema_type, rl])
+        db.session.add_all([hammer_type, schema_type, rl])
 
         container = Item(schema_type, rl, weight=111)
         db.session.add(container)
@@ -97,13 +98,13 @@ class CharacterActionsTest(TestCase):
         hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": "potatoes"}, 100, initiator)
         db.session.add(hammer_activity)
 
-        action = CreateItemAction(item_type=item_type, properties={"Edible": {"hunger": 5}},
+        action = CreateItemAction(item_type=hammer_type, properties={"Edible": {"hunger": 5}},
                                   activity=hammer_activity, initiator=initiator, used_materials="all")
         action.perform()
 
-        items = Item.query.filter_by(type=item_type).all()
+        items = Item.query.filter_by(type=hammer_type).all()
         self.assertEqual(1, len(items))
-        self.assertEqual(item_type, items[0].type)
+        self.assertEqual(hammer_type, items[0].type)
         self.assertTrue(items[0].has_property("Edible"))
 
         with patch("exeris.core.general.GameDate._get_timestamp", new=lambda: 1100):  # stop the time!
@@ -111,10 +112,8 @@ class CharacterActionsTest(TestCase):
             remove_action = RemoveItemAction(items[0], True)
             remove_action.perform()
 
-            items = Item.query.filter_by(type=item_type).all()
-            self.assertEqual(1, len(items))
-            self.assertEqual(None, items[0].being_in)
-            self.assertEqual(GameDate.now().game_timestamp, items[0].removal_game_date.game_timestamp)
+            items_count = Item.query.filter_by(type=hammer_type).count()
+            self.assertEqual(0, items_count)
 
     def test_deferred_create_item_action(self):
         util.initialize_date()
@@ -308,7 +307,7 @@ class CharacterActionsTest(TestCase):
 
         self.assertIsNone(potatoes.being_in)  # check whether the object is deleted
         self.assertIsNone(potatoes.used_for)
-        self.assertIsNotNone(potatoes.removal_game_date)
+        self.assertTrue(sql.inspect(potatoes).deleted)
 
         self.assertEqual(200, potatoes_on_ground.weight)
 
@@ -430,7 +429,7 @@ class CharacterActionsTest(TestCase):
         self.assertEqual({metal_group.name: {"needed": 10, "left": 0, "used_type": iron_type.name}},
                          activity.requirements["input"])
         self.assertIsNone(iron.parent_entity)
-        self.assertIsNotNone(iron.removal_game_date)
+        self.assertTrue(sql.inspect(iron).deleted)
         Event.query.delete()
 
         # TEST TYPE MATCHING MULTIPLE REQUIREMENT GROUPS
@@ -489,7 +488,7 @@ class CharacterActionsTest(TestCase):
             fuel_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
             wood_group.name: {"needed": 10, "left": 0, "used_type": oak_type.name},
         }, activity.requirements["input"])
-        self.assertIsNotNone(oak.removal_game_date)
+        self.assertTrue(sql.inspect(oak).deleted)
 
     def test_add_nonstackable_item_to_activity(self):
         util.initialize_date()

@@ -2,6 +2,7 @@ import copy
 import math
 from unittest.mock import patch
 
+import sqlalchemy as sql
 from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
@@ -92,7 +93,7 @@ class SchedulerTravelTest(TestCase):
         go_to_entity_and_eat_action.perform()  # eat the rest of potatoes
         self.assertEqual(1, traveler.satiation)
 
-        self.assertIsNotNone(potatoes.removal_game_date)
+        self.assertTrue(sql.inspect(potatoes).deleted)
 
         # all potatoes are eaten, so they don't exist
         self.assertRaises(main.EntityTooFarAwayException, lambda: go_to_entity_and_eat_action.perform())
@@ -659,9 +660,9 @@ class SchedulerDecayTest(TestCase):
 
         self.assertEqual(1, old_pile_of_carrots.damage)
         self.assertEqual(990, old_pile_of_carrots.amount)
-
-        self.assertAlmostEqual(GameDate.now(), axe.removal_game_date, delta=2)
         self.assertEqual(None, axe.being_in)
+        self.assertTrue(sql.inspect(axe).deleted)
+
 
     def test_activity_decay(self):
         util.initialize_date()
@@ -723,7 +724,7 @@ class SchedulerDecayTest(TestCase):
         process.perform()
 
         self.assertEqual(19800, wood.amount)
-        self.assertAlmostEqual(GameDate.now(), hammer.removal_game_date, delta=1)
+        self.assertEqual(0, Item.query.filter_by(type=hammer_type).count())
 
         input_req_after_decay = {
             "group_fuel": {"left": 200, "needed": 200},

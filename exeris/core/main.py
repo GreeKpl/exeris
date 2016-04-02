@@ -125,7 +125,7 @@ def add_hook(name, func):
 
 
 def call_hook(name, **kwargs):
-    logger.info("Hook %s for arguments: %s", name, kwargs)
+    logger.info("Hook %s for arguments: %s", name, str(kwargs))
     for func in _hooks.get(name, []):
         logger.debug("Calling hook function: %s", func.__name__)
         func(**kwargs)

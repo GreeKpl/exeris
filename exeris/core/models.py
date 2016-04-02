@@ -292,7 +292,8 @@ class Entity(db.Model):
     role = sql.Column(sql.SmallInteger, nullable=True)
 
     title = sql.Column(sql.String, nullable=True)
-    properties = sql.orm.relationship("EntityProperty", back_populates="entity")
+    properties = sql.orm.relationship("EntityProperty", back_populates="entity",
+                                      cascade="all, delete, delete-orphan")
 
     @hybrid_property
     def being_in(self):
@@ -737,17 +738,6 @@ class Item(Entity):
     def validate_damage(self, key, damage):
         return max(0.0, min(1.0, damage))  # in range [0, 1]
 
-    _removal_game_date = sql.Column(sql.BigInteger, nullable=True)
-
-    @hybrid_property
-    def removal_game_date(self):
-        from exeris.core import general
-        return None if not self._removal_game_date else general.GameDate(self._removal_game_date)
-
-    @removal_game_date.setter
-    def removal_game_date(self, game_date):
-        self._removal_game_date = game_date.game_timestamp
-
     quality = sql.Column(sql.Float, default=1.0)
 
     @hybrid_property
@@ -774,9 +764,9 @@ class Item(Entity):
 
         parent_entity = self.being_in
 
-        self.being_in = None
-        from exeris.core import general
-        self.removal_game_date = general.GameDate.now()
+        self.parent_entity = None
+        db.session.delete(self)
+        
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
 
     def pyslatize(self, **overwrites):
@@ -945,7 +935,7 @@ class EventObserver(db.Model):
     observer = sql.orm.relationship(Character, uselist=False)
     event_id = sql.Column(sql.Integer, sql.ForeignKey(Event.id, ondelete='CASCADE'), primary_key=True)
     event = sql.orm.relationship(Event, uselist=False,
-                                 backref=sql.orm.backref("observers_junction", cascade="all,delete-orphan",
+                                 backref=sql.orm.backref("observers_junction", cascade="all, delete-orphan",
                                                          passive_deletes=True))
     times_seen = sql.Column(sql.Integer)
 
@@ -995,7 +985,7 @@ class EntityTypeProperty(db.Model):
 class EntityProperty(db.Model):
     __tablename__ = "entity_properties"
 
-    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
+    entity_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id, ondelete="CASCADE"), primary_key=True)
     entity = sql.orm.relationship(Entity, uselist=False, back_populates="properties")
 
     def __init__(self, name, data=None, entity=None):
