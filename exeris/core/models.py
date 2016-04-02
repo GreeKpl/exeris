@@ -1509,6 +1509,10 @@ class TerrainArea(Entity):
     def terrain(self, value):
         self._terrain = from_shape(value)
 
+    @terrain.expression
+    def terrain(cls):
+        return cls._terrain
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_TERRAIN_AREA,
     }

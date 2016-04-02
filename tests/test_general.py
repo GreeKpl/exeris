@@ -91,15 +91,15 @@ class RangeSpecTest(TestCase):
 
         rng = LandTraversabilityBasedRange(20)
 
-        self.assertEqual(5.5, rng.get_maximum_range_from_estimate(Point(0, 0), 0, 5, 10))  # 1 + 1 + 1 + 1 + 1 + 0.5
+        self.assertEqual(5.5, rng.get_maximum_range_from_estimate(Point(0, 0), 90, 5, 10))  # 1 + 1 + 1 + 1 + 1 + 0.5
 
-        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 0), 0, 4, 8))  # 1 + 1 + 1 + 1 + 1 + 0.5
+        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 0), 90, 4, 8))  # 1 + 1 + 1 + 1 + 1 + 0.5
 
-        self.assertEqual(1.5, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 1, 2))  # 1 + 0.5
+        self.assertEqual(1.5, rng.get_maximum_range_from_estimate(Point(0, 1), 90, 1, 2))  # 1 + 0.5
 
-        self.assertEqual(1, rng.get_maximum_range_from_estimate(Point(0, 2), 0, 1, 2))  # 1
+        self.assertEqual(1, rng.get_maximum_range_from_estimate(Point(0, 2), 90, 1, 2))  # 1
 
-        self.assertEqual(2.5, rng.get_maximum_range_from_estimate(Point(0, 5), 0, 5, 10))  # 5 * 0.5
+        self.assertEqual(2.5, rng.get_maximum_range_from_estimate(Point(0, 5), 90, 5, 10))  # 5 * 0.5
 
     def test_terrain_based_limitation_for_traversability(self):
         lava_type = TerrainType("lava")

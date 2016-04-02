@@ -9,7 +9,7 @@ from exeris.core import main, deferred, models
 from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess, \
     TravelInDirectionProcess, TravelProcess, TravelToEntityAndPerformActionProcess, EatAction
 from exeris.core.general import GameDate
-from exeris.core.main import db
+from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
     SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea
 from exeris.core.properties_base import P
@@ -174,6 +174,51 @@ class SchedulerTravelTest(TestCase):
         # the intent is still there, because action was stopped by subclass of TurningIntoIntentExceptionMixin
         # so the error preventing going there is potentially only temporary
         self.assertEqual(main.Intents.TRAVEL, Intent.query.one().type)
+
+    def test_travel_in_direction_action_near_edge_of_water(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1.02, 1.972222222222221), 123)
+
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        grass_terrain = TerrainType("grass")
+        land_terrain.add_to_group(grass_terrain)
+        water_terrain = TypeGroup.by_name(Types.WATER_TERRAIN)
+        deep_water_terrain = TerrainType("deep_water", travel_type=TerrainType.TRAVEL_WATER)
+        water_terrain.add_to_group(deep_water_terrain)
+
+        poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])
+        grass = models.TerrainArea(poly_grass, grass_terrain)
+
+        poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
+        water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
+
+        land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
+
+        traveler = util.create_character("John", rl, util.create_player("ABC"))
+
+        travel_action = TravelInDirectionProcess(traveler, 90)
+        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+
+        db.session.add_all([rl, grass, water, travel_intent, land_trav1, grass_terrain, deep_water_terrain])
+
+        travel_process = TravelProcess()
+        travel_process.perform()
+
+        self.assertAlmostEqual(1.02, rl.position.x, places=15)
+        self.assertAlmostEqual(1.99, rl.position.y, places=15)
+
+        # move by the edge of the land
+        Intent.query.delete()
+        travel_action = TravelInDirectionProcess(traveler, 330)
+        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+        db.session.add(travel_intent)
+
+        travel_process.perform()
+
+        # make sure it has really moved
+        self.assertAlmostEqual(1.0801406530405860, rl.position.x, places=15)
+        self.assertAlmostEqual(1.9552777777777777, rl.position.y, places=15)
 
 
 class SchedulerActivityTest(TestCase):

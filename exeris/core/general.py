@@ -278,8 +278,8 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
         :param direction: angle (from beginning of coord system) in which the line starting in center should go
         :param center_pos: point where the line should be started
         """
-        x = center_pos.x + math.sin(math.radians(direction)) * max_possible_radius
-        y = center_pos.y + math.cos(math.radians(direction)) * max_possible_radius
+        x = center_pos.x + math.cos(math.radians(direction)) * max_possible_radius
+        y = center_pos.y + math.sin(math.radians(direction)) * max_possible_radius
         radius_line = LineString([center_pos.coords[0], (x, y)])
         logger.debug("x: %s, y: %s, radius: %s", x, y, radius_line)
         intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_line.wkt),
