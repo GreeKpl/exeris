@@ -4,7 +4,7 @@ import exeris
 import flask_socketio as client_socket
 import psycopg2
 from exeris.app import socketio_character_event
-from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main
+from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, notifications_service
 from exeris.core.main import hook
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, app
@@ -426,8 +426,9 @@ def on_new_event(event_observer):
                              character=observer)
 
     for sid in exeris.app.socketio_users.get_all_by_character_id(observer.id):
-        client_socket.emit("character.new_event", (event.id, pyslate.t("game_date", game_date=event.date) + ": " +
-                                                   pyslate.t(event.type_name, html=True, **event.params)), room=sid)
+        notifications_service.add_event_to_send(sid, event.id,
+                                                pyslate.t("game_date", game_date=event.date) + ": " + \
+                                                pyslate.t(event.type_name, html=True, **event.params))
 
 
 @hook(main.Hooks.NEW_CHARACTER_NOTIFICATION)
@@ -439,4 +440,4 @@ def on_new_notification(character, notification):
     for sid in exeris.app.socketio_users.get_all_by_character_id(character.id):
         notification_info = {"notification_id": notification.id,
                              "title": pyslate.t(notification.title_tag, **notification.title_params)}
-        client_socket.emit("player.new_notification", (notification_info,), room=sid)
+        notifications_service.add_notification_to_send(sid, notification_info)
