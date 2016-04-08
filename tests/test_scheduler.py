@@ -37,7 +37,7 @@ class SchedulerTravelTest(TestCase):
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 45)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, travel_intent])
 
@@ -199,7 +199,7 @@ class SchedulerTravelTest(TestCase):
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 90)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass, water, travel_intent, land_trav1, grass_terrain, deep_water_terrain])
 
@@ -212,7 +212,7 @@ class SchedulerTravelTest(TestCase):
         # move by the edge of the land
         Intent.query.delete()
         travel_action = TravelInDirectionProcess(traveler, 330)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
         db.session.add(travel_intent)
 
         travel_process.perform()

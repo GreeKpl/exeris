@@ -161,7 +161,7 @@ def character_goto_location(entity_id):
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
 
     travel_to_entity_action = actions.TravelToEntityAction(g.character, entity)
-    travel_intent = models.Intent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_to_entity_action))
+    travel_intent = models.Intent(g.character, main.Intents.TRAVEL, 1, entity, deferred.serialize(travel_to_entity_action))
     db.session.add(travel_intent)
 
     db.session.commit()
@@ -405,7 +405,7 @@ def character_travel_in_direction(direction):
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
 
     travel_action = actions.TravelInDirectionProcess(g.character, int(direction))
-    intent = models.Intent(g.character, main.Intents.TRAVEL, 1, deferred.serialize(travel_action))
+    intent = models.Intent(g.character, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
     db.session.add(intent)
     db.session.commit()
 

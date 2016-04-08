@@ -501,17 +501,22 @@ class Intent(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, executor, intent_type, priority, serialized_action):
+    def __init__(self, executor, intent_type, priority, target, serialized_action):
         self.executor = executor
         self.type = intent_type
         self.priority = priority
+        self.target = target
         self.serialized_action = serialized_action
 
     executor_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
-    executor = sql.orm.relationship(Entity, uselist=False, backref="intents")
+    executor = sql.orm.relationship(Entity, uselist=False, backref="intents", foreign_keys=executor_id)
 
     type = sql.Column(sql.String(20))
     priority = sql.Column(sql.Integer)
+
+    target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), nullable=True)
+    target = sql.orm.relationship(Entity, uselist=False, foreign_keys=target_id)
+
     serialized_action = sql.Column(psql.JSONB)  # single action
 
     def __repr__(self):
@@ -766,7 +771,7 @@ class Item(Entity):
 
         self.parent_entity = None
         db.session.delete(self)
-        
+
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
 
     def pyslatize(self, **overwrites):
@@ -855,6 +860,12 @@ class Activity(Entity):
                                                                                         self.being_in, self.ticks_left,
                                                                                         self.ticks_needed,
                                                                                         self.requirements)
+
+
+class Combat(Entity):
+    __tablename__ = "combat"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
 
 class GameDateCheckpoint(db.Model):
