@@ -195,6 +195,27 @@ class EntityTest(TestCase):
         char.name = "James"
         self.assertEqual("James", char.name)
 
+    def test_removal_of_entity_with_activity(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 123)
+        char = util.create_character("abc", rl, util.create_player("abc"))
+
+        item_type = ItemType("sickle", 500)
+        item = Item(item_type, rl)
+
+        activity = Activity(item, "sharpening sickle", {}, {}, 1, char)
+
+        db.session.add_all([item_type, item, activity])
+        db.session.flush()
+
+        item.remove()
+
+        self.assertIsNone(item.parent_entity)
+        self.assertIsNone(activity.parent_entity)
+
+        activity.remove()
+
 
 class RootLocationTest(TestCase):
     create_app = util.set_up_app_with_database

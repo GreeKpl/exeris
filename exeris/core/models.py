@@ -30,6 +30,7 @@ ENTITY_CHARACTER = "character"
 ENTITY_ACTIVITY = "activity"
 ENTITY_TERRAIN_AREA = "terrain_area"
 ENTITY_GROUP = "group"
+ENTITY_COMBAT = "combat"
 
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
@@ -413,6 +414,20 @@ class Entity(db.Model):
             sql.or_(sql.and_(*entity_related_where_clause),
                     sql.and_(*type_related_where_clause)))
 
+    def remove(self):
+        parent_entity = self.being_in
+
+        self.parent_entity = None
+
+        entities_inside = Entity.query.filter(Entity.is_in(self)).all()
+        for entity in entities_inside:
+            logger.debug("Removing %s which is inside of removed entity: %s", entity, self)
+            entity.being_in = None
+
+        db.session.delete(self)
+
+        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
+
     @staticmethod
     def _cast_to_correct_psql_type(key, value):
         entity_column_value = EntityProperty.data[key].astext
@@ -767,12 +782,7 @@ class Item(Entity):
             for item in items_inside:
                 item.being_in = self.being_in  # move outside
 
-        parent_entity = self.being_in
-
-        self.parent_entity = None
-        db.session.delete(self)
-
-        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
+        super(Item, self).remove()
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
@@ -865,7 +875,17 @@ class Activity(Entity):
 class Combat(Entity):
     __tablename__ = "combat"
 
+    def __init__(self):
+        pass
+
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_COMBAT,
+    }
+
+    def __repr__(self):
+        return "{{Combat id={}}}".format(self.id)
 
 
 class GameDateCheckpoint(db.Model):

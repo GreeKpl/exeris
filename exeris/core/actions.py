@@ -4,9 +4,8 @@ from statistics import mean
 import sqlalchemy as sql
 from flask import logging
 from sqlalchemy import func
-
-from exeris.core import deferred, main, util
-from exeris.core import models, general, properties, recipes
+import sys
+from exeris.core import deferred, main, util, combat, models, general, properties, recipes
 from exeris.core.deferred import convert
 from exeris.core.main import db, Events
 from exeris.core.properties import P
@@ -316,6 +315,18 @@ def move_entity_to_position(entity, direction, target_position):
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=entity)
 
 
+class FightInCombatAction(Action):
+    @convert(executor=models.Entity, combat_entity=models.Combat)
+    def __init__(self, executor, combat_entity, side):
+        super().__init__(executor)
+        self.combat_entity = combat_entity
+        self.side = side
+
+    def perform_action(self):
+
+        combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
+
+
 class TravelInDirectionProcess(ProcessAction):
     @convert(executor=models.Entity)
     def __init__(self, executor, direction):
@@ -430,8 +441,10 @@ class ActivitiesProgressProcess(ProcessAction):
                 activity_progress.perform()
                 db.session.commit()
             except main.GameException:
+                logger.debug("GameException prevented ActivityProgress %s ", sys.exc_info())
                 db.session.rollback()  # add some user notification
             except:
+                logger.info("Exception prevented ActivityProgress %s ", sys.exc_info())
                 db.session.rollback()
 
 
