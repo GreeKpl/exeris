@@ -6,7 +6,7 @@ from exeris.core.models import RootLocation, LocationType, Location, EntityTypeP
     EntityProperty, \
     ItemType, Item, TextContent
 # noinspection PyUnresolvedReferences
-from exeris.core import properties
+from exeris.core import properties, main
 from exeris.core.properties_base import P
 from tests import util
 
@@ -121,5 +121,38 @@ class CharacterPropertiesTest(TestCase):
 
         self.assertEqual(20, cart.get_max_speed())
 
+    def test_preferred_equipment_to_wear(self):
+        rl = RootLocation(Point(1, 1), 122)
+        char = util.create_character("test1", rl, util.create_player("ala123"))
 
+        coat_type = ItemType("coat", 200)
+        coat_type.properties.append(EntityTypeProperty(P.EQUIPPABLE, {"eq_part": main.EqParts.BODY}))
+        coat = Item(coat_type, char)
 
+        two_handed_sword_type = ItemType("two_handed_sword", 200)
+        two_handed_sword_type.properties.append(
+            EntityTypeProperty(P.EQUIPPABLE, {"eq_part": main.EqParts.WEAPON,
+                                              "disallow_eq_parts": [main.EqParts.SHIELD]}))
+        two_handed_sword = Item(two_handed_sword_type, char)
+
+        jacket_type = ItemType("jacket", 200)
+        jacket_type.properties.append(EntityTypeProperty(P.EQUIPPABLE, {"eq_part": main.EqParts.BODY}))
+        jacket = Item(jacket_type, char)
+
+        wooden_shield_type = ItemType("wooden_shield", 200)
+        wooden_shield_type.properties.append(EntityTypeProperty(P.EQUIPPABLE, {"eq_part": main.EqParts.SHIELD}))
+        wooden_shield = Item(wooden_shield_type, char)
+
+        db.session.add_all([rl, coat_type, coat, two_handed_sword_type, two_handed_sword,
+                            jacket_type, jacket, wooden_shield_type, wooden_shield])
+
+        char.set_preferred_equipment_part(coat)
+        char.set_preferred_equipment_part(wooden_shield)
+        char.set_preferred_equipment_part(jacket)
+
+        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.SHIELD: wooden_shield}, char.get_equipment())
+
+        char.set_preferred_equipment_part(two_handed_sword)
+
+        # wooden shield is blocked by a two handed sword
+        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.WEAPON: two_handed_sword}, char.get_equipment())

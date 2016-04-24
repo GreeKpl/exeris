@@ -17,6 +17,8 @@ class P:
     MOBILE = "Mobile"
     LINE_OF_SIGHT = "LineOfSight"
     AFFECT_LINE_OF_SIGHT = "AffectLineOfSight"
+    PREFERRED_EQUIPMENT = "PreferredEquipment"
+    EQUIPPABLE = "Equippable"
 
 
 __registry = {}

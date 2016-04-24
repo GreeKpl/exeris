@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    ENTITY_UNSUPPORTED_OPERATION = "error_entity_unsupported_operation"
     TOO_LOW_SKILL = "error_too_low_skill"
     NO_INPUT_MATERIALS = "error_no_input_materials"
     ENTITY_NOT_IN_INVENTORY = "error_entity_not_in_inventory"
@@ -72,6 +73,13 @@ class Intents:
     TRAVEL = "travel"
     COMBAT_TICK = "combat_tick"
     COMBAT = "combat"
+
+
+class EqParts:
+    SHIELD = "shield"
+    HEAD = "head"
+    BODY = "body"
+    WEAPON = "weapon"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
@@ -198,6 +206,10 @@ class EntityNotInInventoryException(GameException):
     def __init__(self, *, entity):
         super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **entity.pyslatize())
 
+
+class EntityUnsupportedOperationException(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_UNSUPPORTED_OPERATION, **entity.pyslatize())
 
 class OnlySpecificTypeForGroupException(GameException):
     def __init__(self, *, type_name, group_name):
