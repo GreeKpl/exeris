@@ -19,6 +19,7 @@ class P:
     AFFECT_LINE_OF_SIGHT = "AffectLineOfSight"
     PREFERRED_EQUIPMENT = "PreferredEquipment"
     EQUIPPABLE = "Equippable"
+    WEAPONIZABLE = "Weaponizable"
 
 
 __registry = {}

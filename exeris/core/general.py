@@ -118,7 +118,8 @@ class RangeSpec:
             for a in self._locationize(entity_a):
                 locations_near_a = self.locations_near(a)
                 return any([True for b in self._locationize(entity_b) if b in locations_near_a])
-        except:
+        except Exception as e:
+            logger.debug("Exception when checking is_near(%s, %s): %s", entity_a, entity_b, e)
             return False
 
     def _locationize(self, entity):
@@ -230,15 +231,16 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 filter(models.RootLocation.id != root.id).all()  # get RootLocations in big circle
 
             for other_loc in other_locs:
+
                 direction_from_center = util.direction_degrees(root.position, other_loc.position)
                 distance_to_point = util.distance(root.position, other_loc.position)
 
                 maximum_accessible_range = self.get_maximum_range_from_estimate(root.position,
                                                                                 direction_from_center,
                                                                                 self.distance, distance_to_point)
+
                 if maximum_accessible_range > distance_to_point or math.isclose(maximum_accessible_range,
                                                                                 distance_to_point):
-
                     locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
@@ -296,14 +298,14 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
             intersection = to_shape(intersection_wkb)
             if intersection.geom_type == "Point":
                 continue  # points have no meaning
-            logger.debug("intersection: %s", intersection)
+            logger.debug("intersection: %s %s", intersection, area)
 
             # the intersection must be of an acceptable terrain type
             if not any([terrain_type.contains(area.terrain_area.type) for terrain_type in self.allowed_terrain_types]):
                 continue
 
             def distance_for_intersection(index):
-                return self.point_to_distance(center_pos.coords[0], intersection.coords[index])
+                return self.distance_between_points(center_pos.coords[0], intersection.coords[index])
 
             begin_distance = min(distance_for_intersection(0), distance_for_intersection(1))
             end_distance = max(distance_for_intersection(0), distance_for_intersection(1))
@@ -312,6 +314,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
             changes.append((end_distance, area.priority, END, area.value))
 
         DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
+        logger.debug("intervals are: %s", changes)
 
         current_intervals = []
         distance_left = distance_cost
@@ -344,7 +347,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
 
         return real_length
 
-    def point_to_distance(self, center_pos, point):
+    def distance_between_points(self, center_pos, point):
         return math.sqrt(abs(center_pos[0] - point[0]) ** 2 + abs(center_pos[1] - point[1]) ** 2)
 
 

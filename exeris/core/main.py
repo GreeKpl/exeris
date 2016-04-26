@@ -71,7 +71,7 @@ class Hooks:
 
 class Intents:
     TRAVEL = "travel"
-    COMBAT_TICK = "combat_tick"
+    COMBAT_AUXILIARY_ACTION = "combat_auxiliary_action"
     COMBAT = "combat"
 
 

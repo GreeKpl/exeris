@@ -450,18 +450,19 @@ class Entity(db.Model):
         """
         if not data:
             data = {}
-        entity_property = EntityProperty.query.filter_by(name=name).first()
+        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
         if entity_property:
             entity_property.data = data
         else:
             self.properties.append(EntityProperty(name, data=data))
 
     def get_modifiable_entity_property(self, name):
-        entity_property = EntityProperty.query.filter_by(name=name).first()
+        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
         if not entity_property:
             entity_property = EntityProperty(name, {}, self)
             db.session.add(entity_property)
         entity_property.data = dict(entity_property.data)  # force property's `data` to be marked as modified
+
         return entity_property
 
     def is_empty(self, excluding=None):
@@ -652,6 +653,12 @@ class Character(Entity):
         eq_part = item.get_property(P.EQUIPPABLE)["eq_part"]
         eq_property = self.get_modifiable_entity_property(P.PREFERRED_EQUIPMENT)
         eq_property.data[eq_part] = item.id
+
+    def get_weapon(self):
+        weapon_used = self.get_equipment().get(main.EqParts.WEAPON, None)
+        if not weapon_used:
+            return self  # character is a weapon itself
+        return weapon_used
 
     @hybrid_property
     def hunger(self):
@@ -908,12 +915,12 @@ class Combat(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
+    def __repr__(self):
+        return "{{Combat id={}}}".format(self.id)
+
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_COMBAT,
     }
-
-    def __repr__(self):
-        return "{{Combat id={}}}".format(self.id)
 
 
 class GameDateCheckpoint(db.Model):
@@ -1678,6 +1685,8 @@ def init_database_contents():
         alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
         alive_character.properties.append(
             EntityTypeProperty(P.MOBILE, data={"speed": 10, "traversable_terrains": [TerrainType.TRAVEL_LAND]}))
+        alive_character.properties.append(EntityTypeProperty(P.WEAPONIZABLE, data={"attack": 5}))  # weaponless attack
+        alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
         db.session.add(alive_character)
 
     if not TypeGroup.by_name(Types.ANY_TERRAIN):
