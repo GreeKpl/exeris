@@ -310,7 +310,7 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
 
         self.assertRaises(main.NoToolForActivityException,
-                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
+                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -318,7 +318,7 @@ class SchedulerActivityTest(TestCase):
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
         self.assertRaises(main.NoToolForActivityException,
-                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
+                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -326,11 +326,12 @@ class SchedulerActivityTest(TestCase):
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
 
+        worker_impact = {}
         # should return without raising an exception
-        process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"])
+        process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], worker_impact)
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
-        self.assertCountEqual([0.75, 3.0], process.tool_based_quality)
+        self.assertCountEqual([0.75, 3.0], worker_impact["tool_based_quality"])
 
     def test_check_optional_tools(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -347,9 +348,10 @@ class SchedulerActivityTest(TestCase):
 
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
 
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+        worker_impact = {}
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
-        self.assertEqual(0.0, process.progress_ratio)  # no tools = no bonus
+        self.assertEqual(0.0, worker_impact.get("progress_ratio", 0))  # no tools = no bonus
 
         # nothing affecting quality
         self.assertCountEqual([], process.tool_based_quality)
@@ -359,10 +361,11 @@ class SchedulerActivityTest(TestCase):
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+        worker_impact = {}
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
         # optional tools DO AFFECT progress ratio bonus
-        self.assertAlmostEqual(0.6, process.progress_ratio,
+        self.assertAlmostEqual(0.6, worker_impact["progress_ratio"],
                                places=3)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
 
         # check quality change for an activity. Optional tools DON'T AFFECT tool_based_quality
@@ -375,10 +378,11 @@ class SchedulerActivityTest(TestCase):
         db.session.add(axe_in_inv)
 
         # should return without raising an exception
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0})
+        worker_impact = {}
+        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
         # both tools, hammer => 0.2 * 2 * 1.5, axe = 1.0 * 0.75; so increase by 1.35
-        self.assertEqual(1.35, process.progress_ratio)
+        self.assertEqual(1.35, worker_impact["progress_ratio"])
 
     def test_check_mandatory_machines(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -437,11 +441,11 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill, activity])
         process = ActivityProgressProcess(activity, [])
 
-        process.check_skills(worker, ("frying", 0.3))
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("frying", 0.4)))
+        process.check_skills(worker, ("frying", 0.3), {})
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("frying", 0.4), {}))
 
-        process.check_skills(worker, ("baking", 0.1))
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01)))
+        process.check_skills(worker, ("baking", 0.1), {})
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01), {}))
 
     def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), 123)

@@ -495,16 +495,22 @@ class ActivityProgressProcess(ProcessAction):
 
         active_workers = []
         for worker in self.workers:
+            worker_impact = {}
             self.check_worker_proximity(self.activity, worker)
 
             if "mandatory_tools" in req:
-                self.check_mandatory_tools(worker, req["mandatory_tools"])
+                self.check_mandatory_tools(worker, req["mandatory_tools"], worker_impact)
 
             if "optional_tools" in req:
-                self.check_optional_tools(worker, req["optional_tools"])
+                self.check_optional_tools(worker, req["optional_tools"], worker_impact)
 
             if "skill" in req:
-                self.check_skills(worker, req["skills"].items()[0])
+                self.check_skills(worker, req["skills"].items()[0], worker_impact)
+
+            if "tool_based_quality" in worker_impact:
+                self.tool_based_quality += worker_impact["tool_based_quality"]
+            if "progress_ratio" in worker_impact:
+                self.progress_ratio += worker_impact["progress_ratio"]
 
             self.progress_ratio += ActivityProgressProcess.DEFAULT_PROGRESS
             active_workers.append(worker)
@@ -544,7 +550,8 @@ class ActivityProgressProcess(ProcessAction):
             if material["left"] > 0:
                 raise main.NoInputMaterialException(item_type=models.EntityType.by_name(name))
 
-    def check_mandatory_tools(self, worker, tools):
+    def check_mandatory_tools(self, worker, tools, worker_impact):
+        worker_impact["tool_based_quality"] = []
         for tool_type_name in tools:
             group = models.EntityType.by_name(tool_type_name)
             type_eff_pairs = group.get_descending_types()
@@ -557,9 +564,10 @@ class ActivityProgressProcess(ProcessAction):
             tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
             # tool quality affects quality of activity result
-            self.tool_based_quality += [tool_best_relative_quality]
+            worker_impact["tool_based_quality"] += [tool_best_relative_quality]
 
-    def check_optional_tools(self, worker, tools_progress_bonus):
+    def check_optional_tools(self, worker, tools_progress_bonus, worker_impact):
+        worker_impact["progress_ratio"] = 0.0
         for tool_type_name in tools_progress_bonus:
             group = models.EntityType.by_name(tool_type_name)
             type_eff_pairs = group.get_descending_types()
@@ -572,7 +580,7 @@ class ActivityProgressProcess(ProcessAction):
             tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
             # quality affects only progress ratio increased
-            self.progress_ratio += tools_progress_bonus[tool_type_name] * tool_best_relative_quality
+            worker_impact["progress_ratio"] += tools_progress_bonus[tool_type_name] * tool_best_relative_quality
 
     def _get_most_efficient_item_relative_quality(self, tools, type_eff_pairs):
         efficiency_of_type = {pair[0]: pair[1] for pair in type_eff_pairs}
@@ -642,7 +650,7 @@ class ActivityProgressProcess(ProcessAction):
         if len(active_workers) > max_number:
             raise main.TooManyParticipantsException(max_number=max_number)
 
-    def check_skills(self, worker, skill):
+    def check_skills(self, worker, skill, worker_impact):
         skill_name = skill[0]
         min_skill_value = skill[1]
 
