@@ -1,5 +1,3 @@
-
-
 from exeris.app import app, socketio
 
 if False:

@@ -10,7 +10,7 @@ setup(
     url='https://github.com/GreeKpl',
 
     author='GreeK',
-    author_email='grkalk@gmail.com',
+    author_email='alchrabas@exeris.org',
 
     license='MIT',
 
