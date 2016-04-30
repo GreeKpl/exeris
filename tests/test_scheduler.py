@@ -1,20 +1,19 @@
-import copy
 import math
 from unittest.mock import patch
 
+import copy
 import sqlalchemy as sql
-from flask.ext.testing import TestCase
-from shapely.geometry import Point, Polygon
-
 from exeris.core import main, deferred, models
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
-    TravelInDirectionProcess, WorkProcess, TravelToEntityAndPerformActionProcess, EatAction, WorkOnActivityProcess
+    WorkProcess, TravelToEntityAndPerformAction, EatAction, WorkOnActivityAction, TravelInDirectionAction
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
     SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
+from flask.ext.testing import TestCase
+from shapely.geometry import Point, Polygon
 from tests import util
 
 
@@ -36,7 +35,7 @@ class SchedulerTravelTest(TestCase):
                                       terrain_area=grass_terrain)
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
-        travel_action = TravelInDirectionProcess(traveler, 45)
+        travel_action = TravelInDirectionAction(traveler, 45)
         travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, travel_intent])
@@ -73,7 +72,7 @@ class SchedulerTravelTest(TestCase):
 
         eat_action = EatAction(traveler, potatoes, 5)
 
-        go_to_entity_and_eat_action = TravelToEntityAndPerformActionProcess(traveler, potatoes, eat_action)
+        go_to_entity_and_eat_action = TravelToEntityAndPerformAction(traveler, potatoes, eat_action)
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
                             potato_loc, potato_type, potatoes])
@@ -134,7 +133,7 @@ class SchedulerTravelTest(TestCase):
 
         go_and_perform_action = deferred.call(go_and_perform_action_intent.serialized_action)
 
-        self.assertEqual(TravelToEntityAndPerformActionProcess, go_and_perform_action.__class__)
+        self.assertEqual(TravelToEntityAndPerformAction, go_and_perform_action.__class__)
 
         # make sure the action was correctly serialized
         self.assertEqual(eat_action.executor, go_and_perform_action.action.executor)
@@ -162,7 +161,7 @@ class SchedulerTravelTest(TestCase):
         eat_too_far_away_action = EatAction(traveler, potatoes_away, 3)
         deferred.perform_or_turn_into_intent(traveler, eat_too_far_away_action)
 
-        self.assertEqual("exeris.core.actions.TravelToEntityAndPerformActionProcess",
+        self.assertEqual("exeris.core.actions.TravelToEntityAndPerformAction",
                          Intent.query.one().serialized_action[0])
 
         travel_process.perform()  # nothing will happen, because potatoes are not on line of sight
@@ -198,7 +197,7 @@ class SchedulerTravelTest(TestCase):
 
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
-        travel_action = TravelInDirectionProcess(traveler, 90)
+        travel_action = TravelInDirectionAction(traveler, 90)
         travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass, water, travel_intent, land_trav1, grass_terrain, deep_water_terrain])
@@ -211,7 +210,7 @@ class SchedulerTravelTest(TestCase):
 
         # move by the edge of the land
         Intent.query.delete()
-        travel_action = TravelInDirectionProcess(traveler, 330)
+        travel_action = TravelInDirectionAction(traveler, 330)
         travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
         db.session.add(travel_intent)
 
@@ -292,7 +291,7 @@ class SchedulerActivityTest(TestCase):
         activity.result_actions = [result]
 
         work_on_activity_intent = Intent(self.worker, main.Intents.WORK, 1, activity,
-                                         deferred.serialize(WorkOnActivityProcess(self.worker, activity)))
+                                         deferred.serialize(WorkOnActivityAction(self.worker, activity)))
         db.session.add(work_on_activity_intent)
 
     def test_check_mandatory_tools(self):

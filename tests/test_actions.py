@@ -773,7 +773,7 @@ class IntentTest(TestCase):
         self.assertEqual(1, Intent.query.count())
 
         self.assertEqual(
-            ["exeris.core.actions.TravelToEntityAndPerformActionProcess", {"executor": char.id, "entity": hammer.id,
+            ["exeris.core.actions.TravelToEntityAndPerformAction", {"executor": char.id, "entity": hammer.id,
                                                                            "action": [
                                                                                "exeris.core.actions.TakeItemAction",
                                                                                {"executor": char.id,

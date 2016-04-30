@@ -412,7 +412,7 @@ def character_travel_in_direction(direction):
     # delete previous
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
 
-    travel_action = actions.TravelInDirectionProcess(g.character, int(direction))
+    travel_action = actions.TravelInDirectionAction(g.character, int(direction))
     intent = models.Intent(g.character, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
     db.session.add(intent)
     db.session.commit()

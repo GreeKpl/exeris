@@ -286,7 +286,7 @@ class WorkProcess(ProcessAction):
             # But there can also be 2 separate veh in one RootLocation
             action_to_perform = deferred.call(work_intent.serialized_action)
 
-            if isinstance(action_to_perform, WorkOnActivityProcess):
+            if isinstance(action_to_perform, WorkOnActivityAction):
                 # activities are handled differently, because all participants must be converted at once
                 if action_to_perform.activity not in activities_to_progress:
                     activities_to_progress[action_to_perform.activity] = []
@@ -351,17 +351,17 @@ class FightInCombatAction(Action):
         combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
 
 
-class WorkOnActivityProcess(ProcessAction):
+class WorkOnActivityAction(Action):
     @convert(executor=models.Character, activity=models.Activity)
     def __init__(self, executor, activity):
-        self.executor = executor
+        super().__init__(executor)
         self.activity = activity
 
 
-class TravelInDirectionProcess(ProcessAction):
+class TravelInDirectionAction(Action):
     @convert(executor=models.Entity)
     def __init__(self, executor, direction):
-        self.executor = executor
+        super().__init__(executor)
         self.direction = direction
 
     def perform_action(self):
@@ -434,10 +434,10 @@ class TravelToEntityAction(ActionOnEntity):
             return False
 
 
-class TravelToEntityAndPerformActionProcess(ProcessAction):
+class TravelToEntityAndPerformAction(Action):
     @convert(executor=models.Character, entity=models.Entity, action=Action)
     def __init__(self, executor, entity, action):
-        self.executor = executor
+        super().__init__(executor)
         self.entity = entity
         self.action = action
 
@@ -1056,7 +1056,7 @@ class JoinActivityAction(ActionOnActivity):
         models.Intent.query.filter_by(executor=self.executor, type=main.Intents.WORK).delete()
 
         work_intent = models.Intent(self.executor, main.Intents.WORK, 1, self.activity,
-                                    deferred.serialize(WorkOnActivityProcess(self.executor, self.activity)))
+                                    deferred.serialize(WorkOnActivityAction(self.executor, self.activity)))
         db.session.add(work_intent)
 
 

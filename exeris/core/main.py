@@ -198,7 +198,7 @@ class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
 
     def turn_into_intent(self, executor, action, priority=1):
         from exeris.core import models, actions, deferred
-        travel_action = actions.TravelToEntityAndPerformActionProcess(executor, self.entity, action)
+        travel_action = actions.TravelToEntityAndPerformAction(executor, self.entity, action)
         return models.Intent(action.executor, Intents.WORK, priority, self.entity, deferred.serialize(travel_action))
 
 

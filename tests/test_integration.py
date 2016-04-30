@@ -39,7 +39,7 @@ class ProductionIntegrationTest(TestCase):
         activity = factory.create_from_recipe(recipe, anvil, worker, user_input={"amount": 1})
 
         work_intent = Intent(worker, main.Intents.WORK, 1, activity,
-               ["exeris.core.actions.WorkOnActivityProcess", {"executor": worker.id, "activity": activity.id}])
+               ["exeris.core.actions.WorkOnActivityAction", {"executor": worker.id, "activity": activity.id}])
         db.session.add(work_intent)
         db.session.flush()
 
