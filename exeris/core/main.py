@@ -70,7 +70,7 @@ class Hooks:
 
 
 class Intents:
-    TRAVEL = "travel"
+    WORK = "work"  # activities and travel
     COMBAT_AUXILIARY_ACTION = "combat_auxiliary_action"
     COMBAT = "combat"
 
@@ -199,7 +199,7 @@ class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
     def turn_into_intent(self, executor, action, priority=1):
         from exeris.core import models, actions, deferred
         travel_action = actions.TravelToEntityAndPerformActionProcess(executor, self.entity, action)
-        return models.Intent(action.executor, Intents.TRAVEL, priority, self.entity, deferred.serialize(travel_action))
+        return models.Intent(action.executor, Intents.WORK, priority, self.entity, deferred.serialize(travel_action))
 
 
 class EntityNotInInventoryException(GameException):
@@ -210,6 +210,7 @@ class EntityNotInInventoryException(GameException):
 class EntityUnsupportedOperationException(GameException):
     def __init__(self, *, entity):
         super().__init__(Errors.ENTITY_UNSUPPORTED_OPERATION, **entity.pyslatize())
+
 
 class OnlySpecificTypeForGroupException(GameException):
     def __init__(self, *, type_name, group_name):

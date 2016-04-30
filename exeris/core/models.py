@@ -530,13 +530,13 @@ class Intent(db.Model):
     type = sql.Column(sql.String(20))
     priority = sql.Column(sql.Integer)
 
-    target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), nullable=True)
+    target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id, ondelete="CASCADE"), nullable=True)
     target = sql.orm.relationship(Entity, uselist=False, foreign_keys=target_id)
 
     serialized_action = sql.Column(psql.JSONB)  # single action
 
     def __repr__(self):
-        return "{{Intent, executor: {}, type: {}, action: {}}}".format(self.executor, self.type, self.serialized_action)
+        return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type, self.target, self.serialized_action)
 
 
 class LocationType(EntityType):
@@ -590,9 +590,6 @@ class Character(Entity):
 
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))
-
-    activity_id = sql.Column(sql.Integer, sql.ForeignKey("activities.id", ondelete="SET NULL"), nullable=True)
-    activity = sql.orm.relationship("Activity", primaryjoin="Character.activity_id == Activity.id", uselist=False)
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
@@ -744,7 +741,7 @@ class Character(Entity):
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
-        return "{{Character name={},player={},activity={}}}".format(self.name, self.player_id, self.activity_id)
+        return "{{Character name={},player={}}}".format(self.name, self.player_id)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_CHARACTER,
@@ -864,6 +861,10 @@ class Activity(Entity):
         self.ticks_left = ticks_needed
         self.initiator = initiator
 
+        self.quality_ticks = 0.0
+        self.quality_sum = 0
+        self.damage = 0
+
         self.type = EntityType.by_name(Types.ACTIVITY)
 
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
@@ -878,12 +879,12 @@ class Activity(Entity):
 
     requirements = sql.Column(psql.JSON)  # a list of requirements
     result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
-    quality_sum = sql.Column(sql.Float, default=0.0)
-    quality_ticks = sql.Column(sql.Integer, default=0)
+    quality_sum = sql.Column(sql.Float)
+    quality_ticks = sql.Column(sql.Integer)
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
 
-    damage = sql.Column(sql.Float, default=0)
+    damage = sql.Column(sql.Float)
 
     @validates("damage")
     def validate_damage(self, key, damage):

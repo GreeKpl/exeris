@@ -779,7 +779,7 @@ class IntentTest(TestCase):
                                                                                {"executor": char.id,
                                                                                 "item": hammer.id, "amount": 1}]}],
             Intent.query.one().serialized_action)
-        self.assertEqual(main.Intents.TRAVEL, Intent.query.one().type)
+        self.assertEqual(main.Intents.WORK, Intent.query.one().type)
 
         hammer.being_in = rl
         take_action = TakeItemAction(char, hammer, amount=-1)

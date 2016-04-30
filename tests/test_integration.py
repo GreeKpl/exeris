@@ -1,9 +1,10 @@
+from exeris.core import main
 from flask.ext.testing import TestCase
 from shapely.geometry import Point
 
-from exeris.core.actions import SingleActivityProgressProcess
+from exeris.core.actions import ActivityProgressProcess
 from exeris.core.main import db
-from exeris.core.models import Item, RootLocation, ItemType, EntityRecipe, BuildMenuCategory
+from exeris.core.models import Item, RootLocation, ItemType, EntityRecipe, BuildMenuCategory, Intent
 from exeris.core.recipes import ActivityFactory
 from tests import util
 
@@ -37,10 +38,12 @@ class ProductionIntegrationTest(TestCase):
         factory = ActivityFactory()
         activity = factory.create_from_recipe(recipe, anvil, worker, user_input={"amount": 1})
 
-        worker.activity = activity
+        work_intent = Intent(worker, main.Intents.WORK, 1, activity,
+               ["exeris.core.actions.WorkOnActivityProcess", {"executor": worker.id, "activity": activity.id}])
+        db.session.add(work_intent)
         db.session.flush()
 
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [worker])
         process.perform()
 
         new_axe = Item.query.filter_by(type=axe_type).one()

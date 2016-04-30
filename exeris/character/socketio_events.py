@@ -35,12 +35,19 @@ def get_entity_tag(entity_id):
 
 @socketio_character_event("character.update_top_bar")
 def update_top_bar(endpoint_name):
-    activity = g.character.activity
-    if not activity:
-        msg = "not working"
+    work_intents = models.Intent.query.filter_by(type=main.Intents.WORK, executor=g.character).all()
+
+    assert len(work_intents) <= 1  # queue is not supported, so max 1 allowed TODO #72
+    work_intent = work_intents[0] if work_intents else None
+
+    if work_intent and isinstance(work_intent.target, models.Activity):
+        activity = work_intent.target
+        msg = "Activity: {} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
+                                              activity.ticks_needed)
+    elif work_intent:
+        msg = work_intent.serialized_action[0]
     else:
-        msg = "{} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
-                                    activity.ticks_needed)
+        msg = "not working"
     rendered = render_template("character_top_bar.html", activity_name=msg, endpoint_name=endpoint_name)
     return rendered,
 
@@ -158,10 +165,11 @@ def character_goto_location(entity_id):
 
     assert isinstance(entity, models.Location)
 
-    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
 
     travel_to_entity_action = actions.TravelToEntityAction(g.character, entity)
-    travel_intent = models.Intent(g.character, main.Intents.TRAVEL, 1, entity, deferred.serialize(travel_to_entity_action))
+    travel_intent = models.Intent(g.character, main.Intents.WORK, 1, entity,
+                                  deferred.serialize(travel_to_entity_action))
     db.session.add(travel_intent)
 
     db.session.commit()
@@ -402,17 +410,17 @@ def create_activity_from_recipe(recipe_id, user_input):
 @socketio_character_event("character.travel_in_direction")
 def character_travel_in_direction(direction):
     # delete previous
-    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
 
     travel_action = actions.TravelInDirectionProcess(g.character, int(direction))
-    intent = models.Intent(g.character, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
+    intent = models.Intent(g.character, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
     db.session.add(intent)
     db.session.commit()
 
 
 @socketio_character_event("character.stop_travel")
 def character_stop_travel():
-    models.Intent.query.filter_by(executor=g.character, type=main.Intents.TRAVEL).delete()
+    models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
     db.session.commit()
 
 

@@ -269,36 +269,61 @@ class ProcessAction(AbstractAction):
     pass
 
 
-class TravelProcess(ProcessAction):
+class WorkProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
 
     def __init__(self):
         pass
 
     def perform_action(self):
-        travel_intents = models.Intent.query.filter_by(type=main.Intents.TRAVEL).order_by(
+        work_intents = models.Intent.query.filter_by(type=main.Intents.WORK).order_by(
             models.Intent.priority.desc()).all()
 
-        for travel_intent in travel_intents:
+        activities_to_progress = {}
+        for work_intent in work_intents:
             # in fact it shouldn't move anything, it should store intermediate data about direction and speed for each
             # RootLocation, because there can be multi-location vehicles.
             # But there can also be 2 separate veh in one RootLocation
-            action_to_perform = deferred.call(travel_intent.serialized_action)
+            action_to_perform = deferred.call(work_intent.serialized_action)
+
+            if isinstance(action_to_perform, WorkOnActivityProcess):
+                # activities are handled differently, because all participants must be converted at once
+                if action_to_perform.activity not in activities_to_progress:
+                    activities_to_progress[action_to_perform.activity] = []
+                activities_to_progress[action_to_perform.activity] += [work_intent.executor]
+                continue
+
             try:
                 db.session.begin_nested()
                 result = action_to_perform.perform()
 
                 if result:  # action finished successfully and should be removed
                     logger.info("Intent %s of %s finished successfully. Removing it",
-                                str(action_to_perform), str(travel_intent.executor))
-                    db.session.delete(travel_intent)
+                                str(action_to_perform), str(work_intent.executor))
+                    db.session.delete(work_intent)
                 db.session.commit()
             except main.TurningIntoIntentExceptionMixin:
-                db.session.rollback()  # it will try again next tick
+                db.session.rollback()  # it failed but this intent can be performed later
+            except main.GameException:
+                db.session.rollback()
+                pass  # report to user
             except:  # action failed for unknown (probably not temporary) reason
                 db.session.rollback()
                 logger.warn("Unable to perform action %s. Action removed", str(action_to_perform), exc_info=True)
-                db.session.delete(travel_intent)
+                db.session.delete(work_intent)
+
+        for activity, workers in activities_to_progress.items():
+            activity_progress = ActivityProgressProcess(activity, workers)
+            try:
+                db.session.begin_nested()
+                activity_progress.perform()
+                db.session.commit()
+            except main.GameException:
+                logger.debug("GameException prevented ActivityProgress %s ", sys.exc_info())
+                db.session.rollback()  # add some user notification
+            except:
+                logger.info("Exception prevented ActivityProgress %s ", sys.exc_info())
+                db.session.rollback()
 
 
 def move_entity_to_position(entity, direction, target_position):
@@ -323,8 +348,14 @@ class FightInCombatAction(Action):
         self.side = side
 
     def perform_action(self):
-
         combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
+
+
+class WorkOnActivityProcess(ProcessAction):
+    @convert(executor=models.Character, activity=models.Activity)
+    def __init__(self, executor, activity):
+        self.executor = executor
+        self.activity = activity
 
 
 class TravelInDirectionProcess(ProcessAction):
@@ -338,7 +369,7 @@ class TravelInDirectionProcess(ProcessAction):
 
         initial_pos = self.executor.get_root().position
 
-        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
+        ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
 
         max_potential_distance = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
@@ -379,7 +410,7 @@ class TravelToEntityAction(ActionOnEntity):
 
     def get_speed_per_tick(self):
         speed = self.executor.get_max_speed()
-        ticks_per_day = general.GameDate.SEC_IN_DAY / TravelProcess.SCHEDULER_RUNNING_INTERVAL
+        ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
         return speed_per_tick
 
@@ -428,31 +459,12 @@ class TravelToEntityAndPerformActionProcess(ProcessAction):
             return False
 
 
-class ActivitiesProgressProcess(ProcessAction):
-    def __init__(self):
-        pass
-
-    def perform_action(self):
-        activities = models.Activity.query.all()
-        for activity in activities:
-            activity_progress = SingleActivityProgressProcess(activity)
-            try:
-                db.session.begin_nested()
-                activity_progress.perform()
-                db.session.commit()
-            except main.GameException:
-                logger.debug("GameException prevented ActivityProgress %s ", sys.exc_info())
-                db.session.rollback()  # add some user notification
-            except:
-                logger.info("Exception prevented ActivityProgress %s ", sys.exc_info())
-                db.session.rollback()
-
-
-class SingleActivityProgressProcess(ProcessAction):
+class ActivityProgressProcess(ProcessAction):
     DEFAULT_PROGRESS = 5.0
 
-    def __init__(self, activity):
+    def __init__(self, activity, workers):
         self.activity = activity
+        self.workers = workers
         self.entity_worked_on = self.activity.being_in
         self.tool_based_quality = []
         self.machine_based_quality = []
@@ -460,7 +472,6 @@ class SingleActivityProgressProcess(ProcessAction):
 
     def perform_action(self):
         logger.info("progress of %s", self.activity)
-        workers = models.Character.query.filter_by(activity=self.activity).all()
 
         req = self.activity.requirements
 
@@ -483,7 +494,7 @@ class SingleActivityProgressProcess(ProcessAction):
             self.check_input_requirements(req["input"])
 
         active_workers = []
-        for worker in workers:
+        for worker in self.workers:
             self.check_worker_proximity(self.activity, worker)
 
             if "mandatory_tools" in req:
@@ -495,7 +506,7 @@ class SingleActivityProgressProcess(ProcessAction):
             if "skill" in req:
                 self.check_skills(worker, req["skills"].items()[0])
 
-            self.progress_ratio += SingleActivityProgressProcess.DEFAULT_PROGRESS
+            self.progress_ratio += ActivityProgressProcess.DEFAULT_PROGRESS
             active_workers.append(worker)
 
         if "max_workers" in req:
@@ -713,10 +724,10 @@ class DecayProcess(ProcessAction):
         item.remove()
 
     def decay_progress_of_activities(self):
-        # damage level for Activities is altered ONLY in ActivitiesProgressProcess
+        # damage level for Activities is altered ONLY in WorkProcess
         activities = models.Activity.query.filter(models.Activity.ticks_left < models.Activity.ticks_needed).all()
         for activity in activities:  # decrease progress
-            activity.ticks_left += min(SingleActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_needed)
+            activity.ticks_left += min(ActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_needed)
 
     def decay_abandoned_activities(self):
         # activities abandoned for a long time
@@ -1041,7 +1052,12 @@ class JoinActivityAction(ActionOnActivity):
         if not self.executor.has_access(self.activity, rng=general.SameLocationRange()):
             raise main.TooFarFromActivityException(activity=self.activity)
 
-        self.executor.activity = self.activity
+        # only 1 activity allowed at once TODO #72
+        models.Intent.query.filter_by(executor=self.executor, type=main.Intents.WORK).delete()
+
+        work_intent = models.Intent(self.executor, main.Intents.WORK, 1, self.activity,
+                                    deferred.serialize(WorkOnActivityProcess(self.executor, self.activity)))
+        db.session.add(work_intent)
 
 
 class MoveToLocationAction(ActionOnLocation):

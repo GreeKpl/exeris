@@ -7,8 +7,8 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, deferred, models
-from exeris.core.actions import ActivitiesProgressProcess, SingleActivityProgressProcess, EatingProcess, DecayProcess, \
-    TravelInDirectionProcess, TravelProcess, TravelToEntityAndPerformActionProcess, EatAction
+from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
+    TravelInDirectionProcess, WorkProcess, TravelToEntityAndPerformActionProcess, EatAction, WorkOnActivityProcess
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
@@ -37,14 +37,14 @@ class SchedulerTravelTest(TestCase):
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 45)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, travel_intent])
 
-        travel_process = TravelProcess()
+        travel_process = WorkProcess()
         travel_process.perform()
 
-        distance_per_tick = 10 * TravelProcess.SCHEDULER_RUNNING_INTERVAL / GameDate.SEC_IN_DAY
+        distance_per_tick = 10 * WorkProcess.SCHEDULER_RUNNING_INTERVAL / GameDate.SEC_IN_DAY
         distance_on_diagonal = distance_per_tick / math.sqrt(2)
 
         self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.x, delta=0.01)
@@ -141,7 +141,7 @@ class SchedulerTravelTest(TestCase):
         self.assertEqual(eat_action.item, go_and_perform_action.action.item)
         self.assertEqual(eat_action.amount, go_and_perform_action.action.amount)
 
-        travel_process = TravelProcess()
+        travel_process = WorkProcess()
 
         # come closer, not eat the potatoes
         for _ in range(2):
@@ -174,7 +174,7 @@ class SchedulerTravelTest(TestCase):
 
         # the intent is still there, because action was stopped by subclass of TurningIntoIntentExceptionMixin
         # so the error preventing going there is potentially only temporary
-        self.assertEqual(main.Intents.TRAVEL, Intent.query.one().type)
+        self.assertEqual(main.Intents.WORK, Intent.query.one().type)
 
     def test_travel_in_direction_action_near_edge_of_water(self):
         util.initialize_date()
@@ -199,11 +199,11 @@ class SchedulerTravelTest(TestCase):
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         travel_action = TravelInDirectionProcess(traveler, 90)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
 
         db.session.add_all([rl, grass, water, travel_intent, land_trav1, grass_terrain, deep_water_terrain])
 
-        travel_process = TravelProcess()
+        travel_process = WorkProcess()
         travel_process.perform()
 
         self.assertAlmostEqual(1.02, rl.position.x, places=15)
@@ -212,7 +212,7 @@ class SchedulerTravelTest(TestCase):
         # move by the edge of the land
         Intent.query.delete()
         travel_action = TravelInDirectionProcess(traveler, 330)
-        travel_intent = Intent(traveler, main.Intents.TRAVEL, 1, None, deferred.serialize(travel_action))
+        travel_intent = Intent(traveler, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
         db.session.add(travel_intent)
 
         travel_process.perform()
@@ -230,7 +230,7 @@ class SchedulerActivityTest(TestCase):
     def test_activity_process(self):
         self._before_activity_process()
 
-        process = ActivitiesProgressProcess()
+        process = WorkProcess()
         process.perform()
 
         result_type = ItemType.query.filter_by(name="result").one()
@@ -246,7 +246,7 @@ class SchedulerActivityTest(TestCase):
         util.initialize_date()
         self._before_activity_process()
 
-        task = ScheduledTask(["exeris.core.actions.ActivitiesProgressProcess", {}], 0)
+        task = ScheduledTask(["exeris.core.actions.WorkProcess", {}], 0)
         db.session.add(task)
 
         db.session.flush()
@@ -291,14 +291,16 @@ class SchedulerActivityTest(TestCase):
                   {"item_type": result_type.name, "properties": {"Edible": True}, "used_materials": "all"}]
         activity.result_actions = [result]
 
-        self.worker.activity = activity
+        work_on_activity_intent = Intent(self.worker, main.Intents.WORK, 1, activity,
+                                         deferred.serialize(WorkOnActivityProcess(self.worker, activity)))
+        db.session.add(work_on_activity_intent)
 
     def test_check_mandatory_tools(self):
         rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
@@ -312,7 +314,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
@@ -320,7 +322,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"]))
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -336,7 +338,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
@@ -354,7 +356,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
@@ -368,7 +370,7 @@ class SchedulerActivityTest(TestCase):
         self.assertCountEqual([], process.tool_based_quality)
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -386,7 +388,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         bucket_type = ItemType("bucket", 200, portable=False)
         wooden_spindle_type = ItemType("wooden_spindle", 300, portable=False)
@@ -401,7 +403,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         bucket = Item(bucket_type, worker, quality=2)
         db.session.add(bucket)
@@ -409,7 +411,7 @@ class SchedulerActivityTest(TestCase):
                           lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
 
         # recreate the process
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         spindle_on_ground = Item(wooden_spindle_type, rl, quality=0.75)
         db.session.add(spindle_on_ground)
@@ -434,7 +436,7 @@ class SchedulerActivityTest(TestCase):
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
 
         db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill, activity])
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         process.check_skills(worker, ("frying", 0.3))
         self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("frying", 0.4)))
@@ -459,7 +461,7 @@ class SchedulerActivityTest(TestCase):
             [rl, far_away, worked_on_type, some_item_type, worked_on, target_item1, target_item2, activity])
         db.session.flush()
 
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         process.check_target_proximity([target_item1.id, target_item2.id])
 
@@ -481,7 +483,7 @@ class SchedulerActivityTest(TestCase):
 
         db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2, activity])
 
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
 
         workers = [worker1, worker2]
 
@@ -512,9 +514,9 @@ class SchedulerActivityTest(TestCase):
         hammer = Item(hammer_type, activity, role_being_in=False)
         axe = Item(axe_type, activity, role_being_in=False)
 
-        db.session.add_all([rl, worked_on_type, worked_on, worker1, hammer_type, hammer, axe, activity])
+        db.session.add_all([rl, worked_on_type, worked_on, hammer_type, axe_type, hammer, axe, activity])
 
-        process = SingleActivityProgressProcess(activity)
+        process = ActivityProgressProcess(activity, [])
         process.perform()
 
         self.assertEqual(5.5, activity.quality_sum)
@@ -663,7 +665,6 @@ class SchedulerDecayTest(TestCase):
         self.assertEqual(None, axe.being_in)
         self.assertTrue(sql.inspect(axe).deleted)
 
-
     def test_activity_decay(self):
         util.initialize_date()
 
@@ -705,7 +706,7 @@ class SchedulerDecayTest(TestCase):
         process = DecayProcess()
         process.perform()
 
-        self.assertEqual(50 + SingleActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_left)  # progress decreased
+        self.assertEqual(50 + ActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_left)  # progress decreased
         self.assertEqual(input_req, activity.requirements["input"])  # input req shouldn't change, because progress > 0
         self.assertEqual(0.0, hammer.damage)  # input req shouldn't change, because progress > 0
 
