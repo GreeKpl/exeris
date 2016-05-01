@@ -9,7 +9,7 @@ from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayPro
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
-    SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea
+    SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea, Notification
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from flask.ext.testing import TestCase
@@ -237,6 +237,22 @@ class SchedulerActivityTest(TestCase):
 
         self.assertEqual(self.worker, result_item.being_in)
         self.assertEqual("result", result_item.type.name)
+
+    def test_activity_process_failure_notifications(self):
+        self._before_activity_process()
+
+        hammer_type = ItemType.by_name("hammer")
+
+        worker = Character.query.one()
+        hammer = Item.query.filter(Item.is_in(worker)).filter_by(type=hammer_type).one()
+        hammer.being_in = hammer.being_in.being_in  # drop the hammer onto ground
+
+        process = WorkProcess()
+        process.perform()
+
+        failure_notification = Notification.query.one()
+        self.assertEqual(main.Errors.NO_TOOL_FOR_ACTIVITY, failure_notification.title_tag)
+        self.assertEqual(worker, failure_notification.character)
 
     def test_scheduler(self):
         """

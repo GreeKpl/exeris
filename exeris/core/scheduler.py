@@ -8,7 +8,6 @@ from exeris.core.main import db
 
 
 class Scheduler:
-
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
@@ -28,10 +27,7 @@ class Scheduler:
                 self.process_task(task)
 
                 if task.is_repeatable():  # it should be kept in the database to be used again
-                    if task.execution_game_timestamp + 10 < general.GameDate.now().game_timestamp:  # TODO temporary change to avoid multiple runs at once
-                        task.execution_game_timestamp = general.GameDate.now().game_timestamp
-                    task.execution_game_timestamp += task.execution_interval
-                    self.logger.info("Task will be run again at %s", task.execution_game_timestamp)
+                    self.update_next_execution_time(task)
                 else:
                     db.session.delete(task)
                     self.logger.info("Task deleted")
@@ -39,14 +35,14 @@ class Scheduler:
                 self.logger.info("No tasks found. Going to sleep")
                 time.sleep(1)
         except Exception as e:
-            self.logger.error("Unable to complete task. Running another iteration", e)
+            self.logger.error("Unable to complete task. End of work", e)
 
     def pop_task(self):
         current_timestamp = general.GameDate.now().game_timestamp
 
         self.logger.debug("current game timestamp: " + str(current_timestamp))
 
-        return models.ScheduledTask.query.filter(models.ScheduledTask.execution_game_timestamp <= current_timestamp)\
+        return models.ScheduledTask.query.filter(models.ScheduledTask.execution_game_timestamp <= current_timestamp) \
             .order_by(models.ScheduledTask.execution_game_timestamp).first()
 
     def process_task(self, task):
@@ -67,6 +63,12 @@ class Scheduler:
                 self._rollback_transaction()
         self.logger.error("UNABLE TO COMPLETE PROCESS %s", task.process_data)
         return False
+
+    def update_next_execution_time(self, task):
+        if task.execution_game_timestamp + 10 < general.GameDate.now().game_timestamp:  # TODO temporary change to avoid multiple runs at once
+            task.execution_game_timestamp = general.GameDate.now().game_timestamp
+        task.execution_game_timestamp += task.execution_interval
+        self.logger.info("Task will be run again at %s", task.execution_game_timestamp)
 
     def _start_transaction(self):
         db.session.rollback()

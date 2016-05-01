@@ -304,13 +304,12 @@ class WorkProcess(ProcessAction):
                 db.session.commit()
             except main.TurningIntoIntentExceptionMixin:
                 db.session.rollback()  # it failed but this intent can be performed later
-            except main.GameException:
+            except main.GameException as exception:
                 db.session.rollback()
-                pass  # report to user
+                self.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, work_intent.executor)
             except:  # action failed for unknown (probably not temporary) reason
-                db.session.rollback()
-                logger.warn("Unable to perform action %s. Action removed", str(action_to_perform), exc_info=True)
-                db.session.delete(work_intent)
+                logger.error("Unknown exception prevented execution of %s", str(action_to_perform), exc_info=True)
+                raise
 
         for activity, workers in activities_to_progress.items():
             activity_progress = ActivityProgressProcess(activity, workers)
@@ -318,12 +317,20 @@ class WorkProcess(ProcessAction):
                 db.session.begin_nested()
                 activity_progress.perform()
                 db.session.commit()
-            except main.GameException:
+            except main.GameException as exception:
                 logger.debug("GameException prevented ActivityProgress %s ", sys.exc_info())
                 db.session.rollback()  # add some user notification
+                for worker in workers:
+                    self.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, worker)
             except:
-                logger.info("Exception prevented ActivityProgress %s ", sys.exc_info())
-                db.session.rollback()
+                logger.error("Unknown exception prevented ActivityProgress", exc_info=True)
+                raise
+
+    @classmethod
+    def report_failure_notiifcation(cls, error_tag, error_kwargs, worker):
+        failure_notiifcation = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
+                                                   stackable=True, character=worker, player=None)
+        db.session.add(failure_notiifcation)
 
 
 def move_entity_to_position(entity, direction, target_position):
@@ -495,25 +502,29 @@ class ActivityProgressProcess(ProcessAction):
 
         active_workers = []
         for worker in self.workers:
-            worker_impact = {}
-            self.check_worker_proximity(self.activity, worker)
+            try:
+                worker_impact = {}
+                self.check_worker_proximity(self.activity, worker)
 
-            if "mandatory_tools" in req:
-                self.check_mandatory_tools(worker, req["mandatory_tools"], worker_impact)
+                if "mandatory_tools" in req:
+                    self.check_mandatory_tools(worker, req["mandatory_tools"], worker_impact)
 
-            if "optional_tools" in req:
-                self.check_optional_tools(worker, req["optional_tools"], worker_impact)
+                if "optional_tools" in req:
+                    self.check_optional_tools(worker, req["optional_tools"], worker_impact)
 
-            if "skill" in req:
-                self.check_skills(worker, req["skills"].items()[0], worker_impact)
+                if "skill" in req:
+                    self.check_skills(worker, req["skills"].items()[0], worker_impact)
 
-            if "tool_based_quality" in worker_impact:
-                self.tool_based_quality += worker_impact["tool_based_quality"]
-            if "progress_ratio" in worker_impact:
-                self.progress_ratio += worker_impact["progress_ratio"]
+                if "tool_based_quality" in worker_impact:
+                    self.tool_based_quality += worker_impact["tool_based_quality"]
+                if "progress_ratio" in worker_impact:
+                    self.progress_ratio += worker_impact["progress_ratio"]
 
-            self.progress_ratio += ActivityProgressProcess.DEFAULT_PROGRESS
-            active_workers.append(worker)
+                self.progress_ratio += ActivityProgressProcess.DEFAULT_PROGRESS
+                active_workers.append(worker)
+            except main.GameException as exception:
+                # report the notification to worker
+                WorkProcess.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, worker)
 
         if "max_workers" in req:
             self.check_min_workers(active_workers, req["min_workers"])
