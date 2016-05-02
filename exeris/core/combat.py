@@ -28,11 +28,11 @@ def get_combat_actions_of_foes_in_range(character, combat_entity):
             combat_range.is_near(character, foe_combat.executor)]
 
 
-def get_hit_target(character_action, foe_combat_actions):
+def get_hit_target(character_combat_action, foe_combat_actions):
     """
     Returns character action for character which is selected as target for the hit.
     It takes into the consideration
-    :param character_action: action of character who needs a target to hit
+    :param character_combat_action: action of character who needs a target to hit
     :param foe_combat_actions: list of combat actions of all potential targets being in visibility range
     :return: hit target's combat action or None when nobody can be hit
     """
@@ -41,8 +41,8 @@ def get_hit_target(character_action, foe_combat_actions):
         weapon = character.get_weapon()
         return weapon.get_property(P.WEAPONIZABLE).get("ranged", False)
 
-    if not has_ranged_weapon(character_action.executor):
-        character = character_action.executor
+    if not has_ranged_weapon(character_combat_action.executor):
+        character = character_combat_action.executor
 
         # we can attack melee only traversably-accessible targets
         range_to_fight_melee = general.LandTraversabilityBasedRange(50)

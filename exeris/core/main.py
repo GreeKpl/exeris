@@ -54,6 +54,8 @@ class Events:
     GIVE_ITEM = "event_give_item"
     DEATH_OF_STARVATION = "event_death_of_starvation"
     DEATH_OF_DAMAGE = "event_death_of_damage"
+    HIT_TARGET_IN_COMBAT = "event_hit_target_in_combat"
+    RETREAT_FROM_COMBAT = "event_retreat_from_combat"
 
 
 class Hooks:

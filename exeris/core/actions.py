@@ -1,14 +1,15 @@
 import math
+import sys
 from statistics import mean
 
+import random
 import sqlalchemy as sql
-from flask import logging
-from sqlalchemy import func
-import sys
 from exeris.core import deferred, main, util, combat, models, general, properties, recipes
 from exeris.core.deferred import convert
 from exeris.core.main import db, Events
 from exeris.core.properties import P
+from flask import logging
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
@@ -349,13 +350,46 @@ def move_entity_to_position(entity, direction, target_position):
 
 class FightInCombatAction(Action):
     @convert(executor=models.Entity, combat_entity=models.Combat)
-    def __init__(self, executor, combat_entity, side):
+    def __init__(self, executor, combat_entity, side, stance):
         super().__init__(executor)
         self.combat_entity = combat_entity
         self.side = side
+        self.stance = stance
 
     def perform_action(self):
-        combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
+        foe_combat_actions = combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
+        combat_action_of_target = combat.get_hit_target(self, foe_combat_actions)
+
+        if combat_action_of_target:
+            self.execute_hit(combat_action_of_target)
+
+        self.perform_first_auxiliary_action()
+
+        return combat_action_of_target, foe_combat_actions
+
+    def execute_hit(self, targets_combat_action):
+        hit_damage = self.calculate_hit_damage(targets_combat_action)
+
+        targets_combat_action.executor.damage += hit_damage
+
+        general.EventCreator.base(main.Events.HIT_TARGET_IN_COMBAT, rng=general.VisibilityBasedRange(10), params={},
+                                  doer=self.executor,
+                                  target=targets_combat_action.executor)
+
+    def calculate_hit_damage(self, targets_combat_action):
+        hit_damage = 0.2  # trololo hit damage formula
+        if self.stance == CombatProcess.STANCE_OFFENSIVE:
+            hit_damage *= 1.5
+        if targets_combat_action.stance == CombatProcess.STANCE_DEFENSIVE:
+            hit_damage /= 2
+        return hit_damage
+
+    def perform_first_auxiliary_action(self):
+        auxiliary_action_to_perform = models.Intent.query.filter_by(type=main.Intents.COMBAT_AUXILIARY_ACTION,
+                                                                    executor=self.executor).first()
+        if auxiliary_action_to_perform:
+            logger.debug("Performing auxiliary combat action: %s", auxiliary_action_to_perform)
+            auxiliary_action_to_perform.perform()
 
 
 class WorkOnActivityAction(Action):
@@ -789,6 +823,72 @@ class DecayProcess(ProcessAction):
                     del requirement_params["used_type"]  # allow any type to fulfill the group
 
         activity.requirements = dict(activity.requirements)  # FORCE refresh
+
+
+class CombatProcess(ProcessAction):
+    STANCE_OFFENSIVE = "stance_offensive"
+    STANCE_DEFENSIVE = "stance_defensive"
+    STANCE_RETREAT = "stance_retreat"
+
+    RETREAT_CHANCE = 0.2
+
+    def __init__(self, combat_entity):
+        self.combat_entity = combat_entity
+
+    def deserialized_action(self, intent):
+        return deferred.call(intent.serialized_action)
+
+    def perform_action(self):
+
+        fighter_intents = models.Intent.query.filter_by(type=main.Intents.COMBAT, target=self.combat_entity).all()
+
+        all_potential_targets = set()  # people who are or could have been a target of hit
+        retreated_fighters_intents = set()
+        for fighter_intent in fighter_intents:
+            fighter_combat_action = self.deserialized_action(fighter_intent)
+
+            target_action, potential_targets_actions = fighter_combat_action.perform()
+
+            logger.info("Fighter %s try to hit %s", fighter_intent.executor, target_action.executor)
+            all_potential_targets = all_potential_targets.union(
+                [action.executor for action in potential_targets_actions])
+
+            if fighter_combat_action.stance == CombatProcess.STANCE_RETREAT:
+                logger.debug("Try to retreat")
+                if self.try_to_retreat(fighter_intent):
+                    logger.debug("Retreat successful")
+                    retreated_fighters_intents.add(fighter_intent)
+
+        logger.debug("All potential targets are: %s", all_potential_targets)
+        active_fighter_intents = [intent for intent in fighter_intents
+                                  if intent.executor in all_potential_targets
+                                  and intent not in retreated_fighters_intents]  # fighters which will stay in combat
+        fighter_intents_to_remove = [intent for intent in fighter_intents if intent not in active_fighter_intents]
+
+        for intent_to_remove in fighter_intents_to_remove:  # character not in range of any enemy
+            self.withdraw_from_combat(intent_to_remove)
+
+        number_of_combat_sides_participating = set([self.deserialized_action(i).side for i in active_fighter_intents])
+        there_are_fighters_on_both_sides = len(number_of_combat_sides_participating) == 2
+
+        if not all_potential_targets or not there_are_fighters_on_both_sides:
+            logger.info("Not enough fighters. Removing combat")
+            self.remove_combat()
+
+    def remove_combat(self):
+        db.session.delete(self.combat_entity)
+
+    def try_to_retreat(self, fighting_intent):
+        if random.random() <= CombatProcess.RETREAT_CHANCE:
+            self.withdraw_from_combat(fighting_intent)
+            return True
+        return False
+
+    def withdraw_from_combat(self, intent_to_remove):
+        logger.info("Fighter %s withdrew from combat", intent_to_remove.executor)
+        db.session.delete(intent_to_remove)
+        general.EventCreator.base(main.Events.RETREAT_FROM_COMBAT, rng=general.VisibilityBasedRange(10), params={},
+                                  doer=intent_to_remove.executor)
 
 
 #

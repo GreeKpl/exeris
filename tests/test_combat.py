@@ -4,7 +4,7 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, combat, deferred, models
-from exeris.core.actions import FightInCombatAction
+from exeris.core.actions import FightInCombatAction, CombatProcess
 from exeris.core.main import db
 from exeris.core.models import RootLocation, Combat, Intent, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
     ItemType, \
@@ -58,22 +58,29 @@ class CombatTest(TestCase):
 
         ROMAN_SIDE = 1
         roman1_combat = Intent(roman1, main.Intents.COMBAT, 1, combat_entity,
-                               deferred.serialize(FightInCombatAction(roman1, combat_entity, ROMAN_SIDE)))
+                               deferred.serialize(FightInCombatAction(roman1, combat_entity, ROMAN_SIDE,
+                                                                      CombatProcess.STANCE_OFFENSIVE)))
         roman2_combat = Intent(roman2, main.Intents.COMBAT, 1, combat_entity,
-                               deferred.serialize(FightInCombatAction(roman2, combat_entity, ROMAN_SIDE)))
+                               deferred.serialize(FightInCombatAction(roman2, combat_entity, ROMAN_SIDE,
+                                                                      CombatProcess.STANCE_OFFENSIVE)))
         roman3_combat = Intent(roman3, main.Intents.COMBAT, 1, combat_entity,
-                               deferred.serialize(FightInCombatAction(roman3, combat_entity, ROMAN_SIDE)))
+                               deferred.serialize(FightInCombatAction(roman3, combat_entity, ROMAN_SIDE,
+                                                                      CombatProcess.STANCE_OFFENSIVE)))
 
         GAUL_SIDE = 0
         gaul1_combat = Intent(gaul1, main.Intents.COMBAT, 1, combat_entity,
-                              deferred.serialize(FightInCombatAction(gaul1, combat_entity, GAUL_SIDE)))
+                              deferred.serialize(
+                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
         gaul2_combat = Intent(gaul2, main.Intents.COMBAT, 1, combat_entity,
-                              deferred.serialize(FightInCombatAction(gaul2, combat_entity, GAUL_SIDE)))
+                              deferred.serialize(
+                                  FightInCombatAction(gaul2, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
         gaul3_combat = Intent(gaul3, main.Intents.COMBAT, 1, combat_entity,
-                              deferred.serialize(FightInCombatAction(gaul3, combat_entity, GAUL_SIDE)))
+                              deferred.serialize(
+                                  FightInCombatAction(gaul3, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
         gaul_on_a_ship_combat = Intent(gaul_on_a_ship, main.Intents.COMBAT, 1, combat_entity,
                                        deferred.serialize(
-                                           FightInCombatAction(gaul_on_a_ship, combat_entity, GAUL_SIDE)))
+                                           FightInCombatAction(gaul_on_a_ship, combat_entity, GAUL_SIDE,
+                                                               CombatProcess.STANCE_OFFENSIVE)))
 
         db.session.add_all([roman1_combat, roman2_combat, roman3_combat,
                             gaul1_combat, gaul2_combat, gaul3_combat, gaul_on_a_ship_combat])
@@ -123,3 +130,63 @@ class CombatTest(TestCase):
 
             foe_to_hit_action = combat.get_hit_target(roman1_combat_action, [gaul_on_a_ship_combat_action])
             self.assertEqual(gaul_on_a_ship_combat_action, foe_to_hit_action)
+
+    def test_combat_process(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 100)
+
+        roman1 = util.create_character("roman1", rl, util.create_player("abc1"))
+        roman2 = util.create_character("roman2", rl, util.create_player("abc12"))
+
+        gaul1 = util.create_character("gaul1", rl, util.create_player("abc21"))
+
+        combat_entity = Combat()
+        db.session.add(combat_entity)
+        db.session.flush()
+
+        ROMAN_SIDE = 1
+        roman1_combat = Intent(roman1, main.Intents.COMBAT, 1, combat_entity,
+                               deferred.serialize(FightInCombatAction(roman1, combat_entity, ROMAN_SIDE,
+                                                                      CombatProcess.STANCE_OFFENSIVE)))
+        roman2_combat = Intent(roman2, main.Intents.COMBAT, 1, combat_entity,
+                               deferred.serialize(FightInCombatAction(roman2, combat_entity, ROMAN_SIDE,
+                                                                      CombatProcess.STANCE_OFFENSIVE)))
+
+        GAUL_SIDE = 0
+        gaul1_combat = Intent(gaul1, main.Intents.COMBAT, 1, combat_entity,
+                              deferred.serialize(
+                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, CombatProcess.STANCE_DEFENSIVE)))
+
+        db.session.add_all([roman1_combat, roman2_combat, gaul1_combat])
+
+        with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.1):
+            combat_process = CombatProcess(combat_entity)
+            combat_process.perform()
+
+            # test if gaul is hit twice, each for 0.1
+            self.assertAlmostEqual(0.2, gaul1.damage)
+
+            # one of two romans should be hit
+            self.assertAlmostEqual(0.1, roman1.damage + roman2.damage)
+
+        CombatProcess.RETREAT_CHANCE = 1.0  # retreat is always successful
+        with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.01):
+
+            roman1_combat_action = deferred.call(roman1_combat.serialized_action)
+            roman1_combat_action.stance = CombatProcess.STANCE_RETREAT
+            roman1_combat.serialized_action = deferred.serialize(roman1_combat_action)
+
+            combat_process = CombatProcess(combat_entity)
+            combat_process.perform()
+
+            self.assertCountEqual([roman2_combat, gaul1_combat], Intent.query.all())
+
+            gaul1_combat_action = deferred.call(gaul1_combat.serialized_action)
+            gaul1_combat_action.stance = CombatProcess.STANCE_RETREAT
+            gaul1_combat.serialized_action = deferred.serialize(gaul1_combat_action)
+
+            combat_process = CombatProcess(combat_entity)
+            combat_process.perform()
+
+            self.assertEqual([], Intent.query.all())
+            self.assertEqual(0, Combat.query.count())
