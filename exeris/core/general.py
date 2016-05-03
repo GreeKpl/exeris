@@ -30,7 +30,8 @@ class GameDate:
     DAYLIGHT_HOURS = 24
     DAY_IN_MOON = 28
 
-    SEC_IN_DAY = SEC_IN_MIN * MIN_IN_HOUR * HOUR_IN_DAY
+    SEC_IN_HOUR = SEC_IN_MIN * MIN_IN_HOUR
+    SEC_IN_DAY = SEC_IN_HOUR * HOUR_IN_DAY
     SEC_IN_MOON = SEC_IN_DAY * DAY_IN_MOON
 
     def __init__(self, game_timestamp):

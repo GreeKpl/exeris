@@ -107,7 +107,7 @@ FRAGMENTS.entities = (function($, socket) {
         $("#readable_modal").modal();
     });
 
-    socket.on("after_edit_readable", function(entity_d) {
+    socket.on("after_edit_readable", function(entity_id) {
         alert("text updated!");
     });
 
@@ -119,6 +119,10 @@ FRAGMENTS.entities = (function($, socket) {
 
     socket.on("after_toggle_closeable", function(entity_id) {
         $.publish("entities:refresh_entity_info", entity_id);
+    });
+
+    socket.on("after_attack_character", function(entity_id) {
+        $.publish("character:intent_state_changed");
     });
 })
 (jQuery, socket);

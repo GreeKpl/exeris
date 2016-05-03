@@ -830,6 +830,9 @@ class CombatProcess(ProcessAction):
     STANCE_DEFENSIVE = "stance_defensive"
     STANCE_RETREAT = "stance_retreat"
 
+    SCHEDULER_RUNNING_INTERVAL = 3 * general.GameDate.SEC_IN_HOUR
+    INITIAL_RUN_DELAY = 6 * general.GameDate.SEC_IN_HOUR
+
     RETREAT_CHANCE = 0.2
 
     def __init__(self, combat_entity):
@@ -1211,6 +1214,41 @@ class MoveToLocationAction(ActionOnLocation):
                                     doer=self.executor)
 
         main.call_hook(main.Hooks.LOCATION_ENTERED, character=self.executor, from_loc=from_loc, to_loc=self.location)
+
+
+class AttackCharacterAction(ActionOnCharacter):
+    def __init__(self, executor, character):
+        super().__init__(executor, character, rng=general.VisibilityBasedRange(10))
+
+    def perform_action(self):
+        if self.executor == self.character:
+            raise main.CannotAttackYourselfException()
+        if not self.executor.has_access(self.character,
+                                        rng=general.VisibilityBasedRange(30)):  # TODO THE SAME RANGE AS COMBAT
+            raise main.EntityTooFarAwayException(entity=self.character)
+
+        if models.Intent.query.filter_by(executor=self.executor, type=main.Intents.COMBAT).count():
+            raise main.AlreadyBeingInCombat()
+        if models.Intent.query.filter_by(executor=self.character, type=main.Intents.COMBAT).count():
+            raise main.TargetAlreadyInCombat(character=self.character)
+
+        combat_entity = models.Combat()
+        db.session.add(combat_entity)
+        db.session.flush()
+
+        fighting_action = FightInCombatAction(self.executor, combat_entity, 0, CombatProcess.STANCE_OFFENSIVE)
+        combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, combat_entity,
+                                      deferred.serialize(fighting_action))
+        foe_fighting_action = FightInCombatAction(self.character, combat_entity, 1, CombatProcess.STANCE_OFFENSIVE)
+        foe_combat_intent = models.Intent(self.character, main.Intents.COMBAT, 1, combat_entity,
+                                          deferred.serialize(foe_fighting_action))
+
+        # create combat process
+        current_timestamp = general.GameDate.now().game_timestamp
+        execution_timestamp = general.GameDate(current_timestamp + CombatProcess.INITIAL_RUN_DELAY).game_timestamp
+        combat_process = deferred.serialize(CombatProcess(combat_entity))
+        task = models.ScheduledTask(combat_process, execution_timestamp, CombatProcess.SCHEDULER_RUNNING_INTERVAL)
+        db.session.add_all([combat_intent, foe_combat_intent, task])
 
 
 class ToggleCloseableAction(ActionOnEntity):

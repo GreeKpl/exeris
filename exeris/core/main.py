@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    CANNOT_ATTACK_YOURSELF = "error_cannot_attack_yourself"
     ENTITY_UNSUPPORTED_OPERATION = "error_entity_unsupported_operation"
     TOO_LOW_SKILL = "error_too_low_skill"
     NO_INPUT_MATERIALS = "error_no_input_materials"
@@ -24,6 +25,8 @@ class Errors:
     NO_TOOL_FOR_ACTIVITY = "error_no_tool_for_activity"
     OWN_INVENTORY_CAPACITY_EXCEEDED = "error_own_inventory_capacity_exceeded"
     INVALID_AMOUNT = "error_invalid_amount"
+    TARGET_ALREADY_IN_COMBAT = "error_target_already_in_combat"
+    ALREADY_BEING_IN_COMBAT = "error_already_being_in_combat"
 
 
 class Types:
@@ -191,6 +194,21 @@ class InvalidAmountException(ItemException):
 class OwnInventoryExceededException(GameException):
     def __init__(self):
         super().__init__(Errors.OWN_INVENTORY_CAPACITY_EXCEEDED)
+
+
+class CannotAttackYourselfException(GameException):
+    def __init__(self):
+        super().__init__(Errors.CANNOT_ATTACK_YOURSELF)
+
+
+class AlreadyBeingInCombat(GameException):
+    def __init__(self):
+        super().__init__(Errors.ALREADY_BEING_IN_COMBAT)
+
+
+class TargetAlreadyInCombat(CharacterException):
+    def __init__(self, *, character):
+        super().__init__(Errors.TARGET_ALREADY_IN_COMBAT, **character.pyslatize())
 
 
 class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):

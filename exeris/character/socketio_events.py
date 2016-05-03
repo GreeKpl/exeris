@@ -35,19 +35,22 @@ def get_entity_tag(entity_id):
 
 @socketio_character_event("character.update_top_bar")
 def update_top_bar(endpoint_name):
-    work_intents = models.Intent.query.filter_by(type=main.Intents.WORK, executor=g.character).all()
+    intents = models.Intent.query.filter_by(executor=g.character).all()
 
-    assert len(work_intents) <= 1  # queue is not supported, so max 1 allowed TODO #72
-    work_intent = work_intents[0] if work_intents else None
+    # queue is not supported, so max 1 allowed TODO #72
+    assert len([intent for intent in intents if intent.type == main.Intents.WORK]) <= 1
 
-    if work_intent and isinstance(work_intent.target, models.Activity):
-        activity = work_intent.target
-        msg = "Activity: {} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
-                                              activity.ticks_needed)
-    elif work_intent:
-        msg = work_intent.serialized_action[0]
-    else:
-        msg = "not working"
+    msg = []
+    for intent in intents:
+        if intent and isinstance(intent.target, models.Activity):
+            activity = intent.target
+            msg += ["Activity: {} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
+                                                    activity.ticks_needed)]
+        else:
+            msg += [intent.serialized_action[0]]
+
+    msg = ", ".join(msg) if msg else "idle"
+
     rendered = render_template("character_top_bar.html", activity_name=msg, endpoint_name=endpoint_name)
     return rendered,
 
@@ -368,6 +371,17 @@ def toggle_closeable(entity_id):
 
     db.session.commit()
     client_socket.emit("after_toggle_closeable", entity_id)
+
+
+@socketio_character_event("attack_character")
+def attack_character(entity_id):
+    character_to_attack = models.Character.by_id(app.decode(entity_id))
+
+    action = actions.AttackCharacterAction(g.character, character_to_attack)
+    action.perform()
+
+    db.session.commit()
+    client_socket.emit("after_attack_character", entity_id)
 
 
 @socketio_character_event("update_actions_list")

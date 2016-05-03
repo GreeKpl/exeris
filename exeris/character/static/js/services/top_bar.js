@@ -4,7 +4,7 @@ FRAGMENTS.character_top_bar = (function($, socket) {
         $("#character_top_bar").replaceWith(code);
     };
 
-    $.subscribe("character:activity_participation_changed", function () {
+    $.subscribe("character:intent_state_changed", function () {
         socket.emit("character.update_top_bar", ENDPOINT_NAME, after_update_character_top_bar);
     });
 

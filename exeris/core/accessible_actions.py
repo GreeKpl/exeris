@@ -23,9 +23,6 @@ ACTIONS_ON_GROUND = [
                  lambda x: x.has_property(P.CLOSEABLE, closed=True)),
     ActionRecord("close", "image", P.CLOSEABLE, "toggle_closeable",
                  lambda x: x.has_property(P.CLOSEABLE, closed=False)),
-]
-
-TOOLBAR_ACTIONS = [
-    "point",
-    "repair",
+    ActionRecord("attack_character", "image", "any", "attack_character",
+                 lambda x: isinstance(x, models.Character)),
 ]

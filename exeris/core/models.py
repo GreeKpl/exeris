@@ -514,6 +514,7 @@ class Intent(db.Model):
     """
     Represents entity's will or plan to perform certain action (which can be impossible at the moment)
     """
+    __tablename__ = "intents"
 
     id = sql.Column(sql.Integer, primary_key=True)
 
@@ -909,7 +910,7 @@ class Activity(Entity):
 
 
 class Combat(Entity):
-    __tablename__ = "combat"
+    __tablename__ = "combats"
 
     def __init__(self):
         pass
