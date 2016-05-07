@@ -1267,10 +1267,12 @@ class AttackCharacterAction(ActionOnCharacter):
         task = models.ScheduledTask(combat_process, execution_timestamp, CombatProcess.SCHEDULER_RUNNING_INTERVAL)
         db.session.add_all([combat_intent, foe_combat_intent, task])
 
+        general.EventCreator.base(main.Events.ATTACK_CHARACTER, self.rng, doer=self.executor, target=self.character)
+
 
 class JoinCombatAction(ActionOnEntity):
     def __init__(self, executor, combat_entity, side):
-        super().__init__(executor, combat_entity)
+        super().__init__(executor, combat_entity, rng=general.VisibilityBasedRange(10))
         self.side = side
 
     def perform_action(self):
@@ -1283,6 +1285,8 @@ class JoinCombatAction(ActionOnEntity):
         combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, self.entity,
                                       deferred.serialize(fighting_action))
         db.session.add(combat_intent)
+
+        general.EventCreator.base(main.Events.JOIN_COMBAT, self.rng, doer=self.executor)
 
 
 class ChangeCombatStanceAction(ActionOnSelf):

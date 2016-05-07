@@ -44,6 +44,8 @@ class Types:
 
 
 class Events:
+    JOIN_COMBAT = "event_join_combat"
+    ATTACK_CHARACTER = "event_attack_character"
     OPEN_ENTITY = "event_open_entity"
     CLOSE_ENTITY = "event_close_entity"
     MOVE = "event_move"
