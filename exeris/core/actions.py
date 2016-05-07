@@ -374,7 +374,8 @@ class FightInCombatAction(Action):
         combat_violence = self.combat_entity.recorded_violence
 
         damaged_foe.damage += hit_damage
-        combat_violence[damaged_foe] = combat_violence.get(damaged_foe, 0) + hit_damage
+        combat_violence[damaged_foe.id] = combat_violence.get(damaged_foe.id, 0) + hit_damage
+        sql.orm.attributes.flag_modified(self.combat_entity, "recorded_violence")  # TODO better JSON modification sys
 
         general.EventCreator.base(main.Events.HIT_TARGET_IN_COMBAT, rng=general.VisibilityBasedRange(10), params={},
                                   doer=self.executor,
@@ -842,6 +843,7 @@ class CombatProcess(ProcessAction):
 
     RETREAT_CHANCE = 0.2
 
+    @convert(combat_entity=models.Combat)
     def __init__(self, combat_entity):
         self.combat_entity = combat_entity
 

@@ -22,10 +22,11 @@
                     <button class="combat_join" value="{{ combat_stances.SIDE_ATTACKER }}">Join attacker</button>
                 {% endif %}
                 <ul>
-                    {% for attacker in attackers %}
-                        <li class="list-group-item" data-id="{{ encode(attacker.executor.id) }}">
-                            {{ t("character_info", html=True, **attacker.executor.pyslatize())|safe }}
-                            Damage: {{ attacker.executor.damage }}
+                    {% for attacker_action in attackers %}
+                        <li class="list-group-item" data-id="{{ encode(attacker_action.executor.id) }}">
+                            {{ t("character_info", html=True, **attacker_action.executor.pyslatize())|safe }}
+                            Damage: {{ attacker_action.executor.damage }}
+                            ({{ combat_entity.recorded_violence.get(attacker_action.executor.id|string, 0) }})
                         </li>
                     {% endfor %}
                 </ul>
@@ -35,10 +36,11 @@
                     <button class="combat_join" value="{{ combat_stances.SIDE_DEFENDER }}">Join defender</button>
                 {% endif %}
                 <ul>
-                    {% for defender in defenders %}
-                        <li class="list-group-item" data-id="{{ encode(defender.executor.id) }}">
-                            {{ t("character_info", html=True, **defender.executor.pyslatize())|safe }}
-                            Damage: {{ defender.executor.damage }}
+                    {% for defender_action in defenders %}
+                        <li class="list-group-item" data-id="{{ encode(defender_action.executor.id) }}">
+                            {{ t("character_info", html=True, **defender_action.executor.pyslatize())|safe }}
+                            Damage: {{ defender_action.executor.damage }}
+                            ({{ combat_entity.recorded_violence.get(defender_action.executor.id|string, 0) }})
                         </li>
                     {% endfor %}
                 </ul>
