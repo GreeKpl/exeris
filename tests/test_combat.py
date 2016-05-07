@@ -4,7 +4,8 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, combat, deferred, models
-from exeris.core.actions import FightInCombatAction, CombatProcess
+from exeris.core.actions import FightInCombatAction, CombatProcess, AttackCharacterAction, JoinCombatAction, \
+    ChangeCombatStanceAction
 from exeris.core.main import db
 from exeris.core.models import RootLocation, Combat, Intent, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
     ItemType, \
@@ -85,7 +86,7 @@ class CombatTest(TestCase):
         db.session.add_all([roman1_combat, roman2_combat, roman3_combat,
                             gaul1_combat, gaul2_combat, gaul3_combat, gaul_on_a_ship_combat])
 
-        combat_potential_foes_actions = combat.get_combat_actions_of_foes_in_range(roman1, combat_entity)
+        combat_potential_foes_actions = combat.get_combat_actions_of_visible_foes(roman1, combat_entity)
         combat_potential_foes = [action.executor for action in combat_potential_foes_actions]
         self.assertCountEqual([gaul1, gaul2, gaul_on_a_ship], combat_potential_foes)
 
@@ -171,7 +172,6 @@ class CombatTest(TestCase):
 
         CombatProcess.RETREAT_CHANCE = 1.0  # retreat is always successful
         with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.01):
-
             roman1_combat_action = deferred.call(roman1_combat.serialized_action)
             roman1_combat_action.stance = CombatProcess.STANCE_RETREAT
             roman1_combat.serialized_action = deferred.serialize(roman1_combat_action)
@@ -190,3 +190,81 @@ class CombatTest(TestCase):
 
             self.assertEqual([], Intent.query.all())
             self.assertEqual(0, Combat.query.count())
+
+    def test_attack_character_and_join_combat_action(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 100)
+
+        roman1 = util.create_character("roman1", rl, util.create_player("abc1"))
+        gaul1 = util.create_character("gaul1", rl, util.create_player("abc21"))
+
+        db.session.add(rl)
+        db.session.flush()
+
+        attack_action = AttackCharacterAction(roman1, gaul1)
+        attack_action.perform()
+
+        combat_entity = Combat.query.one()
+        fighter_intents = Intent.query.filter_by(type=main.Intents.COMBAT).all()
+        fighter_actions = [intent.serialized_action for intent in fighter_intents]
+        self.assertCountEqual([["exeris.core.actions.FightInCombatAction",
+                                {"side": CombatProcess.SIDE_ATTACKER, "executor": roman1.id,
+                                 "stance": CombatProcess.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}],
+                               ["exeris.core.actions.FightInCombatAction",
+                                {"side": CombatProcess.SIDE_DEFENDER, "executor": gaul1.id,
+                                 "stance": CombatProcess.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}]],
+                              fighter_actions)
+
+        # join ongoing combat
+        gaul2 = util.create_character("gaul1", rl, util.create_player("abc231"))
+
+        join_combat_action = JoinCombatAction(gaul2, combat_entity, CombatProcess.SIDE_DEFENDER)
+        join_combat_action.perform()
+
+        self.assertIsNotNone(gaul2.get_combat_action())
+        self.assertEqual(CombatProcess.SIDE_DEFENDER, gaul2.get_combat_action().side)
+        self.assertEqual(3, Intent.query.filter_by(target=combat_entity).count())
+
+        # change stance in combat
+
+        self.assertEqual(CombatProcess.STANCE_OFFENSIVE, gaul2.get_combat_action().stance)
+
+        change_stance_action = ChangeCombatStanceAction(gaul2, CombatProcess.STANCE_RETREAT)
+        change_stance_action.perform()
+
+        self.assertEqual(CombatProcess.STANCE_RETREAT, gaul2.get_combat_action().stance)
+
+    def test_raise_exception_on_invalid_argument_for_combat_actions(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 100)
+
+        roman1 = util.create_character("roman1", rl, util.create_player("abc1"))
+        gaul1 = util.create_character("gaul1", rl, util.create_player("abc21"))
+        germanic1 = util.create_character("germanic1", rl, util.create_player("abc31"))
+
+        db.session.add(rl)
+        db.session.flush()
+
+        attack_yourself_action = AttackCharacterAction(roman1, roman1)
+        self.assertRaises(main.CannotAttackYourselfException, attack_yourself_action.perform)
+
+        # set up existing combat
+        attack_gaul_action = AttackCharacterAction(roman1, gaul1)
+        attack_gaul_action.perform()
+
+        # try to attack sb when already being in combat
+        attack_germanic_action = AttackCharacterAction(gaul1, germanic1)
+        self.assertRaises(main.AlreadyBeingInCombat, attack_germanic_action.perform)
+
+        # try to attack sb already in combat
+        attack_gaul_action = AttackCharacterAction(germanic1, gaul1)
+        self.assertRaises(main.TargetAlreadyInCombat, attack_gaul_action.perform)
+
+        INCORRECT_STANCE_TYPE = 231
+        change_stance_action = ChangeCombatStanceAction(gaul1, INCORRECT_STANCE_TYPE)
+        self.assertRaises(ValueError, change_stance_action.perform)
+
+        roman_gaul_combat = Combat.query.one()
+        INCORRECT_SIDE = 123
+        join_combat_on_incorrect_side = JoinCombatAction(germanic1, roman_gaul_combat, INCORRECT_SIDE)
+        self.assertRaises(ValueError, join_combat_on_incorrect_side.perform)

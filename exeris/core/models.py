@@ -624,6 +624,20 @@ class Character(Entity):
     def is_alive(self):
         return self.type_name == Types.ALIVE_CHARACTER
 
+    def get_combat_action(self):
+        combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
+        if combat_intent:
+            from exeris.core import deferred
+            return deferred.call(combat_intent.serialized_action)
+        return None
+
+    def set_combat_action(self, combat_action):
+        combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
+        if combat_intent:
+            from exeris.core import deferred
+            combat_intent.serialized_action = deferred.serialize(combat_action)
+        raise ValueError("Can't update combat action, {} is not in combat".format(self))
+
     def get_equipment(self):
         eq_property = self.get_property(P.PREFERRED_EQUIPMENT)
         equipment = {k: Item.by_id(v) for k, v in eq_property.items()}
@@ -916,6 +930,10 @@ class Combat(Entity):
         pass
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+    recorded_violence = sql.Column(psql.JSONB, default=lambda: {})
+
+    def fighters_intents(self):
+        return Intent.query.filter_by(type=main.Intents.COMBAT, target=self).all()
 
     def __repr__(self):
         return "{{Combat id={}}}".format(self.id)

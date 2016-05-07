@@ -32,7 +32,7 @@ FRAGMENTS.people_short = (function($, socket) {
     };
 
     $.subscribe("people_short:refresh_list", function() {
-        socket.emit("people_short_refresh_list", function(code) {
+        socket.emit("people_short.refresh_list", function(code) {
             $("#people_short_dock").html(code);
             change_listener(SELECTED_SPEAKER);
         });
@@ -55,6 +55,10 @@ FRAGMENTS.people_short = (function($, socket) {
         change_listener("#say_to_all");
     });
 
+    $(document).on("click", ".show_combat", function(event) {
+        var combat_id = $(event.target).val();
+        $.publish("combat:show_combat", combat_id);
+    });
 
     $(function() {
         $.publish("people_short:refresh_list");

@@ -357,7 +357,7 @@ class FightInCombatAction(Action):
         self.stance = stance
 
     def perform_action(self):
-        foe_combat_actions = combat.get_combat_actions_of_foes_in_range(self.executor, self.combat_entity)
+        foe_combat_actions = combat.get_combat_actions_of_visible_foes(self.executor, self.combat_entity)
         combat_action_of_target = combat.get_hit_target(self, foe_combat_actions)
 
         if combat_action_of_target:
@@ -370,7 +370,11 @@ class FightInCombatAction(Action):
     def execute_hit(self, targets_combat_action):
         hit_damage = self.calculate_hit_damage(targets_combat_action)
 
-        targets_combat_action.executor.damage += hit_damage
+        damaged_foe = targets_combat_action.executor
+        combat_violence = self.combat_entity.recorded_violence
+
+        damaged_foe.damage += hit_damage
+        combat_violence[damaged_foe] = combat_violence.get(damaged_foe, 0) + hit_damage
 
         general.EventCreator.base(main.Events.HIT_TARGET_IN_COMBAT, rng=general.VisibilityBasedRange(10), params={},
                                   doer=self.executor,
@@ -830,8 +834,11 @@ class CombatProcess(ProcessAction):
     STANCE_DEFENSIVE = "stance_defensive"
     STANCE_RETREAT = "stance_retreat"
 
-    SCHEDULER_RUNNING_INTERVAL = 3 * general.GameDate.SEC_IN_HOUR
-    INITIAL_RUN_DELAY = 6 * general.GameDate.SEC_IN_HOUR
+    SIDE_ATTACKER = 0
+    SIDE_DEFENDER = 1
+
+    SCHEDULER_RUNNING_INTERVAL = 30  # 3 * general.GameDate.SEC_IN_HOUR
+    INITIAL_RUN_DELAY = 60  # 6 * general.GameDate.SEC_IN_HOUR
 
     RETREAT_CHANCE = 0.2
 
@@ -843,7 +850,7 @@ class CombatProcess(ProcessAction):
 
     def perform_action(self):
 
-        fighter_intents = models.Intent.query.filter_by(type=main.Intents.COMBAT, target=self.combat_entity).all()
+        fighter_intents = self.combat_entity.fighters_intents()
 
         all_potential_targets = set()  # people who are or could have been a target of hit
         retreated_fighters_intents = set()
@@ -1217,8 +1224,8 @@ class MoveToLocationAction(ActionOnLocation):
 
 
 class AttackCharacterAction(ActionOnCharacter):
-    def __init__(self, executor, character):
-        super().__init__(executor, character, rng=general.VisibilityBasedRange(10))
+    def __init__(self, executor, target_character):
+        super().__init__(executor, target_character, rng=general.VisibilityBasedRange(10))
 
     def perform_action(self):
         if self.executor == self.character:
@@ -1236,10 +1243,12 @@ class AttackCharacterAction(ActionOnCharacter):
         db.session.add(combat_entity)
         db.session.flush()
 
-        fighting_action = FightInCombatAction(self.executor, combat_entity, 0, CombatProcess.STANCE_OFFENSIVE)
+        fighting_action = FightInCombatAction(self.executor, combat_entity,
+                                              CombatProcess.SIDE_ATTACKER, CombatProcess.STANCE_OFFENSIVE)
         combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, combat_entity,
                                       deferred.serialize(fighting_action))
-        foe_fighting_action = FightInCombatAction(self.character, combat_entity, 1, CombatProcess.STANCE_OFFENSIVE)
+        foe_fighting_action = FightInCombatAction(self.character, combat_entity,
+                                                  CombatProcess.SIDE_DEFENDER, CombatProcess.STANCE_OFFENSIVE)
         foe_combat_intent = models.Intent(self.character, main.Intents.COMBAT, 1, combat_entity,
                                           deferred.serialize(foe_fighting_action))
 
@@ -1249,6 +1258,41 @@ class AttackCharacterAction(ActionOnCharacter):
         combat_process = deferred.serialize(CombatProcess(combat_entity))
         task = models.ScheduledTask(combat_process, execution_timestamp, CombatProcess.SCHEDULER_RUNNING_INTERVAL)
         db.session.add_all([combat_intent, foe_combat_intent, task])
+
+
+class JoinCombatAction(ActionOnEntity):
+    def __init__(self, executor, combat_entity, side):
+        super().__init__(executor, combat_entity)
+        self.side = side
+
+    def perform_action(self):
+        if self.side not in [CombatProcess.SIDE_ATTACKER, CombatProcess.SIDE_DEFENDER]:
+            raise ValueError("{} is an invalid side in combat".format(self.side))
+
+        fighting_action = FightInCombatAction(self.executor, self.entity,
+                                              self.side, CombatProcess.STANCE_OFFENSIVE)
+
+        combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, self.entity,
+                                      deferred.serialize(fighting_action))
+        db.session.add(combat_intent)
+
+
+class ChangeCombatStanceAction(ActionOnSelf):
+    def __init__(self, executor, new_stance):
+        super().__init__(executor)
+        self.new_stance = new_stance
+
+    def perform_action(self):
+        if self.new_stance not in [CombatProcess.STANCE_OFFENSIVE,
+                                   CombatProcess.STANCE_DEFENSIVE,
+                                   CombatProcess.STANCE_RETREAT]:
+            raise ValueError("{} is an invalid stance".format(self.new_stance))
+
+        combat_intent = models.Intent.query.filter_by(executor=self.executor, type=main.Intents.COMBAT).one()
+
+        own_combat_action = deferred.call(combat_intent.serialized_action)
+        own_combat_action.stance = self.new_stance
+        combat_intent.serialized_action = deferred.serialize(own_combat_action)
 
 
 class ToggleCloseableAction(ActionOnEntity):

@@ -1,10 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+<div class="panel panel-default" id="combat-box" data-id="{{ encode(combat_entity.id) }}">
+    <div class="panel-heading">
+        {{ t("title_combat") }}
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            {% if own_action %}
+                <div class="col-md-12">
 
-</body>
-</html>
+                    Damage: {{ own_action.executor.damage }}<br>
+                    Stance: {{ own_action.stance }}
+
+                    <button class="combat_stance" value="{{ combat_stances.STANCE_OFFENSIVE }}">offensive</button>
+                    <button class="combat_stance" value="{{ combat_stances.STANCE_DEFENSIVE }}">defensive</button>
+                    <button class="combat_stance" value="{{ combat_stances.STANCE_RETREAT }}">retreat</button>
+                </div>
+            {% endif %}
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                {% if not own_action %}
+                    <button class="combat_join" value="{{ combat_stances.SIDE_ATTACKER }}">Join attacker</button>
+                {% endif %}
+                <ul>
+                    {% for attacker in attackers %}
+                        <li class="list-group-item" data-id="{{ encode(attacker.executor.id) }}">
+                            {{ t("character_info", html=True, **attacker.executor.pyslatize())|safe }}
+                            Damage: {{ attacker.executor.damage }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                {% if not own_action %}
+                    <button class="combat_join" value="{{ combat_stances.SIDE_DEFENDER }}">Join defender</button>
+                {% endif %}
+                <ul>
+                    {% for defender in defenders %}
+                        <li class="list-group-item" data-id="{{ encode(defender.executor.id) }}">
+                            {{ t("character_info", html=True, **defender.executor.pyslatize())|safe }}
+                            Damage: {{ defender.executor.damage }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <ul class="list-group">
+
+    </ul>
+</div>

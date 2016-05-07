@@ -4,10 +4,11 @@ import exeris
 import flask_socketio as client_socket
 import psycopg2
 from exeris.app import socketio_character_event
-from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, notifications_service
-from exeris.core.main import hook
+from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, notifications_service, \
+    combat
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, app
+from exeris.core.main import hook
 from flask import g, render_template
 from pyslate.backends import postgres_backend
 
@@ -136,13 +137,61 @@ def pull_events_initial():
     return events,
 
 
-@socketio_character_event("people_short_refresh_list")
+@socketio_character_event("people_short.refresh_list")
 def people_short_refresh_list():
-    chars = models.Character.query.all()
+    visibility_range = general.VisibilityBasedRange(10)
+    chars = visibility_range.characters_near(g.character)
     rendered = render_template("events/people_short.html", chars=chars)
 
     db.session.commit()
     return rendered,
+
+
+@socketio_character_event("character.combat_refresh_box")
+def combat_refresh_box(combat_id=None):
+    if combat_id:
+        combat_id = app.decode(combat_id)
+        combat_entity = models.Combat.query.get(combat_id)
+        own_combat_action = None
+    else:  # default - try to show own combat
+        combat_intent = models.Intent.query.filter_by(executor=g.character, type=main.Intents.COMBAT).first()
+        if not combat_intent:
+            return ""
+        combat_entity = combat_intent.target
+        own_combat_action = deferred.call(combat_intent.serialized_action)
+    if not combat_entity:
+        return ""
+
+    attackers, defenders = combat.get_combat_actions_of_attackers_and_defenders(g.character, combat_entity)
+
+    rendered = render_template("combat.html", own_action=own_combat_action,
+                               attackers=attackers, defenders=defenders,
+                               combat_entity=combat_entity, combat_stances=actions.CombatProcess)
+
+    return rendered,
+
+
+@socketio_character_event("character.combat_change_stance")
+def combat_change_stance(new_stance):
+    change_stance_action = actions.ChangeCombatStanceAction(g.character, new_stance)
+    change_stance_action.perform()
+
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("combat.join_side")
+def combat_change_stance(combat_id, side):
+    side = int(side)
+
+    combat_id = app.decode(combat_id)
+    combat_entity = models.Combat.query.get(combat_id)
+
+    join_combat_action = actions.JoinCombatAction(g.character, combat_entity, side)
+    join_combat_action.perform()
+
+    db.session.commit()
+    return ()
 
 
 @socketio_character_event("eat")

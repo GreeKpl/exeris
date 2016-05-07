@@ -1,10 +1,41 @@
 import random
 
-from exeris.core import deferred, models, general
+from exeris.core import actions, deferred, models, general
 from exeris.core.properties_base import P
 
 
-def get_combat_actions_of_foes_in_range(character, combat_entity):
+def get_combat_actions_of_visible_foes_and_allies(character, combat_entity):
+    attackers, defenders = get_combat_actions_of_attackers_and_defenders(character, combat_entity)
+
+    own_combat_action = character.get_combat_action()
+    if own_combat_action.side == actions.CombatProcess.SIDE_ATTACKER:
+        foes, allies = defenders, attackers
+    else:
+        foes, allies = attackers, defenders
+    return foes, allies
+
+
+def get_combat_actions_of_attackers_and_defenders(character, combat_entity):
+    combatant_intents = models.Intent.query.filter_by(target=combat_entity).all()
+
+    combat_actions_of_both_sides = [deferred.call(intent.serialized_action) for intent in combatant_intents]
+
+    attacker_combat_actions = [action for action in combat_actions_of_both_sides if
+                               action.side == actions.CombatProcess.SIDE_ATTACKER]
+    defender_combat_actions = [action for action in combat_actions_of_both_sides if
+                               action.side == actions.CombatProcess.SIDE_DEFENDER]
+
+    combat_range = general.VisibilityBasedRange(10)
+    visible_combatants = combat_range.characters_near(character)
+    return (filter_visible_combatants(attacker_combat_actions, visible_combatants),
+            filter_visible_combatants(defender_combat_actions, visible_combatants))
+
+
+def filter_visible_combatants(combat_actions, visible_combatants):
+    return [combat for combat in combat_actions if combat.executor in visible_combatants]
+
+
+def get_combat_actions_of_visible_foes(character, combat_entity):
     """
     Returns list of :class:`exeris.core.actions.FightInCombatAction` for characters
     that can be potential target of an attack by `character` (A). For each other character (B) it means:
@@ -16,16 +47,7 @@ def get_combat_actions_of_foes_in_range(character, combat_entity):
     :param combat_entity: entity of combat in which `character` is
     :return: list of combat actions of all potential targets
     """
-    combatant_intents = models.Intent.query.filter_by(target=combat_entity).all()
-
-    all_combat_actions = [deferred.call(intent.serialized_action) for intent in combatant_intents]
-
-    own_action = next(filter(lambda action: action.executor == character, all_combat_actions))
-    foe_combat_actions = filter(lambda action: action.side != own_action.side, all_combat_actions)
-
-    combat_range = general.VisibilityBasedRange(10)
-    return [foe_combat for foe_combat in foe_combat_actions if
-            combat_range.is_near(character, foe_combat.executor)]
+    return get_combat_actions_of_visible_foes_and_allies(character, combat_entity)[0]
 
 
 def get_hit_target(character_combat_action, foe_combat_actions):
