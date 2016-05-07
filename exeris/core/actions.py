@@ -371,18 +371,17 @@ class FightInCombatAction(Action):
         hit_damage = self.calculate_hit_damage(targets_combat_action)
 
         damaged_foe = targets_combat_action.executor
-        combat_violence = self.combat_entity.recorded_violence
 
         damaged_foe.damage += hit_damage
-        combat_violence[damaged_foe.id] = combat_violence.get(damaged_foe.id, 0) + hit_damage
-        sql.orm.attributes.flag_modified(self.combat_entity, "recorded_violence")  # TODO better JSON modification sys
+        self.combat_entity.set_recorded_damage(damaged_foe,
+                                               self.combat_entity.get_recorded_damage(damaged_foe) + hit_damage)
 
         general.EventCreator.base(main.Events.HIT_TARGET_IN_COMBAT, rng=general.VisibilityBasedRange(10), params={},
                                   doer=self.executor,
                                   target=targets_combat_action.executor)
 
     def calculate_hit_damage(self, targets_combat_action):
-        hit_damage = 0.2  # trololo hit damage formula
+        hit_damage = 0.1  # trololo hit damage formula
         if self.stance == CombatProcess.STANCE_OFFENSIVE:
             hit_damage *= 1.5
         if targets_combat_action.stance == CombatProcess.STANCE_DEFENSIVE:
@@ -839,7 +838,7 @@ class CombatProcess(ProcessAction):
     SIDE_DEFENDER = 1
 
     SCHEDULER_RUNNING_INTERVAL = 30  # 3 * general.GameDate.SEC_IN_HOUR
-    INITIAL_RUN_DELAY = 60  # 6 * general.GameDate.SEC_IN_HOUR
+    INITIAL_RUN_DELAY = 3  # 6 * general.GameDate.SEC_IN_HOUR
 
     RETREAT_CHANCE = 0.2
 

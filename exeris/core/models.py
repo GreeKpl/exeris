@@ -109,7 +109,7 @@ class TranslatedText(db.Model):
         self.content = content
         self.form = form
 
-    name = sql.Column(sql.String(32), primary_key=True)
+    name = sql.Column(sql.String(64), primary_key=True)
     language = sql.Column(sql.String(8), primary_key=True)
     content = sql.Column(sql.String)
     form = sql.Column(sql.String(8))
@@ -931,6 +931,25 @@ class Combat(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
     recorded_violence = sql.Column(psql.JSONB, default=lambda: {})
+
+    def get_recorded_damage(self, character):
+        if isinstance(character, Entity):
+            character = character.id
+        if isinstance(character, int):
+            character = str(character)
+        return self.recorded_violence.get(character, 0.0)
+
+    def set_recorded_damage(self, character, value):
+        if isinstance(character, Entity):
+            character = character.id
+        if isinstance(character, int):
+            character = str(character)
+        self.recorded_violence[character] = value
+        sql.orm.attributes.flag_modified(self, "recorded_violence")  # TODO better JSON modification sys
+
+    def is_able_to_fight(self, character):
+        from exeris.core import actions
+        return character.damage < 1.0 and self.get_recorded_damage(character) <= actions.CombatProcess.DAMAGE_TO_DEFEAT
 
     def fighters_intents(self):
         return Intent.query.filter_by(type=main.Intents.COMBAT, target=self).all()

@@ -50,6 +50,27 @@ data = {
     "event_eat_observer": {
         "en": "You see ${doer:entity_info} eat ${food:entity_info}",
     },
+    "event_attack_character_target": {
+        "en": "You are attacked by ${doer:entity_info} and thus start a combat.",
+    },
+    "event_attack_character_doer": {
+        "en": "You attack ${target:entity_info} and start a combat.",
+    },
+    "event_attack_character_observer": {
+        "en": "You see ${doer:entity_info} attack ${target:entity_info} and begin a combat.",
+    },
+    "event_hit_target_in_combat_target": {
+        "en": "You are hit by ${doer:entity_info}.",
+    },
+    "event_retreat_from_combat_observer": {
+        "en": "You see ${doer:entity_info} retreat from combat.",
+    },
+    "event_hit_target_in_combat_observer": {
+        "en": "You see ${doer:entity_info} hit ${target:entity_info}.",
+    },
+    "event_hit_target_in_combat_doer": {
+        "en": "You hit ${target:entity_info}.",
+    },
     "entity_character#f": {
         "en": "unknown woman",
     },
