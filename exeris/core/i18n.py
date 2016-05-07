@@ -25,9 +25,19 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
     def on_missing_tag_key(key, params):
         file_path = os.path.join(os.path.dirname(__file__), "../missing_tags.json")
         with open(file_path, 'r+') as f:
-            old_data = json.loads(f.read())
+            try:
+                old_data = json.loads(f.read())
+            except ValueError:
+                old_data = {}
             f.seek(0)
-            old_data[key] = {"en": ",".join([x for x in params.keys()])}
+
+            def turn_into_string(text):
+                if isinstance(params[text], dict):
+                    return "{}[{}]".format(text, ",".join(params[text].keys()))
+                return text
+
+            old_data[key] = {
+                "en": ",".join([turn_into_string(x) for x in params.keys()])}
             f.write(json.dumps(old_data, indent=4))
             f.truncate()
 
