@@ -840,6 +840,8 @@ class CombatProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = 30  # 3 * general.GameDate.SEC_IN_HOUR
     INITIAL_RUN_DELAY = 3  # 6 * general.GameDate.SEC_IN_HOUR
 
+    DAMAGE_TO_DEFEAT = 0.5
+
     RETREAT_CHANCE = 0.2
 
     @convert(combat_entity=models.Combat)
@@ -860,7 +862,10 @@ class CombatProcess(ProcessAction):
 
             target_action, potential_targets_actions = fighter_combat_action.perform()
 
-            logger.info("Fighter %s try to hit %s", fighter_intent.executor, target_action.executor)
+            if target_action:
+                logger.info("Fighter %s try to hit %s", fighter_intent.executor, target_action.executor)
+            else:
+                logger.info("Fighter %s has no target to attack", fighter_intent.executor)
             all_potential_targets = all_potential_targets.union(
                 [action.executor for action in potential_targets_actions])
 
@@ -879,10 +884,12 @@ class CombatProcess(ProcessAction):
         for intent_to_remove in fighter_intents_to_remove:  # character not in range of any enemy
             self.withdraw_from_combat(intent_to_remove)
 
-        number_of_combat_sides_participating = set([self.deserialized_action(i).side for i in active_fighter_intents])
+        fighters_able_to_fight = [intent for intent in active_fighter_intents if
+                                  self.combat_entity.is_able_to_fight(intent.executor)]
+        number_of_combat_sides_participating = set([self.deserialized_action(i).side for i in fighters_able_to_fight])
         there_are_fighters_on_both_sides = len(number_of_combat_sides_participating) == 2
 
-        if not all_potential_targets or not there_are_fighters_on_both_sides:
+        if not there_are_fighters_on_both_sides:
             logger.info("Not enough fighters. Removing combat")
             self.remove_combat()
 

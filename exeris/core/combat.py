@@ -59,6 +59,9 @@ def get_hit_target(character_combat_action, foe_combat_actions):
     :return: hit target's combat action or None when nobody can be hit
     """
 
+    combat_entity = character_combat_action.combat_entity
+    foe_combat_actions = [action for action in foe_combat_actions if combat_entity.is_able_to_fight(action.executor)]
+
     def has_ranged_weapon(character):
         weapon = character.get_weapon()
         return weapon.get_property(P.WEAPONIZABLE).get("ranged", False)
