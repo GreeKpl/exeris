@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
@@ -136,6 +136,9 @@ class CombatTest(TestCase):
         util.initialize_date()
         rl = RootLocation(Point(1, 1), 100)
 
+        class TaskMock:
+            pass
+
         roman1 = util.create_character("roman1", rl, util.create_player("abc1"))
         roman2 = util.create_character("roman2", rl, util.create_player("abc12"))
 
@@ -161,7 +164,9 @@ class CombatTest(TestCase):
         db.session.add_all([roman1_combat, roman2_combat, gaul1_combat])
 
         with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.1):
-            combat_process = CombatProcess(combat_entity)
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
             combat_process.perform()
 
             # test if gaul is hit twice, each for 0.1
@@ -176,8 +181,12 @@ class CombatTest(TestCase):
             roman1_combat_action.stance = CombatProcess.STANCE_RETREAT
             roman1_combat.serialized_action = deferred.serialize(roman1_combat_action)
 
-            combat_process = CombatProcess(combat_entity)
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
             combat_process.perform()
+
+            task_mock.stop_repeating.assert_not_called()
 
             self.assertCountEqual([roman2_combat, gaul1_combat], Intent.query.all())
 
@@ -185,8 +194,12 @@ class CombatTest(TestCase):
             gaul1_combat_action.stance = CombatProcess.STANCE_RETREAT
             gaul1_combat.serialized_action = deferred.serialize(gaul1_combat_action)
 
-            combat_process = CombatProcess(combat_entity)
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
             combat_process.perform()
+
+            task_mock.stop_repeating.assert_called_once_with()
 
             self.assertEqual([], Intent.query.all())
             self.assertEqual(0, Combat.query.count())

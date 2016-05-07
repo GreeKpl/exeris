@@ -40,7 +40,7 @@ class SchedulerTravelTest(TestCase):
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, travel_intent])
 
-        travel_process = WorkProcess()
+        travel_process = WorkProcess(None)
         travel_process.perform()
 
         distance_per_tick = 10 * WorkProcess.SCHEDULER_RUNNING_INTERVAL / GameDate.SEC_IN_DAY
@@ -140,7 +140,7 @@ class SchedulerTravelTest(TestCase):
         self.assertEqual(eat_action.item, go_and_perform_action.action.item)
         self.assertEqual(eat_action.amount, go_and_perform_action.action.amount)
 
-        travel_process = WorkProcess()
+        travel_process = WorkProcess(None)
 
         # come closer, not eat the potatoes
         for _ in range(2):
@@ -202,7 +202,7 @@ class SchedulerTravelTest(TestCase):
 
         db.session.add_all([rl, grass, water, travel_intent, land_trav1, grass_terrain, deep_water_terrain])
 
-        travel_process = WorkProcess()
+        travel_process = WorkProcess(None)
         travel_process.perform()
 
         self.assertAlmostEqual(1.02, rl.position.x, places=15)
@@ -229,7 +229,7 @@ class SchedulerActivityTest(TestCase):
     def test_activity_process(self):
         self._before_activity_process()
 
-        process = WorkProcess()
+        process = WorkProcess(None)
         process.perform()
 
         result_type = ItemType.query.filter_by(name="result").one()
@@ -247,7 +247,7 @@ class SchedulerActivityTest(TestCase):
         hammer = Item.query.filter(Item.is_in(worker)).filter_by(type=hammer_type).one()
         hammer.being_in = hammer.being_in.being_in  # drop the hammer onto ground
 
-        process = WorkProcess()
+        process = WorkProcess(None)
         process.perform()
 
         failure_notification = Notification.query.one()
@@ -551,12 +551,12 @@ class SchedulerEatingTest(TestCase):
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
 
-        process = EatingProcess()
+        process = EatingProcess(None)
         process.perform()
 
         self.assertEqual(EatingProcess.HUNGER_INCREASE, char.hunger)
 
-        process = EatingProcess()
+        process = EatingProcess(None)
         process.perform()
 
         self.assertEqual(2 * EatingProcess.HUNGER_INCREASE, char.hunger)
@@ -576,7 +576,7 @@ class SchedulerEatingTest(TestCase):
 
         char.hunger = 0.3
 
-        process = EatingProcess()
+        process = EatingProcess(None)
         process.perform()
 
         hunger_after_tick = 0.3 + EatingProcess.HUNGER_INCREASE - EatingProcess.HUNGER_MAX_DECREASE
@@ -610,7 +610,7 @@ class SchedulerEatingTest(TestCase):
 
         char.eating_queue = dict(strength=0.003, hunger=0.2, durability=0.01)
 
-        process = EatingProcess()
+        process = EatingProcess(None)
         process.perform()
 
         # increase all parameters parameter, diversity bonus applies
@@ -629,7 +629,7 @@ class SchedulerEatingTest(TestCase):
 
         char.hunger = 0.99  # very hungry
 
-        process = EatingProcess()
+        process = EatingProcess(None)
         process.perform()
 
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
@@ -659,7 +659,7 @@ class SchedulerDecayTest(TestCase):
 
         db.session.add_all([rl, carrot_type, fresh_pile_of_carrots, axe_type, axe, hammer_type, hammer])
 
-        process = DecayProcess()
+        process = DecayProcess(None)
         process.perform()
 
         self.assertAlmostEqual(1 / 30, fresh_pile_of_carrots.damage)
@@ -676,7 +676,7 @@ class SchedulerDecayTest(TestCase):
 
         db.session.add(old_pile_of_carrots)
 
-        process = DecayProcess()
+        process = DecayProcess(None)
         process.perform()
 
         self.assertEqual(1, old_pile_of_carrots.damage)
@@ -722,7 +722,7 @@ class SchedulerDecayTest(TestCase):
 
         db.session.add_all([rl, axe_type, axe, activity, wood_type, wood, hammer_type, hammer])
 
-        process = DecayProcess()
+        process = DecayProcess(None)
         process.perform()
 
         self.assertEqual(50 + ActivityProgressProcess.DEFAULT_PROGRESS, activity.ticks_left)  # progress decreased
@@ -731,7 +731,7 @@ class SchedulerDecayTest(TestCase):
 
         activity.ticks_left = activity.ticks_needed  # progress = 0, so items will decay
 
-        process = DecayProcess()
+        process = DecayProcess(None)
         process.perform()
 
         self.assertEqual(activity.ticks_needed, activity.ticks_left)  # progress is 0.0
@@ -740,7 +740,7 @@ class SchedulerDecayTest(TestCase):
 
         wood.damage = 1.0  # wood in activity will start to decay
 
-        process = DecayProcess()
+        process = DecayProcess(None)
         process.perform()
 
         self.assertEqual(19800, wood.amount)

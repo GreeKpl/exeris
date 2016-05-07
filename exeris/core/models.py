@@ -1486,6 +1486,9 @@ class ScheduledTask(db.Model):
     def is_repeatable(self):
         return self.execution_interval is not None
 
+    def stop_repeating(self):
+        self.execution_interval = None
+
 
 class EntityRecipe(db.Model):
     __tablename__ = "entity_recipes"

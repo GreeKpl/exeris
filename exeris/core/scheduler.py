@@ -48,7 +48,7 @@ class Scheduler:
     def process_task(self, task):
         tries = 0
         self.logger.info("Trying to run task process: %s", task.process_data)
-        process = deferred.call(task.process_data)
+        process = deferred.call(task.process_data, task=task)
         while tries < 3:
             try:
                 self._start_transaction()  # force finishing previous transaction

@@ -265,16 +265,18 @@ class AddNameToEntityAction(ActivityAction):
 
 class ProcessAction(AbstractAction):
     """
-    Process is a top-level class which is subclasses by all processes run by the scheduler.
+    Process is a top-level class which is subclassed by all processes run by the scheduler.
     """
-    pass
+
+    def __init__(self, task):
+        self.task = task
 
 
 class WorkProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
 
-    def __init__(self):
-        pass
+    def __init__(self, task):
+        super().__init__(task)
 
     def perform_action(self):
         work_intents = models.Intent.query.filter_by(type=main.Intents.WORK).order_by(
@@ -504,7 +506,7 @@ class TravelToEntityAndPerformAction(Action):
             return False
 
 
-class ActivityProgressProcess(ProcessAction):
+class ActivityProgressProcess(AbstractAction):
     DEFAULT_PROGRESS = 5.0
 
     def __init__(self, activity, workers):
@@ -713,6 +715,9 @@ class EatingProcess(ProcessAction):
     FOOD_BASED_ATTR_DECAY = 0.005
     FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE = 0.01
 
+    def __init__(self, task):
+        super().__init__(task)
+
     @staticmethod
     def bonus_mult(vals):
         return 1 + max(0, (sum(vals) / EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE - 1) * 0.3)
@@ -748,6 +753,9 @@ class EatingProcess(ProcessAction):
 class DecayProcess(ProcessAction):
     DAILY_STACKABLE_DECAY_FACTOR = 0.01
     SCHEDULER_RUNNING_INTERVAL = general.GameDate.SEC_IN_DAY
+
+    def __init__(self, task):
+        super().__init__(task)
 
     def perform_action(self):
         self.degrade_items()
@@ -845,7 +853,8 @@ class CombatProcess(ProcessAction):
     RETREAT_CHANCE = 0.2
 
     @convert(combat_entity=models.Combat)
-    def __init__(self, combat_entity):
+    def __init__(self, combat_entity, task):
+        super().__init__(task)
         self.combat_entity = combat_entity
 
     def deserialized_action(self, intent):
@@ -895,6 +904,7 @@ class CombatProcess(ProcessAction):
 
     def remove_combat(self):
         db.session.delete(self.combat_entity)
+        self.task.stop_repeating()
 
     def try_to_retreat(self, fighting_intent):
         if random.random() <= CombatProcess.RETREAT_CHANCE:
@@ -1263,7 +1273,7 @@ class AttackCharacterAction(ActionOnCharacter):
         # create combat process
         current_timestamp = general.GameDate.now().game_timestamp
         execution_timestamp = general.GameDate(current_timestamp + CombatProcess.INITIAL_RUN_DELAY).game_timestamp
-        combat_process = deferred.serialize(CombatProcess(combat_entity))
+        combat_process = deferred.serialize(CombatProcess(combat_entity, None))
         task = models.ScheduledTask(combat_process, execution_timestamp, CombatProcess.SCHEDULER_RUNNING_INTERVAL)
         db.session.add_all([combat_intent, foe_combat_intent, task])
 
