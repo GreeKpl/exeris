@@ -45,7 +45,7 @@ def serialize(obj):
 
     full_qualified_name = module_path + "." + obj.__class__.__qualname__
 
-    inspected_init_args = inspect.getargspec(obj.__class__.__init__).args
+    inspected_init_args = inspect.getfullargspec(obj.__class__.__init__).args
 
     inspected_init_args.pop(0)  # remove 'self'
 

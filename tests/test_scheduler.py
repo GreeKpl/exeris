@@ -5,11 +5,14 @@ import copy
 import sqlalchemy as sql
 from exeris.core import main, deferred, models
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
-    WorkProcess, TravelToEntityAndPerformAction, EatAction, WorkOnActivityAction, TravelInDirectionAction
+    WorkProcess, TravelToEntityAndPerformAction, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
+    CreateItemAction
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
-    SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea, Notification
+    SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea, Notification, \
+    ResourceArea, \
+    LocationType, Location
 from exeris.core.properties_base import P
 from exeris.core.scheduler import Scheduler
 from flask.ext.testing import TestCase
@@ -441,7 +444,121 @@ class SchedulerActivityTest(TestCase):
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
         self.assertCountEqual([2, 1.5], process.machine_based_quality)
 
-    def test_activitys_skills(self):
+    def test_check_existence_of_resource(self):
+        rl = RootLocation(Point(1, 1), 123)
+        worker = util.create_character("John", rl, util.create_player("ABC"))
+
+        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
+        process = ActivityProgressProcess(activity, [])
+
+        oak_type = ItemType("oak", 200, stackable=True)
+        coal_type = ItemType("coal", 300, stackable=True)
+
+        db.session.add_all([rl, worker, activity, oak_type, coal_type])
+
+        self.assertRaises(main.NoResourceAvailableException,
+                          lambda: process.check_required_resources(["oak", "coal"]))
+
+        # recreate the process
+        process = ActivityProgressProcess(activity, [])
+
+        oak_resource_area = ResourceArea(oak_type, Point(5, 5), 10, efficiency=100, max_amount=50)
+        db.session.add(oak_resource_area)
+
+        self.assertRaises(main.NoResourceAvailableException,
+                          lambda: process.check_required_resources(["oak", "coal"]))
+
+        # recreate the process
+        process = ActivityProgressProcess(activity, [])
+
+        coal_resource_area = ResourceArea(coal_type, Point(5, 5), 2, efficiency=100, max_amount=50)
+        db.session.add(coal_resource_area)
+
+        self.assertRaises(main.NoResourceAvailableException,
+                          lambda: process.check_required_resources(["oak", "coal"]))
+
+        coal_resource_area.radius = 10
+
+        process.check_required_resources(["oak", "coal"])
+
+    def test_check_allowed_location_types(self):
+        rl = RootLocation(Point(1, 1), 123)
+        worker = util.create_character("John", rl, util.create_player("ABC"))
+
+        hut_type = LocationType("hut", 4000)
+        building_type = LocationType("building", 4000)
+        hut = Location(rl, hut_type, title="domek")
+        anvil_type = ItemType("anvil", 300, portable=False)
+
+        anvil = Item(anvil_type, hut)
+
+        activity = Activity(anvil, "name", {}, {"doesnt matter": True}, 1, worker)
+        process = ActivityProgressProcess(activity, [])
+
+        db.session.add_all([rl, hut_type, building_type, hut, anvil_type, anvil, activity])
+
+        self.assertRaises(main.InvalidLocationTypeException,
+                          lambda: process.check_location_types(["building"]))
+
+        process.check_location_types(["hut"])
+
+        process.check_location_types(["hut", "building"])
+
+    def test_check_required_terrain_type(self):
+        rl = RootLocation(Point(1, 1), 123)
+        worker = util.create_character("John", rl, util.create_player("ABC"))
+
+        swamp_type = TerrainType("swamp")
+        grass_type = TerrainType("grass")
+        road_type = TerrainType("road")
+        terrain_poly = Polygon([(0, 0), (2, 0), (2, 2), (0, 2)])
+        swamp_area = TerrainArea(terrain_poly, swamp_type, priority=1)
+        road_area = TerrainArea(terrain_poly, road_type, priority=3)
+
+        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
+        process = ActivityProgressProcess(activity, [])
+
+        db.session.add_all([rl, swamp_type, road_type, grass_type, swamp_area, road_area, activity])
+
+        self.assertRaises(main.InvalidTerrainTypeException,
+                          lambda: process.check_terrain_type("grass"))
+
+        process.check_terrain_type("road")
+
+    def test_check_excluded_by_entities(self):
+        rl = RootLocation(Point(1, 1), 123)
+        worker = util.create_character("John", rl, util.create_player("ABC"))
+
+        field_type = ItemType("field", 300, portable=False)
+
+        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
+        process = ActivityProgressProcess(activity, [])
+
+        db.session.add_all([rl, field_type, activity])
+
+        process.check_excluded_by_entities({"field": 2})
+
+        # create first field
+        field1 = Item(field_type, rl)
+        db.session.add(field1)
+
+        # activity resulting in creation of a field
+        other_activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
+        create_field_action = CreateItemAction(item_type=field_type, properties={}, used_materials={},
+                                               activity=other_activity, initiator=worker)
+        other_activity.result_actions = [deferred.serialize(create_field_action)]
+        db.session.add(other_activity)
+        # results of ongoing activities don't have any impact on excluded_entities
+        process.check_excluded_by_entities({"field": 2})
+
+        # create second field
+        field2 = Item(field_type, rl)
+        db.session.add(field2)
+
+        self.assertRaises(main.TooManyExistingEntitiesException,
+                          lambda: process.check_excluded_by_entities({"field": 2}))
+
+    def test_check_activitys_skills(self):
         rl = RootLocation(Point(1, 1), 123)
         worked_on_type = ItemType("worked_on", 100)
         worked_on = Item(worked_on_type, rl)

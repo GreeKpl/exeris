@@ -483,11 +483,17 @@ class Entity(db.Model):
     def get_position(self):
         return self.get_root().position
 
+    def get_location(self):
+        return self._get_parent_of_class(Location)
+
     def get_root(self):
-        if isinstance(self, RootLocation):
+        return self._get_parent_of_class(RootLocation)
+
+    def _get_parent_of_class(self, entity_class):
+        if isinstance(self, entity_class):
             return self
         else:
-            return self.being_in.get_root()
+            return self.being_in._get_parent_of_class(entity_class)
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_BASE, entity_id=self.id)
@@ -537,7 +543,8 @@ class Intent(db.Model):
     serialized_action = sql.Column(psql.JSONB)  # single action
 
     def __repr__(self):
-        return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type, self.target, self.serialized_action)
+        return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type,
+                                                                                   self.target, self.serialized_action)
 
 
 class LocationType(EntityType):
@@ -1548,16 +1555,30 @@ class ResourceArea(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    resource_type = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
+    def __init__(self, resource_type, center, radius, efficiency, max_amount, amount=None):
+        self.resource_type = resource_type
+        self.center = center
+        self.radius = radius
+        self.efficiency = efficiency
+        self.max_amount = max_amount
+        self.amount = amount
+        if amount is None:
+            self.amount = self.max_amount
 
-    area = sql.Column(gis.Geometry("POLYGON"))
+    resource_type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
+    resource_type = sql.orm.relationship(ItemType, uselist=False)
 
-    @validates("area")
-    def validate_position(self, key, area):  # we assume position is a Polygon
-        return from_shape(area)
+    center = sql.Column(gis.Geometry("POINT"))
+    radius = sql.Column(sql.Float)
 
-    quality = sql.Column(sql.Integer)  # amount collected per unit of time
-    amount = sql.Column(sql.Integer)  # amount collected before the resource becomes unavailable
+    @validates("center")
+    def validate_center(self, key, center):
+        return from_shape(center)
+
+    efficiency = sql.Column(sql.Float)  # amount collected per unit of time
+    amount = sql.Column(sql.Float)  # amount which can be collected before the area becomes exhausted
+    max_amount = sql.Column(sql.Float)
+    # TODO decide whether recovery rate should be set separately for every resource
 
 
 class TerrainType(EntityType):

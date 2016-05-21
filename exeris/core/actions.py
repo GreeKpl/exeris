@@ -537,6 +537,22 @@ class ActivityProgressProcess(AbstractAction):
         if "target_with_properties" in req:
             pass
 
+        if "required_resources" in req:
+            logger.info("checking required resources %s", req["required_resources"])
+            self.check_required_resources(req["required_resources"])
+
+        if "location_types" in req:
+            logger.info("checking location type")
+            self.check_location_types(req["location_types"])
+
+        if "terrain_type" in req:
+            logger.info("checking location type")
+            self.check_terrain_type(req["terrain_type"])
+
+        if "excluded_by_entities" in req:
+            logger.info("checking exclusion of entities")
+            self.check_excluded_by_entities(req["excluded_by_entities"])
+
         if "input" in req:
             self.check_input_requirements(req["input"])
 
@@ -707,6 +723,34 @@ class ActivityProgressProcess(AbstractAction):
 
         if worker.get_skill_factor(skill_name) < min_skill_value:
             raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
+
+    def check_required_resources(self, resources):
+        for resource_name in resources:
+            required_resource_in_area = models.ResourceArea.query.filter(
+                models.ResourceArea.center.ST_DWithin(
+                    self.activity.get_root().position.wkt,
+                    models.ResourceArea.radius)).filter_by(resource_type_name=resource_name).first()
+            if not required_resource_in_area:
+                raise main.NoResourceAvailableException(resource_name=resource_name)
+
+    def check_location_types(self, location_types):
+        if self.activity.get_location().type.name not in location_types:
+            raise main.InvalidLocationTypeException(allowed_types=location_types)
+
+    def check_terrain_type(self, terrain_type_name):
+        position = self.activity.get_position()
+        terrain = models.TerrainArea.query.filter(models.TerrainArea.terrain.ST_Intersects(position.wkt)) \
+            .filter(models.TerrainArea.type_name == terrain_type_name).first()
+        if not terrain:
+            raise main.InvalidTerrainTypeException(required_type=terrain_type_name)
+
+    def check_excluded_by_entities(self, entity_types):
+        activity_location = self.activity.get_location()
+        for entity_type_name, max_number in entity_types.items():
+            number_of_entities = models.Item.query.filter_by(type_name=entity_type_name) \
+                .filter(models.Entity.is_in(activity_location)).count()
+            if number_of_entities >= max_number:
+                raise main.TooManyExistingEntitiesException(entity_type=entity_type_name)
 
 
 class EatingProcess(ProcessAction):

@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    TOO_MANY_EXISTING_ENTITIES = "error_too_many_existing_entities"
+    TOO_FEW_PARTICIPANTS_IN_ACTIVITY = "error_few_many_participants_in_activity"
+    TOO_MANY_PARTICIPANTS_IN_ACTIVITY = "error_too_many_participants_in_activity"
+    INVALID_TERRAIN_TYPE = "error_invalid_terrain_type"
+    INVALID_LOCATION_TYPE = "error_invalid_location_type"
     CANNOT_ATTACK_YOURSELF = "error_cannot_attack_yourself"
     ENTITY_UNSUPPORTED_OPERATION = "error_entity_unsupported_operation"
     TOO_LOW_SKILL = "error_too_low_skill"
@@ -27,6 +32,7 @@ class Errors:
     INVALID_AMOUNT = "error_invalid_amount"
     TARGET_ALREADY_IN_COMBAT = "error_target_already_in_combat"
     ALREADY_BEING_IN_COMBAT = "error_already_being_in_combat"
+    NO_RESOURCE_AVAILABLE = "error_no_resource_available"
 
 
 class Types:
@@ -270,6 +276,11 @@ class NoMachineForActivityException(ActivityException):
         super().__init__(Errors.NO_MACHINE_FOR_ACTIVITY, machine_name=machine_name)
 
 
+class NoResourceAvailableException(ActivityException):
+    def __init__(self, *, resource_name):
+        super().__init__(Errors.NO_RESOURCE_AVAILABLE, resource_name=resource_name)
+
+
 class TooFarFromActivityException(ActivityException):
     def __init__(self, *, activity):
         super().__init__(Errors.TOO_FAR_FROM_ACTIVITY, name_tag=activity.name_tag, name_params=activity.name_params)
@@ -287,9 +298,24 @@ class TooLowSkillException(ActivityException):
 
 class TooFewParticipantsException(ActivityException):
     def __init__(self, *, min_number):
-        super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, min_number=min_number)
+        super().__init__(Errors.TOO_FEW_PARTICIPANTS_IN_ACTIVITY, min_number=min_number)
 
 
 class TooManyParticipantsException(ActivityException):
     def __init__(self, *, max_number):
-        super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, max_number=max_number)
+        super().__init__(Errors.TOO_MANY_PARTICIPANTS_IN_ACTIVITY, max_number=max_number)
+
+
+class InvalidLocationTypeException(ActivityException):
+    def __init__(self, *, allowed_types):
+        super().__init__(Errors.INVALID_LOCATION_TYPE, allowed_types=allowed_types)
+
+
+class InvalidTerrainTypeException(ActivityException):
+    def __init__(self, *, required_type):
+        super().__init__(Errors.INVALID_TERRAIN_TYPE, required_type=required_type)
+
+
+class TooManyExistingEntitiesException(GameException):
+    def __init__(self, *, entity_type):
+        super().__init__(Errors.TOO_MANY_EXISTING_ENTITIES, entity_type=entity_type)
