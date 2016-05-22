@@ -521,9 +521,9 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, swamp_type, road_type, grass_type, swamp_area, road_area, activity])
 
         self.assertRaises(main.InvalidTerrainTypeException,
-                          lambda: process.check_terrain_type("grass"))
+                          lambda: process.check_terrain_types(["grass"]))
 
-        process.check_terrain_type("road")
+        process.check_terrain_types(["road", "grass"])
 
     def test_check_excluded_by_entities(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -574,11 +574,11 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill, activity])
         process = ActivityProgressProcess(activity, [])
 
-        process.check_skills(worker, ("frying", 0.3), {})
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("frying", 0.4), {}))
+        process.check_skills(worker, {"frying": 0.3}, {})
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, {"frying": 0.4}, {}))
 
-        process.check_skills(worker, ("baking", 0.1), {})
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, ("baking", 1.01), {}))
+        process.check_skills(worker, {"baking": 0.1}, {})
+        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, {"baking": 1.01}, {}))
 
     def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), 123)

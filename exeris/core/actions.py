@@ -547,7 +547,7 @@ class ActivityProgressProcess(AbstractAction):
 
         if "terrain_type" in req:
             logger.info("checking location type")
-            self.check_terrain_type(req["terrain_type"])
+            self.check_terrain_types(req["terrain_type"])
 
         if "excluded_by_entities" in req:
             logger.info("checking exclusion of entities")
@@ -569,7 +569,7 @@ class ActivityProgressProcess(AbstractAction):
                     self.check_optional_tools(worker, req["optional_tools"], worker_impact)
 
                 if "skill" in req:
-                    self.check_skills(worker, req["skills"].items()[0], worker_impact)
+                    self.check_skills(worker, req["skills"], worker_impact)
 
                 if "tool_based_quality" in worker_impact:
                     self.tool_based_quality += worker_impact["tool_based_quality"]
@@ -717,12 +717,11 @@ class ActivityProgressProcess(AbstractAction):
         if len(active_workers) > max_number:
             raise main.TooManyParticipantsException(max_number=max_number)
 
-    def check_skills(self, worker, skill, worker_impact):
-        skill_name = skill[0]
-        min_skill_value = skill[1]
+    def check_skills(self, worker, skills, worker_impact):
+        for skill_name, min_skill_value  in skills.items():
 
-        if worker.get_skill_factor(skill_name) < min_skill_value:
-            raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
+            if worker.get_skill_factor(skill_name) < min_skill_value:
+                raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
 
     def check_required_resources(self, resources):
         for resource_name in resources:
@@ -737,12 +736,12 @@ class ActivityProgressProcess(AbstractAction):
         if self.activity.get_location().type.name not in location_types:
             raise main.InvalidLocationTypeException(allowed_types=location_types)
 
-    def check_terrain_type(self, terrain_type_name):
+    def check_terrain_types(self, terrain_type_names):
         position = self.activity.get_position()
         terrain = models.TerrainArea.query.filter(models.TerrainArea.terrain.ST_Intersects(position.wkt)) \
-            .filter(models.TerrainArea.type_name == terrain_type_name).first()
+            .filter(models.TerrainArea.type_name.in_(terrain_type_names)).first()
         if not terrain:
-            raise main.InvalidTerrainTypeException(required_type=terrain_type_name)
+            raise main.InvalidTerrainTypeException(required_types=terrain_type_names)
 
     def check_excluded_by_entities(self, entity_types):
         activity_location = self.activity.get_location()

@@ -312,8 +312,8 @@ class InvalidLocationTypeException(ActivityException):
 
 
 class InvalidTerrainTypeException(ActivityException):
-    def __init__(self, *, required_type):
-        super().__init__(Errors.INVALID_TERRAIN_TYPE, required_type=required_type)
+    def __init__(self, *, required_types):
+        super().__init__(Errors.INVALID_TERRAIN_TYPE, required_types=required_types)
 
 
 class TooManyExistingEntitiesException(GameException):
