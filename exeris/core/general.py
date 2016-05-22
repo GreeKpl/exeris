@@ -402,7 +402,7 @@ class ItemQueryHelper:
         """
         Return pre-prepared query which will filter Item query to specified types and "being_in" property
         :param types: list of ItemType instances or ItemType.type_name identifiers
-        :param being_in: list of places where items should be located in their being_in
+        :param being_in: list of places where items should be located (their 'being_in' attribute)
         :return: query with two filters applied
         """
         type_names = [entry if entry is str else entry.name for entry in types]

@@ -141,7 +141,7 @@ def create_database():
         potatoes_type = models.ItemType("potatoes", 20, stackable=True)
         potatoes = models.Item(potatoes_type, models.RootLocation.query.one(), amount=5000)
         signpost_type = models.ItemType("signpost", 500, portable=False)
-        db.session.add_all([potatoes_type, potatoes, signpost_type])
+        db.session.add_all([potatoes_type, potatoes, signpost_type, hammer])
     if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
         potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1, "satiation": 0.05}))
@@ -161,8 +161,8 @@ def create_database():
 
     if not models.EntityRecipe.query.count():
         build_menu_category = models.BuildMenuCategory("structures")
-        recipe = models.EntityRecipe("building_signpost", {}, {}, 10, build_menu_category,
-                                     result_entity=models.ItemType.by_name("signpost"))
+        recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
+                                     build_menu_category, result_entity=models.ItemType.by_name("signpost"))
         db.session.add_all([build_menu_category, recipe])
 
     if not models.LocationType.by_name("hut"):
@@ -223,8 +223,8 @@ def create_database():
                                      {"item_type": tablet_type.name,
                                       "properties": {P.VISIBLE_MATERIAL: {"main": "clay"}},
                                       "used_materials": "all"}]]
-        tablet_recipe = models.EntityRecipe("carving_tablet", {}, {}, 2, build_menu_category,
-                                            result=tablet_production_result,
+        tablet_recipe = models.EntityRecipe("carving_tablet", {}, {"mandatory_machines": ["signpost"]}, 2,
+                                            build_menu_category, result=tablet_production_result,
                                             activity_container="portable_item")
         db.session.add_all([tablet_type, tablet_recipe])
 

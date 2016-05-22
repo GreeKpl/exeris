@@ -3,7 +3,12 @@ FRAGMENTS.actions = (function() {
     $.subscribe("actions:update_actions_list", function() {
         socket.emit("update_actions_list", function(actions) {
             $.each(actions, function(idx, action) {
-                $("#actions_list > ol").append("<li class='recipe btn btn-default' data-recipe='" + action.id + "'>" + action.name + "</li>");
+                var classes = "recipe btn btn-default";
+                if (!action.enabled) {
+                    classes += " disabled";
+                }
+                $("#actions_list > ol").append("<li class='" + classes + "' data-recipe='" + action.id + "'>" +
+                    action.name + "</li>");
             });
         });
     });

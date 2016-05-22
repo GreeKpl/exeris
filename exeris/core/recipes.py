@@ -1,7 +1,6 @@
 import copy
-import math
 
-from exeris.core import models, deferred
+from exeris.core import models, deferred, general
 from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
@@ -127,6 +126,75 @@ class ActivityFactory:
         return form_inputs
 
 
+class RecipeListProducer:
+    def __init__(self, character):
+        self.character = character
+
+    def get_recipe_list(self):
+        # prefetch data
+        location = self.character.get_location()
+
+        skills = {}
+        for skill_name in db.session.query(models.SkillType.name).all():
+            skills[skill_name] = self.character.get_skill_factor(skill_name)
+
+        character_position = location.get_position()
+
+        location_type = location.type_name
+        terrain_types = db.session.query(models.TerrainArea.type_name) \
+            .filter(models.TerrainArea.terrain.ST_Intersects(character_position.wkt)).all()
+
+        available_resources = db.session.query(models.ResourceArea.resource_type_name) \
+            .filter(models.ResourceArea.center.ST_DWithin(character_position.wkt,
+                                                          models.ResourceArea.radius)).all()
+
+        all_recipes = models.EntityRecipe.query.all()
+
+        def is_recipe_available(recipe):
+            req = recipe.requirements
+            print(req)
+
+            if "location_types" in req:
+                if location_type not in req["location_types"]:
+                    return False
+
+            if "terrain_types" in req:
+                if not set(req["terrain_types"]).intersection(set(terrain_types)):
+                    return False
+
+            if "skill" in req:
+                for skill_name, min_skill_value in req["skills"]:
+                    if skills[skill_name] < min_skill_value:
+                        return False
+
+            if "required_resources" in req:
+                if not set(req["required_resources"]).intersection(set(available_resources)):
+                    return False
+
+            if "mandatory_machines" in req:
+                for machine_name in req["mandatory_machines"]:
+                    group = models.EntityType.by_name(machine_name)
+                    type_eff_pairs = group.get_descending_types()
+                    allowed_types = [pair[0] for pair in type_eff_pairs]
+                    machines = general.ItemQueryHelper.query_all_types_near(allowed_types, location).first()
+                    if not machines:
+                        return False
+
+            if "mandatory_tools" in req:
+                for tool_type_name in req["mandatory_tools"]:
+                    group = models.EntityType.by_name(tool_type_name)
+                    type_eff_pairs = group.get_descending_types()
+                    allowed_types = [pair[0] for pair in type_eff_pairs]
+
+                    tools = general.ItemQueryHelper.query_all_types_in(allowed_types, self.character).first()
+                    if not tools:
+                        return False
+
+            return True
+
+        return [recipe for recipe in all_recipes if is_recipe_available(recipe)]
+
+
 class InputField:
     pass
 
@@ -137,4 +205,3 @@ class NameInput(InputField):
 
 class AmountInput(InputField):
     CAST_FUNCTION = int
-

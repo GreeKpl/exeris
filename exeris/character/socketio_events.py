@@ -435,8 +435,12 @@ def attack_character(entity_id):
 
 @socketio_character_event("update_actions_list")
 def update_actions_list():
+    recipe_list_producer = recipes.RecipeListProducer(g.character)
     entity_recipes = models.EntityRecipe.query.all()
-    recipe_names = [{"name": recipe.name_tag, "id": app.encode(recipe.id)} for recipe in entity_recipes]
+    enabled_entity_recipes = recipe_list_producer.get_recipe_list()
+    recipe_names = [{"name": recipe.name_tag,
+                     "id": app.encode(recipe.id),
+                     "enabled": recipe in enabled_entity_recipes} for recipe in entity_recipes]
 
     return recipe_names,
 
