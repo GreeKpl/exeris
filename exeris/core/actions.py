@@ -197,6 +197,33 @@ class CreateItemAction(ActivityAction):
                 move_entity_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
 
+class CollectGatheredResourcesAction(ActivityAction):
+    @convert(resource_type=models.ItemType)
+    def __init__(self, *, resource_type, **injected_args):
+        self.resource_type = resource_type
+        self.activity = injected_args["activity"]
+        self.initiator = injected_args["initiator"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        position = self.activity.get_position()
+        resources_in_proximity = models.ResourceArea.query.filter(
+            models.ResourceArea.center.ST_DWithin(
+                position.wkt, models.ResourceArea.radius)) \
+            .filter_by(resource_type=self.resource_type).all()
+
+        number_of_resource_areas = len(resources_in_proximity)
+        amount_of_resource = 0
+        for resource in resources_in_proximity:
+            amount_from_this_area = min(round(resource.efficiency / number_of_resource_areas), resource.amount)
+            resource.amount -= amount_from_this_area
+            amount_of_resource += amount_from_this_area
+
+        create_item_action = CreateItemAction(item_type=self.resource_type, properties={},
+                                              used_materials={}, amount=amount_of_resource, **self.injected_args)
+        return create_item_action.perform()
+
+
 class RemoveItemAction(ActivityAction):
     @convert(item=models.Item)
     def __init__(self, item, gracefully=True):
@@ -718,7 +745,7 @@ class ActivityProgressProcess(AbstractAction):
             raise main.TooManyParticipantsException(max_number=max_number)
 
     def check_skills(self, worker, skills, worker_impact):
-        for skill_name, min_skill_value  in skills.items():
+        for skill_name, min_skill_value in skills.items():
 
             if worker.get_skill_factor(skill_name) < min_skill_value:
                 raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)

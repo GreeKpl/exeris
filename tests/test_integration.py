@@ -38,6 +38,8 @@ class ProductionIntegrationTest(TestCase):
         factory = ActivityFactory()
         activity = factory.create_from_recipe(recipe, anvil, worker, user_input={"amount": 1})
 
+        self.assertEqual(anvil, activity.being_in)
+
         work_intent = Intent(worker, main.Intents.WORK, 1, activity,
                ["exeris.core.actions.WorkOnActivityAction", {"executor": worker.id, "activity": activity.id}])
         db.session.add(work_intent)
