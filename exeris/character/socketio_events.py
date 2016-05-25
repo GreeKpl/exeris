@@ -452,22 +452,32 @@ def activity_from_recipe_setup(recipe_id):
 
     form_inputs = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
 
+    selectable_machines = recipes.ActivityFactory.get_selectable_machines(recipe, g.character)
+
     rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
-                                     recipe_id=recipe_id)
+                                     recipe_id=recipe_id, selectable_machines=selectable_machines)
     return rendered_modal,
 
 
 @socketio_character_event("create_activity_from_recipe")
-def create_activity_from_recipe(recipe_id, user_input):
+def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
     recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
+
+    activitys_being_in = g.character.get_location()
+    if selected_machine_id:
+        selected_machine_id = app.decode(selected_machine_id)
+        selected_machine = models.Item.by_id(selected_machine_id)
+
+        # todo check machine proximity and if there's already an activity in machine
+        activitys_being_in = selected_machine
 
     activity_factory = recipes.ActivityFactory()
     form_input_type_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
 
     user_input = {name: form_input_type_by_name[name].CAST_FUNCTION(value) for name, value in user_input.items()}
 
-    activity = activity_factory.create_from_recipe(recipe, g.character.being_in, g.character, user_input=user_input)
+    activity = activity_factory.create_from_recipe(recipe, activitys_being_in, g.character, user_input=user_input)
 
     db.session.add_all([activity])
     db.session.commit()

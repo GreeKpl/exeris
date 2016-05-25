@@ -7,18 +7,28 @@
                 <h4 class="modal-title">{{ title }}</h4>
             </div>
             <div class="modal-body">
+                {% if selectable_machines %}
+                    <label>
+                        Selected machine:
+                        <select class="selected_machine" name="selected_machine">
+                            {% for machine in selectable_machines %}
+                                <option value="{{ encode(machine.id) }}">{{ machine }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                {% endif %}
                 {% for form_field, field_type in form_inputs.items() %}
                     {% if field_type.__name__ == "NameInput" %}
-                    <label>
-                        {{ form_field }}:
-                        <input class="recipe_input" name="{{ form_field }}" type="text">
-                    </label>
+                        <label>
+                            {{ form_field }}:
+                            <input class="recipe_input" name="{{ form_field }}" type="text">
+                        </label>
                     {% endif %}
                     {% if field_type.__name__ == "AmountInput" %}
-                    <label>
-                        {{ form_field }}:
-                        <input class="recipe_input" name="{{ form_field }}" type="number">
-                    </label>
+                        <label>
+                            {{ form_field }}:
+                            <input class="recipe_input" name="{{ form_field }}" type="number">
+                        </label>
                     {% endif %}
                 {% endfor %}
             </div>

@@ -121,20 +121,20 @@ def create_database():
 
     models.init_database_contents()
 
-    if not models.RootLocation.query.count():
+    if not models.GameDateCheckpoint.query.count():
         new_root = models.RootLocation(Point(1, 1), 123)
         db.session.add(new_root)
-    if not models.GameDateCheckpoint.query.count():
+
         ch_pt = models.GameDateCheckpoint(game_date=0, real_date=datetime.datetime.now().timestamp())
         db.session.add(ch_pt)
-    if not models.Player.query.count():
+
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
 
-    character_type = models.EntityType.by_name(Types.ALIVE_CHARACTER)
-    if not models.EntityTypeProperty.query.filter_by(type=character_type, name=P.DYNAMIC_NAMEABLE).count():
+        character_type = models.EntityType.by_name(Types.ALIVE_CHARACTER)
+
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
-    if models.ItemType.query.count() < 2:
+
         hammer_type = models.ItemType("hammer", 200)
         hammer = models.Item(hammer_type, models.RootLocation.query.one())
 
@@ -142,30 +142,36 @@ def create_database():
         potatoes = models.Item(potatoes_type, models.RootLocation.query.one(), amount=5000)
         signpost_type = models.ItemType("signpost", 500, portable=False)
         db.session.add_all([potatoes_type, potatoes, signpost_type, hammer])
-    if not models.EntityTypeProperty.query.filter_by(name=P.EDIBLE).count():
+
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
         potatoes_type.properties.append(models.EntityTypeProperty(P.EDIBLE, {"hunger": -0.1, "satiation": 0.05}))
 
-    if not models.Character.query.count():
+        gathering_build_menu_category = models.BuildMenuCategory("gathering")
+        oak_type = models.ItemType("oak", 50, stackable=True)
+        oak_tree_type = models.ItemType("oak_tree", 50, portable=False)
+        oak_area = models.ResourceArea(oak_type, Point(5, 5), 3, 20, 500)
+        chopping_result = [["exeris.core.actions.CollectGatheredResourcesAction", {"resource_type": "oak"}]]
+        chopping_oak_recipe = models.EntityRecipe("chopping_oak", {},
+                                                  {"required_resources": ["oak"], "terrain_types": ["forest"]},
+                                                  6, gathering_build_menu_category,
+                                                  result=chopping_result, activity_container="oak_tree")
+        db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe])
+
         character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
                                      general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
         db.session.add(character)
 
-    if not models.ItemType.by_name("portable_item_in_constr"):
         item_in_construction_type = models.ItemType("portable_item_in_constr", 1, portable=True)
         db.session.add(item_in_construction_type)
 
-    if not models.ItemType.by_name("fixed_item_in_constr"):
         item_in_construction_type = models.ItemType("fixed_item_in_constr", 1, portable=False)
         db.session.add(item_in_construction_type)
 
-    if not models.EntityRecipe.query.count():
         build_menu_category = models.BuildMenuCategory("structures")
         recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
                                      build_menu_category, result_entity=models.ItemType.by_name("signpost"))
         db.session.add_all([build_menu_category, recipe])
 
-    if not models.LocationType.by_name("hut"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
@@ -178,13 +184,14 @@ def create_database():
                                      activity_container="fixed_item")
         db.session.add_all([hut_type, recipe])
 
-    if not models.TerrainArea.query.count():
         grass_terrain = models.TerrainType("grass")
+        forest_terrain = models.TerrainType("forest")
         deep_water_terrain = models.TerrainType("deep_water")
         road_terrain = models.TerrainType("road")
         db.session.add_all([grass_terrain, deep_water_terrain])
         land_terrain_type = models.TypeGroup.by_name(Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_terrain)
+        land_terrain_type.add_to_group(forest_terrain)
         land_terrain_type.add_to_group(road_terrain)
         water_terrain_type = models.TypeGroup.by_name(Types.WATER_TERRAIN)
         water_terrain_type.add_to_group(deep_water_terrain)
@@ -193,11 +200,13 @@ def create_database():
         poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
         poly_grass2 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
         poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
+        poly_forest = Polygon([(5, 2), (7, 3), (8, 5), (7, 7), (5, 8), (3, 7), (2, 5), (3, 3)])
 
         grass = models.TerrainArea(poly_grass, grass_terrain)
         water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
         grass2 = models.TerrainArea(poly_grass2, grass_terrain)
-        road = models.TerrainArea(poly_road, road_terrain)
+        road = models.TerrainArea(poly_road, road_terrain, priority=3)
+        forest = models.TerrainArea(poly_forest, forest_terrain, priority=2)
 
         land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
         land_trav2 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
@@ -209,10 +218,9 @@ def create_database():
         land_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)
 
         db.session.add_all(
-            [grass_terrain, deep_water_terrain, road_terrain, grass, water, grass2, road, land_trav1, land_trav2,
-             land_trav_road, land_visibility])
+            [grass_terrain, deep_water_terrain, road_terrain, grass, water, grass2, road, forest,
+             land_trav1, land_trav2, land_trav_road, land_visibility])
 
-    if not models.ItemType.by_name("tablet"):
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=False)
         tablet_type.properties.append(models.EntityTypeProperty(P.READABLE,
@@ -226,13 +234,23 @@ def create_database():
         tablet_recipe = models.EntityRecipe("carving_tablet", {}, {"mandatory_machines": ["signpost"]}, 2,
                                             build_menu_category, result=tablet_production_result,
                                             activity_container="portable_item")
-        db.session.add_all([tablet_type, tablet_recipe])
 
-    outside = models.LocationType.by_name(Types.OUTSIDE)
-    if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
-        outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
+        anvil_type = models.ItemType("anvil", 100, portable=False)
+        anvil_recipe = models.EntityRecipe("making_anvil", {}, {}, 2,
+                                           build_menu_category, result_entity=anvil_type,
+                                           activity_container="entity_specific_item")
 
-    if not models.LocationType.by_name("pig"):
+        longsword_type = models.ItemType("longsword", 100, portable=True)
+        longsword_recipe = models.EntityRecipe("forging_longsword", {}, {"mandatory_machines": ["anvil"]}, 2,
+                                               build_menu_category, result_entity=longsword_type,
+                                               activity_container="selected_machine")
+
+        db.session.add_all([tablet_type, tablet_recipe, anvil_type, anvil_recipe, longsword_type, longsword_recipe])
+
+        outside = models.LocationType.by_name(Types.OUTSIDE)
+        if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
+            outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
+
         pig_type = models.LocationType("pig", 30000)
         horse_type = models.LocationType("horse", 200000)
         impassable_to_animal = models.PassageType("impassable_to_animal", True)
@@ -243,9 +261,9 @@ def create_database():
 
         db.session.add_all([pig_type, horse_type, impassable_to_animal, invisible_to_animal])
 
-    pig_type = models.LocationType.by_name("pig")
-    horse_type = models.LocationType.by_name("horse")
-    if not models.Location.query.filter_by(type=pig_type).first():
+        pig_type = models.LocationType.by_name("pig")
+        horse_type = models.LocationType.by_name("horse")
+
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         invisible_to_animal = models.PassageType.by_name("invisible_to_animal")
@@ -254,7 +272,6 @@ def create_database():
 
         db.session.add_all([pig, horse])
 
-    if not models.ItemType.by_name("granite"):
         stone_group = models.TypeGroup("group_stone", stackable=True)
         granite_type = models.ItemType("granite", 20, stackable=True)
         sandstone_type = models.ItemType("sandstone", 10, stackable=True)

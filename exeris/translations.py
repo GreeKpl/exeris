@@ -172,6 +172,15 @@ data = {
     "entity_tablet": {
         "en": "tablet",
     },
+    "entity_oak_tree": {
+        "en": "oak tree",
+    },
+    "entity_anvil": {
+        "en": "anvil",
+    },
+    "entity_longsword": {
+        "en": "longsword",
+    },
     "entity_clay_adj": {
         "en": "clay",
     },

@@ -5,11 +5,11 @@ from PIL import ImageDraw
 
 from exeris.core import models
 
-MAP_PER_PX = 100
+MAP_PER_PX = 50
 
 VIEW_SIZE = 500
 
-COLORS = {"grass": "green", "deep_water": "blue", "shallow_water": "blue", "road": "brown"}
+COLORS = {"grass": "green", "deep_water": "blue", "shallow_water": "blue", "road": "brown", "forest": "darkgreen"}
 
 
 def transpose(y):

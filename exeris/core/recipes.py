@@ -22,25 +22,8 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
-        container_type = self.identify_container_type(recipe)
-
-        if container_type:
-            container_type = models.ItemType.by_name(container_type)
-            activity_container = models.Item(container_type, being_in, weight=0)
-            if recipe.result_entity:
-                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
-                                                                           data={"name": recipe.result_entity.name}))
-            else:
-                first_action = recipe.result[0] if recipe.result else ["", {}]
-                entity_type_name = Types.ITEM
-                if first_action[0] == "exeris.core.actions.CreateItemAction":
-                    entity_type_name = first_action[1]["item_type"]
-                elif first_action[0] == "exeris.core.actions.CreateLocationAction":
-                    entity_type_name = first_action[1]["location_type"]
-                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
-                                                                           data={"name": entity_type_name}))
-            db.session.add(activity_container)
-
+        if recipe.activity_container and recipe.activity_container != "selected_machine":
+            activity_container = self.get_container_for_activity(being_in, recipe)
             being_in = activity_container  # it should become parent of activity
 
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed,
@@ -52,31 +35,58 @@ class ActivityFactory:
 
         activity.result_actions += actions
 
-        if container_type:
+        if recipe.activity_container:
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
 
         db.session.add(activity)
 
         return activity
 
-    def identify_container_type(self, recipe):
-        container_type = None
+    def get_container_for_activity(self, being_in, recipe):
+
+        generic_container_name = self.get_generic_activity_container(recipe)
+        if generic_container_name:
+            container_type = models.ItemType.by_name(generic_container_name)
+        else:
+            container_type = models.ItemType.by_name(recipe.activity_container)
+
+        activity_container = models.Item(container_type, being_in, weight=0)
+        db.session.add(activity_container)
+
+        if generic_container_name:
+            if recipe.result_entity:
+                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
+                                                                           data={
+                                                                               "name": recipe.result_entity.name}))
+            else:
+                entity_type_name = self.get_first_entity_creation_action(recipe)
+                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
+                                                                           data={"name": entity_type_name}))
+        return activity_container
+
+    def get_first_entity_creation_action(self, recipe):
+        first_action = recipe.result[0] if recipe.result else ["", {}]
+        entity_type_name = Types.ITEM
+        if first_action[0] == "exeris.core.actions.CreateItemAction":
+            entity_type_name = first_action[1]["item_type"]
+        elif first_action[0] == "exeris.core.actions.CreateLocationAction":
+            entity_type_name = first_action[1]["location_type"]
+        return entity_type_name
+
+    def get_generic_activity_container(self, recipe):
         if recipe.activity_container == "portable_item":
-            container_type = "portable_item_in_constr"
+            return "portable_item_in_constr"
         elif recipe.activity_container == "fixed_item":
-            container_type = "fixed_item_in_constr"
+            return "fixed_item_in_constr"
         elif recipe.activity_container == "entity_specific_item":
             if isinstance(recipe.result_entity, models.LocationType):
-                container_type = "fixed_item_in_constr"
+                return "fixed_item_in_constr"
             elif recipe.result_entity and recipe.result_entity.portable:
-                container_type = "portable_item_in_constr"
+                return "portable_item_in_constr"
             elif recipe.result_entity:
-                container_type = "fixed_item_in_constr"
+                return "fixed_item_in_constr"
             else:
                 raise ValueError("don't know what entity is going to be created by {}".format(recipe))
-        elif recipe.activity_container == "selected_machine":
-            pass  # keep the same being_in
-        return container_type
 
     @classmethod
     def _enhance_actions(cls, result, user_input):
@@ -125,6 +135,20 @@ class ActivityFactory:
                  k not in action_and_args[1]})  # show inputs unless the parameter was already set explicitly
         return form_inputs
 
+    @classmethod
+    def get_selectable_machines(cls, recipe, character):
+        mandatory_machines = recipe.requirements.get("mandatory_machines", [])
+        if recipe.activity_container != "selected_machine" or not mandatory_machines:
+            return []
+
+        selectable_machine_type = mandatory_machines[0]  # first mandatory machine is the one to hold the activity
+        selectable_machine_type = models.ItemType.by_name(selectable_machine_type)
+        type_eff_pairs = selectable_machine_type.get_descending_types()
+        allowed_types = [pair[0] for pair in type_eff_pairs]
+
+        return general.ItemQueryHelper.query_all_types_in(allowed_types, character.get_location()).all()
+
+
 
 class RecipeListProducer:
     def __init__(self, character):
@@ -135,7 +159,7 @@ class RecipeListProducer:
         location = self.character.get_location()
 
         skills = {}
-        for skill_name in db.session.query(models.SkillType.name).all():
+        for (skill_name, ) in db.session.query(models.SkillType.name).all():
             skills[skill_name] = self.character.get_skill_factor(skill_name)
 
         character_position = location.get_position()
@@ -143,10 +167,11 @@ class RecipeListProducer:
         location_type = location.type_name
         terrain_types = db.session.query(models.TerrainArea.type_name) \
             .filter(models.TerrainArea.terrain.ST_Intersects(character_position.wkt)).all()
+        terrain_types = [terain_type[0] for terain_type in terrain_types]
 
         available_resources = db.session.query(models.ResourceArea.resource_type_name) \
-            .filter(models.ResourceArea.center.ST_DWithin(character_position.wkt,
-                                                          models.ResourceArea.radius)).all()
+            .filter(models.ResourceArea.center.ST_DWithin(character_position.wkt, models.ResourceArea.radius)).all()
+        available_resources = [resource[0] for resource in available_resources]
 
         all_recipes = models.EntityRecipe.query.all()
 
