@@ -152,7 +152,8 @@ def create_database():
         oak_area = models.ResourceArea(oak_type, Point(5, 5), 3, 20, 500)
         chopping_result = [["exeris.core.actions.CollectGatheredResourcesAction", {"resource_type": "oak"}]]
         chopping_oak_recipe = models.EntityRecipe("chopping_oak", {},
-                                                  {"required_resources": ["oak"], "terrain_types": ["forest"]},
+                                                  {"required_resources": ["oak"], "terrain_types": ["forest"],
+                                                   "location_types": ["outside"]},
                                                   6, gathering_build_menu_category,
                                                   result=chopping_result, activity_container="oak_tree")
         db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe])
@@ -210,16 +211,17 @@ def create_database():
 
         land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
         land_trav2 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
+        land_trav3 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_forest, forest)
 
         poly_road_trav = Polygon([(1.2, 0.8), (0.7, 1.3), (3.7, 4.3), (4.2, 3.8)])
         land_trav_road = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
 
         visibility_poly = Polygon([(0, 0), (0, 50), (50, 50), (50, 0)])
-        land_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)
+        world_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)
 
         db.session.add_all(
             [grass_terrain, deep_water_terrain, road_terrain, grass, water, grass2, road, forest,
-             land_trav1, land_trav2, land_trav_road, land_visibility])
+             land_trav1, land_trav2, land_trav3, land_trav_road, world_visibility])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=False)
@@ -231,7 +233,7 @@ def create_database():
                                      {"item_type": tablet_type.name,
                                       "properties": {P.VISIBLE_MATERIAL: {"main": "clay"}},
                                       "used_materials": "all"}]]
-        tablet_recipe = models.EntityRecipe("carving_tablet", {}, {"mandatory_machines": ["signpost"]}, 2,
+        tablet_recipe = models.EntityRecipe("carving_tablet", {}, {}, 2,
                                             build_menu_category, result=tablet_production_result,
                                             activity_container="portable_item")
 
