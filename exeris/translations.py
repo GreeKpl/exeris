@@ -175,6 +175,12 @@ data = {
     "entity_oak_tree": {
         "en": "oak tree",
     },
+    "entity_oak": {
+        "en": "oak branch",
+    },
+    "entity_oak#p": {
+        "en": "oak branches",
+    },
     "entity_anvil": {
         "en": "anvil",
     },

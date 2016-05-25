@@ -285,8 +285,11 @@ def collapse_entity(parent_entity_id):
 
 
 @socketio_character_event("entities_refresh_list")
-def entities_refresh_list():
-    location = g.character.being_in
+def entities_refresh_list(view):
+    if view == "inventory":
+        location = g.character
+    else:
+        location = g.character.being_in
 
     rng = general.VisibilityBasedRange(distance=30, only_through_unlimited=False)
     if isinstance(location, models.RootLocation):

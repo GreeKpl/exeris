@@ -1,7 +1,7 @@
 FRAGMENTS.entities = (function($, socket) {
 
     $.subscribe("entities:refresh_list", function() {
-        socket.emit("entities_refresh_list", function(locations) {
+        socket.emit("entities_refresh_list", entities_to_show, function(locations) {
             var entities_root = $("#entities_root > ol");
             entities_root.empty();
             $.each(locations, function(idx, location_info) {

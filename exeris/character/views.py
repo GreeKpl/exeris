@@ -12,7 +12,12 @@ def page_events():
 
 @character_bp.route('/entities')
 def page_entities():
-    return render_template("entities/page_entities.html")
+    return render_template("entities/page_entities.html", entities_to_show="entities")
+
+
+@character_bp.route('/inventory')
+def page_inventory():
+    return render_template("entities/page_entities.html", entities_to_show="inventory")
 
 
 @character_bp.route('/map')
@@ -22,13 +27,11 @@ def page_map():
 
 @character_bp.route('/actions')
 def page_actions():
-
     return render_template("actions/page_actions.html")
 
 
 @character_bp.route("/map_image")
 def map_image():
-
     resp = flask.make_response(get_map())
     resp.content_type = "image/png"
     return resp

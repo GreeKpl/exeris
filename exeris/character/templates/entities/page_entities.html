@@ -2,8 +2,8 @@
 {% block title %} {{ t("title_page_entities") }} {% endblock %}
 {% block content %}
     <nav class="navbar navbar-default navbar-fixed-top">
-     <div class="navbar-inner" id="player_top_bar"></div>
-     <div class="navbar-inner" id="character_top_bar"></div>
+        <div class="navbar-inner" id="player_top_bar"></div>
+        <div class="navbar-inner" id="character_top_bar"></div>
     </nav>
 
 
@@ -21,6 +21,9 @@
 
 {% block scripts %}
     {{ super() }}
+    <script type="text/javascript">
+        var entities_to_show = "{{ entities_to_show }}";
+    </script>
     <script type="text/javascript"
             src="{{ url_for("character_static.static", filename="js/entities/page_entities.js") }}"></script>
 {% endblock %}
