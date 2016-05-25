@@ -366,15 +366,10 @@ class WorkProcess(ProcessAction):
 def move_entity_to_position(entity, direction, target_position):
     entity_root = entity.get_root()
 
-    if entity_root.is_empty(excluding=[entity]):
-        # nothing else, so we can move this RootLocation
-        entity_root.position = target_position
-        entity_root.direction = direction
-    else:
-        new_root_location = models.RootLocation(target_position, direction)
-        db.session.add(new_root_location)
-        entity.being_in = new_root_location
-        main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=entity)
+    new_root_location = models.RootLocation(target_position, direction)
+    db.session.add(new_root_location)
+    entity.being_in = new_root_location
+    main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=entity_root)
 
 
 class FightInCombatAction(Action):

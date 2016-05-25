@@ -49,8 +49,8 @@ class SchedulerTravelTest(TestCase):
         distance_per_tick = 10 * WorkProcess.SCHEDULER_RUNNING_INTERVAL / GameDate.SEC_IN_DAY
         distance_on_diagonal = distance_per_tick / math.sqrt(2)
 
-        self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.x, delta=0.01)
-        self.assertAlmostEqual(1 + distance_on_diagonal, rl.position.y, delta=0.01)
+        self.assertAlmostEqual(1 + distance_on_diagonal, traveler.get_position().x, delta=0.01)
+        self.assertAlmostEqual(1 + distance_on_diagonal, traveler.get_position().y, delta=0.01)
 
     def test_character_go_to_location_to_perform_action_process(self):
         util.initialize_date()
@@ -208,8 +208,12 @@ class SchedulerTravelTest(TestCase):
         travel_process = WorkProcess(None)
         travel_process.perform()
 
-        self.assertAlmostEqual(1.02, rl.position.x, places=15)
-        self.assertAlmostEqual(1.99, rl.position.y, places=15)
+        self.assertTrue(sql.inspect(rl).deleted)  # root location was empty so is deleted
+        self.assertEqual(1.02, rl.position.x)  # but it never changed its position
+        self.assertEqual(1.972222222222221, rl.position.y)
+
+        self.assertAlmostEqual(1.02, traveler.get_position().x, places=15)
+        self.assertAlmostEqual(1.99, traveler.get_position().y, places=15)
 
         # move by the edge of the land
         Intent.query.delete()
@@ -220,8 +224,8 @@ class SchedulerTravelTest(TestCase):
         travel_process.perform()
 
         # make sure it has really moved
-        self.assertAlmostEqual(1.0801406530405860, rl.position.x, places=15)
-        self.assertAlmostEqual(1.9552777777777777, rl.position.y, places=15)
+        self.assertAlmostEqual(1.0801406530405860, traveler.get_position().x, places=15)
+        self.assertAlmostEqual(1.9552777777777777, traveler.get_position().y, places=15)
 
 
 class SchedulerActivityTest(TestCase):
