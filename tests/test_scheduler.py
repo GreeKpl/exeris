@@ -6,7 +6,7 @@ import sqlalchemy as sql
 from exeris.core import main, deferred, models
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
     WorkProcess, TravelToEntityAndPerformAction, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
-    CreateItemAction
+    CreateItemAction, ActivityProgress
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
@@ -333,7 +333,7 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
 
         self.assertRaises(main.NoToolForActivityException,
-                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
+                          lambda: ActivityProgress.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -341,7 +341,7 @@ class SchedulerActivityTest(TestCase):
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
         self.assertRaises(main.NoToolForActivityException,
-                          lambda: process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
+                          lambda: ActivityProgress.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -351,7 +351,7 @@ class SchedulerActivityTest(TestCase):
 
         worker_impact = {}
         # should return without raising an exception
-        process.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], worker_impact)
+        ActivityProgress.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], worker_impact)
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
         self.assertCountEqual([0.75, 3.0], worker_impact["tool_based_quality"])
@@ -372,7 +372,7 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
 
         worker_impact = {}
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
+        ActivityProgress.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
         self.assertEqual(0.0, worker_impact.get("progress_ratio", 0))  # no tools = no bonus
 
@@ -385,7 +385,7 @@ class SchedulerActivityTest(TestCase):
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
         worker_impact = {}
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
+        ActivityProgress.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
         # optional tools DO AFFECT progress ratio bonus
         self.assertAlmostEqual(0.6, worker_impact["progress_ratio"],
@@ -402,7 +402,7 @@ class SchedulerActivityTest(TestCase):
 
         # should return without raising an exception
         worker_impact = {}
-        process.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
+        ActivityProgress.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
 
         # both tools, hammer => 0.2 * 2 * 1.5, axe = 1.0 * 0.75; so increase by 1.35
         self.assertEqual(1.35, worker_impact["progress_ratio"])
@@ -426,7 +426,7 @@ class SchedulerActivityTest(TestCase):
             [rl, worked_on_type, worked_on, worker, activity, bucket_type, wooden_spindle_type, spindles_group])
 
         self.assertRaises(main.NoMachineForActivityException,
-                          lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
+                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -434,7 +434,7 @@ class SchedulerActivityTest(TestCase):
         bucket = Item(bucket_type, worker, quality=2)
         db.session.add(bucket)
         self.assertRaises(main.NoMachineForActivityException,
-                          lambda: process.check_mandatory_machines(["group_spindles", "bucket"]))
+                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
 
         # recreate the process
         process = ActivityProgressProcess(activity, [])
@@ -443,10 +443,11 @@ class SchedulerActivityTest(TestCase):
         db.session.add(spindle_on_ground)
 
         # should return without raising an exception
-        process.check_mandatory_machines(["group_spindles", "bucket"])
+        activity_params = {}
+        ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, activity_params)
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
-        self.assertCountEqual([2, 1.5], process.machine_based_quality)
+        self.assertCountEqual([2, 1.5], activity_params["machine_based_quality"])
 
     def test_check_existence_of_resource(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -461,29 +462,23 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, worker, activity, oak_type, coal_type])
 
         self.assertRaises(main.NoResourceAvailableException,
-                          lambda: process.check_required_resources(["oak", "coal"]))
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
+                          lambda: ActivityProgress.check_required_resources(["oak", "coal"], rl))
 
         oak_resource_area = ResourceArea(oak_type, Point(5, 5), 10, efficiency=100, max_amount=50)
         db.session.add(oak_resource_area)
 
         self.assertRaises(main.NoResourceAvailableException,
-                          lambda: process.check_required_resources(["oak", "coal"]))
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
+                          lambda: ActivityProgress.check_required_resources(["oak", "coal"], rl))
 
         coal_resource_area = ResourceArea(coal_type, Point(5, 5), 2, efficiency=100, max_amount=50)
         db.session.add(coal_resource_area)
 
         self.assertRaises(main.NoResourceAvailableException,
-                          lambda: process.check_required_resources(["oak", "coal"]))
+                          lambda: ActivityProgress.check_required_resources(["oak", "coal"], rl))
 
         coal_resource_area.radius = 10
 
-        process.check_required_resources(["oak", "coal"])
+        ActivityProgress.check_required_resources(["oak", "coal"], rl)
 
     def test_check_allowed_location_types(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -496,17 +491,14 @@ class SchedulerActivityTest(TestCase):
 
         anvil = Item(anvil_type, hut)
 
-        activity = Activity(anvil, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
-
-        db.session.add_all([rl, hut_type, building_type, hut, anvil_type, anvil, activity])
+        db.session.add_all([rl, hut_type, building_type, hut, anvil_type, anvil])
 
         self.assertRaises(main.InvalidLocationTypeException,
-                          lambda: process.check_location_types(["building"]))
+                          lambda: ActivityProgress.check_location_types(["building"], rl))
 
-        process.check_location_types(["hut"])
+        ActivityProgress.check_location_types(["hut"], anvil.get_location())
 
-        process.check_location_types(["hut", "building"])
+        ActivityProgress.check_location_types(["hut", "building"], anvil.get_location())
 
     def test_check_required_terrain_type(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -519,15 +511,12 @@ class SchedulerActivityTest(TestCase):
         swamp_area = TerrainArea(terrain_poly, swamp_type, priority=1)
         road_area = TerrainArea(terrain_poly, road_type, priority=3)
 
-        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
-
-        db.session.add_all([rl, swamp_type, road_type, grass_type, swamp_area, road_area, activity])
+        db.session.add_all([rl, swamp_type, road_type, grass_type, swamp_area, road_area])
 
         self.assertRaises(main.InvalidTerrainTypeException,
-                          lambda: process.check_terrain_types(["grass"]))
+                          lambda: ActivityProgress.check_terrain_types(["grass"], rl))
 
-        process.check_terrain_types(["road", "grass"])
+        ActivityProgress.check_terrain_types(["road", "grass"], rl)
 
     def test_check_excluded_by_entities(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -535,12 +524,9 @@ class SchedulerActivityTest(TestCase):
 
         field_type = ItemType("field", 300, portable=False)
 
-        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
+        db.session.add_all([rl, field_type])
 
-        db.session.add_all([rl, field_type, activity])
-
-        process.check_excluded_by_entities({"field": 2})
+        ActivityProgress.check_excluded_by_entities({"field": 2}, rl)
 
         # create first field
         field1 = Item(field_type, rl)
@@ -553,14 +539,14 @@ class SchedulerActivityTest(TestCase):
         other_activity.result_actions = [deferred.serialize(create_field_action)]
         db.session.add(other_activity)
         # results of ongoing activities don't have any impact on excluded_entities
-        process.check_excluded_by_entities({"field": 2})
+        ActivityProgress.check_excluded_by_entities({"field": 2}, rl)
 
         # create second field
         field2 = Item(field_type, rl)
         db.session.add(field2)
 
         self.assertRaises(main.TooManyExistingEntitiesException,
-                          lambda: process.check_excluded_by_entities({"field": 2}))
+                          lambda: ActivityProgress.check_excluded_by_entities({"field": 2}, rl))
 
     def test_check_activitys_skills(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -573,16 +559,14 @@ class SchedulerActivityTest(TestCase):
 
         worker.properties.append(EntityProperty(P.SKILLS, data={"cooking": 0.1, "frying": 0.5, "baking": 0.1}))
 
-        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
+        db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill])
 
-        db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill, activity])
-        process = ActivityProgressProcess(activity, [])
+        ActivityProgress.check_skills(worker, {"frying": 0.3}, {})
+        self.assertRaises(main.TooLowSkillException, lambda: ActivityProgress.check_skills(worker, {"frying": 0.4}, {}))
 
-        process.check_skills(worker, {"frying": 0.3}, {})
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, {"frying": 0.4}, {}))
-
-        process.check_skills(worker, {"baking": 0.1}, {})
-        self.assertRaises(main.TooLowSkillException, lambda: process.check_skills(worker, {"baking": 1.01}, {}))
+        ActivityProgress.check_skills(worker, {"baking": 0.1}, {})
+        self.assertRaises(main.TooLowSkillException,
+                          lambda: ActivityProgress.check_skills(worker, {"baking": 1.01}, {}))
 
     def test_activitys_target_proximity(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -603,12 +587,12 @@ class SchedulerActivityTest(TestCase):
 
         process = ActivityProgressProcess(activity, [])
 
-        process.check_target_proximity([target_item1.id, target_item2.id])
+        ActivityProgress.check_target_proximity([target_item1.id, target_item2.id], rl)
 
         # move target_item2 away
         target_item2.being_in = far_away
         self.assertRaises(main.ActivityTargetTooFarAwayException,
-                          lambda: process.check_target_proximity([target_item1.id, target_item2.id]))
+                          lambda: ActivityProgress.check_target_proximity([target_item1.id, target_item2.id], rl))
 
     def test_number_of_workers(self):
         rl = RootLocation(Point(1, 1), 123)
@@ -619,23 +603,19 @@ class SchedulerActivityTest(TestCase):
         worker1 = util.create_character("1", rl, plr)
         worker2 = util.create_character("2", rl, plr)
 
-        activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker1)
-
-        db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2, activity])
-
-        process = ActivityProgressProcess(activity, [])
+        db.session.add_all([rl, worked_on_type, worked_on, worker1, worker2])
 
         workers = [worker1, worker2]
 
-        process.check_min_workers(workers, 1)
-        process.check_min_workers(workers, 2)
+        ActivityProgress.check_min_workers(workers, 1)
+        ActivityProgress.check_min_workers(workers, 2)
         self.assertRaises(main.TooFewParticipantsException,
-                          lambda: process.check_min_workers(workers, 3))
+                          lambda: ActivityProgress.check_min_workers(workers, 3))
 
-        process.check_max_workers(workers, 3)
-        process.check_max_workers(workers, 2)
+        ActivityProgress.check_max_workers(workers, 3)
+        ActivityProgress.check_max_workers(workers, 2)
         self.assertRaises(main.TooManyParticipantsException,
-                          lambda: process.check_max_workers(workers, 1))
+                          lambda: ActivityProgress.check_max_workers(workers, 1))
 
     def test_input_nonstackable_affecting_result_quality(self):
         rl = RootLocation(Point(1, 1), 123)

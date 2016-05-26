@@ -544,54 +544,64 @@ class ActivityProgressProcess(AbstractAction):
 
         req = self.activity.requirements
 
+        activity_params = {}
+
         if "mandatory_machines" in req:
             logger.info("checking mandatory_machines")
-            self.check_mandatory_machines(req["mandatory_machines"])
+            ActivityProgress.check_mandatory_machines(req["mandatory_machines"],
+                                                      self.entity_worked_on.get_location(), activity_params)
 
         if "optional_machines" in req:
             logger.info("checking optional_machines")
-            self.check_optional_machines(req["optional_machines"])
+            ActivityProgress.check_optional_machines(req["optional_machines"],
+                                                     self.entity_worked_on.get_location(), activity_params)
 
         if "targets" in req:
             logger.info("checking targets")
-            self.check_target_proximity(req["targets"])
+            ActivityProgress.check_target_proximity(req["targets"], self.entity_worked_on.get_location())
 
         if "target_with_properties" in req:
             pass
 
         if "required_resources" in req:
             logger.info("checking required resources %s", req["required_resources"])
-            self.check_required_resources(req["required_resources"])
+            ActivityProgress.check_required_resources(req["required_resources"], self.entity_worked_on.get_location())
 
         if "location_types" in req:
             logger.info("checking location type")
-            self.check_location_types(req["location_types"])
+            ActivityProgress.check_location_types(req["location_types"], self.entity_worked_on.get_location())
 
         if "terrain_type" in req:
             logger.info("checking location type")
-            self.check_terrain_types(req["terrain_type"])
+            ActivityProgress.check_terrain_types(req["terrain_type"], self.entity_worked_on.get_location())
 
         if "excluded_by_entities" in req:
             logger.info("checking exclusion of entities")
-            self.check_excluded_by_entities(req["excluded_by_entities"])
+            ActivityProgress.check_excluded_by_entities(req["excluded_by_entities"],
+                                                        self.entity_worked_on.get_location())
 
         if "input" in req:
-            self.check_input_requirements(req["input"])
+            ActivityProgress.check_input_requirements(req["input"])
+
+        if "progress_ratio" in activity_params:
+            self.progress_ratio += activity_params["progress_ratio"]
+        if "machine_based_quality" in activity_params:
+            self.machine_based_quality += activity_params["machine_based_quality"]
 
         active_workers = []
         for worker in self.workers:
             try:
                 worker_impact = {}
-                self.check_worker_proximity(self.activity, worker)
+                ActivityProgress.check_worker_proximity(self.activity, worker)
 
                 if "mandatory_tools" in req:
-                    self.check_mandatory_tools(worker, req["mandatory_tools"], worker_impact)
+                    ActivityProgress.check_mandatory_tools(worker, req["mandatory_tools"], worker_impact)
 
                 if "optional_tools" in req:
-                    self.check_optional_tools(worker, req["optional_tools"], worker_impact)
+                    ActivityProgress.check_optional_tools(worker, req["optional_tools"], worker_impact)
 
                 if "skill" in req:
-                    self.check_skills(worker, req["skills"], worker_impact)
+                    ActivityProgress.check_skills(worker, req["skills"], worker_impact)
 
                 if "tool_based_quality" in worker_impact:
                     self.tool_based_quality += worker_impact["tool_based_quality"]
@@ -605,10 +615,10 @@ class ActivityProgressProcess(AbstractAction):
                 WorkProcess.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, worker)
 
         if "max_workers" in req:
-            self.check_min_workers(active_workers, req["min_workers"])
+            ActivityProgress.check_min_workers(active_workers, req["min_workers"])
 
         if "min_workers" in req:
-            self.check_max_workers(active_workers, req["max_workers"])
+            ActivityProgress.check_max_workers(active_workers, req["max_workers"])
 
         self.activity.ticks_left -= self.progress_ratio
 
@@ -626,20 +636,25 @@ class ActivityProgressProcess(AbstractAction):
                 self.activity.quality_ticks += 1
 
         if self.activity.ticks_left <= 0:
-            self.finish_activity(self.activity)
+            ActivityProgress.finish_activity(self.activity)
 
-    def check_worker_proximity(self, activity, worker):
+
+class ActivityProgress:
+    @classmethod
+    def check_worker_proximity(cls, activity, worker):
         rng = general.SameLocationRange()
 
         if not worker.has_access(activity, rng=rng):
             raise main.TooFarFromActivityException(activity=activity)
 
-    def check_input_requirements(self, materials):
+    @classmethod
+    def check_input_requirements(cls, materials):
         for name, material in materials.items():
             if material["left"] > 0:
                 raise main.NoInputMaterialException(item_type=models.EntityType.by_name(name))
 
-    def check_mandatory_tools(self, worker, tools, worker_impact):
+    @classmethod
+    def check_mandatory_tools(cls, worker, tools, worker_impact):
         worker_impact["tool_based_quality"] = []
         for tool_type_name in tools:
             group = models.EntityType.by_name(tool_type_name)
@@ -650,12 +665,13 @@ class ActivityProgressProcess(AbstractAction):
             if not tools:
                 raise main.NoToolForActivityException(tool_name=group.name)
 
-            tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
+            tool_best_relative_quality = cls._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
             # tool quality affects quality of activity result
             worker_impact["tool_based_quality"] += [tool_best_relative_quality]
 
-    def check_optional_tools(self, worker, tools_progress_bonus, worker_impact):
+    @classmethod
+    def check_optional_tools(cls, worker, tools_progress_bonus, worker_impact):
         worker_impact["progress_ratio"] = 0.0
         for tool_type_name in tools_progress_bonus:
             group = models.EntityType.by_name(tool_type_name)
@@ -666,12 +682,13 @@ class ActivityProgressProcess(AbstractAction):
             if not tools:
                 continue
 
-            tool_best_relative_quality = self._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
+            tool_best_relative_quality = cls._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
 
             # quality affects only progress ratio increased
             worker_impact["progress_ratio"] += tools_progress_bonus[tool_type_name] * tool_best_relative_quality
 
-    def _get_most_efficient_item_relative_quality(self, tools, type_eff_pairs):
+    @classmethod
+    def _get_most_efficient_item_relative_quality(cls, tools, type_eff_pairs):
         efficiency_of_type = {pair[0]: pair[1] for pair in type_eff_pairs}
         relative_quality = lambda item: efficiency_of_type[item.type] * item.quality
 
@@ -679,37 +696,42 @@ class ActivityProgressProcess(AbstractAction):
         most_efficient_tool = sorted_by_quality[0]
         return relative_quality(most_efficient_tool)
 
-    def check_mandatory_machines(self, machines):
+    @classmethod
+    def check_mandatory_machines(cls, machines, location, activity_params):
         for machine_name in machines:
             group = models.EntityType.by_name(machine_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, location).all()
             if not machines:
                 raise main.NoMachineForActivityException(machine_name=group.name)
 
-            machine_best_relative_quality = self._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+            machine_best_relative_quality = cls._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
 
             # machine quality affects quality of activity result
-            self.machine_based_quality += [machine_best_relative_quality]
+            activity_params["machine_based_quality"] = activity_params.get("machine_based_quality", []) \
+                                                       + [machine_best_relative_quality]
 
-    def check_optional_machines(self, machine_progress_bonus):
+    @classmethod
+    def check_optional_machines(cls, machine_progress_bonus, location, activity_params):
         for machine_type_name in machine_progress_bonus:
             group = models.EntityType.by_name(machine_type_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, self.entity_worked_on.being_in).all()
+            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, location).all()
             if not machines:
                 continue
 
-            machine_best_relative_quality = self._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+            machine_best_relative_quality = cls._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
 
             # quality affects only progress ratio increased
-            self.progress_ratio += machine_progress_bonus[machine_type_name] * machine_best_relative_quality
+            progress_ratio_change = machine_progress_bonus[machine_type_name] * machine_best_relative_quality
+            activity_params["progress_ratio"] = activity_params.get("progress_ratio", 0) + progress_ratio_change
 
-    def finish_activity(self, activity):
+    @classmethod
+    def finish_activity(cls, activity):
         logger.info("Finishing activity %s", activity)
         entities_lists = []
         for serialized_action in activity.result_actions:
@@ -724,52 +746,59 @@ class ActivityProgressProcess(AbstractAction):
 
         db.session.delete(activity)
 
-    def check_target_proximity(self, target_ids):
+    @classmethod
+    def check_target_proximity(cls, target_ids, location):
         targets = models.Entity.query.filter(models.Entity.id.in_(target_ids)).all()
         for target in targets:
             rng = general.SameLocationRange()
-            if not rng.is_near(self.entity_worked_on, target):
+            if not rng.is_near(location, target):
                 raise main.ActivityTargetTooFarAwayException(entity=target)
 
-    def check_min_workers(self, active_workers, min_number):
+    @classmethod
+    def check_min_workers(cls, active_workers, min_number):
         if len(active_workers) < min_number:
             raise main.TooFewParticipantsException(min_number=min_number)
 
-    def check_max_workers(self, active_workers, max_number):
+    @classmethod
+    def check_max_workers(cls, active_workers, max_number):
         if len(active_workers) > max_number:
             raise main.TooManyParticipantsException(max_number=max_number)
 
-    def check_skills(self, worker, skills, worker_impact):
+    @classmethod
+    def check_skills(cls, worker, skills, worker_impact):
         for skill_name, min_skill_value in skills.items():
 
             if worker.get_skill_factor(skill_name) < min_skill_value:
                 raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
 
-    def check_required_resources(self, resources):
+    @classmethod
+    def check_required_resources(cls, resources, location):
         for resource_name in resources:
             required_resource_in_area = models.ResourceArea.query.filter(
                 models.ResourceArea.center.ST_DWithin(
-                    self.activity.get_root().position.wkt,
+                    location.get_position().wkt,
                     models.ResourceArea.radius)).filter_by(resource_type_name=resource_name).first()
             if not required_resource_in_area:
                 raise main.NoResourceAvailableException(resource_name=resource_name)
 
-    def check_location_types(self, location_types):
-        if self.activity.get_location().type.name not in location_types:
+    @classmethod
+    def check_location_types(cls, location_types, location):
+        if location.type.name not in location_types:
             raise main.InvalidLocationTypeException(allowed_types=location_types)
 
-    def check_terrain_types(self, terrain_type_names):
-        position = self.activity.get_position()
+    @classmethod
+    def check_terrain_types(cls, terrain_type_names, location):
+        position = location.get_position()
         terrain = models.TerrainArea.query.filter(models.TerrainArea.terrain.ST_Intersects(position.wkt)) \
             .filter(models.TerrainArea.type_name.in_(terrain_type_names)).first()
         if not terrain:
             raise main.InvalidTerrainTypeException(required_types=terrain_type_names)
 
-    def check_excluded_by_entities(self, entity_types):
-        activity_location = self.activity.get_location()
+    @classmethod
+    def check_excluded_by_entities(cls, entity_types, location):
         for entity_type_name, max_number in entity_types.items():
             number_of_entities = models.Item.query.filter_by(type_name=entity_type_name) \
-                .filter(models.Entity.is_in(activity_location)).count()
+                .filter(models.Entity.is_in(location)).count()
             if number_of_entities >= max_number:
                 raise main.TooManyExistingEntitiesException(entity_type=entity_type_name)
 
