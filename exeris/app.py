@@ -169,21 +169,21 @@ def create_database():
         db.session.add(item_in_construction_type)
 
         build_menu_category = models.BuildMenuCategory("structures")
-        recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
-                                     build_menu_category, result_entity=models.ItemType.by_name("signpost"))
-        db.session.add_all([build_menu_category, recipe])
+        signpost_recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
+                                              build_menu_category, result_entity=models.ItemType.by_name("signpost"))
+        db.session.add_all([build_menu_category, signpost_recipe])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
-        recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}}, 3, build_menu_category,
-                                     result=[["exeris.core.actions.CreateLocationAction",
-                                              {"location_type": hut_type.name, "properties": {},
-                                               "used_materials": "all",
-                                               "visible_material": {"main": "group_stone"}}],
-                                             ["exeris.core.actions.AddNameToEntityAction", {}]],
-                                     activity_container="fixed_item")
-        db.session.add_all([hut_type, recipe])
+        hut_recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}, "permanence": True}, 3, build_menu_category,
+                                         result=[["exeris.core.actions.CreateLocationAction",
+                                                  {"location_type": hut_type.name, "properties": {},
+                                                   "used_materials": "all",
+                                                   "visible_material": {"main": "group_stone"}}],
+                                                 ["exeris.core.actions.AddNameToEntityAction", {}]],
+                                         activity_container="fixed_item")
+        db.session.add_all([hut_type, hut_recipe])
 
         grass_terrain = models.TerrainType("grass")
         forest_terrain = models.TerrainType("forest")
@@ -238,7 +238,7 @@ def create_database():
                                             activity_container="portable_item")
 
         anvil_type = models.ItemType("anvil", 100, portable=False)
-        anvil_recipe = models.EntityRecipe("making_anvil", {}, {}, 2,
+        anvil_recipe = models.EntityRecipe("making_anvil", {}, {"permanence": True}, 2,
                                            build_menu_category, result_entity=anvil_type,
                                            activity_container="entity_specific_item")
 

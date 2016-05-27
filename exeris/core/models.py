@@ -1198,7 +1198,7 @@ class Location(Entity):
 class RootLocation(Location):
     __tablename__ = "root_locations"
 
-    PERMANENT_MIN_DISTANCE = 10
+    PERMANENT_MIN_DISTANCE = 3
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 

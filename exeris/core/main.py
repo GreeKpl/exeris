@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    TOO_CLOSE_TO_OTHER_PERMANENT_LOCATION = "error_too_close_to_other_permanent_location"
     ACTIVITY_ALREADY_EXISITS_ON_ENTITY = "error_activity_already_exists_on_entity"
     TOO_MANY_EXISTING_ENTITIES = "error_too_many_existing_entities"
     TOO_FEW_PARTICIPANTS_IN_ACTIVITY = "error_few_many_participants_in_activity"
@@ -330,3 +331,8 @@ class InvalidTerrainTypeException(ActivityException):
 class TooManyExistingEntitiesException(GameException):
     def __init__(self, *, entity_type):
         super().__init__(Errors.TOO_MANY_EXISTING_ENTITIES, entity_type=entity_type)
+
+
+class TooCloseToPermanentLocation(GameException):
+    def __init__(self):
+        super().__init__(Errors.TOO_CLOSE_TO_OTHER_PERMANENT_LOCATION)

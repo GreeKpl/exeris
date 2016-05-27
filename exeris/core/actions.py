@@ -802,6 +802,11 @@ class ActivityProgress:
             if number_of_entities >= max_number:
                 raise main.TooManyExistingEntitiesException(entity_type=entity_type_name)
 
+    @classmethod
+    def check_permanence_of_location(cls, location):
+        if not location.get_root().can_be_permanent():
+            raise main.TooCloseToPermanentLocation()
+
 
 class EatingProcess(ProcessAction):
     HUNGER_INCREASE = 0.1

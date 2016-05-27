@@ -185,6 +185,9 @@ class ActivityFactory:
         make_error_check_if_required("skills", lambda req_value:
         actions.ActivityProgress.check_skills(character, req_value, {}))
 
+        make_error_check_if_required("permanence", lambda req_value:
+        actions.ActivityProgress.check_permanence_of_location(character.get_location()))
+
         return errors
 
 
@@ -211,11 +214,12 @@ class RecipeListProducer:
             .filter(models.ResourceArea.center.ST_DWithin(character_position.wkt, models.ResourceArea.radius)).all()
         available_resources = [resource[0] for resource in available_resources]
 
+        can_be_permanent = location.get_root().can_be_permanent()
+
         all_recipes = models.EntityRecipe.query.all()
 
         def is_recipe_available(recipe):
             req = recipe.requirements
-            print(req)
 
             if "location_types" in req:
                 if location_type not in req["location_types"]:
@@ -223,6 +227,10 @@ class RecipeListProducer:
 
             if "terrain_types" in req:
                 if not set(req["terrain_types"]).intersection(set(terrain_types)):
+                    return False
+
+            if "permanence" in req:
+                if not can_be_permanent:
                     return False
 
             if "skills" in req:

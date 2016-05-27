@@ -298,7 +298,7 @@ class RootLocationTest(TestCase):
         # fixed item
         landmark_type = ItemType("landmark", 200, portable=False)
 
-        loc_with_fixed_item = RootLocation(Point(20, 30), 23)
+        loc_with_fixed_item = RootLocation(Point(27, 30), 23)
         loc_with_fixed_item.title = "with_fixed_item"
         landmark = Item(landmark_type, loc_with_fixed_item)
 
@@ -307,7 +307,7 @@ class RootLocationTest(TestCase):
         self.assertFalse(center.can_be_permanent())
 
         center = self._prepare_center(40, 50)
-        loc_with_not_mobile_location = RootLocation(Point(50, 50), 23)
+        loc_with_not_mobile_location = RootLocation(Point(42, 50), 23)
         loc_with_not_mobile_location.title = "with_not_mobile_location"
 
         building_type = LocationType("building", 100)
