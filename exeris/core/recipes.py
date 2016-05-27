@@ -1,6 +1,6 @@
 import copy
 
-from exeris.core import models, deferred, general
+from exeris.core import actions, models, deferred, general, main
 from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
@@ -75,16 +75,16 @@ class ActivityFactory:
 
     def get_generic_activity_container(self, recipe):
         if recipe.activity_container == "portable_item":
-            return "portable_item_in_constr"
+            return main.Types.PORTABLE_ITEM_IN_CONSTRUCTION
         elif recipe.activity_container == "fixed_item":
-            return "fixed_item_in_constr"
+            return main.Types.FIXED_ITEM_IN_CONSTRUCTION
         elif recipe.activity_container == "entity_specific_item":
             if isinstance(recipe.result_entity, models.LocationType):
-                return "fixed_item_in_constr"
+                return main.Types.FIXED_ITEM_IN_CONSTRUCTION
             elif recipe.result_entity and recipe.result_entity.portable:
-                return "portable_item_in_constr"
+                return main.Types.PORTABLE_ITEM_IN_CONSTRUCTION
             elif recipe.result_entity:
-                return "fixed_item_in_constr"
+                return main.Types.FIXED_ITEM_IN_CONSTRUCTION
             else:
                 raise ValueError("don't know what entity is going to be created by {}".format(recipe))
 
@@ -148,6 +148,44 @@ class ActivityFactory:
 
         return general.ItemQueryHelper.query_all_types_in(allowed_types, character.get_location()).all()
 
+    @classmethod
+    def get_list_of_errors(cls, recipe, character):
+        req = recipe.requirements
+
+        errors = []
+
+        def make_error_check_if_required(req_key, check_function):
+            try:
+                if req_key in req:
+                    check_function(req[req_key])
+            except main.GameException as exception:
+                errors.append(exception)
+
+        make_error_check_if_required("mandatory_machines", lambda req_value:
+        actions.ActivityProgress.check_mandatory_machines(req_value, character.get_location(), {}))
+
+        make_error_check_if_required("targets", lambda req_value:
+        actions.ActivityProgress.check_target_proximity(req_value, character.get_location()))
+
+        make_error_check_if_required("required_resources", lambda req_value:
+        actions.ActivityProgress.check_required_resources(req_value, character.get_location()))
+
+        make_error_check_if_required("location_types", lambda req_value:
+        actions.ActivityProgress.check_location_types(req_value, character.get_location()))
+
+        make_error_check_if_required("terrain_type", lambda req_value:
+        actions.ActivityProgress.check_terrain_types(req_value, character.get_location()))
+
+        make_error_check_if_required("excluded_by_entities", lambda req_value:
+        actions.ActivityProgress.check_excluded_by_entities(req_value, character.get_location()))
+
+        make_error_check_if_required("mandatory_tools", lambda req_value:
+        actions.ActivityProgress.check_mandatory_tools(character, req_value, {}))
+
+        make_error_check_if_required("skills", lambda req_value:
+        actions.ActivityProgress.check_skills(character, req_value, {}))
+
+        return errors
 
 
 class RecipeListProducer:
@@ -159,7 +197,7 @@ class RecipeListProducer:
         location = self.character.get_location()
 
         skills = {}
-        for (skill_name, ) in db.session.query(models.SkillType.name).all():
+        for (skill_name,) in db.session.query(models.SkillType.name).all():
             skills[skill_name] = self.character.get_skill_factor(skill_name)
 
         character_position = location.get_position()
@@ -187,7 +225,7 @@ class RecipeListProducer:
                 if not set(req["terrain_types"]).intersection(set(terrain_types)):
                     return False
 
-            if "skill" in req:
+            if "skills" in req:
                 for skill_name, min_skill_value in req["skills"]:
                     if skills[skill_name] < min_skill_value:
                         return False

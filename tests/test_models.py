@@ -2,14 +2,13 @@ from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
-from exeris.core import actions
-from exeris.core import properties_base
+from exeris.core import actions, properties_base, main
 from exeris.core.general import GameDate
 from exeris.core.main import db
 from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
-    Entity, Activity
+    Entity, Activity, SkillType
 from exeris.core.properties_base import EntityPropertyException, P
 from exeris.core.recipes import ActivityFactory
 from tests import util
@@ -496,6 +495,27 @@ class GroupTest(TestCase):
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
+
+    def test_perform_error_check_for_activity_from_recipe_creation(self):
+        hammer_type = ItemType("hammer", 100)
+
+        rl = RootLocation(Point(1, 1), 32)
+        building_type = LocationType("building", 1000)
+        initiator = util.create_character("John", rl, util.create_player("AAA"))
+        initiator.properties.append(EntityProperty(P.SKILLS, {}))
+        baking_skill_type = SkillType("smithing", "crafting")
+
+        tools_category = BuildMenuCategory("tools")
+        recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"location_types": ["building"],
+                                                                                 "skills": {"smithing": 0.2}}, 11,
+                              tools_category, result_entity=hammer_type)
+
+        db.session.add_all([hammer_type, rl, building_type, baking_skill_type, tools_category, recipe])
+
+        activity_factory = ActivityFactory()
+        self.assertCountEqual([main.InvalidLocationTypeException(allowed_types=["building"]),
+                               main.TooLowSkillException(skill_name="smithing", required_level=0.2)],
+                              activity_factory.get_list_of_errors(recipe, initiator))
 
     def test_build_menu_categories(self):
         buildings = BuildMenuCategory("buildings")

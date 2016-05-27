@@ -31,6 +31,9 @@
                         </label>
                     {% endif %}
                 {% endfor %}
+                {% for error_message in error_messages %}
+                    <p style="color:red">{{ error_message }}</p>
+                {% endfor %}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

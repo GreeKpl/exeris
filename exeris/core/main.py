@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    ACTIVITY_ALREADY_EXISITS_ON_ENTITY = "error_activity_already_exists_on_entity"
     TOO_MANY_EXISTING_ENTITIES = "error_too_many_existing_entities"
     TOO_FEW_PARTICIPANTS_IN_ACTIVITY = "error_few_many_participants_in_activity"
     TOO_MANY_PARTICIPANTS_IN_ACTIVITY = "error_too_many_participants_in_activity"
@@ -47,6 +48,8 @@ class Types:
     OUTSIDE = "outside"
     ALIVE_CHARACTER = "alive_character"
     DEAD_CHARACTER = "dead_character"
+    PORTABLE_ITEM_IN_CONSTRUCTION = "portable_item_in_constr"
+    FIXED_ITEM_IN_CONSTRUCTION = "fixed_item_in_constr"
 
 
 class Events:
@@ -171,6 +174,9 @@ class GameException(Exception):
     def __str__(self):
         return "{}: {} ({})".format(str(self.__class__), self.error_tag, str(self.error_kwargs))
 
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
+
 
 class ItemException(GameException):
     pass
@@ -289,6 +295,11 @@ class TooFarFromActivityException(ActivityException):
 class ActivityTargetTooFarAwayException(ActivityException):
     def __init__(self, *, entity):
         super().__init__(Errors.ACTIVITY_TARGET_TOO_FAR_AWAY, **entity.pyslatize())
+
+
+class ActivityAlreadyExistsOnEntity(ActivityException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ACTIVITY_ALREADY_EXISITS_ON_ENTITY, **entity.pyslatize())
 
 
 class TooLowSkillException(ActivityException):

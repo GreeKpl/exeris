@@ -600,7 +600,7 @@ class ActivityProgressProcess(AbstractAction):
                 if "optional_tools" in req:
                     ActivityProgress.check_optional_tools(worker, req["optional_tools"], worker_impact)
 
-                if "skill" in req:
+                if "skills" in req:
                     ActivityProgress.check_skills(worker, req["skills"], worker_impact)
 
                 if "tool_based_quality" in worker_impact:

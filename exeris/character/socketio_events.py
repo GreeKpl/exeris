@@ -455,10 +455,14 @@ def activity_from_recipe_setup(recipe_id):
 
     form_inputs = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
 
+    errors = recipes.ActivityFactory.get_list_of_errors(recipe, g.character)
+    error_messages = [g.pyslate.t(error.error_tag, **error.error_kwargs) for error in errors]
+
     selectable_machines = recipes.ActivityFactory.get_selectable_machines(recipe, g.character)
 
     rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
-                                     recipe_id=recipe_id, selectable_machines=selectable_machines)
+                                     recipe_id=recipe_id, selectable_machines=selectable_machines,
+                                     error_messages=error_messages)
     return rendered_modal,
 
 
@@ -471,12 +475,20 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
     if selected_machine_id:
         selected_machine_id = app.decode(selected_machine_id)
         selected_machine = models.Item.by_id(selected_machine_id)
+        rng = general.SameLocationRange()
+        if not rng.is_near(g.character, selected_machine):
+            raise main.EntityTooFarAwayException(entity=selected_machine)
+        if models.Activity.query.filter(models.Activity.is_in(selected_machine)).first():
+            raise main.ActivityAlreadyExistsOnEntity(entity=selected_machine)
 
-        # todo check machine proximity and if there's already an activity in machine
         activitys_being_in = selected_machine
 
     activity_factory = recipes.ActivityFactory()
     form_input_type_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
+
+    recipe_setup_errors = activity_factory.get_list_of_errors(recipe, g.character)
+    if recipe_setup_errors:
+        raise recipe_setup_errors[0]
 
     user_input = {name: form_input_type_by_name[name].CAST_FUNCTION(value) for name, value in user_input.items()}
 
