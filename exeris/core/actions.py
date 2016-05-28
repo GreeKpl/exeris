@@ -441,9 +441,9 @@ class TravelInDirectionAction(Action):
         ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
 
-        max_potential_distance = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+        max_potential_distance = speed_per_tick * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
 
-        rng = general.LandTraversabilityBasedRange(speed_per_tick)
+        rng = general.TraversabilityBasedRange(speed_per_tick)
         travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, self.direction, speed_per_tick,
                                                                        max_potential_distance)
 
@@ -484,13 +484,14 @@ class TravelToEntityAction(ActionOnEntity):
         return speed_per_tick
 
     def come_closer_to_entity(self, initial_position, speed_per_tick, target_entity_root):
-        traversability = general.LandTraversabilityBasedRange(speed_per_tick)
+        traversability = general.TraversabilityBasedRange(speed_per_tick,
+                                                          allowed_terrain_types=[main.Types.LAND_TERRAIN])
         if traversability.is_near(self.executor, self.entity):  # move to the same root location
             move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
             return True
         else:
             direction_to_destination = util.direction_degrees(initial_position, target_entity_root.position)
-            max_potential_range = speed_per_tick * general.LandTraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+            max_potential_range = speed_per_tick * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
             distance_traversed = traversability.get_maximum_range_from_estimate(initial_position,
                                                                                 direction_to_destination,
                                                                                 speed_per_tick,
@@ -1232,7 +1233,8 @@ class EatAction(ActionOnItem):
 
     def perform_action(self):
 
-        if not self.executor.has_access(self.item, rng=general.LandTraversabilityBasedRange(10)):
+        if not self.executor.has_access(self.item, rng=general.TraversabilityBasedRange(10, allowed_terrain_types=[
+            main.Types.LAND_TERRAIN])):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.item.amount < self.amount:

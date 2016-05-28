@@ -288,7 +288,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
         intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_line.wkt),
                                               models.PropertyArea) \
             .filter(models.PropertyArea.area.ST_Intersects(radius_line.wkt)) \
-            .filter(models.PropertyArea.kind.in_(self.AREA_KINDS)) \
+            .filter(models.PropertyArea.kind == self.AREA_KIND) \
             .all()
 
         BEGIN = 1
@@ -353,7 +353,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
 
 
 class VisibilityBasedRange(AreaRangeSpec):
-    AREA_KINDS = [models.AREA_KIND_VISIBILITY]
+    AREA_KIND = models.AREA_KIND_VISIBILITY
     MAX_RANGE_MULTIPLIER = 1.0
 
     def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
@@ -361,25 +361,8 @@ class VisibilityBasedRange(AreaRangeSpec):
 
 
 class TraversabilityBasedRange(AreaRangeSpec):
-    AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY,
-                  models.AREA_KIND_WATER_TRAVERSABILITY]
+    AREA_KIND = models.AREA_KIND_TRAVERSABILITY
     MAX_RANGE_MULTIPLIER = 2.0
-
-    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
-        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
-
-
-class LandTraversabilityBasedRange(AreaRangeSpec):
-    AREA_KINDS = [models.AREA_KIND_LAND_TRAVERSABILITY]
-    MAX_RANGE_MULTIPLIER = 2.0
-
-    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
-        super().__init__(distance, only_through_unlimited, allowed_terrain_types)
-
-
-class WaterTraversabilityBasedRange(AreaRangeSpec):
-    AREA_KINDS = [models.AREA_KIND_WATER_TRAVERSABILITY]
-    MAX_RANGE_MULTIPLIER = 1.0
 
     def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
         super().__init__(distance, only_through_unlimited, allowed_terrain_types)

@@ -209,12 +209,12 @@ def create_database():
         road = models.TerrainArea(poly_road, road_terrain, priority=3)
         forest = models.TerrainArea(poly_forest, forest_terrain, priority=2)
 
-        land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
-        land_trav2 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
-        land_trav3 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_forest, forest)
+        land_trav1 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
+        land_trav2 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
+        land_trav3 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_forest, forest)
 
         poly_road_trav = Polygon([(1.2, 0.8), (0.7, 1.3), (3.7, 4.3), (4.2, 3.8)])
-        land_trav_road = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
+        land_trav_road = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
 
         visibility_poly = Polygon([(0, 0), (0, 50), (50, 50), (50, 0)])
         world_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)

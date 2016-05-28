@@ -33,12 +33,12 @@ class CombatTest(TestCase):
 
         grass_poly = Polygon([(10, 5), (10, 15), (30, 15), (30, 5)])
         grass_terrain = TerrainArea(grass_poly, grass_type)
-        grass_traversability_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, grass_poly, grass_terrain)
+        grass_traversability_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, grass_poly, grass_terrain)
         grass_vis_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, grass_poly, grass_terrain)
 
         water_poly = Polygon([(0, 5), (0, 15), (10, 15), (10, 5)])
         water_terrain = TerrainArea(water_poly, shallow_water_type)
-        water_traversability_area = PropertyArea(models.AREA_KIND_WATER_TRAVERSABILITY, 1, 1, water_poly, water_terrain)
+        water_traversability_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, water_poly, water_terrain)
         water_vis_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, water_poly, water_terrain)
 
         db.session.add_all([grass_type, grass_terrain, shallow_water_type, grass_traversability_area,

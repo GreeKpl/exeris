@@ -1657,8 +1657,7 @@ class ResultantTerrainArea(db.Model):  # no overlays
 
 
 AREA_KIND_VISIBILITY = 1
-AREA_KIND_LAND_TRAVERSABILITY = 2
-AREA_KIND_WATER_TRAVERSABILITY = 3
+AREA_KIND_TRAVERSABILITY = 2
 
 
 class PropertyArea(db.Model):
@@ -1702,7 +1701,7 @@ class PropertyArea(db.Model):
         return cls._area
 
     def __repr__(self):
-        short_type_name = "trav" if self.kind == AREA_KIND_LAND_TRAVERSABILITY else "vis"
+        short_type_name = "trav" if self.kind == AREA_KIND_TRAVERSABILITY else "vis"
         return "{{PropertyArea {} prio={}, value={}, area={}}}".format(short_type_name, self.priority, self.value,
                                                                        self.area)
 

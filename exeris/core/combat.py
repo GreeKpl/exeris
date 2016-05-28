@@ -1,6 +1,6 @@
 import random
 
-from exeris.core import actions, deferred, models, general
+from exeris.core import actions, deferred, models, general, main
 from exeris.core.properties_base import P
 
 
@@ -70,7 +70,7 @@ def get_hit_target(character_combat_action, foe_combat_actions):
         character = character_combat_action.executor
 
         # we can attack melee only traversably-accessible targets
-        range_to_fight_melee = general.LandTraversabilityBasedRange(50)
+        range_to_fight_melee = general.TraversabilityBasedRange(50, allowed_terrain_types=[main.Types.LAND_TERRAIN])
         foe_combat_actions = [foe_action for foe_action in foe_combat_actions if
                               range_to_fight_melee.is_near(character, foe_action.executor)]
 

@@ -34,7 +34,7 @@ class SchedulerTravelTest(TestCase):
         traversability_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
         grass_terrain = TerrainArea(traversability_area, grass_type)
 
-        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, traversability_area,
+        land_trav_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, traversability_area,
                                       terrain_area=grass_terrain)
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
@@ -67,7 +67,7 @@ class SchedulerTravelTest(TestCase):
         potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {"satiation": 0.1, "strength": 0.01}))
         potatoes = Item(potato_type, potato_loc, amount=10)
 
-        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, accessible_area,
+        land_trav_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, accessible_area,
                                       terrain_area=grass_terrain)
         visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, accessible_area,
                                        terrain_area=grass_terrain)
@@ -118,7 +118,7 @@ class SchedulerTravelTest(TestCase):
 
         potatoes_away = Item(potato_type, far_away_loc, amount=11)
 
-        land_trav_area = PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, accessible_area,
+        land_trav_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, accessible_area,
                                       terrain_area=grass_terrain)
         visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, accessible_area,
                                        terrain_area=grass_terrain)
@@ -196,7 +196,7 @@ class SchedulerTravelTest(TestCase):
         poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
         water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
 
-        land_trav1 = models.PropertyArea(models.AREA_KIND_LAND_TRAVERSABILITY, 1, 1, poly_grass, grass)
+        land_trav1 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
 
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
