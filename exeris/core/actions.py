@@ -587,7 +587,7 @@ class ActivityProgressProcess(AbstractAction):
         if "progress_ratio" in activity_params:
             self.progress_ratio += activity_params["progress_ratio"]
         if "machine_based_quality" in activity_params:
-            self.machine_based_quality += activity_params["machine_based_quality"]
+            self.machine_based_quality = activity_params["machine_based_quality"]
 
         active_workers = []
         for worker in self.workers:
@@ -621,8 +621,6 @@ class ActivityProgressProcess(AbstractAction):
         if "min_workers" in req:
             ActivityProgress.check_max_workers(active_workers, req["max_workers"])
 
-        self.activity.ticks_left -= self.progress_ratio
-
         if len(self.tool_based_quality):
             self.activity.quality_sum += mean(self.tool_based_quality)
             self.activity.quality_ticks += 1
@@ -630,6 +628,15 @@ class ActivityProgressProcess(AbstractAction):
         if len(self.machine_based_quality):
             self.activity.quality_sum += mean(self.machine_based_quality)
             self.activity.quality_ticks += 1
+
+        mandatory_equipment_based_quality = 1
+        if len(self.tool_based_quality) or len(self.machine_based_quality):
+            mandatory_equipment_based_quality = mean(self.tool_based_quality + self.machine_based_quality)
+
+        # better quality tools => faster progress
+        progress_to_inflict = ActivityProgress.calculate_resultant_progress(self.progress_ratio,
+                                                                            mandatory_equipment_based_quality)
+        self.activity.ticks_left -= progress_to_inflict
 
         for group, params in req.get("input", {}).items():
             if "quality" in params:
@@ -699,6 +706,7 @@ class ActivityProgress:
 
     @classmethod
     def check_mandatory_machines(cls, machines, location, activity_params):
+        activity_params["machine_based_quality"] = []
         for machine_name in machines:
             group = models.EntityType.by_name(machine_name)
             type_eff_pairs = group.get_descending_types()
@@ -711,8 +719,7 @@ class ActivityProgress:
             machine_best_relative_quality = cls._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
 
             # machine quality affects quality of activity result
-            activity_params["machine_based_quality"] = activity_params.get("machine_based_quality", []) \
-                                                       + [machine_best_relative_quality]
+            activity_params["machine_based_quality"] += [machine_best_relative_quality]
 
     @classmethod
     def check_optional_machines(cls, machine_progress_bonus, location, activity_params):
@@ -807,6 +814,10 @@ class ActivityProgress:
     def check_permanence_of_location(cls, location):
         if not location.get_root().can_be_permanent():
             raise main.TooCloseToPermanentLocation()
+
+    @classmethod
+    def calculate_resultant_progress(cls, progress_ratio, mandatory_equipment_based_quality):
+        return progress_ratio * max(1, mandatory_equipment_based_quality) ** 0.5
 
 
 class EatingProcess(ProcessAction):

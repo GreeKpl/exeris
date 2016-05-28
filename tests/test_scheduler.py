@@ -321,30 +321,21 @@ class SchedulerActivityTest(TestCase):
         rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
-
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
 
         hammers_group = TypeGroup("group_hammers", stackable=False)
         hammers_group.add_to_group(bone_hammer, efficiency=2.0)
 
-        db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
+        db.session.add_all([rl, worker, bone_hammer, stone_axe, hammers_group])
 
         self.assertRaises(main.NoToolForActivityException,
                           lambda: ActivityProgress.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
         self.assertRaises(main.NoToolForActivityException,
                           lambda: ActivityProgress.check_mandatory_tools(worker, ["group_hammers", "stone_axe"], {}))
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -360,16 +351,13 @@ class SchedulerActivityTest(TestCase):
         rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
-
         bone_hammer = ItemType("bone_hammer", 200)
         stone_axe = ItemType("stone_axe", 300)
 
         hammers_group = TypeGroup("group_hammers", stackable=False)
         hammers_group.add_to_group(bone_hammer, efficiency=2.0)
 
-        db.session.add_all([rl, worker, activity, bone_hammer, stone_axe, hammers_group])
+        db.session.add_all([rl, worker, bone_hammer, stone_axe, hammers_group])
 
         worker_impact = {}
         ActivityProgress.check_optional_tools(worker, {"group_hammers": 0.2, "stone_axe": 1.0}, worker_impact)
@@ -377,10 +365,7 @@ class SchedulerActivityTest(TestCase):
         self.assertEqual(0.0, worker_impact.get("progress_ratio", 0))  # no tools = no bonus
 
         # nothing affecting quality
-        self.assertCountEqual([], process.tool_based_quality)
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
+        self.assertEqual([], worker_impact.get("tool_based_quality", []))
 
         hammer_in_inv = Item(bone_hammer, worker, quality=1.5)
         db.session.add(hammer_in_inv)
@@ -392,10 +377,7 @@ class SchedulerActivityTest(TestCase):
                                places=3)  # hammer = 0.2 bonus, relative q = 3.0 => 1 + 0.2 * 3
 
         # check quality change for an activity. Optional tools DON'T AFFECT tool_based_quality
-        self.assertCountEqual([], process.tool_based_quality)
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
+        self.assertEqual([], worker_impact.get("tool_based_quality", []))
 
         axe_in_inv = Item(stone_axe, worker, quality=0.75)
         db.session.add(axe_in_inv)
@@ -414,7 +396,6 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         activity = Activity(worked_on, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
 
         bucket_type = ItemType("bucket", 200, portable=False)
         wooden_spindle_type = ItemType("wooden_spindle", 300, portable=False)
@@ -428,16 +409,10 @@ class SchedulerActivityTest(TestCase):
         self.assertRaises(main.NoMachineForActivityException,
                           lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
 
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
-
         bucket = Item(bucket_type, worker, quality=2)
         db.session.add(bucket)
         self.assertRaises(main.NoMachineForActivityException,
                           lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
-
-        # recreate the process
-        process = ActivityProgressProcess(activity, [])
 
         spindle_on_ground = Item(wooden_spindle_type, rl, quality=0.75)
         db.session.add(spindle_on_ground)
@@ -453,13 +428,10 @@ class SchedulerActivityTest(TestCase):
         rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
-        activity = Activity(rl, "name", {}, {"doesnt matter": True}, 1, worker)
-        process = ActivityProgressProcess(activity, [])
-
         oak_type = ItemType("oak", 200, stackable=True)
         coal_type = ItemType("coal", 300, stackable=True)
 
-        db.session.add_all([rl, worker, activity, oak_type, coal_type])
+        db.session.add_all([rl, worker, oak_type, coal_type])
 
         self.assertRaises(main.NoResourceAvailableException,
                           lambda: ActivityProgress.check_required_resources(["oak", "coal"], rl))
@@ -584,8 +556,6 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all(
             [rl, far_away, worked_on_type, some_item_type, worked_on, target_item1, target_item2, activity])
         db.session.flush()
-
-        process = ActivityProgressProcess(activity, [])
 
         ActivityProgress.check_target_proximity([target_item1.id, target_item2.id], rl)
 
@@ -736,6 +706,10 @@ class SchedulerEatingTest(TestCase):
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
         # no more assertions needed, because DeathOfStarvationAction is tested separately
 
+    def test_calculation_of_activity_progress(self):
+        self.assertAlmostEqual(12.24744, ActivityProgress.calculate_resultant_progress(10, 1.5), places=3)
+        self.assertAlmostEqual(10, ActivityProgress.calculate_resultant_progress(10, 0.5))  # if q < 1 then q = 1
+        self.assertAlmostEqual(1.5, ActivityProgress.calculate_resultant_progress(1, 2.25))
 
 class SchedulerDecayTest(TestCase):
     create_app = util.set_up_app_with_database
