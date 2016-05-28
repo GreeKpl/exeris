@@ -5,7 +5,7 @@ FRAGMENTS.player = (function($, socket) {
     });
 
     socket.on("player.new_notification", function(notification) {
-        var title = notification.title;
+        var title = notification.title + (notification.count > 1 ? " (" + notification.count + "x)" : "");
         var notification_id = notification.notification_id;
         $.publish("global/show_notification", title, notification_id);
     });

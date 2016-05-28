@@ -33,8 +33,8 @@ def get_notifications_list():
     if hasattr(g, "character"):
         notifications += models.Notification.query.filter_by(character=g.character).all()
 
-    notifications = [{"notification_id": n.id, "title": g.pyslate.t(n.title_tag, **n.title_params)}
-                     for n in notifications]
+    notifications = [{"notification_id": n.id, "title": g.pyslate.t(n.title_tag, **n.title_params), "count": n.count,
+                      "date": n.game_date} for n in notifications]
 
     for notification in notifications:
         client_socket.emit("player.new_notification", (notification,))

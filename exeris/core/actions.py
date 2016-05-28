@@ -336,7 +336,7 @@ class WorkProcess(ProcessAction):
                 db.session.rollback()  # it failed but this intent can be performed later
             except main.GameException as exception:
                 db.session.rollback()
-                self.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, work_intent.executor)
+                self.report_failure_notification(exception.error_tag, exception.error_kwargs, work_intent.executor)
             except:  # action failed for unknown (probably not temporary) reason
                 logger.error("Unknown exception prevented execution of %s", str(action_to_perform), exc_info=True)
                 raise
@@ -351,16 +351,24 @@ class WorkProcess(ProcessAction):
                 logger.debug("GameException prevented ActivityProgress %s ", sys.exc_info())
                 db.session.rollback()  # add some user notification
                 for worker in workers:
-                    self.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, worker)
+                    self.report_failure_notification(exception.error_tag, exception.error_kwargs, worker)
             except:
                 logger.error("Unknown exception prevented ActivityProgress", exc_info=True)
                 raise
 
     @classmethod
-    def report_failure_notiifcation(cls, error_tag, error_kwargs, worker):
-        failure_notiifcation = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
-                                                   stackable=True, character=worker, player=None)
-        db.session.add(failure_notiifcation)
+    def report_failure_notification(cls, error_tag, error_kwargs, worker):
+        existing_notification = models.Notification.query.filter_by(title_tag=error_tag, title_params=error_kwargs,
+                                                                    text_tag=error_tag, text_params=error_kwargs,
+                                                                    character=worker, player=None).first()
+
+        if existing_notification:
+            existing_notification.count += 1
+            existing_notification.update_date()
+        else:
+            failure_notiifcation = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
+                                                       character=worker, player=None)
+            db.session.add(failure_notiifcation)
 
 
 def move_entity_to_position(entity, direction, target_position):
@@ -613,7 +621,7 @@ class ActivityProgressProcess(AbstractAction):
                 active_workers.append(worker)
             except main.GameException as exception:
                 # report the notification to worker
-                WorkProcess.report_failure_notiifcation(exception.error_tag, exception.error_kwargs, worker)
+                WorkProcess.report_failure_notification(exception.error_tag, exception.error_kwargs, worker)
 
         if "max_workers" in req:
             ActivityProgress.check_min_workers(active_workers, req["min_workers"])

@@ -1438,15 +1438,18 @@ class Notification(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, title_tag, title_params, text_tag, text_params, stackable=False, character=None, player=None,
+    def __init__(self, title_tag, title_params, text_tag, text_params, count=1, character=None, player=None,
                  add_close_option=True):
         self.title_tag = title_tag
         self.title_params = title_params
         self.text_tag = text_tag
         self.text_params = text_params
-        self.stackable = stackable
+        self.count = count
         self.character = character
         self.player = player
+
+        from exeris.core import general
+        self.game_date = general.GameDate.now().game_timestamp
 
         if add_close_option:
             self.add_close_option()
@@ -1463,9 +1466,15 @@ class Notification(db.Model):
     text_tag = sql.Column(sql.String)
     text_params = sql.Column(psql.JSONB, default=lambda: [])
 
-    stackable = sql.Column(sql.Boolean, default=False)
+    count = sql.Column(sql.Integer)
     icon_name = sql.Column(sql.String, default="undefined.png")
     options = sql.Column(psql.JSON, default=lambda: [])
+
+    game_date = sql.Column(sql.BigInteger)
+
+    def update_date(self):
+        from exeris.core import general
+        self.game_date = general.GameDate.now().game_timestamp
 
     def add_close_option(self):
         self.add_option("option_close", {}, "close", {})
