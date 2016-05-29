@@ -11,6 +11,8 @@ from flask import g, request
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
 from flask.ext.login import current_user
+from flask.ext.redis import FlaskRedis
+import redis
 from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 from flask.ext.socketio import SocketIO
@@ -23,11 +25,17 @@ from wtforms import StringField, SelectField
 # noinspection PyUnresolvedReferences
 from exeris.core import achievements
 
+import eventlet
+
+eventlet.monkey_patch()
+
 app = create_app()
 
 Bootstrap(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, message_queue=app.config["SOCKETIO_REDIS_DATABASE_URI"])
 Bower(app)
+
+redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
 
 
 class ExtendedRegisterForm(RegisterForm):
@@ -176,7 +184,8 @@ def create_database():
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
         hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
-        hut_recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}, "permanence": True}, 3, build_menu_category,
+        hut_recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}, "permanence": True}, 3,
+                                         build_menu_category,
                                          result=[["exeris.core.actions.CreateLocationAction",
                                                   {"location_type": hut_type.name, "properties": {},
                                                    "used_materials": "all",
@@ -334,33 +343,39 @@ def character_preprocessor(endpoint, values):
 
 class SocketioUsers:
     def __init__(self):
-        self.sid_by_player_id = {}
-        self.sid_by_character_id = {}
+        # redis_db.delete("sid_by_player_id")
+        # redis_db.delete("sid_by_character_id")
+        redis_db.flushdb()
 
     def get_all_by_player_id(self, player_id):
-        return self.sid_by_player_id.get(player_id, [])
+        result_from_redis = redis_db.smembers("sid_by_player_id:" + str(player_id))
+        return [result.decode('utf-8') for result in result_from_redis]
 
     def get_all_by_character_id(self, character_id):
-        return self.sid_by_character_id.get(character_id, [])
+        result_from_redis = redis_db.smembers("sid_by_character_id:" + str(character_id))
+
+        return [result.decode('utf-8') for result in result_from_redis]
 
     def add_for_player_id(self, sid, player_id):
-        self.sid_by_player_id[player_id] = [sid] + self.sid_by_player_id.get(player_id, [])
+        redis_db.sadd("sid_by_player_id:" + str(player_id), sid)
 
     def add_for_character_id(self, sid, character_id):
-        self.sid_by_character_id[character_id] = [sid] + self.sid_by_character_id.get(character_id, [])
+        redis_db.sadd("sid_by_character_id:" + str(character_id), sid)
 
     def remove_sid(self, sid):
-        for player_id, users in self.sid_by_player_id.items():
-            self.sid_by_player_id[player_id] = [x for x in users if x != sid]
+        player_id_sets = redis_db.keys("sid_by_player_id:*")
+        for player_id_set_name in player_id_sets:
+            redis_db.srem(player_id_set_name, sid)
 
-        for character_id, users in self.sid_by_character_id.items():
-            self.sid_by_player_id[character_id] = [x for x in users if x != sid]
+        character_id_sets = redis_db.keys("sid_by_character_id:*")
+        for character_id_set_name in character_id_sets:
+            redis_db.srem(character_id_set_name, sid)
 
     def remove_for_player_id(self, player_id):
-        self.sid_by_player_id.pop(player_id, None)
+        redis_db.delete("sid_by_player_id:" + str(player_id))
 
     def remove_for_character_id(self, character_id):
-        self.sid_by_character_id.pop(character_id, None)
+        redis_db.delete("sid_by_character_id:" + str(character_id))
 
 
 socketio_users = SocketioUsers()
@@ -381,7 +396,6 @@ def on_connect():
 @socketio.on("disconnect")
 def on_disconnect():
     socketio_users.remove_sid(request.sid)
-    print("REMOVED", request.sid)
 
 
 @socketio.on_error()

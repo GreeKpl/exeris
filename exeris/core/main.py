@@ -175,9 +175,6 @@ class GameException(Exception):
     def __str__(self):
         return "{}: {} ({})".format(str(self.__class__), self.error_tag, str(self.error_kwargs))
 
-    def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
-
 
 class ItemException(GameException):
     pass

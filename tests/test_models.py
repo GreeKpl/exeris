@@ -14,7 +14,7 @@ from exeris.core.recipes import ActivityFactory
 from tests import util
 
 # noinspection PyUnresolvedReferences
-from exeris.core import hooks
+from exeris.extra import hooks
 
 
 class LocationTest(TestCase):
@@ -513,9 +513,8 @@ class GroupTest(TestCase):
         db.session.add_all([hammer_type, rl, building_type, baking_skill_type, tools_category, recipe])
 
         activity_factory = ActivityFactory()
-        self.assertCountEqual([main.InvalidLocationTypeException(allowed_types=["building"]),
-                               main.TooLowSkillException(skill_name="smithing", required_level=0.2)],
-                              activity_factory.get_list_of_errors(recipe, initiator))
+        self.assertCountEqual([main.InvalidLocationTypeException, main.TooLowSkillException],
+                              [o.__class__ for o in activity_factory.get_list_of_errors(recipe, initiator)])
 
     def test_build_menu_categories(self):
         buildings = BuildMenuCategory("buildings")
