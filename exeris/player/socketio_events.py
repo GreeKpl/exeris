@@ -1,13 +1,8 @@
-import exeris
 import flask_socketio as client_socket
-import psycopg2
-from exeris.app import socketio_player_event, app
-from exeris.core import models, actions, main
-from exeris.core.main import hook
-from exeris.core.i18n import create_pyslate
+from exeris.app import socketio_player_event
+from exeris.core import models, actions, util
 from exeris.core.main import db
 from flask import g, render_template
-from pyslate.backends import postgres_backend
 from sqlalchemy import sql
 
 
@@ -33,8 +28,7 @@ def get_notifications_list():
     if hasattr(g, "character"):
         notifications += models.Notification.query.filter_by(character=g.character).all()
 
-    notifications = [{"notification_id": n.id, "title": g.pyslate.t(n.title_tag, **n.title_params), "count": n.count,
-                      "date": n.game_date} for n in notifications]
+    notifications = util.serialize_notifications(notifications, g.pyslate)
 
     for notification in notifications:
         client_socket.emit("player.new_notification", (notification,))
@@ -49,14 +43,3 @@ def show_notification_dialog(notification_id):
     notification = models.Notification.query.filter_by(id=notification_id).filter(owner_condition).one()
     rendered = render_template("modal_notification.html", notification=notification)
     return rendered,
-
-
-@hook(main.Hooks.NEW_PLAYER_NOTIFICATION)
-def on_new_player_notification(player, notification):
-    conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-    pyslate = create_pyslate(player.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
-
-    for sid in exeris.app.socketio_users.get_all_by_player_id(player.id):
-        notification_info = {"notification_id": notification.id,
-                             "title": pyslate.t(notification.title_tag, **notification.title_params)}
-        client_socket.emit("player.new_notification", notification_info, room=sid)

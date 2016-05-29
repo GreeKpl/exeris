@@ -1,6 +1,8 @@
 import flask
 # noinspection PyUnresolvedReferences
 from exeris.character import character_bp, socketio_events
+# noinspection PyUnresolvedReferences
+from exeris.extra import hooks
 from exeris.core.graphics import get_map
 from flask import render_template
 

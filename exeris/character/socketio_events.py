@@ -1,16 +1,10 @@
 import time
 
-import exeris
 import flask_socketio as client_socket
-import psycopg2
 from exeris.app import socketio_character_event
-from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, notifications_service, \
-    combat
-from exeris.core.i18n import create_pyslate
+from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
 from exeris.core.main import db, app
-from exeris.core.main import hook
 from flask import g, render_template
-from pyslate.backends import postgres_backend
 
 
 @socketio_character_event("rename_entity")
@@ -514,30 +508,3 @@ def character_travel_in_direction(direction):
 def character_stop_travel():
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
     db.session.commit()
-
-
-@hook(main.Hooks.NEW_EVENT)
-def on_new_event(event_observer):
-    observer = event_observer.observer
-    event = event_observer.event
-
-    conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-    pyslate = create_pyslate(observer.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                             character=observer)
-
-    for sid in exeris.app.socketio_users.get_all_by_character_id(observer.id):
-        notifications_service.add_event_to_send(sid, event.id,
-                                                pyslate.t("game_date", game_date=event.date) + ": " + \
-                                                pyslate.t(event.type_name, html=True, **event.params))
-
-
-@hook(main.Hooks.NEW_CHARACTER_NOTIFICATION)
-def on_new_notification(character, notification):
-    conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-    pyslate = create_pyslate(character.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
-                             character=character)
-
-    for sid in exeris.app.socketio_users.get_all_by_character_id(character.id):
-        notification_info = {"notification_id": notification.id,
-                             "title": pyslate.t(notification.title_tag, **notification.title_params)}
-        notifications_service.add_notification_to_send(sid, notification_info)

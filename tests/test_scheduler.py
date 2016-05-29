@@ -19,6 +19,8 @@ from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 from tests import util
 
+# noinspection PyUnresolvedReferences
+from exeris.extra import hooks
 
 class SchedulerTravelTest(TestCase):
     create_app = util.set_up_app_with_database
@@ -246,6 +248,7 @@ class SchedulerActivityTest(TestCase):
         self.assertEqual("result", result_item.type.name)
 
     def test_activity_process_failure_notifications(self):
+        util.initialize_date()
         self._before_activity_process()
 
         hammer_type = ItemType.by_name("hammer")

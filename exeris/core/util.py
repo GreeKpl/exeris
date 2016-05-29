@@ -28,3 +28,8 @@ def direction_degrees(first_loc_pos, second_loc_pos):
 def pos_for_distance_in_direction(initial_pos, direction_deg, distance):
     return Point(initial_pos.x + math.cos(math.radians(direction_deg)) * distance,
                  initial_pos.y + math.sin(math.radians(direction_deg)) * distance)
+
+
+def serialize_notifications(notifications, pyslate):
+    return [{"notification_id": n.id, "title": pyslate.t(n.title_tag, **n.title_params),
+             "count": n.count, "date": n.game_date} for n in notifications]

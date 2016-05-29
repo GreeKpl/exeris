@@ -4,7 +4,7 @@
 # In case of rollback all the queued data is discarded
 
 import sqlalchemy
-import flask_socketio as client_socket
+from exeris.app import socketio
 from flask.ext.sqlalchemy import SignallingSession
 
 _notifications_to_send = []
@@ -22,10 +22,10 @@ def add_notification_to_send(sid, notification):
 @sqlalchemy.event.listens_for(SignallingSession, 'after_commit')
 def send_after_commit(session):
     for new_event in _events_to_send:
-        client_socket.emit("character.new_event", new_event[1:], room=new_event[0])
+        socketio.emit("character.new_event", new_event[1:], room=new_event[0])
 
     for new_notification in _notifications_to_send:
-        client_socket.emit("player.new_notification", (new_notification[1],), room=new_notification[0])
+        socketio.emit("player.new_notification", (new_notification[1],), room=new_notification[0])
 
     _notifications_to_send.clear()
     _events_to_send.clear()

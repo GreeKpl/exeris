@@ -358,17 +358,18 @@ class WorkProcess(ProcessAction):
 
     @classmethod
     def report_failure_notification(cls, error_tag, error_kwargs, worker):
-        existing_notification = models.Notification.query.filter_by(title_tag=error_tag, title_params=error_kwargs,
+        failure_notification = models.Notification.query.filter_by(title_tag=error_tag, title_params=error_kwargs,
                                                                     text_tag=error_tag, text_params=error_kwargs,
                                                                     character=worker, player=None).first()
 
-        if existing_notification:
-            existing_notification.count += 1
-            existing_notification.update_date()
+        if failure_notification:
+            failure_notification.count += 1
+            failure_notification.update_date()
         else:
-            failure_notiifcation = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
+            failure_notification = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
                                                        character=worker, player=None)
-            db.session.add(failure_notiifcation)
+            db.session.add(failure_notification)
+        main.call_hook(main.Hooks.NEW_CHARACTER_NOTIFICATION, character=worker, notification=failure_notification)
 
 
 def move_entity_to_position(entity, direction, target_position):
