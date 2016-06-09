@@ -5,7 +5,7 @@ from shapely.geometry import Point
 from exeris.core import actions, properties_base, main
 from exeris.core.general import GameDate
 from exeris.core.main import db
-from exeris.core.map import MAP_HEIGHT, MAP_WIDTH
+from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
     Entity, Activity, SkillType

@@ -3,12 +3,16 @@ import copy
 import logging
 import math
 import time
+
+import shapely
+from shapely import affinity
 from collections import deque
 
 from geoalchemy2.shape import to_shape
-from shapely.geometry import LineString
+from shapely.geometry import LineString, MultiLineString, Point, Polygon
+import sqlalchemy as sql
 
-from exeris.core import models, main, util
+from exeris.core import models, main, util, map_data
 from exeris.core.main import db
 
 logger = logging.getLogger(__name__)
@@ -227,8 +231,10 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
 
             max_estimated_distance = self.MAX_RANGE_MULTIPLIER * self.distance
 
+            wrapped_point_clauses = self.get_clauses_for_points_wrapped_around_map_edges(max_estimated_distance, root)
+
             other_locs = models.RootLocation.query. \
-                filter(models.RootLocation.position.ST_DWithin(root.position.wkt, max_estimated_distance)). \
+                filter(sql.or_(*wrapped_point_clauses)). \
                 filter(models.RootLocation.id != root.id).all()  # get RootLocations in big circle
 
             for other_loc in other_locs:
@@ -245,6 +251,17 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                     locs.update(visit_subgraph(other_loc, self.only_through_unlimited))
 
         return locs
+
+    def get_clauses_for_points_wrapped_around_map_edges(self, max_estimated_distance, root):
+        """wrapping map edges requires cloning the point into 6 additional positions which are beyond the map,
+        (2 clones above (mirrored OY), 2 clones next to it, 2 clones below it (mirrored OY))
+        because their circle buffer can contain points on the map
+        For example, a point at X = 10 is cloned to X = MAP_WIDTH + 10,
+        because the points near the right edge can be in range.
+        """
+
+        cloned_points = util.get_all_projected_points(root.position)
+        return [models.RootLocation.position.ST_DWithin(point.wkt, max_estimated_distance) for point in cloned_points]
 
     def get_maximum_range_from_estimate(self, center_pos, direction, distance_cost, max_possible_radius):
         """
@@ -283,11 +300,13 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
         """
         x = center_pos.x + math.cos(math.radians(direction)) * max_possible_radius
         y = center_pos.y + math.sin(math.radians(direction)) * max_possible_radius
-        radius_line = LineString([center_pos.coords[0], (x, y)])
-        logger.debug("x: %s, y: %s, radius: %s", x, y, radius_line)
-        intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_line.wkt),
+
+        radius_multi_line = self.create_multi_line_string_for_wrapped_edges(center_pos, Point(x, y))
+
+        logger.debug("x: %s, y: %s, radius: %s", x, y, radius_multi_line)
+        intersecting_areas = db.session.query(models.PropertyArea.area.ST_Intersection(radius_multi_line.wkt),
                                               models.PropertyArea) \
-            .filter(models.PropertyArea.area.ST_Intersects(radius_line.wkt)) \
+            .filter(models.PropertyArea.area.ST_Intersects(radius_multi_line.wkt)) \
             .filter(models.PropertyArea.kind == self.AREA_KIND) \
             .all()
 
@@ -306,7 +325,7 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
                 continue
 
             def distance_for_intersection(index):
-                return self.distance_between_points(center_pos.coords[0], intersection.coords[index])
+                return util.distance(center_pos, Point(intersection.coords[index]))
 
             begin_distance = min(distance_for_intersection(0), distance_for_intersection(1))
             end_distance = max(distance_for_intersection(0), distance_for_intersection(1))
@@ -348,8 +367,39 @@ class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the 
 
         return real_length
 
-    def distance_between_points(self, center_pos, point):
-        return math.sqrt(abs(center_pos[0] - point[0]) ** 2 + abs(center_pos[1] - point[1]) ** 2)
+    @staticmethod
+    def create_multi_line_string_for_wrapped_edges(from_point, to_point):
+        """
+        Wrapping logic is complicated. See https://tree.taiga.io/project/greekpl-exeris/wiki/map
+        :param from_point:
+        :param to_point:
+        :return:
+        """
+        closest_projection_of_to_point = util.get_closest_projection_of_second_point(from_point, to_point)
+
+        line = LineString([from_point, closest_projection_of_to_point])
+
+        line_parts = []
+        map_rectangle = Polygon([(0, 0), (0, map_data.MAP_HEIGHT),
+                                 (map_data.MAP_WIDTH, map_data.MAP_HEIGHT), (map_data.MAP_WIDTH, 0)])
+        for translation_x in [-map_data.MAP_WIDTH, 0, map_data.MAP_WIDTH]:
+            translated_square = shapely.affinity.translate(map_rectangle, xoff=translation_x)
+            line_part = translated_square.intersection(line)
+
+            if not line_part.is_empty and line_part.geom_type == "LineString":
+                line_parts += [shapely.affinity.translate(line_part, xoff=-translation_x)]
+        for translation_y in [- map_data.MAP_HEIGHT, map_data.MAP_HEIGHT]:
+            for translation_x in [-0.5 * map_data.MAP_WIDTH, 0.5 * map_data.MAP_WIDTH]:
+                translated_square = shapely.affinity.translate(map_rectangle, xoff=translation_x, yoff=translation_y)
+                line_part = translated_square.intersection(line)
+                if not line_part.is_empty and line_part.geom_type == "LineString":
+                    # translate
+                    line_part = shapely.affinity.translate(line_part, xoff=-translation_x, yoff=-translation_y)
+                    x_es, y_es = line_part.xy
+                    y_es = [map_data.MAP_HEIGHT - y for y in y_es]  # turn Y around
+                    line_parts += [LineString([(x_es[0], y_es[0]), (x_es[1], y_es[1])])]
+
+        return MultiLineString(line_parts)
 
 
 class VisibilityBasedRange(AreaRangeSpec):

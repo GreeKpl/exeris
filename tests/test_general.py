@@ -3,7 +3,7 @@ from unittest.mock import patch
 from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 
-from exeris.core import models
+from exeris.core import models, map_data
 from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
     EventCreator, TraversabilityBasedRange
@@ -60,6 +60,69 @@ class RangeSpecTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
+    def test_edge_wrapping(self):
+        grass_type = TerrainType("grass")
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        land_terrain.add_to_group(grass_type)
+
+        area1_poly = Polygon([(0, 0), (0, 5), (3, 5), (3, 0)])
+        area1_terrain = TerrainArea(area1_poly, grass_type)
+        area1 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+                             area1_poly, terrain_area=area1_terrain)
+
+        area1_poly = Polygon([(map_data.MAP_WIDTH, 0), (map_data.MAP_WIDTH, 5),
+                              (map_data.MAP_WIDTH - 3, 5), (map_data.MAP_WIDTH - 3, 0)])
+        area2_terrain = TerrainArea(area1_poly, grass_type)
+        area2 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+                             area1_poly, terrain_area=area2_terrain)
+
+        db.session.add_all([grass_type, area1_terrain, area1, area2_terrain, area2])
+
+        rng = TraversabilityBasedRange(10)
+
+        # wrapping on X axis
+        point_a = Point(2, 2)
+        point_b = Point(map_data.MAP_WIDTH - 2, 2)
+        multi_line_string = rng.create_multi_line_string_for_wrapped_edges(point_a, point_b)
+        line_strings = multi_line_string.geoms
+
+        self.assertEqual([(map_data.MAP_WIDTH, 2), (map_data.MAP_WIDTH - 2, 2)], list(line_strings[0].coords))
+        self.assertEqual([(2, 2), (0, 2)], list(line_strings[1].coords))
+
+        # wrapping on Y axis
+        point_a = Point(2, 2)
+        point_b = Point(0.5 * map_data.MAP_WIDTH + 2, 2)
+        multi_line_string = rng.create_multi_line_string_for_wrapped_edges(point_a, point_b)
+        line_strings = multi_line_string.geoms
+
+        self.assertEqual([(2, 2), (2, 0)], list(line_strings[0].coords))
+        self.assertEqual([(0.5 * map_data.MAP_WIDTH + 2, 0), (0.5 * map_data.MAP_WIDTH + 2, 2)],
+                         list(line_strings[1].coords))
+
+        # wrapping on both axes  #1
+        point_a = Point(2, 4)
+        point_b = Point(0.5 * map_data.MAP_WIDTH - 4, 2)
+        multi_line_string = rng.create_multi_line_string_for_wrapped_edges(point_a, point_b)
+        line_strings = multi_line_string.geoms
+
+        self.assertEqual([(map_data.MAP_WIDTH, 2), (map_data.MAP_WIDTH - 2, 0)], list(line_strings[0].coords))
+        self.assertEqual([(2, 4), (0, 2)], list(line_strings[1].coords))
+        self.assertEqual([(0.5 * map_data.MAP_WIDTH - 2, 0),
+                          (0.5 * map_data.MAP_WIDTH - 4, 2)],
+                         list(line_strings[2].coords))
+
+        # wrapping on both axes  #2
+        point_a = Point(0.5 * map_data.MAP_WIDTH + 2, 2)
+        point_b = Point(map_data.MAP_WIDTH - 4, 2)
+        multi_line_string = rng.create_multi_line_string_for_wrapped_edges(point_a, point_b)
+        line_strings = multi_line_string.geoms
+
+        self.assertEqual([(0.5 * map_data.MAP_WIDTH + 2, 2),
+                          (0.5 * map_data.MAP_WIDTH - 1, 0)], list(line_strings[0].coords))
+
+        self.assertEqual([(map_data.MAP_WIDTH - 1, 0),
+                          (map_data.MAP_WIDTH - 4, 2)], list(line_strings[1].coords))
+
     def test_circular_area(self):
         grass_type = TerrainType("grass")
         road_type = TerrainType("road")
@@ -69,19 +132,19 @@ class RangeSpecTest(TestCase):
         land_terrain.add_to_group(road_type)
         land_terrain.add_to_group(forest_type)
 
-        area1_poly = Polygon([(0, 0), (0, 5), (3, 5), (3, 0), (0, 0)])
+        area1_poly = Polygon([(0, 0), (0, 5), (3, 5), (3, 0)])
         area1_terrain = TerrainArea(area1_poly, grass_type)
         area1 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
                              area1_poly, terrain_area=area1_terrain)
-        area2_poly = Polygon([(0, 5), (0, 10), (2, 10), (3, 0), (0, 5)])
+        area2_poly = Polygon([(0, 5), (0, 10), (2, 10), (3, 0)])
         area2_terrain = TerrainArea(area2_poly, forest_type)
         area2 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 0.5, 1,
                              area2_poly, terrain_area=area2_terrain)
-        area3_poly = Polygon([(0, 1), (0, 4), (3, 4), (3, 0), (0, 1)])
+        area3_poly = Polygon([(0, 1), (0, 4), (3, 4), (3, 0)])
         area3_terrain = TerrainArea(area3_poly, road_type)
         area3 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 2,
                              area3_poly, terrain_area=area3_terrain)
-        area4_poly = Polygon([(0, 2), (0, 3), (3, 3), (3, 0), (0, 2)])
+        area4_poly = Polygon([(0, 2), (0, 3), (3, 3), (3, 0)])
         area4_terrain = TerrainArea(area4_poly, grass_type)
         area4 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 3,
                              area4_poly, terrain_area=area4_terrain)

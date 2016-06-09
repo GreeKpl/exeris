@@ -18,7 +18,7 @@ from exeris.core import main
 from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
-from .map import MAP_HEIGHT, MAP_WIDTH
+from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
