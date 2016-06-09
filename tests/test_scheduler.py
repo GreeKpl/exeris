@@ -14,7 +14,7 @@ from exeris.core.models import Activity, ItemType, RootLocation, Item, Scheduled
     ResourceArea, \
     LocationType, Location
 from exeris.core.properties_base import P
-from exeris.core.scheduler import Scheduler
+from exeris.extra.scheduler import Scheduler
 from flask.ext.testing import TestCase
 from shapely.geometry import Point, Polygon
 from tests import util
@@ -277,9 +277,9 @@ class SchedulerActivityTest(TestCase):
         db.session.flush()
 
         scheduler = Scheduler()
-        with patch("exeris.core.scheduler.Scheduler._start_transaction", new=lambda slf: None):
-            with patch("exeris.core.scheduler.Scheduler._commit_transaction", new=lambda slf: None):
-                with patch("exeris.core.scheduler.Scheduler._rollback_transaction", new=lambda slf: None):
+        with patch("exeris.extra.scheduler.Scheduler._start_transaction", new=lambda slf: None):
+            with patch("exeris.extra.scheduler.Scheduler._commit_transaction", new=lambda slf: None):
+                with patch("exeris.extra.scheduler.Scheduler._rollback_transaction", new=lambda slf: None):
                     scheduler.run_iteration()
 
         result_type = ItemType.query.filter_by(name="result").one()
