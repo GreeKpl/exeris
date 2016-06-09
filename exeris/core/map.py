@@ -1,6 +1,0 @@
-
-
-
-
-MAP_WIDTH = 10000
-MAP_HEIGHT = 10000
