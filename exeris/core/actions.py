@@ -359,8 +359,8 @@ class WorkProcess(ProcessAction):
     @classmethod
     def report_failure_notification(cls, error_tag, error_kwargs, worker):
         failure_notification = models.Notification.query.filter_by(title_tag=error_tag, title_params=error_kwargs,
-                                                                    text_tag=error_tag, text_params=error_kwargs,
-                                                                    character=worker, player=None).first()
+                                                                   text_tag=error_tag, text_params=error_kwargs,
+                                                                   character=worker, player=None).first()
 
         if failure_notification:
             failure_notification.count += 1
@@ -835,6 +835,9 @@ class EatingProcess(ProcessAction):
     FOOD_BASED_ATTR_DECAY = 0.005
     FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE = 0.01
 
+    STARVATION_DAMAGE = 0.1
+    STARVATION_WOUND_TIMESPAN = general.GameDate.from_date(1, 0)
+
     def __init__(self, task):
         super().__init__(task)
 
@@ -850,10 +853,10 @@ class EatingProcess(ProcessAction):
 
             eating_queue = character.eating_queue
 
-            hunger_attr_points = eating_queue.get("hunger")
+            hunger_attr_points = eating_queue.get(main.States.HUNGER)
             if hunger_attr_points:
                 character.hunger += max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
-                eating_queue["hunger"] -= max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+                eating_queue[main.States.HUNGER] -= max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
 
             attributes_to_increase = {}
             for attribute in properties.EdiblePropertyType.FOOD_BASED_ATTR:
@@ -868,6 +871,15 @@ class EatingProcess(ProcessAction):
                 setattr(character, attribute, getattr(character, attribute) + increase * EatingProcess.bonus_mult(
                     attributes_to_increase.values()))
             character.eating_queue = eating_queue
+
+        hungry_characters = db.session.query(models.Character) \
+            .filter(models.Character.states[main.States.HUNGER].astext.cast(sql.Float) == 1.0).all()
+        for character in hungry_characters:
+            character.damage += EatingProcess.STARVATION_DAMAGE
+
+            character_modifiers = character.modifiers
+            starvation_visibility_time = general.GameDate.now() + EatingProcess.STARVATION_WOUND_TIMESPAN
+            character_modifiers[main.Modifiers.STARVATION] = starvation_visibility_time
 
 
 class DecayProcess(ProcessAction):

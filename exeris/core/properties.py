@@ -3,7 +3,7 @@ import math
 
 import markdown
 
-from exeris.core import models
+from exeris.core import models, main
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, __registry, P
 
@@ -80,21 +80,21 @@ class LineOfSightPropertyType(PropertyType):
 class EdiblePropertyType(PropertyType):
     __property__ = P.EDIBLE
 
-    FOOD_BASED_ATTR = ["strength", "durability", "fitness", "perception"]
+    FOOD_BASED_ATTR = [main.States.STRENGTH, main.States.DURABILITY, main.States.FITNESS, main.States.PERCEPTION]
 
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
         satiation_left = (1 - eater.satiation)
-        return math.floor(satiation_left / edible_prop["satiation"])
+        return math.floor(satiation_left / edible_prop[main.States.SATIATION])
 
     def eat(self, eater, amount):
         edible_prop = self.get_property(P.EDIBLE)
 
         queue = eater.eating_queue
-        for attribute in list(EdiblePropertyType.FOOD_BASED_ATTR) + ["hunger"]:
+        for attribute in list(EdiblePropertyType.FOOD_BASED_ATTR) + [main.States.HUNGER]:
             if edible_prop.get(attribute):
                 queue[attribute] = queue.get(attribute, 0) + amount * edible_prop.get(attribute)
-        eater.satiation += amount * edible_prop["satiation"]
+        eater.satiation += amount * edible_prop[main.States.SATIATION]
 
         eater.eating_queue = queue
 

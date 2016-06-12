@@ -602,7 +602,7 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(psql.JSONB, default=lambda x: {"modifiers": []})
+    states = sql.Column(psql.JSONB, default=lambda x: {main.States.MODIFIERS: []})
     eating_queue = sql.Column(psql.JSONB, default=lambda x: {})
 
     @hybrid_property
@@ -681,17 +681,15 @@ class Character(Entity):
 
     @hybrid_property
     def hunger(self):
-        return self.states.get("hunger", 0)
+        return self.states.get(main.States.HUNGER, 0)
 
     @hunger.setter
     def hunger(self, value):
         self.states = dict(self.states, hunger=max(0, min(value, 1.0)))
-        if self.hunger == 1.0:
-            main.call_hook(main.Hooks.EXCEEDED_HUNGER_LEVEL, character=self)
 
     @hybrid_property
     def tiredness(self):
-        return self.states.get("tiredness", 0)
+        return self.states.get(main.States.TIREDNESS, 0)
 
     @tiredness.setter
     def tiredness(self, value):
@@ -699,17 +697,19 @@ class Character(Entity):
 
     @hybrid_property
     def damage(self):
-        return self.states.get("damage", 0)
+        return self.states.get(main.States.DAMAGE, 0)
 
     @damage.setter
     def damage(self, value):
         self.states = dict(self.states, damage=max(0, min(value, 1.0)))
+        if value == 1.0:
+            main.call_hook(main.Hooks.CHARACTER_DEATH, character=self)
 
     FOOD_BASED_ATTR_INITIAL_VALUE = 0.1
 
     @hybrid_property
     def strength(self):
-        return self.states.get("strength", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+        return self.states.get(main.States.STRENGTH, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
 
     @strength.setter
     def strength(self, value):
@@ -717,7 +717,7 @@ class Character(Entity):
 
     @hybrid_property
     def durability(self):
-        return self.states.get("durability", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+        return self.states.get(main.States.DURABILITY, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
 
     @durability.setter
     def durability(self, value):
@@ -725,7 +725,7 @@ class Character(Entity):
 
     @hybrid_property
     def fitness(self):
-        return self.states.get("fitness", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+        return self.states.get(main.States.FITNESS, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
 
     @fitness.setter
     def fitness(self, value):
@@ -733,7 +733,7 @@ class Character(Entity):
 
     @hybrid_property
     def perception(self):
-        return self.states.get("perception", Character.FOOD_BASED_ATTR_INITIAL_VALUE)
+        return self.states.get(main.States.PERCEPTION, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
 
     @perception.setter
     def perception(self, value):
@@ -741,11 +741,19 @@ class Character(Entity):
 
     @hybrid_property
     def satiation(self):
-        return self.states.get("satiation", 0.0)
+        return self.states.get(main.States.SATIATION, 0.0)
 
     @satiation.setter
     def satiation(self, value):
         self.states = dict(self.states, satiation=max(0, min(value, 1.0)))
+
+    @hybrid_property
+    def modifiers(self):
+        return self.states[main.States.MODIFIERS]
+
+    @modifiers.setter
+    def modifiers(self, value):
+        self.states = dict(self.states, modifiers=value)
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
