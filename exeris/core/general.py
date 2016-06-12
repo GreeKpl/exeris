@@ -89,6 +89,14 @@ class GameDate:
     __ge__ = lambda self, other: self.game_timestamp >= other.game_timestamp
     __gt__ = lambda self, other: self.game_timestamp > other.game_timestamp
 
+    def __add__(self, other):
+        if hasattr(other, "game_timestamp"):
+            return GameDate(self.game_timestamp + other.game_timestamp)
+        return GameDate(self.game_timestamp + other)
+
+    def __radd__(self, other):
+        return self + other
+
 
 class RangeSpec:
     def characters_near(self, entity):

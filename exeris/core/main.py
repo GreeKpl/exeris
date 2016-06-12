@@ -84,6 +84,7 @@ class Hooks:
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
     EXCEEDED_HUNGER_LEVEL = "exceeded_hunger_level"
     ENTITY_CONTENTS_COUNT_DECREASED = "entity_contents_count_decreased"
+    CHARACTER_DEATH = "character_death"
 
 
 class Intents:
@@ -97,6 +98,24 @@ class EqParts:
     HEAD = "head"
     BODY = "body"
     WEAPON = "weapon"
+
+
+class Modifiers:
+    STARVATION = "starvation"
+    SCRATCH = "scratch"
+    BRUISE = "bruise"
+
+
+class States:
+    MODIFIERS = "modifiers"
+    DAMAGE = "damage"
+    TIREDNESS = "tiredness"
+    HUNGER = "hunger"
+    SATIATION = "satiation"
+    STRENGTH = "strength"
+    DURABILITY = "durability"
+    FITNESS = "fitness"
+    PERCEPTION = "perception"
 
 
 def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):

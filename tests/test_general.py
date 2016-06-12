@@ -55,6 +55,18 @@ class GameDateTest(TestCase):
         self.assertTrue(old == like_old)
         self.assertFalse(old != like_old)
 
+    def test_game_date_addition(self):
+        first_date = GameDate(1000)
+        second_date = GameDate(345)
+
+        # addition of two GameDate objects
+        self.assertEqual(1345, (first_date + second_date).game_timestamp)
+        self.assertEqual(1345, (second_date + first_date).game_timestamp)
+
+        # addition of GameDate with an integer
+        self.assertEqual(545, (second_date + 200).game_timestamp)
+        self.assertEqual(545, (200 + second_date).game_timestamp)
+
 
 class RangeSpecTest(TestCase):
     create_app = util.set_up_app_with_database
