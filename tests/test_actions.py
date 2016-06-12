@@ -8,8 +8,8 @@ from exeris.core import deferred
 from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
-    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, DeathOfStarvationAction, \
-    AbstractAction, Action, TakeItemAction
+    GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
+    AbstractAction, Action, TakeItemAction, DeathAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
@@ -733,7 +733,7 @@ class CharacterActionsTest(TestCase):
         join_activity_action = JoinActivityAction(worker, activity)
         join_activity_action.perform()
 
-    def test_death_of_starvation_action(self):
+    def test_death_action(self):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), 11)
@@ -741,11 +741,11 @@ class CharacterActionsTest(TestCase):
 
         db.session.add(rl)
 
-        action = DeathOfStarvationAction(char)
+        action = DeathAction(char)
         action.perform()
 
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
-        self.assertEqual(Character.DEATH_STARVATION, char.get_property(P.DEATH_INFO)["cause"])
+        self.assertEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"])
         self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
 
 

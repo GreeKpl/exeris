@@ -879,7 +879,7 @@ class EatingProcess(ProcessAction):
 
             character_modifiers = character.modifiers
             starvation_visibility_time = general.GameDate.now() + EatingProcess.STARVATION_WOUND_TIMESPAN
-            character_modifiers[main.Modifiers.STARVATION] = starvation_visibility_time
+            character_modifiers[main.Modifiers.STARVATION] = starvation_visibility_time.game_timestamp
 
 
 class DecayProcess(ProcessAction):
@@ -1478,6 +1478,18 @@ class DeathAction(Action):
     def __init__(self, executor):
         super().__init__(executor)
 
+    def perform_action(self):
+        general.EventCreator.base(main.Events.CHARACTER_DEATH, rng=general.VisibilityBasedRange(30), doer=self.executor)
+
+        death_prop = self.create_death_info_property()
+        self.executor.properties.append(death_prop)
+
+        self.turn_into_body()
+
+        main.call_hook(main.Hooks.NEW_PLAYER_NOTIFICATION, player=self.executor.player,
+                       notification=models.Notification("title_character_death", self.executor.pyslatize(),
+                                                        "character_death", {}, player=self.executor.player))
+
     def turn_into_body(self):
         self.executor.type = models.EntityType.by_name(main.Types.DEAD_CHARACTER)
 
@@ -1485,35 +1497,3 @@ class DeathAction(Action):
     def create_death_info_property():
         return models.EntityProperty(P.DEATH_INFO,
                                      {"date": general.GameDate.now().game_timestamp})
-
-
-class DeathOfStarvationAction(DeathAction):
-    def __init__(self, executor):
-        super().__init__(executor)
-
-    def perform_action(self):
-        general.EventCreator.base(main.Events.DEATH_OF_STARVATION, rng=general.VisibilityBasedRange(30),
-                                  doer=self.executor)
-
-        death_prop = self.create_death_info_property()
-        death_prop.data["cause"] = models.Character.DEATH_STARVATION
-        self.executor.properties.append(death_prop)
-        self.turn_into_body()
-
-
-class DeathOfDamageAction(DeathAction):
-    def __init__(self, executor, killer, weapon):  # apparently, executor is the executed character ;)
-        super().__init__(executor)
-        self.killer = killer
-        self.weapon = weapon
-
-    def perform_action(self):
-        general.EventCreator.base(main.Events.DEATH_OF_DAMAGE, rng=general.VisibilityBasedRange(30), doer=self.executor,
-                                  params=dict(killer=self.killer, weapon=self.weapon))
-
-        death_prop = self.create_death_info_property()
-        death_prop.data["cause"] = models.Character.DEATH_WEAPON
-        death_prop.data["weapon"] = self.weapon.type.name
-        death_prop.data["killer_id"] = self.killer.id
-        self.executor.properties.append(death_prop)
-        self.turn_into_body()

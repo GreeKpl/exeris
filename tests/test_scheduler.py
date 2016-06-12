@@ -22,6 +22,7 @@ from tests import util
 # noinspection PyUnresolvedReferences
 from exeris.extra import hooks
 
+
 class SchedulerTravelTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
@@ -706,13 +707,24 @@ class SchedulerEatingTest(TestCase):
         process = EatingProcess(None)
         process.perform()
 
+        # start getting damage, but be alive
+        self.assertLess(0, char.damage)
+        self.assertEqual({main.Modifiers.STARVATION: (GameDate.now() + GameDate.from_date(1, 0)).game_timestamp},
+                         char.modifiers)
+        self.assertEqual(main.Types.ALIVE_CHARACTER, char.type.name)
+
+        # character die of starvation
+        char.damage = 0.99
+        process = EatingProcess(None)
+        process.perform()
+
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
-        # no more assertions needed, because DeathOfStarvationAction is tested separately
 
     def test_calculation_of_activity_progress(self):
         self.assertAlmostEqual(12.24744, ActivityProgress.calculate_resultant_progress(10, 1.5), places=3)
         self.assertAlmostEqual(10, ActivityProgress.calculate_resultant_progress(10, 0.5))  # if q < 1 then q = 1
         self.assertAlmostEqual(1.5, ActivityProgress.calculate_resultant_progress(1, 2.25))
+
 
 class SchedulerDecayTest(TestCase):
     create_app = util.set_up_app_with_database

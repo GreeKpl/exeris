@@ -602,7 +602,7 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(psql.JSONB, default=lambda x: {main.States.MODIFIERS: []})
+    states = sql.Column(psql.JSONB, default=lambda x: {main.States.MODIFIERS: {}})
     eating_queue = sql.Column(psql.JSONB, default=lambda x: {})
 
     @hybrid_property
@@ -702,7 +702,7 @@ class Character(Entity):
     @damage.setter
     def damage(self, value):
         self.states = dict(self.states, damage=max(0, min(value, 1.0)))
-        if value == 1.0:
+        if value >= 1.0:
             main.call_hook(main.Hooks.CHARACTER_DEATH, character=self)
 
     FOOD_BASED_ATTR_INITIAL_VALUE = 0.1

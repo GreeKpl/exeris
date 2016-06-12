@@ -77,6 +77,9 @@ data = {
     "entity_character#m": {
         "en": "unknown man",
     },
+    "tp_dead_character": {
+        "en": "dead %{name}",
+    },
     "tp_location_title": {
         "en": "'%{title@escape_html}'",
     },
@@ -228,5 +231,8 @@ data = {
     },
     "entity_impassable_to_animal": {
         "en": ""
-    }
+    },
+    "error_character_dead": {
+        "en": "Your character %{name} is dead.",
+    },
 }

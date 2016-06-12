@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    CHARACTER_DEAD = "error_character_dead"
     TOO_CLOSE_TO_OTHER_PERMANENT_LOCATION = "error_too_close_to_other_permanent_location"
     ACTIVITY_ALREADY_EXISITS_ON_ENTITY = "error_activity_already_exists_on_entity"
     TOO_MANY_EXISTING_ENTITIES = "error_too_many_existing_entities"
@@ -54,6 +55,7 @@ class Types:
 
 
 class Events:
+    CHARACTER_DEATH = "evnet_character_death"
     JOIN_COMBAT = "event_join_combat"
     ATTACK_CHARACTER = "event_attack_character"
     OPEN_ENTITY = "event_open_entity"
@@ -67,8 +69,6 @@ class Events:
     DROP_ITEM = "event_drop_item"
     TAKE_ITEM = "event_take_item"
     GIVE_ITEM = "event_give_item"
-    DEATH_OF_STARVATION = "event_death_of_starvation"
-    DEATH_OF_DAMAGE = "event_death_of_damage"
     HIT_TARGET_IN_COMBAT = "event_hit_target_in_combat"
     RETREAT_FROM_COMBAT = "event_retreat_from_combat"
 
@@ -82,7 +82,6 @@ class Hooks:
     NEW_EVENT = "new_event"
     NEW_CHARACTER_NOTIFICATION = "new_character_notification"
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
-    EXCEEDED_HUNGER_LEVEL = "exceeded_hunger_level"
     ENTITY_CONTENTS_COUNT_DECREASED = "entity_contents_count_decreased"
     CHARACTER_DEATH = "character_death"
 
@@ -352,3 +351,8 @@ class TooManyExistingEntitiesException(GameException):
 class TooCloseToPermanentLocation(GameException):
     def __init__(self):
         super().__init__(Errors.TOO_CLOSE_TO_OTHER_PERMANENT_LOCATION)
+
+
+class CharacterDeadException(CharacterException):
+    def __init__(self, *, character):
+        super().__init__(Errors.CHARACTER_DEAD, name=character.name)

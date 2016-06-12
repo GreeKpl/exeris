@@ -7,9 +7,9 @@ from pyslate.backends import postgres_backend
 import psycopg2
 
 
-@main.hook(main.Hooks.EXCEEDED_HUNGER_LEVEL)
-def on_exceeded_hunger_level(character):
-    death_action = actions.DeathOfStarvationAction(executor=character)
+@main.hook(main.Hooks.CHARACTER_DEATH)
+def on_character_death(character):
+    death_action = actions.DeathAction(executor=character)
     death_action.perform()
 
 

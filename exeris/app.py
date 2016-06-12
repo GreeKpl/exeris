@@ -107,6 +107,10 @@ def socketio_character_event(*args, **kwargs):
             conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
             g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
                                        character=g.character)
+
+            if not g.character.is_alive:
+                raise main.CharacterDeadException(character=g.character)
+
             result = f(*a, **k)  # argument list (the first and only positional arg) is expanded
             return (True,) + (result if result else ())
 
@@ -142,6 +146,9 @@ def create_database():
         character_type = models.EntityType.by_name(Types.ALIVE_CHARACTER)
 
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
+
+        dead_character_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
+        dead_character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
 
         hammer_type = models.ItemType("hammer", 200)
         hammer = models.Item(hammer_type, models.RootLocation.query.one())
