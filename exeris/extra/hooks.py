@@ -9,8 +9,9 @@ import psycopg2
 
 @main.hook(main.Hooks.CHARACTER_DEATH)
 def on_character_death(character):
-    death_action = actions.DeathAction(executor=character)
-    death_action.perform()
+    if character.type_name == main.Types.ALIVE_CHARACTER:
+        death_action = actions.DeathAction(executor=character)
+        death_action.perform()
 
 
 @main.hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED)
