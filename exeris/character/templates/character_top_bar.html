@@ -5,6 +5,10 @@
            class="btn {% if endpoint[0] == endpoint_name %} btn-primary {% else %} btn-default {% endif %} navbar-btn">{{ endpoint[1] }}</a>
     {% endfor %}
     dmg: {{ g.character.damage }} | {{ g.character.states }} | {{ g.character.eating_queue }} |
-    <span id="top_bar_current_activity">{{ activity_name }}</span> |
+    <span id="top_bar_current_activity">
+        {% for pyslatized_action in intents %}
+            {{ t("action_info@capitalize", **pyslatized_action) }}
+        {% endfor %}
+    </span> |
     pos: {{ g.character.get_root().position }}
 </div>

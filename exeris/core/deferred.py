@@ -113,5 +113,7 @@ def perform_or_turn_into_intent(executor, action, priority=1):
     except main.TurningIntoIntentExceptionMixin as exception:
         db.session.rollback()  # rollback to savepoint
 
+        models.Intent.query.filter_by(executor=executor).delete()
+
         entity_intent = exception.turn_into_intent(executor, action, priority)
         db.session.add(entity_intent)

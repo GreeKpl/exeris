@@ -311,4 +311,11 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
 
     pyslate.register_function("game_date", func_game_date)
 
+    def func_action_info(helper, tag_name, params):
+        action_tag = params["action_tag"]
+
+        return helper.translation(action_tag, **params)
+
+    pyslate.register_function("action_info", func_action_info)
+
     return pyslate

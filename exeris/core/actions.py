@@ -29,6 +29,9 @@ class AbstractAction:
     def perform_action(self):
         pass
 
+    def pyslatize(self):
+        return {"action_tag": "action_generic", "action_name": self.__class__.__name__}
+
 
 class PlayerAction(AbstractAction):
     """
@@ -435,6 +438,18 @@ class WorkOnActivityAction(Action):
         super().__init__(executor)
         self.activity = activity
 
+    def pyslatize(self):
+        return {"action_tag": "action_work_on_activity",
+                "groups": {
+                    "activity": {
+                        "activity_name": self.activity.name_tag,
+                        "activity_params": self.activity.name_params,
+                    }
+                },
+                "ticks_done": self.activity.ticks_needed - self.activity.ticks_left,
+                "ticks_needed": self.activity.ticks_needed,
+                }
+
 
 class TravelInDirectionAction(Action):
     @convert(executor=models.Entity)
@@ -463,6 +478,9 @@ class TravelInDirectionAction(Action):
 
         move_entity_to_position(self.executor, self.direction, destination_pos)
         return False
+
+    def pyslatize(self):
+        return {"action_tag": "action_travel_in_direction", "direction": self.direction}
 
 
 class TravelToEntityAction(ActionOnEntity):
@@ -536,6 +554,14 @@ class TravelToEntityAndPerformAction(Action):
         except main.TurningIntoIntentExceptionMixin:  # these exceptions result in rollback, not removal of intent
             db.session.rollback()  # rollback to savepoint
             return False
+
+    def pyslatize(self):
+        return {"action_tag": "action_travel_to_entity_and_perform_action",
+                "groups": {
+                    "entity": self.entity.pyslatize(),
+                    "action": self.action.pyslatize(),
+                    "location": self.entity.get_location().pyslatize(),
+                }}
 
 
 class ActivityProgressProcess(AbstractAction):
@@ -1325,6 +1351,7 @@ class WhisperToSomebodyAction(ActionOnCharacter):
 
 
 class JoinActivityAction(ActionOnActivity):
+    @convert(executor=models.Character, activity=models.Activity)
     def __init__(self, executor, activity):
         super().__init__(executor, activity, rng=None)
 

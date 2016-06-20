@@ -166,6 +166,12 @@ data = {
     "terrain_grass": {
         "en": "grassland",
     },
+    "terrain_forest": {
+        "en": "forest",
+    },
+    "terrain_deep_water": {
+        "en": "deep water",
+    },
     "entity_portable_item_in_constr": {
         "en": "in construction",
     },
@@ -235,4 +241,16 @@ data = {
     "error_character_dead": {
         "en": "Your character %{name} is dead.",
     },
+    "action_generic": {
+        "en": "perform %{action_name}",
+    },
+    "action_work_on_activity": {
+        "en": "work on ${activity:activity_info} [%{ticks_done} / %{ticks_needed}]",
+    },
+    "action_travel_in_direction": {
+        "en": "travel in direction %{direction}",
+    },
+    "action_travel_to_entity_and_perform_action": {
+        "en": "travel to ${location:location_info} in order to ${action:action_info}",
+    }
 }

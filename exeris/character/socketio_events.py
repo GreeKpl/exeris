@@ -35,18 +35,9 @@ def update_top_bar(endpoint_name):
     # queue is not supported, so max 1 allowed TODO #72
     assert len([intent for intent in intents if intent.type == main.Intents.WORK]) <= 1
 
-    msg = []
-    for intent in intents:
-        if intent and isinstance(intent.target, models.Activity):
-            activity = intent.target
-            msg += ["Activity: {} - {} / {}".format(activity.name_tag, activity.ticks_needed - activity.ticks_left,
-                                                    activity.ticks_needed)]
-        else:
-            msg += [intent.serialized_action[0]]
+    pyslatized_intents = [deferred.call(intent.serialized_action).pyslatize() for intent in intents]
 
-    msg = ", ".join(msg) if msg else "idle"
-
-    rendered = render_template("character_top_bar.html", activity_name=msg, endpoint_name=endpoint_name)
+    rendered = render_template("character_top_bar.html", intents=pyslatized_intents, endpoint_name=endpoint_name)
     return rendered,
 
 
@@ -105,7 +96,8 @@ def join_activity(activity_id):
 
     activity = models.Activity.by_id(activity_id)
     action = actions.JoinActivityAction(g.character, activity)
-    action.perform()
+
+    deferred.perform_or_turn_into_intent(g.character, action)
 
     db.session.commit()
     return ()
