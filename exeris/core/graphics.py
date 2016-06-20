@@ -16,7 +16,7 @@ def transpose(y):
     return VIEW_SIZE - y
 
 
-def get_map():
+def get_map(character=None):
     im = Image.new("RGB", (VIEW_SIZE, VIEW_SIZE), "white")
 
     terrains = models.TerrainArea.query.order_by(models.TerrainArea.priority.asc()).all()
@@ -36,6 +36,13 @@ def get_map():
         upp = (p[0] + 0.05) * MAP_PER_PX, transpose((p[1] - 0.05) * MAP_PER_PX)
 
         draw.pieslice([low, upp], 0, 360, fill="black")
+
+    if character:
+        p = character.get_position().coords[0]
+        low = (p[0] - 0.05) * MAP_PER_PX, transpose((p[1] + 0.05) * MAP_PER_PX)
+        upp = (p[0] + 0.05) * MAP_PER_PX, transpose((p[1] - 0.05) * MAP_PER_PX)
+
+        draw.pieslice([low, upp], 0, 360, fill="red")
 
     del draw
 
