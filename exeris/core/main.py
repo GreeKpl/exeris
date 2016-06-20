@@ -55,7 +55,7 @@ class Types:
 
 
 class Events:
-    CHARACTER_DEATH = "evnet_character_death"
+    CHARACTER_DEATH = "event_character_death"
     JOIN_COMBAT = "event_join_combat"
     ATTACK_CHARACTER = "event_attack_character"
     OPEN_ENTITY = "event_open_entity"
@@ -303,9 +303,16 @@ class NoResourceAvailableException(ActivityException):
         super().__init__(Errors.NO_RESOURCE_AVAILABLE, resource_name=resource_name)
 
 
-class TooFarFromActivityException(ActivityException):
+class TooFarFromActivityException(ActivityException, TurningIntoIntentExceptionMixin):
     def __init__(self, *, activity):
         super().__init__(Errors.TOO_FAR_FROM_ACTIVITY, name_tag=activity.name_tag, name_params=activity.name_params)
+        self.activity = activity
+
+    def turn_into_intent(self, executor, action, priority=1):
+        from exeris.core import models, actions, deferred
+        entity = self.activity.being_in
+        travel_action = actions.TravelToEntityAndPerformAction(executor, entity, action)
+        return models.Intent(action.executor, Intents.WORK, priority, entity, deferred.serialize(travel_action))
 
 
 class ActivityTargetTooFarAwayException(ActivityException):

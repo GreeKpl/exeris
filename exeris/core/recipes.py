@@ -6,9 +6,13 @@ from exeris.core.properties_base import P
 
 
 class ActivityFactory:
-    def create_from_recipe(self, recipe, being_in, initiator, amount=1, user_input=None):
+    def create_from_recipe(self, recipe, being_in, initiator, user_input=None):
 
         user_input = user_input if user_input else {}
+
+        amount = 1
+        if "amount" in user_input:
+            amount = user_input["amount"]
 
         all_requirements = {}
         for req in recipe.requirements:
@@ -28,12 +32,12 @@ class ActivityFactory:
 
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed,
                                    initiator)
-        actions = self._enhance_actions(recipe.result, user_input)
+        all_actions = self._enhance_actions(recipe.result, user_input)
 
         # entity_result is always the first action, because additional actions can often be some modifiers of this CIA
         activity.result_actions = self.result_actions_list_from_result_entity(recipe.result_entity, user_input)
 
-        activity.result_actions += actions
+        activity.result_actions += all_actions
 
         if recipe.activity_container:
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
