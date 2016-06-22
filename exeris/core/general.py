@@ -208,7 +208,7 @@ def visit_subgraph(node, only_through_unlimited=False):
     return {loc for loc in visited_locations if number_of_door_passed[loc] <= 2}
 
 
-class AreaRangeSpec(RangeSpec):  # TODO! It still doesn't work for edges of the map
+class AreaRangeSpec(RangeSpec):
     def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
         """
         Abstract class for creating all area-based range specifications (Visbibility, Traversability)

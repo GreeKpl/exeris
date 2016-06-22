@@ -992,8 +992,6 @@ class DecayProcess(ProcessAction):
                 if requirement_params["needed"] == requirement_params["left"]:
                     del requirement_params["used_type"]  # allow any type to fulfill the group
 
-        activity.requirements = dict(activity.requirements)  # FORCE refresh
-
 
 class CombatProcess(ProcessAction):
     STANCE_OFFENSIVE = "stance_offensive"
@@ -1278,8 +1276,6 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
         else:
             raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
 
-        self.activity.requirements = {}  # TODO CATASTROPHE
-        db.session.flush()
         self.activity.requirements = req
 
 

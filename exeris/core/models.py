@@ -457,12 +457,11 @@ class Entity(db.Model):
         else:
             self.properties.append(EntityProperty(name, data=data))
 
-    def get_modifiable_entity_property(self, name):
+    def get_entity_property(self, name):
         entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
         if not entity_property:
             entity_property = EntityProperty(name, {}, self)
             db.session.add(entity_property)
-        entity_property.data = dict(entity_property.data)  # force property's `data` to be marked as modified
 
         return entity_property
 
@@ -671,7 +670,7 @@ class Character(Entity):
             raise ValueError("Entity {} is not Equippable".format(item))
 
         eq_part = item.get_property(P.EQUIPPABLE)["eq_part"]
-        eq_property = self.get_modifiable_entity_property(P.PREFERRED_EQUIPMENT)
+        eq_property = self.get_entity_property(P.PREFERRED_EQUIPMENT)
         eq_property.data[eq_part] = item.id
 
     def get_weapon(self):
@@ -961,7 +960,6 @@ class Combat(Entity):
         if isinstance(character, int):
             character = str(character)
         self.recorded_violence[character] = value
-        sql.orm.attributes.flag_modified(self, "recorded_violence")  # TODO better JSON modification sys
 
     def is_able_to_fight(self, character):
         from exeris.core import actions
