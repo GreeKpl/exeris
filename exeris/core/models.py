@@ -15,6 +15,7 @@ from sqlalchemy.orm import validates
 from sqlalchemy.sql import or_
 
 from exeris.core import main
+import sqlalchemy_json_mutable
 from exeris.core import properties_base
 from exeris.core.main import db, Types, Events
 from exeris.core.properties_base import P
@@ -540,7 +541,7 @@ class Intent(db.Model):
     target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id, ondelete="CASCADE"), nullable=True)
     target = sql.orm.relationship(Entity, uselist=False, foreign_keys=target_id)
 
-    serialized_action = sql.Column(psql.JSONB)  # single action
+    serialized_action = sql.Column(sqlalchemy_json_mutable.JsonList)  # single action
 
     def __repr__(self):
         return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type,
@@ -602,8 +603,8 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(psql.JSONB, default=lambda x: {main.States.MODIFIERS: {}})
-    eating_queue = sql.Column(psql.JSONB, default=lambda x: {})
+    states = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {main.States.MODIFIERS: {}})
+    eating_queue = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {})
 
     @hybrid_property
     def name(self):
@@ -804,7 +805,7 @@ class Item(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
     type = sql.orm.relationship(ItemType, uselist=False)
 
-    visible_parts = sql.Column(psql.JSONB, default=lambda x: [])  # sorted list of item type names
+    visible_parts = sql.Column(sqlalchemy_json_mutable.JsonList, default=lambda x: [])  # sorted list of item type names
 
     @validates("visible_parts")
     def validate_visible_parts(self, key, visible_parts):
@@ -898,7 +899,7 @@ class Activity(Entity):
         self.type = EntityType.by_name(Types.ACTIVITY)
 
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
-    name_params = sql.Column(psql.JSON)
+    name_params = sql.Column(sqlalchemy_json_mutable.JsonDict)
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
     type = sql.orm.relationship(EntityType, uselist=False)
@@ -907,8 +908,8 @@ class Activity(Entity):
     initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id",
                                      post_update=True)
 
-    requirements = sql.Column(psql.JSON)  # a list of requirements
-    result_actions = sql.Column(psql.JSON)  # a list of serialized constructors of subclasses of AbstractAction
+    requirements = sql.Column(sqlalchemy_json_mutable.JsonDict)  # a list of requirements
+    result_actions = sql.Column(sqlalchemy_json_mutable.JsonList)  # a list of serialized constructors of subclasses of AbstractAction
     quality_sum = sql.Column(sql.Float)
     quality_ticks = sql.Column(sql.Integer)
     ticks_needed = sql.Column(sql.Float)
@@ -945,7 +946,7 @@ class Combat(Entity):
         pass
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
-    recorded_violence = sql.Column(psql.JSONB, default=lambda: {})
+    recorded_violence = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda: {})
 
     def get_recorded_damage(self, character):
         if isinstance(character, Entity):
@@ -1027,7 +1028,7 @@ class Event(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     type_name = sql.Column(sql.String, sql.ForeignKey("event_types.name"))
     type = sql.orm.relationship(EventType, uselist=False)
-    params = sql.Column(psql.JSON)
+    params = sql.Column(sqlalchemy_json_mutable.JsonDict)
     date = sql.Column(sql.BigInteger)
 
     def __init__(self, event_type, params):
@@ -1096,7 +1097,7 @@ class EntityTypeProperty(db.Model):
     type = sql.orm.relationship(EntityType, uselist=False, back_populates="properties")
 
     name = sql.Column(sql.String, primary_key=True)
-    data = sql.Column(psql.JSON)
+    data = sql.Column(sqlalchemy_json_mutable.JsonDict)
 
     def __repr__(self):
         return "{{EntityTypeProperty name={}, for={}, data={}}}".format(self.name, self.type_name, self.data)
@@ -1114,7 +1115,7 @@ class EntityProperty(db.Model):
         self.data = data if data is not None else {}
 
     name = sql.Column(sql.String, primary_key=True)
-    data = sql.Column(psql.JSON)
+    data = sql.Column(sqlalchemy_json_mutable.JsonDict)
 
     def __repr__(self):
         return "Property(entity: {}, name: {}, data {}".format(self.entity.id, self.name, self.data)
@@ -1469,14 +1470,14 @@ class Notification(db.Model):
     character = sql.orm.relationship(Character, uselist=False)
 
     title_tag = sql.Column(sql.String)
-    title_params = sql.Column(psql.JSONB, default=lambda: [])
+    title_params = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda: [])
 
     text_tag = sql.Column(sql.String)
-    text_params = sql.Column(psql.JSONB, default=lambda: [])
+    text_params = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda: [])
 
     count = sql.Column(sql.Integer)
     icon_name = sql.Column(sql.String, default="undefined.png")
-    options = sql.Column(psql.JSON, default=lambda: [])
+    options = sql.Column(sqlalchemy_json_mutable.JsonList, default=lambda: [])
 
     game_date = sql.Column(sql.BigInteger)
 
@@ -1498,7 +1499,7 @@ class ScheduledTask(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    process_data = sql.Column(psql.JSON)
+    process_data = sql.Column(sqlalchemy_json_mutable.JsonList)
     execution_game_timestamp = sql.Column(sql.BigInteger)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
@@ -1531,15 +1532,15 @@ class EntityRecipe(db.Model):
         self.activity_container = activity_container
 
     name_tag = sql.Column(sql.String)
-    name_params = sql.Column(psql.JSON)
+    name_params = sql.Column(sqlalchemy_json_mutable.JsonDict)
 
-    requirements = sql.Column(psql.JSON)
+    requirements = sql.Column(sqlalchemy_json_mutable.JsonDict)
     ticks_needed = sql.Column(sql.Float)
-    result = sql.Column(psql.JSON)  # a list of serialized Action constructors
+    result = sql.Column(sqlalchemy_json_mutable.JsonList)  # a list of serialized Action constructors
     result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
-    activity_container = sql.Column(psql.JSON, default="entity_specific_item")
+    activity_container = sql.Column(psql.JSON, default="entity_specific_item")  # Cannot use mutable JSON types
 
     build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"))
     build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)

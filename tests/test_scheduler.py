@@ -314,7 +314,7 @@ class SchedulerActivityTest(TestCase):
         db.session.add(activity)
         db.session.flush()
         result = ["exeris.core.actions.CreateItemAction",
-                  {"item_type": result_type.name, "properties": {"Edible": True}, "used_materials": "all"}]
+                  {"item_type": result_type.name, "properties": {"Edible": {}}, "used_materials": "all"}]
         activity.result_actions = [result]
 
         work_on_activity_intent = Intent(self.worker, main.Intents.WORK, 1, activity,

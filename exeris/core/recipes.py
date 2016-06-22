@@ -95,14 +95,16 @@ class ActivityFactory:
     @classmethod
     def _enhance_actions(cls, result, user_input):
         actions = []
-        for action in copy.deepcopy(result):
-            action_class = deferred.object_import(action[0])  # get result class by name
+
+        for action_name, action_args in result:
+            action_args = dict(action_args)
+            action_class = deferred.object_import(action_name)  # get result class by name
 
             if hasattr(action_class, "_form_inputs"):
                 for in_name, in_data in action_class._form_inputs.items():
-                    if in_name not in action[1]:  # if wasn't already set explicitly
-                        action[1][in_name] = user_input[in_name]  # inject user defined form input to result dict
-            actions.append(action)
+                    if in_name not in action_args:  # if wasn't already set explicitly
+                        action_args[in_name] = user_input[in_name]  # inject user defined form input to result dict
+            actions.append([action_name, action_args])
         return actions
 
     @classmethod
