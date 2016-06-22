@@ -522,7 +522,7 @@ class Intent(db.Model):
     """
     __tablename__ = "intents"
 
-    id = sql.Column(sql.Integer, primary_key=True)
+    id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
 
     def __init__(self, executor, intent_type, priority, target, serialized_action):
         self.executor = executor

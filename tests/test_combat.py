@@ -163,6 +163,13 @@ class CombatTest(TestCase):
 
         db.session.add_all([roman1_combat, roman2_combat, gaul1_combat])
 
+        # It's necessary to load the data from db, otherwise the test fails during the rollback (since SQLA 1.1)
+        roman1_combat, roman2_combat, gaul1_combat = None, None, None
+        roman1_combat = Intent.query.filter_by(executor=roman1, target=combat_entity).one()
+        roman2_combat = Intent.query.filter_by(executor=roman2, target=combat_entity).one()
+        gaul1_combat = Intent.query.filter_by(executor=gaul1, target=combat_entity).one()
+
+
         with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.1):
             task_mock = TaskMock()
             task_mock.stop_repeating = MagicMock()
@@ -174,7 +181,6 @@ class CombatTest(TestCase):
 
             # one of two romans should be hit
             self.assertAlmostEqual(0.1, roman1.damage + roman2.damage)
-
         CombatProcess.RETREAT_CHANCE = 1.0  # retreat is always successful
         with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.01):
             roman1_combat_action = deferred.call(roman1_combat.serialized_action)
