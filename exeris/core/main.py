@@ -55,6 +55,8 @@ class Types:
 
 
 class Events:
+    CHANGE_VEHICLE_DIRECTION = "event_change_vehicle_direction"
+    START_STEERING_VEHICLE = "event_start_steering_vehicle"
     CHARACTER_DEATH = "event_character_death"
     JOIN_COMBAT = "event_join_combat"
     ATTACK_CHARACTER = "event_attack_character"

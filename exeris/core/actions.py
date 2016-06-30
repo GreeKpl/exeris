@@ -336,7 +336,7 @@ class WorkProcess(ProcessAction):
                     db.session.delete(work_intent)
                 db.session.commit()
             except main.TurningIntoIntentExceptionMixin:
-                db.session.rollback()  # it failed but this intent can be performed later
+                db.session.rollback()  # for actions that need to be tried every tick
             except main.GameException as exception:
                 db.session.rollback()
                 self.report_failure_notification(exception.error_tag, exception.error_kwargs, work_intent.executor)
@@ -344,6 +344,9 @@ class WorkProcess(ProcessAction):
                 logger.error("Unknown exception prevented execution of %s", str(action_to_perform), exc_info=True)
                 raise
 
+        self.process_activities_progress(activities_to_progress)
+
+    def process_activities_progress(self, activities_to_progress):
         for activity, workers in activities_to_progress.items():
             activity_progress = ActivityProgressProcess(activity, workers)
             try:
@@ -1389,6 +1392,8 @@ class MoveToLocationAction(ActionOnLocation):
 
         self.executor.being_in = self.location
 
+        models.Intent.query.filter_by(executor=self.executor, type=main.Intents.WORK).delete()
+
         general.EventCreator.create(rng=general.SameLocationRange(), tag_observer=Events.MOVE + "_observer",
                                     params={"groups": {"from": from_loc.pyslatize(),
                                                        "destination": self.location.pyslatize()}},
@@ -1520,3 +1525,74 @@ class DeathAction(Action):
     def create_death_info_property():
         return models.EntityProperty(P.DEATH_INFO,
                                      {"date": general.GameDate.now().game_timestamp})
+
+
+class SteerVehicleAction(Action):
+    def __init__(self, executor, vehicle, direction):
+        super().__init__(executor)
+        self.vehicle = vehicle
+        self.direction = direction
+
+    def perform_action(self):
+        travel_action = TravelInDirectionAction(self.vehicle, self.direction)
+        travel_action.perform()
+
+
+def get_steered_vehicle(steering_room):
+    steerable_prop = steering_room.get_property(P.STEERABLE)
+    controlled_vehicle_id = steerable_prop.get("vehicle_id", steering_room.id)
+    steered_vehicle = models.Location.by_id(controlled_vehicle_id)
+    return steered_vehicle
+
+
+class StartSteeringVehicleAction(ActionOnLocation):
+    def __init__(self, executor, location):
+        super().__init__(executor, location, rng=general.SameLocationRange())
+
+    def perform_action(self):
+        if not self.location.has_property(P.STEERABLE):
+            raise ValueError("Cannot steer from this location")
+
+        steered_vehicle = get_steered_vehicle(self.location)
+
+        qualified_class_name = deferred.get_qualified_class_name(SteerVehicleAction)
+        if models.Intent.query.filter_by(target=steered_vehicle) \
+                .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first():
+            raise ValueError("Somebody already works on it")
+
+        steer_vehicle_action = SteerVehicleAction(self.executor, self.location, self.location.get_root().direction)
+        intent = models.Intent(self.executor, main.Intents.WORK, 1,
+                               steered_vehicle, deferred.serialize(steer_vehicle_action))
+
+        db.session.add(intent)
+
+        general.EventCreator.base(Events.START_STEERING_VEHICLE, self.rng, params={"groups": {
+            "vehicle": steered_vehicle.pyslatize(),
+        }}, doer=self.executor)
+
+
+class ChangeVehicleDirectionAction(ActionOnLocation):
+    def __init__(self, executor, location, direction):
+        super().__init__(executor, location, rng=general.SameLocationRange())
+        self.direction = direction
+
+    def perform_action(self):
+        steered_vehicle = get_steered_vehicle(self.location)
+
+        steering_vehicle_intent = self.get_steering_vehicle_intent(self.executor, steered_vehicle)
+        if not steering_vehicle_intent:
+            raise ValueError("You aren't steering the vehicle!")
+
+        steering_vehicle_action = deferred.call(steering_vehicle_intent.serialized_action)
+        steering_vehicle_action.direction = self.direction
+        steering_vehicle_intent.serialized_action = deferred.serialize(steering_vehicle_action)
+
+        general.EventCreator.base(Events.CHANGE_VEHICLE_DIRECTION, rng=self.rng, params={"groups": {
+            "vehicle": steered_vehicle.pyslatize(),
+        }}, doer=self.executor)
+
+    @staticmethod
+    def get_steering_vehicle_intent(executor, steered_vehicle):
+        qualified_class_name = deferred.get_qualified_class_name(SteerVehicleAction)
+        return models.Intent.query.filter_by(executor=executor, target=steered_vehicle) \
+            .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first()

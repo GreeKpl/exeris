@@ -9,7 +9,7 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, DeathAction
+    AbstractAction, Action, TakeItemAction, DeathAction, StartSteeringVehicleAction, ChangeVehicleDirectionAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
@@ -774,10 +774,10 @@ class IntentTest(TestCase):
 
         self.assertEqual(
             ["exeris.core.actions.TravelToEntityAndPerformAction", {"executor": char.id, "entity": hammer.id,
-                                                                           "action": [
-                                                                               "exeris.core.actions.TakeItemAction",
-                                                                               {"executor": char.id,
-                                                                                "item": hammer.id, "amount": 1}]}],
+                                                                    "action": [
+                                                                        "exeris.core.actions.TakeItemAction",
+                                                                        {"executor": char.id,
+                                                                         "item": hammer.id, "amount": 1}]}],
             Intent.query.one().serialized_action)
         self.assertEqual(main.Intents.WORK, Intent.query.one().type)
 
@@ -787,6 +787,46 @@ class IntentTest(TestCase):
         # InvalidAmountException cannot be turned into intent
         self.assertRaises(main.InvalidAmountException,
                           lambda: deferred.perform_or_turn_into_intent(char, take_action))
+
+    def test_start_steering_simple_vehicle_and_change_direction(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+        vehicle_type = LocationType("cart", 500)
+        vehicle_type.properties.append(EntityTypeProperty(P.MOBILE, {"speed": 10}))
+        vehicle = Location(rl, vehicle_type)
+
+        steering_room_type = LocationType("steering_room", 400)
+        steering_room = Location(vehicle, steering_room_type)
+        db.session.add_all([rl, vehicle_type, vehicle, steering_room_type, steering_room])
+        db.session.flush()
+        steering_room.properties.append(EntityProperty(P.STEERABLE, data={"vehicle_id": vehicle.id}))
+        # create a single-location vehicle
+
+        char = util.create_character("postac", steering_room, util.create_player("ala123"))
+
+        start_steering_action = StartSteeringVehicleAction(char, steering_room)
+        start_steering_action.perform()
+
+        steering_intent = Intent.query.one()
+        self.assertEqual(char, steering_intent.executor)
+        self.assertEqual(vehicle, steering_intent.target)
+        action = steering_intent.serialized_action
+        self.assertEqual("exeris.core.actions.SteerVehicleAction", action[0])
+        self.assertEqual(11, action[1]["direction"])
+
+        change_direction_action = ChangeVehicleDirectionAction(char, steering_room, 30)
+        change_direction_action.perform()
+
+        action = steering_intent.serialized_action
+        self.assertEqual("exeris.core.actions.SteerVehicleAction", action[0])
+        self.assertEqual(30, action[1]["direction"])
+
+        lazy_char = util.create_character("postac2", steering_room, util.create_player("ala1234"))
+
+        change_direction_action = ChangeVehicleDirectionAction(lazy_char, steering_room, 70)
+        self.assertRaises(Exception, change_direction_action.perform)
+
 
 
 class PlayerActionsTest(TestCase):

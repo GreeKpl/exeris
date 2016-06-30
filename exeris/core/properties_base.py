@@ -3,6 +3,7 @@ import inspect
 
 # property
 class P:
+    ANY = "Any"  # special property which exists for every entity
     CLOSEABLE = "Closeable"
     READABLE = "Readable"
     HAS_DEPENDENT = "HasDependent"
@@ -20,6 +21,7 @@ class P:
     PREFERRED_EQUIPMENT = "PreferredEquipment"
     EQUIPPABLE = "Equippable"
     WEAPONIZABLE = "Weaponizable"
+    STEERABLE = "Steerable"
 
 
 __registry = {}
