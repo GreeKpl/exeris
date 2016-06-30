@@ -33,17 +33,31 @@ def call(json_to_call, **injected_args):
     return func(**kwargs)
 
 
-def serialize(obj):
+def get_qualified_class_name(cls):
+    def remove_last_part(text):
+        return "/".join(text.split("/")[:-1])
+
+    class_module = inspect.getfile(cls)
+    root_path = remove_last_part(project_root.__file__)
+    path_in_project = class_module.replace(root_path, "")
+    module_path = path_in_project.replace("/", ".").strip(".").replace(".py", "")
+    full_qualified_name = module_path + "." + cls.__qualname__
+    return full_qualified_name
+
+def get_qualified_name(obj):
     def remove_last_part(text):
         return "/".join(text.split("/")[:-1])
 
     class_module = inspect.getmodule(obj)
     root_path = remove_last_part(project_root.__file__)
-
     path_in_project = class_module.__file__.replace(root_path, "")
     module_path = path_in_project.replace("/", ".").strip(".").replace(".py", "")
-
     full_qualified_name = module_path + "." + obj.__class__.__qualname__
+    return full_qualified_name
+
+
+def serialize(obj):
+    full_qualified_name = get_qualified_name(obj)
 
     inspected_init_args = inspect.getfullargspec(obj.__class__.__init__).args
 
@@ -113,7 +127,7 @@ def perform_or_turn_into_intent(executor, action, priority=1):
     except main.TurningIntoIntentExceptionMixin as exception:
         db.session.rollback()  # rollback to savepoint
 
-        models.Intent.query.filter_by(executor=executor).delete()
+        models.Intent.query.filter_by(executor=executor).delete()  # TODO no multiple intents till #72
 
         entity_intent = exception.turn_into_intent(executor, action, priority)
         db.session.add(entity_intent)
