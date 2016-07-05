@@ -5,8 +5,8 @@ import copy
 import sqlalchemy as sql
 from exeris.core import main, deferred, models
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
-    WorkProcess, TravelToEntityAndPerformAction, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
-    CreateItemAction, ActivityProgress
+    WorkProcess, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
+    CreateItemAction, ActivityProgress, StartControllingMovementAction, TravelToEntityAction, ControlMovementAction
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
@@ -78,7 +78,11 @@ class SchedulerTravelTest(TestCase):
 
         eat_action = EatAction(traveler, potatoes, 5)
 
-        go_to_entity_and_eat_action = TravelToEntityAndPerformAction(traveler, potatoes, eat_action)
+        go_to_entity_and_eat_intent = StartControllingMovementAction(traveler).perform()
+        go_to_entity_and_eat_action = deferred.call(go_to_entity_and_eat_intent.serialized_action)
+        go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
+        go_to_entity_and_eat_action.target_action = eat_action
+        go_to_entity_and_eat_intent.serialized_action = deferred.serialize(go_to_entity_and_eat_action)
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
                             potato_loc, potato_type, potatoes])
@@ -93,15 +97,17 @@ class SchedulerTravelTest(TestCase):
         go_to_entity_and_eat_action.perform()  # eat half of potatoes
         # food is eaten
         self.assertEqual(0.5, traveler.satiation)
-        # should go forward because 5 potatoes still exist and intention doesn't control own lifecycle
 
+        # action if finished, so it's not necessary to move and do it again, so force to do it again
+        go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
+        go_to_entity_and_eat_action.target_action = eat_action
         go_to_entity_and_eat_action.perform()  # eat the rest of potatoes
         self.assertEqual(1, traveler.satiation)
 
         self.assertTrue(sql.inspect(potatoes).deleted)
 
         # all potatoes are eaten, so they don't exist
-        self.assertRaises(main.EntityTooFarAwayException, lambda: go_to_entity_and_eat_action.perform())
+        self.assertRaises(main.EntityTooFarAwayException, lambda: eat_action.perform())
 
     def test_integration_character_go_and_perform_action_in_travel_process(self):
         util.initialize_date()
@@ -139,12 +145,12 @@ class SchedulerTravelTest(TestCase):
 
         go_and_perform_action = deferred.call(go_and_perform_action_intent.serialized_action)
 
-        self.assertEqual(TravelToEntityAndPerformAction, go_and_perform_action.__class__)
+        self.assertEqual(ControlMovementAction, go_and_perform_action.__class__)
 
         # make sure the action was correctly serialized
-        self.assertEqual(eat_action.executor, go_and_perform_action.action.executor)
-        self.assertEqual(eat_action.item, go_and_perform_action.action.item)
-        self.assertEqual(eat_action.amount, go_and_perform_action.action.amount)
+        self.assertEqual(eat_action.executor, go_and_perform_action.target_action.executor)
+        self.assertEqual(eat_action.item, go_and_perform_action.target_action.item)
+        self.assertEqual(eat_action.amount, go_and_perform_action.target_action.amount)
 
         travel_process = WorkProcess(None)
 
@@ -158,8 +164,11 @@ class SchedulerTravelTest(TestCase):
 
         self.assertEqual(0.5, traveler.satiation)
         self.assertEqual(5, potatoes.amount)
-        # intent was removed
-        self.assertEqual(0, Intent.query.count())
+
+        # intent's action is completed and thus removed
+        control_movement_action = Intent.query.one().serialized_action
+        self.assertIsNone(control_movement_action[1]["travel_action"])
+        self.assertIsNone(control_movement_action[1]["target_action"])
 
         self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
         self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
@@ -167,8 +176,7 @@ class SchedulerTravelTest(TestCase):
         eat_too_far_away_action = EatAction(traveler, potatoes_away, 3)
         deferred.perform_or_turn_into_intent(traveler, eat_too_far_away_action)
 
-        self.assertEqual("exeris.core.actions.TravelToEntityAndPerformAction",
-                         Intent.query.one().serialized_action[0])
+        self.assertEqual("exeris.core.actions.ControlMovementAction", Intent.query.one().serialized_action[0])
 
         travel_process.perform()  # nothing will happen, because potatoes are not on line of sight
         # (but LoS can be hard to define!!!!)

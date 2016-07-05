@@ -334,6 +334,7 @@ class WorkProcess(ProcessAction):
                     logger.info("Intent %s of %s finished successfully. Removing it",
                                 str(action_to_perform), str(work_intent.executor))
                     db.session.delete(work_intent)
+                work_intent.serialized_action = deferred.serialize(action_to_perform)
                 db.session.commit()
             except main.TurningIntoIntentExceptionMixin:
                 db.session.rollback()  # for actions that need to be tried every tick
@@ -534,37 +535,37 @@ class TravelToEntityAction(ActionOnEntity):
             return False
 
 
-class TravelToEntityAndPerformAction(Action):
-    @convert(executor=models.Character, entity=models.Entity, action=Action)
-    def __init__(self, executor, entity, action):
-        super().__init__(executor)
-        self.entity = entity
-        self.action = action
-
-    def perform_action(self):
-
-        travel_to_entity_action = TravelToEntityAction(self.executor, self.entity)
-        travel_to_entity_action.perform()
-
-        return self.try_to_perform_action()
-
-    def try_to_perform_action(self):
-        try:
-            db.session.begin_nested()
-            self.action.perform()
-            db.session.commit()  # commit savepoint
-            return True
-        except main.TurningIntoIntentExceptionMixin:  # these exceptions result in rollback, not removal of intent
-            db.session.rollback()  # rollback to savepoint
-            return False
-
-    def pyslatize(self):
-        return {"action_tag": "action_travel_to_entity_and_perform_action",
-                "groups": {
-                    "entity": self.entity.pyslatize(),
-                    "action": self.action.pyslatize(),
-                    "location": self.entity.get_location().pyslatize(),
-                }}
+# class TravelToEntityAndPerformAction(Action):
+#     @convert(executor=models.Character, entity=models.Entity, action=Action)
+#     def __init__(self, executor, entity, action):
+#         super().__init__(executor)
+#         self.entity = entity
+#         self.action = action
+#
+#     def perform_action(self):
+#
+#         travel_to_entity_action = TravelToEntityAction(self.executor, self.entity)
+#         travel_to_entity_action.perform()
+#
+#         return self.try_to_perform_action()
+#
+#     def try_to_perform_action(self):
+#         try:
+#             db.session.begin_nested()
+#             self.action.perform()
+#             db.session.commit()  # commit savepoint
+#             return True
+#         except main.TurningIntoIntentExceptionMixin:  # these exceptions result in rollback, not removal of intent
+#             db.session.rollback()  # rollback to savepoint
+#             return False
+#
+#     def pyslatize(self):
+#         return {"action_tag": "action_travel_to_entity_and_perform_action",
+#                 "groups": {
+#                     "entity": self.entity.pyslatize(),
+#                     "action": self.action.pyslatize(),
+#                     "location": self.entity.get_location().pyslatize(),
+#                 }}
 
 
 class ActivityProgressProcess(AbstractAction):
@@ -1527,72 +1528,97 @@ class DeathAction(Action):
                                      {"date": general.GameDate.now().game_timestamp})
 
 
-class SteerVehicleAction(Action):
-    def __init__(self, executor, vehicle, direction):
+class ControlMovementAction(Action):
+    @convert(travel_action=Action, target_action=Action)
+    def __init__(self, executor, moving_entity, travel_action, target_action=None):
         super().__init__(executor)
-        self.vehicle = vehicle
-        self.direction = direction
+        self.moving_entity = moving_entity
+        self.travel_action = travel_action
+        self.target_action = target_action
 
     def perform_action(self):
-        travel_action = TravelInDirectionAction(self.vehicle, self.direction)
-        travel_action.perform()
+        if self.travel_action:
+            self.travel_action.perform()
+
+        if self.target_action:
+            try:
+                db.session.begin_nested()
+                self.target_action.perform()
+                self.target_action, self.travel_action = None, None  # done successfully, so no need to do it again
+                db.session.commit()
+            except main.GameException:
+                db.session.rollback()
+
+    def pyslatize(self):
+        if isinstance(self.moving_entity, models.Character):
+            return {"action_tag": "action_walking"}
+        return {"action_tag": "action_controlling_vehicle", "vehicle": self.moving_entity.pyslatize()}
 
 
-def get_steered_vehicle(steering_room):
-    steerable_prop = steering_room.get_property(P.STEERABLE)
-    controlled_vehicle_id = steerable_prop.get("vehicle_id", steering_room.id)
-    steered_vehicle = models.Location.by_id(controlled_vehicle_id)
-    return steered_vehicle
+def get_moving_entity(executor):
+    entity_managing_movement = executor.being_in
+    if isinstance(entity_managing_movement, models.RootLocation):  # walking
+        entity_managing_movement = executor
+    steerable_prop = entity_managing_movement.get_property(P.CONTROLLING_MOVEMENT)
+
+    if steerable_prop is None:
+        raise main.CannotControlMovementException()
+
+    moving_entity_id = steerable_prop.get("moving_entity_id", entity_managing_movement.id)
+    return models.Entity.by_id(moving_entity_id)
 
 
-class StartSteeringVehicleAction(ActionOnLocation):
-    def __init__(self, executor, location):
-        super().__init__(executor, location, rng=general.SameLocationRange())
+class StartControllingMovementAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+        self.rng = general.SameLocationRange()
 
     def perform_action(self):
-        if not self.location.has_property(P.STEERABLE):
-            raise ValueError("Cannot steer from this location")
+        moving_entity = get_moving_entity(self.executor)
 
-        steered_vehicle = get_steered_vehicle(self.location)
+        qualified_class_name = deferred.get_qualified_class_name(ControlMovementAction)
+        already_existing_controlling_intent = models.Intent.query.filter_by(target=moving_entity) \
+            .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first()
+        if already_existing_controlling_intent:
+            raise main.VehicleAlreadyControlledException(executor=already_existing_controlling_intent.executor)
 
-        qualified_class_name = deferred.get_qualified_class_name(SteerVehicleAction)
-        if models.Intent.query.filter_by(target=steered_vehicle) \
-                .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first():
-            raise ValueError("Somebody already works on it")
-
-        steer_vehicle_action = SteerVehicleAction(self.executor, self.location, self.location.get_root().direction)
+        travel_in_direction_action = TravelInDirectionAction(moving_entity, moving_entity.get_root().direction)
+        control_movement_action = ControlMovementAction(self.executor, moving_entity, travel_in_direction_action)
         intent = models.Intent(self.executor, main.Intents.WORK, 1,
-                               steered_vehicle, deferred.serialize(steer_vehicle_action))
+                               moving_entity, deferred.serialize(control_movement_action))
 
         db.session.add(intent)
 
-        general.EventCreator.base(Events.START_STEERING_VEHICLE, self.rng, params={"groups": {
-            "vehicle": steered_vehicle.pyslatize(),
+        general.EventCreator.base(Events.START_CONTROLLING_MOVEMENT, self.rng, params={"groups": {
+            "vehicle": moving_entity.pyslatize(),
         }}, doer=self.executor)
 
+        return intent
 
-class ChangeVehicleDirectionAction(ActionOnLocation):
-    def __init__(self, executor, location, direction):
-        super().__init__(executor, location, rng=general.SameLocationRange())
+
+class ChangeVehicleDirectionAction(Action):
+    def __init__(self, executor, direction):
+        super().__init__(executor)
         self.direction = direction
+        self.rng = general.SameLocationRange()
 
     def perform_action(self):
-        steered_vehicle = get_steered_vehicle(self.location)
+        moving_entity = get_moving_entity(self.executor)
 
-        steering_vehicle_intent = self.get_steering_vehicle_intent(self.executor, steered_vehicle)
-        if not steering_vehicle_intent:
-            raise ValueError("You aren't steering the vehicle!")
+        controlling_movement_intent = self.get_movement_control_intent(self.executor, moving_entity)
+        if not controlling_movement_intent:
+            raise main.NotControllingMovementException()
 
-        steering_vehicle_action = deferred.call(steering_vehicle_intent.serialized_action)
-        steering_vehicle_action.direction = self.direction
-        steering_vehicle_intent.serialized_action = deferred.serialize(steering_vehicle_action)
+        controlling_movement_action = deferred.call(controlling_movement_intent.serialized_action)
+        controlling_movement_action.travel_action = TravelInDirectionAction(moving_entity, self.direction)
+        controlling_movement_intent.serialized_action = deferred.serialize(controlling_movement_action)
 
-        general.EventCreator.base(Events.CHANGE_VEHICLE_DIRECTION, rng=self.rng, params={"groups": {
-            "vehicle": steered_vehicle.pyslatize(),
+        general.EventCreator.base(Events.CHANGE_MOVEMENT_DIRECTION, rng=self.rng, params={"groups": {
+            "vehicle": moving_entity.pyslatize(),
         }}, doer=self.executor)
 
     @staticmethod
-    def get_steering_vehicle_intent(executor, steered_vehicle):
-        qualified_class_name = deferred.get_qualified_class_name(SteerVehicleAction)
+    def get_movement_control_intent(executor, steered_vehicle):
+        qualified_class_name = deferred.get_qualified_class_name(ControlMovementAction)
         return models.Intent.query.filter_by(executor=executor, target=steered_vehicle) \
             .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first()

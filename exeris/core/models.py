@@ -908,7 +908,8 @@ class Activity(Entity):
                                      post_update=True)
 
     requirements = sql.Column(sqlalchemy_json_mutable.JsonDict)  # a list of requirements
-    result_actions = sql.Column(sqlalchemy_json_mutable.JsonList)  # a list of serialized constructors of subclasses of AbstractAction
+    result_actions = sql.Column(
+        sqlalchemy_json_mutable.JsonList)  # a list of serialized constructors of subclasses of AbstractAction
     quality_sum = sql.Column(sql.Float)
     quality_ticks = sql.Column(sql.Integer)
     ticks_needed = sql.Column(sql.Float)
@@ -1763,6 +1764,7 @@ def init_database_contents():
         alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
         alive_character.properties.append(
             EntityTypeProperty(P.MOBILE, data={"speed": 10, "traversable_terrains": [TerrainType.TRAVEL_LAND]}))
+        alive_character.properties.append(EntityTypeProperty(P.CONTROLLING_MOVEMENT))  # char can control own mobility
         alive_character.properties.append(EntityTypeProperty(P.WEAPONIZABLE, data={"attack": 5}))  # weaponless attack
         alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
         db.session.add(alive_character)

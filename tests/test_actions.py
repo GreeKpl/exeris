@@ -9,7 +9,7 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, DeathAction, StartSteeringVehicleAction, ChangeVehicleDirectionAction
+    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeVehicleDirectionAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
@@ -773,11 +773,15 @@ class IntentTest(TestCase):
         self.assertEqual(1, Intent.query.count())
 
         self.assertEqual(
-            ["exeris.core.actions.TravelToEntityAndPerformAction", {"executor": char.id, "entity": hammer.id,
-                                                                    "action": [
-                                                                        "exeris.core.actions.TakeItemAction",
-                                                                        {"executor": char.id,
-                                                                         "item": hammer.id, "amount": 1}]}],
+            ["exeris.core.actions.ControlMovementAction", {"executor": char.id,
+                                                           "moving_entity": char.id,
+                                                           "travel_action": ["exeris.core.actions.TravelToEntityAction",
+                                                                             {"entity": hammer.id,
+                                                                              "executor": char.id}],
+                                                           "target_action": ["exeris.core.actions.TakeItemAction",
+                                                                             {"executor": char.id,
+                                                                              "item": hammer.id, "amount": 1}]
+                                                           }],
             Intent.query.one().serialized_action)
         self.assertEqual(main.Intents.WORK, Intent.query.one().type)
 
@@ -788,7 +792,7 @@ class IntentTest(TestCase):
         self.assertRaises(main.InvalidAmountException,
                           lambda: deferred.perform_or_turn_into_intent(char, take_action))
 
-    def test_start_steering_simple_vehicle_and_change_direction(self):
+    def test_start_controlling_vehicle_movement_and_change_direction(self):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), 11)
@@ -800,33 +804,57 @@ class IntentTest(TestCase):
         steering_room = Location(vehicle, steering_room_type)
         db.session.add_all([rl, vehicle_type, vehicle, steering_room_type, steering_room])
         db.session.flush()
-        steering_room.properties.append(EntityProperty(P.STEERABLE, data={"vehicle_id": vehicle.id}))
+        steering_room.properties.append(EntityProperty(P.CONTROLLING_MOVEMENT, data={"moving_entity_id": vehicle.id}))
         # create a single-location vehicle
 
         char = util.create_character("postac", steering_room, util.create_player("ala123"))
 
-        start_steering_action = StartSteeringVehicleAction(char, steering_room)
-        start_steering_action.perform()
+        start_controlling_movmeent_action = StartControllingMovementAction(char)
+        start_controlling_movmeent_action.perform()
 
-        steering_intent = Intent.query.one()
-        self.assertEqual(char, steering_intent.executor)
-        self.assertEqual(vehicle, steering_intent.target)
-        action = steering_intent.serialized_action
-        self.assertEqual("exeris.core.actions.SteerVehicleAction", action[0])
-        self.assertEqual(11, action[1]["direction"])
+        controlling_movement_intent = Intent.query.one()
+        self.assertEqual(char, controlling_movement_intent.executor)
+        self.assertEqual(vehicle, controlling_movement_intent.target)
+        action = controlling_movement_intent.serialized_action
+        self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
+        self.assertEqual(11, action[1]["travel_action"][1]["direction"])
 
-        change_direction_action = ChangeVehicleDirectionAction(char, steering_room, 30)
+        change_direction_action = ChangeVehicleDirectionAction(char, 30)
         change_direction_action.perform()
 
-        action = steering_intent.serialized_action
-        self.assertEqual("exeris.core.actions.SteerVehicleAction", action[0])
-        self.assertEqual(30, action[1]["direction"])
+        action = controlling_movement_intent.serialized_action
+        self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
+        self.assertEqual(30, action[1]["travel_action"][1]["direction"])
 
         lazy_char = util.create_character("postac2", steering_room, util.create_player("ala1234"))
 
-        change_direction_action = ChangeVehicleDirectionAction(lazy_char, steering_room, 70)
-        self.assertRaises(Exception, change_direction_action.perform)
+        change_direction_action = ChangeVehicleDirectionAction(lazy_char, 70)
+        self.assertRaises(main.NotControllingMovementException, change_direction_action.perform)
 
+    def test_start_walking_and_change_direction(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+
+        db.session.add(rl)
+
+        char = util.create_character("postac", rl, util.create_player("ala123"))
+        db.session.flush()
+
+        start_controlling_movmeent_action = StartControllingMovementAction(char)
+        start_controlling_movmeent_action.perform()
+
+        control_movement_intent = Intent.query.one()
+        control_movement_action = control_movement_intent.serialized_action
+        self.assertEqual("exeris.core.actions.ControlMovementAction", control_movement_action[0])
+        self.assertEqual(11, control_movement_action[1]["travel_action"][1]["direction"])
+
+        change_direction_action = ChangeVehicleDirectionAction(char, 30)
+        change_direction_action.perform()
+
+        control_movement_intent = Intent.query.one()
+        control_movement_action = control_movement_intent.serialized_action
+        self.assertEqual(30, control_movement_action[1]["travel_action"][1]["direction"])
 
 
 class PlayerActionsTest(TestCase):

@@ -21,7 +21,7 @@ class P:
     PREFERRED_EQUIPMENT = "PreferredEquipment"
     EQUIPPABLE = "Equippable"
     WEAPONIZABLE = "Weaponizable"
-    STEERABLE = "Steerable"
+    CONTROLLING_MOVEMENT = "ControllingMovement"
 
 
 __registry = {}

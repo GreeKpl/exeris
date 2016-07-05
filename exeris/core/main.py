@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    NOT_CONTROLLING_MOVEMENT = "error_not_controlling_movement"
+    VEHICLE_ALREADY_CONTROLLED = "error_vehicle_already_controlled"
+    CANNOT_CONTROL_MOVEMENT = "error_cannot_control_movement"
     CHARACTER_DEAD = "error_character_dead"
     TOO_CLOSE_TO_OTHER_PERMANENT_LOCATION = "error_too_close_to_other_permanent_location"
     ACTIVITY_ALREADY_EXISITS_ON_ENTITY = "error_activity_already_exists_on_entity"
@@ -55,8 +58,8 @@ class Types:
 
 
 class Events:
-    CHANGE_VEHICLE_DIRECTION = "event_change_vehicle_direction"
-    START_STEERING_VEHICLE = "event_start_steering_vehicle"
+    CHANGE_MOVEMENT_DIRECTION = "event_change_movement_direction"
+    START_CONTROLLING_MOVEMENT = "event_start_controlling_movement"
     CHARACTER_DEATH = "event_character_death"
     JOIN_COMBAT = "event_join_combat"
     ATTACK_CHARACTER = "event_attack_character"
@@ -250,8 +253,15 @@ class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
 
     def turn_into_intent(self, executor, action, priority=1):
         from exeris.core import models, actions, deferred
-        travel_action = actions.TravelToEntityAndPerformAction(executor, self.entity, action)
-        return models.Intent(action.executor, Intents.WORK, priority, self.entity, deferred.serialize(travel_action))
+        start_controlling_movement_action = actions.StartControllingMovementAction(executor)
+        control_movement_intent = start_controlling_movement_action.perform()
+        control_movement_action = deferred.call(control_movement_intent.serialized_action)
+        control_movement_action.travel_action = actions.TravelToEntityAction(control_movement_intent.target,
+                                                                             self.entity)
+        control_movement_action.target_action = action
+        control_movement_intent.serialized_action = deferred.serialize(
+            control_movement_action)  # TODO improve access to serialized action in #99
+        return control_movement_intent
 
 
 class EntityNotInInventoryException(GameException):
@@ -274,6 +284,21 @@ class ItemNotApplicableForActivityException(GameException):
     def __init__(self, *, item, activity):
         params = dict(item.pyslatize(), **activity.pyslatize())
         super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **params)
+
+
+class CannotControlMovementException(GameException):
+    def __init__(self):
+        super().__init__(Errors.CANNOT_CONTROL_MOVEMENT)
+
+
+class VehicleAlreadyControlledException(GameException):
+    def __init__(self, *, executor):
+        super().__init__(Errors.VEHICLE_ALREADY_CONTROLLED, **executor.pyslatize())
+
+
+class NotControllingMovementException(GameException):
+    def __init__(self):
+        super().__init__(Errors.NOT_CONTROLLING_MOVEMENT)
 
 
 class InvalidInitialLocationException(GameException):
