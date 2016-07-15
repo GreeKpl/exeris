@@ -4,6 +4,7 @@ import flask_socketio as client_socket
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
 from exeris.core.main import db, app
+from exeris.core.properties_base import P
 from flask import g, render_template
 
 
@@ -196,6 +197,36 @@ def eat(entity_id, amount=None):
         return entity_info, amount
 
 
+@socketio_character_event("character.move_in_direction")
+def character_move_in_direction(direction):
+    change_movement_direction_action = actions.ChangeMovementDirectionAction(g.character, int(direction))
+    change_movement_direction_action.perform()
+
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("character.stop_movement")
+def character_stop_movement():
+    stop_movement_direction_action = actions.StopMovementAction(g.character)
+    stop_movement_direction_action.perform()
+
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("character.get_movement_info")
+def get_moving_entity_info():
+    control_movement_class_name = deferred.get_qualified_class_name(actions.ControlMovementAction)
+
+    moving_entity_intent = models.Intent.query \
+        .filter_by(target=actions.get_moving_entity(g.character)) \
+        .filter(models.Intent.serialized_action[0] == control_movement_class_name).first()
+
+    rendered_info_page = render_template("map/control_movement.html", moving_entity_intent=moving_entity_intent)
+    return rendered_info_page,
+
+
 @socketio_character_event("character.go_to_location")
 def character_goto_location(entity_id):
     entity_id = app.decode(entity_id)
@@ -205,12 +236,16 @@ def character_goto_location(entity_id):
 
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
 
-    travel_to_entity_action = actions.TravelToEntityAction(g.character, entity)
-    travel_intent = models.Intent(g.character, main.Intents.WORK, 1, entity,
-                                  deferred.serialize(travel_to_entity_action))
-    db.session.add(travel_intent)
+    start_controlling_movement_action = actions.StartControllingMovementAction(g.character)
+    control_movement_intent = start_controlling_movement_action.perform()
+
+    control_movement_action = deferred.call(control_movement_intent.serialized_action)  # TODO improve in #99
+    control_movement_action.travel_action = actions.TravelToEntityAction(
+        control_movement_intent.target, entity)
+    control_movement_intent.serialized_action = deferred.serialize(control_movement_action)
 
     db.session.commit()
+    return ()
 
 
 @socketio_character_event("open_readable_contents")
@@ -371,11 +406,13 @@ def _get_entity_info(entity):
         entity = passage_to_neighbour.passage
         other_side = passage_to_neighbour.other_side
 
-    else:
+    elif isinstance(entity, models.Entity):
         full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
+    else:
+        raise ValueError("Entity to show is of type {}".format(type(entity)))
 
     def has_needed_prop(action):
-        if action.required_property == "any":
+        if action.required_property == P.ANY:
             return True
         return entity.has_property(action.required_property)
 
@@ -483,20 +520,3 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
     db.session.add_all([activity])
     db.session.commit()
     return ()
-
-
-@socketio_character_event("character.travel_in_direction")
-def character_travel_in_direction(direction):
-    # delete previous
-    models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
-
-    travel_action = actions.TravelInDirectionAction(g.character, int(direction))
-    intent = models.Intent(g.character, main.Intents.WORK, 1, None, deferred.serialize(travel_action))
-    db.session.add(intent)
-    db.session.commit()
-
-
-@socketio_character_event("character.stop_travel")
-def character_stop_travel():
-    models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
-    db.session.commit()

@@ -248,9 +248,18 @@ data = {
         "en": "work on ${activity:activity_info} [%{ticks_done} / %{ticks_needed}]",
     },
     "action_travel_in_direction": {
-        "en": "travel in direction %{direction}",
+        "en": "move in direction %{direction}",
     },
-    "action_travel_to_entity_and_perform_action": {
-        "en": "travel to ${location:location_info} in order to ${action:action_info}",
-    }
+    "action_controlling_vehicle_standing": {
+        "en": "controlling ${vehicle:location_info} to stand still",
+    },
+    "action_controlling_vehicle": {
+        "en": "controlling ${vehicle:location_info} in order to ${movement_action:action_info}",
+    },
+    "action_walking": {
+        "en": "walking in order to ${movement_action:action_info}",
+    },
+    "action_walking_standing": {
+        "en": "standing",
+    },
 }

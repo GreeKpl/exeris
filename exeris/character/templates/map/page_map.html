@@ -8,10 +8,9 @@
 
     <br><br><br><br><br><br>
     <img src="{{ url_for("character.map_image", character_id=g.character.id) }}">
-    <br>
-    <input type="text" class="travel_direction">
-    <button class="travel_go">Go</button>
-    <button class="travel_stop">Stop</button>
+
+    <div class="col-md-4" id="control-movement-dock">
+    </div>
 {% endblock %}
 {% block scripts %}
     {{ super() }}

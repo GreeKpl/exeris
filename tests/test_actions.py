@@ -9,7 +9,7 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeVehicleDirectionAction
+    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
@@ -819,7 +819,7 @@ class IntentTest(TestCase):
         self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
         self.assertEqual(11, action[1]["travel_action"][1]["direction"])
 
-        change_direction_action = ChangeVehicleDirectionAction(char, 30)
+        change_direction_action = ChangeMovementDirectionAction(char, 30)
         change_direction_action.perform()
 
         action = controlling_movement_intent.serialized_action
@@ -828,7 +828,7 @@ class IntentTest(TestCase):
 
         lazy_char = util.create_character("postac2", steering_room, util.create_player("ala1234"))
 
-        change_direction_action = ChangeVehicleDirectionAction(lazy_char, 70)
+        change_direction_action = ChangeMovementDirectionAction(lazy_char, 70)
         self.assertRaises(main.NotControllingMovementException, change_direction_action.perform)
 
     def test_start_walking_and_change_direction(self):
@@ -849,7 +849,7 @@ class IntentTest(TestCase):
         self.assertEqual("exeris.core.actions.ControlMovementAction", control_movement_action[0])
         self.assertEqual(11, control_movement_action[1]["travel_action"][1]["direction"])
 
-        change_direction_action = ChangeVehicleDirectionAction(char, 30)
+        change_direction_action = ChangeMovementDirectionAction(char, 30)
         change_direction_action.perform()
 
         control_movement_intent = Intent.query.one()

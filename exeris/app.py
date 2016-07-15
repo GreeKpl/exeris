@@ -277,10 +277,10 @@ def create_database():
         invisible_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
         impassable_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
 
-        db.session.add_all([pig_type, horse_type, impassable_to_animal, invisible_to_animal])
+        horse_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
+        horse_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
-        pig_type = models.LocationType.by_name("pig")
-        horse_type = models.LocationType.by_name("horse")
+        db.session.add_all([pig_type, horse_type, impassable_to_animal, invisible_to_animal])
 
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")

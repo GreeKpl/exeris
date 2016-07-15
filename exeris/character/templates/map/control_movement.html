@@ -1,0 +1,23 @@
+<div class="panel panel-default" id="control-movement-box">
+    <div class="panel-heading">
+        {{ t("title_control_movement") }}
+    </div>
+    <div class="panel-body">
+        {% if moving_entity_intent %}
+            {% if moving_entity_intent.executor == g.character %}
+                You are driving.
+                <label>Direction: <input type="number" class="control-movement-direction"></label>
+                <button class="control-movement-direction-confirm">Move</button>
+                <br>
+                <button class="control-movement-stop">Stop</button>
+            {% else %}
+                You see {{ t("character_info", **moving_entity_intent.executor) }} driving.
+            {% endif %}
+        {% else %}
+            Nobody is driving.
+            <label>Direction: <input type="number" class="control-movement-direction"></label>
+            <button class="control-movement-direction-confirm">Move</button>
+            <br>
+        {% endif %}
+    </div>
+</div>

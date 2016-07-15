@@ -1,8 +1,8 @@
-import hashlib
 import logging
 import sys
-from Crypto.Cipher import AES
 
+import hashlib
+from Crypto.Cipher import AES
 from flask import Flask, g
 from flask.ext.sqlalchemy import SQLAlchemy
 
@@ -58,6 +58,7 @@ class Types:
 
 
 class Events:
+    STOP_MOVEMENT = "event_stop_movement"
     CHANGE_MOVEMENT_DIRECTION = "event_change_movement_direction"
     START_CONTROLLING_MOVEMENT = "event_start_controlling_movement"
     CHARACTER_DEATH = "event_character_death"
@@ -252,7 +253,7 @@ class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
         self.entity = entity
 
     def turn_into_intent(self, executor, action, priority=1):
-        from exeris.core import models, actions, deferred
+        from exeris.core import actions, deferred
         start_controlling_movement_action = actions.StartControllingMovementAction(executor)
         control_movement_intent = start_controlling_movement_action.perform()
         control_movement_action = deferred.call(control_movement_intent.serialized_action)

@@ -464,7 +464,7 @@ class TravelInDirectionAction(Action):
     def perform_action(self):
         speed = self.executor.get_max_speed()
 
-        initial_pos = self.executor.get_root().position
+        initial_pos = self.executor.get_position()
 
         ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
@@ -1529,8 +1529,8 @@ class DeathAction(Action):
 
 
 class ControlMovementAction(Action):
-    @convert(travel_action=Action, target_action=Action)
-    def __init__(self, executor, moving_entity, travel_action, target_action=None):
+    @convert(moving_entity=models.Entity, travel_action=Action, target_action=Action)
+    def __init__(self, executor, moving_entity, travel_action=None, target_action=None):
         super().__init__(executor)
         self.moving_entity = moving_entity
         self.travel_action = travel_action
@@ -1551,8 +1551,17 @@ class ControlMovementAction(Action):
 
     def pyslatize(self):
         if isinstance(self.moving_entity, models.Character):
-            return {"action_tag": "action_walking"}
-        return {"action_tag": "action_controlling_vehicle", "vehicle": self.moving_entity.pyslatize()}
+            pyslatized = {"action_tag": "action_walking"}
+        else:
+            pyslatized = {"action_tag": "action_controlling_vehicle", "groups": {
+                "vehicle": self.moving_entity.pyslatize()
+            }}
+
+        if self.travel_action:
+            pyslatized["groups"] = dict(pyslatized.get("groups", {}), movement_action=self.travel_action.pyslatize())
+        else:
+            pyslatized["action_tag"] += "_standing"
+        return pyslatized
 
 
 def get_moving_entity(executor):
@@ -1580,10 +1589,12 @@ class StartControllingMovementAction(Action):
         already_existing_controlling_intent = models.Intent.query.filter_by(target=moving_entity) \
             .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first()
         if already_existing_controlling_intent:
-            raise main.VehicleAlreadyControlledException(executor=already_existing_controlling_intent.executor)
+            if already_existing_controlling_intent.executor == self.executor:  # executor already controls movement
+                return already_existing_controlling_intent
+            else:
+                raise main.VehicleAlreadyControlledException(executor=already_existing_controlling_intent.executor)
 
-        travel_in_direction_action = TravelInDirectionAction(moving_entity, moving_entity.get_root().direction)
-        control_movement_action = ControlMovementAction(self.executor, moving_entity, travel_in_direction_action)
+        control_movement_action = ControlMovementAction(self.executor, moving_entity)
         intent = models.Intent(self.executor, main.Intents.WORK, 1,
                                moving_entity, deferred.serialize(control_movement_action))
 
@@ -1596,29 +1607,52 @@ class StartControllingMovementAction(Action):
         return intent
 
 
-class ChangeVehicleDirectionAction(Action):
+class ChangeMovementDirectionAction(Action):
     def __init__(self, executor, direction):
         super().__init__(executor)
         self.direction = direction
         self.rng = general.SameLocationRange()
 
     def perform_action(self):
+        models.Intent.query.filter_by(executor=self.executor,
+                                      type=main.Intents.WORK).delete()  # no multiple intents in queue till #72
+
         moving_entity = get_moving_entity(self.executor)
 
-        controlling_movement_intent = self.get_movement_control_intent(self.executor, moving_entity)
-        if not controlling_movement_intent:
-            raise main.NotControllingMovementException()
+        start_controlling_movement_action = StartControllingMovementAction(self.executor)
+        controlling_movement_intent = start_controlling_movement_action.perform()
 
         controlling_movement_action = deferred.call(controlling_movement_intent.serialized_action)
         controlling_movement_action.travel_action = TravelInDirectionAction(moving_entity, self.direction)
         controlling_movement_intent.serialized_action = deferred.serialize(controlling_movement_action)
 
-        general.EventCreator.base(Events.CHANGE_MOVEMENT_DIRECTION, rng=self.rng, params={"groups": {
+        general.EventCreator.base(Events.CHANGE_MOVEMENT_DIRECTION, rng=self.rng,
+                                  params={
+                                      "direction": self.direction,
+                                      "groups": {
+                                          "vehicle": moving_entity.pyslatize(),
+                                      }}, doer=self.executor)
+
+
+class StopMovementAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+        self.rng = general.SameLocationRange()
+
+    def perform_action(self):
+        models.Intent.query.filter_by(executor=self.executor,
+                                      type=main.Intents.WORK).delete()  # no multiple intents in queue till #72
+
+        moving_entity = get_moving_entity(self.executor)
+
+        start_controlling_movement_action = StartControllingMovementAction(self.executor)
+        controlling_movement_intent = start_controlling_movement_action.perform()
+
+        controlling_movement_action = deferred.call(controlling_movement_intent.serialized_action)
+        controlling_movement_action.travel_action = None
+        controlling_movement_action.target_action = None
+        controlling_movement_intent.serialized_action = deferred.serialize(controlling_movement_action)
+
+        general.EventCreator.base(Events.STOP_MOVEMENT, rng=self.rng, params={"groups": {
             "vehicle": moving_entity.pyslatize(),
         }}, doer=self.executor)
-
-    @staticmethod
-    def get_movement_control_intent(executor, steered_vehicle):
-        qualified_class_name = deferred.get_qualified_class_name(ControlMovementAction)
-        return models.Intent.query.filter_by(executor=executor, target=steered_vehicle) \
-            .filter(models.Intent.serialized_action[0].astext == qualified_class_name).first()
