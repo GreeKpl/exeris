@@ -809,27 +809,29 @@ class IntentTest(TestCase):
 
         char = util.create_character("postac", steering_room, util.create_player("ala123"))
 
-        start_controlling_movmeent_action = StartControllingMovementAction(char)
-        start_controlling_movmeent_action.perform()
+        start_controlling_movement_action = StartControllingMovementAction(char)
+        start_controlling_movement_action.perform()
 
         controlling_movement_intent = Intent.query.one()
         self.assertEqual(char, controlling_movement_intent.executor)
         self.assertEqual(vehicle, controlling_movement_intent.target)
         action = controlling_movement_intent.serialized_action
         self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
-        self.assertEqual(11, action[1]["travel_action"][1]["direction"])
+        self.assertIsNone(action[1]["travel_action"])
 
         change_direction_action = ChangeMovementDirectionAction(char, 30)
         change_direction_action.perform()
 
+        controlling_movement_intent = Intent.query.one()
         action = controlling_movement_intent.serialized_action
+
         self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
         self.assertEqual(30, action[1]["travel_action"][1]["direction"])
 
         lazy_char = util.create_character("postac2", steering_room, util.create_player("ala1234"))
 
         change_direction_action = ChangeMovementDirectionAction(lazy_char, 70)
-        self.assertRaises(main.NotControllingMovementException, change_direction_action.perform)
+        self.assertRaises(main.VehicleAlreadyControlledException, change_direction_action.perform)
 
     def test_start_walking_and_change_direction(self):
         util.initialize_date()
@@ -847,7 +849,7 @@ class IntentTest(TestCase):
         control_movement_intent = Intent.query.one()
         control_movement_action = control_movement_intent.serialized_action
         self.assertEqual("exeris.core.actions.ControlMovementAction", control_movement_action[0])
-        self.assertEqual(11, control_movement_action[1]["travel_action"][1]["direction"])
+        self.assertIsNone(control_movement_action[1]["travel_action"])
 
         change_direction_action = ChangeMovementDirectionAction(char, 30)
         change_direction_action.perform()
