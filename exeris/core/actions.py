@@ -380,12 +380,14 @@ class WorkProcess(ProcessAction):
 
 
 def move_entity_to_position(entity, direction, target_position):
+    if isinstance(entity, models.RootLocation):
+        raise ValueError("RootLocation {} should always be immobile".format(entity))
     entity_root = entity.get_root()
 
     new_root_location = models.RootLocation(target_position, direction)
     db.session.add(new_root_location)
-    entity.being_in = new_root_location
-    main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=entity_root)
+
+    move_entity_between_entities(entity, entity_root, new_root_location)
 
 
 class FightInCombatAction(Action):
@@ -1114,13 +1116,18 @@ class CreateCharacterAction(PlayerAction):
 
 def move_entity_between_entities(entity, source, destination, amount=1, to_be_used_for=False):
     if entity.parent_entity == source:
-
-        assert isinstance(entity, models.Entity) and not isinstance(entity,
-                                                                    models.Location), "moving locations not supported"
+        assert isinstance(entity, models.Entity), "Moved object is not an entity"
 
         if isinstance(entity, models.Item) and entity.type.stackable:
             weight = amount * entity.type.unit_weight
             move_stackable_resource(entity, source, destination, weight, to_be_used_for)
+        elif isinstance(entity, models.Location):  # currently only leaves can be moved
+            for passage_view in entity.passages_to_neighbours:
+                if passage_view.other_side == source:
+                    passage_view.other_side = destination
+                else:
+                    raise ValueError("Currently only moving single-passage locations is supported")  # TODO till #100
+            entity.being_in = destination
         elif to_be_used_for:
             entity.used_for = destination
         else:
@@ -1131,6 +1138,8 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
 
 
 def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
+    if item.parent_entity != source:
+        raise main.InvalidInitialLocationException(entity=item)
     # remove from the source
     if item.weight == weight:
         item.remove()

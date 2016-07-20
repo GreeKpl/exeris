@@ -475,9 +475,9 @@ class Entity(db.Model):
         :return: True if this entity stores any entity inside or has any neighbour
         """
         excluding = [obj.id for obj in (excluding if excluding else [])]
-        if type(self) is Location:  # Location (not RootLocation) must always
-            # have at least one passage to neighbour ("parent" leading to RootLocation)
-            return False
+        if isinstance(self, RootLocation):
+            if Passage.query.filter(Passage.incident(self)).count():
+                return False
         return not Entity.query.filter(Entity.is_in(self)).filter(~Entity.id.in_(excluding)).count()
 
     def get_position(self):
@@ -1121,12 +1121,39 @@ class EntityProperty(db.Model):
 
 
 class PassageToNeighbour:
+    """
+    View class for displaying passage from the perspective of one side.
+    It reflects changes on the decorated Passage instance.
+    """
+
     def __init__(self, passage, other_side):
         self.passage = passage
-        self.other_side = other_side
-        self.own_side = passage.left_location
-        if passage.left_location == other_side:
-            self.own_side = passage.right_location
+        self._other_side = other_side
+
+    @hybrid_property
+    def other_side(self):
+        return self._other_side
+
+    @other_side.setter
+    def other_side(self, value):
+        self._other_side = value
+        if self._other_side == self.passage.right_location:
+            self.passage.right_location = value
+        else:
+            self.passage.left_location = value
+
+    @hybrid_property
+    def own_side(self):
+        if self.passage.left_location == self._other_side:
+            return self.passage.right_location
+        return self.passage.left_location
+
+    @own_side.setter
+    def own_side(self, value):
+        if self._other_side == self.passage.right_location:
+            self.passage.left_location = value
+        else:
+            self.passage.right_location = value
 
     @staticmethod
     def get_other_side(passage, own_side):
@@ -1351,6 +1378,14 @@ class Passage(Entity):
     def between(self, first_loc, second_loc):
         return or_((self.left_location == first_loc) & (self.right_location == second_loc),
                    (self.right_location == first_loc) & (self.left_location == second_loc))
+
+    @hybrid_method
+    def incident(self, loc):
+        return self.left_location == loc or self.right_location == loc
+
+    @incident.expression
+    def incident(self, loc):
+        return or_((self.left_location == loc), (self.right_location == loc))
 
     def is_accessible(self, only_through_unlimited=False):
         """

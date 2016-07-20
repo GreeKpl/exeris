@@ -1,8 +1,9 @@
+import sqlalchemy
 from flask.ext.testing import TestCase
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
-from exeris.core import actions, properties_base, main
+from exeris.core import actions, properties_base, main, general
 from exeris.core.general import GameDate
 from exeris.core.main import db
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
@@ -104,6 +105,39 @@ class LocationTest(TestCase):
         db.session.add(ch1)
 
         self.assertCountEqual([ch1], loc.get_characters_inside())
+
+    def _loc_is_in_loc(self, moved_loc, parent_loc):
+        # there's an exactly one passage
+        Passage.query.filter(sqlalchemy.sql.expression.or_(Passage.left_location == moved_loc,
+                                                           Passage.right_location == moved_loc)).one()
+        # and it's the passage between `moved_loc` and `parent_loc`
+        Passage.query.filter(Passage.between(moved_loc, parent_loc)).one()
+        self.assertEqual(parent_loc, moved_loc.being_in)
+
+    def test_moving_location_between_locations(self):
+        building_type = LocationType("building", 200)
+        rl = RootLocation(Point(10, 20), 213)
+
+        mobile_loc_type = LocationType("mobile_type", 20)
+        mobile_loc_type.properties.append(EntityTypeProperty(P.MOBILE, {}))
+
+        mobile_location = Location(rl, mobile_loc_type)
+
+        loc1 = Location(rl, building_type)
+        loc2 = Location(rl, building_type)
+
+        db.session.add_all([building_type, rl, mobile_loc_type, mobile_location, loc1, loc2])
+        db.session.flush()
+
+        actions.move_entity_between_entities(mobile_location, rl, loc1)
+        self._loc_is_in_loc(mobile_location, loc1)
+
+        actions.move_entity_between_entities(mobile_location, loc1, loc2)
+        self._loc_is_in_loc(mobile_location, loc2)
+
+        self.assertRaises(ValueError, lambda: actions.move_entity_between_entities(loc2, rl, loc1))
+
+        # check passage and loc.parent_entity
 
 
 class EntityTest(TestCase):
