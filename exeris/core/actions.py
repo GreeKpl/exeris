@@ -1519,6 +1519,11 @@ class DeathAction(Action):
         death_prop = self.create_death_info_property()
         self.executor.properties.append(death_prop)
 
+        intents_to_delete = models.Intent.query.filter_by(executor=self.executor).all()
+        logger.info("Removing %s intents of %s: %s", len(intents_to_delete), self.executor, intents_to_delete)
+        for intent in intents_to_delete:
+            db.session.delete(intent)
+
         self.turn_into_body()
 
         main.call_hook(main.Hooks.NEW_PLAYER_NOTIFICATION, player=self.executor.player,
