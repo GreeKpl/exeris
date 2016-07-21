@@ -917,7 +917,7 @@ class Activity(Entity):
     initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id",
                                      post_update=True)
 
-    requirements = sql.Column(sqlalchemy_json_mutable.JsonDict)  # a list of requirements
+    requirements = sql.Column(sqlalchemy_json_mutable.JsonDict)  # a dict of requirements
     result_actions = sql.Column(
         sqlalchemy_json_mutable.JsonList)  # a list of serialized constructors of subclasses of AbstractAction
     quality_sum = sql.Column(sql.Float)

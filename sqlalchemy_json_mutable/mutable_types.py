@@ -17,6 +17,9 @@ class NestedMutableDict(mutable.MutableDict, tracked_impl.TrackedDict):
             return cls(value)
         return super(NestedMutableDict, cls).coerce(key, value)
 
+    def changed_event(self, *args):
+        self.changed()
+
 
 class NestedMutableList(mutable.MutableList, tracked_impl.TrackedList):
     """SQLAlchemy `mutable` extension list with nested change tracking."""
@@ -30,6 +33,8 @@ class NestedMutableList(mutable.MutableList, tracked_impl.TrackedList):
             return cls(value)
         return super(NestedMutableList, cls).coerce(key, value)
 
+    def changed_event(self, *args):
+        self.changed()
 
 class _JsonTypeDecorator(sqlalchemy.TypeDecorator):
     impl = psql.JSONB
