@@ -307,15 +307,14 @@ def collapse_entity(parent_entity_id):
 @socketio_character_event("entities_refresh_list")
 def entities_refresh_list(view):
     if view == "inventory":
-        location = g.character
+        displayed_locations = [g.character]
     else:
         location = g.character.being_in
+        rng = general.VisibilityBasedRange(distance=30, only_through_unlimited=False)
 
-    rng = general.VisibilityBasedRange(distance=30, only_through_unlimited=False)
-    if isinstance(location, models.RootLocation):
         displayed_locations = rng.root_locations_near(location)
-    else:
-        displayed_locations = [location]
+        displayed_locations.remove(location.get_root())
+        displayed_locations = [location] + displayed_locations
 
     locations = [_get_entity_info(loc_to_show) for loc_to_show in displayed_locations]
     return locations,
