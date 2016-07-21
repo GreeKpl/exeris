@@ -79,10 +79,9 @@ class SchedulerTravelTest(TestCase):
         eat_action = EatAction(traveler, potatoes, 5)
 
         go_to_entity_and_eat_intent = StartControllingMovementAction(traveler).perform()
-        go_to_entity_and_eat_action = deferred.call(go_to_entity_and_eat_intent.serialized_action)
-        go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
-        go_to_entity_and_eat_action.target_action = eat_action
-        go_to_entity_and_eat_intent.serialized_action = deferred.serialize(go_to_entity_and_eat_action)
+        with go_to_entity_and_eat_intent as go_to_entity_and_eat_action:
+            go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
+            go_to_entity_and_eat_action.target_action = eat_action
 
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
                             potato_loc, potato_type, potatoes])

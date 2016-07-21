@@ -542,6 +542,16 @@ class Intent(db.Model):
 
     serialized_action = sql.Column(sqlalchemy_json_mutable.JsonList)  # single action
 
+    def __enter__(self):
+        from exeris.core import deferred
+        self._value = deferred.call(self.serialized_action)
+        return self._value
+
+    def __exit__(self, type, value, traceback):
+        from exeris.core import deferred
+        self.serialized_action = deferred.serialize(self._value)
+
+
     def __repr__(self):
         return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type,
                                                                                    self.target, self.serialized_action)

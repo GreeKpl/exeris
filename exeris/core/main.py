@@ -253,15 +253,14 @@ class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):
         self.entity = entity
 
     def turn_into_intent(self, executor, action, priority=1):
-        from exeris.core import actions, deferred
+        from exeris.core import actions
         start_controlling_movement_action = actions.StartControllingMovementAction(executor)
         control_movement_intent = start_controlling_movement_action.perform()
-        control_movement_action = deferred.call(control_movement_intent.serialized_action)
-        control_movement_action.travel_action = actions.TravelToEntityAction(control_movement_intent.target,
-                                                                             self.entity)
-        control_movement_action.target_action = action
-        control_movement_intent.serialized_action = deferred.serialize(
-            control_movement_action)  # TODO improve access to serialized action in #99
+        with control_movement_intent as control_movement_action:
+            control_movement_action.travel_action = actions.TravelToEntityAction(control_movement_intent.target,
+                                                                                 self.entity)
+            control_movement_action.target_action = action
+
         return control_movement_intent
 
 
@@ -337,10 +336,15 @@ class TooFarFromActivityException(ActivityException, TurningIntoIntentExceptionM
         self.activity = activity
 
     def turn_into_intent(self, executor, action, priority=1):
-        from exeris.core import models, actions, deferred
-        entity = self.activity.being_in
-        travel_action = actions.TravelToEntityAndPerformAction(executor, entity, action)
-        return models.Intent(action.executor, Intents.WORK, priority, entity, deferred.serialize(travel_action))
+        from exeris.core import actions
+        start_controlling_movement_action = actions.StartControllingMovementAction(executor)
+        control_movement_intent = start_controlling_movement_action.perform()
+        with control_movement_intent as control_movement_action:
+            control_movement_action.travel_action = actions.TravelToEntityAction(control_movement_intent.target,
+                                                                                 self.activity)
+            control_movement_action.target_action = action
+
+        return control_movement_intent
 
 
 class ActivityTargetTooFarAwayException(ActivityException):

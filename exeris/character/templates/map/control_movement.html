@@ -11,7 +11,7 @@
                 <br>
                 <button class="control-movement-stop">Stop</button>
             {% else %}
-                You see {{ t("character_info", **moving_entity_intent.executor) }} driving.
+                You see {{ t("character_info", **moving_entity_intent.executor.pyslatize()) }} driving.
             {% endif %}
         {% else %}
             Nobody is driving.

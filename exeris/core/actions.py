@@ -1483,9 +1483,8 @@ class ChangeCombatStanceAction(ActionOnSelf):
 
         combat_intent = models.Intent.query.filter_by(executor=self.executor, type=main.Intents.COMBAT).one()
 
-        own_combat_action = deferred.call(combat_intent.serialized_action)
-        own_combat_action.stance = self.new_stance
-        combat_intent.serialized_action = deferred.serialize(own_combat_action)
+        with combat_intent as own_combat_action:
+            own_combat_action.stance = self.new_stance
 
 
 class ToggleCloseableAction(ActionOnEntity):
@@ -1631,9 +1630,8 @@ class ChangeMovementDirectionAction(Action):
         start_controlling_movement_action = StartControllingMovementAction(self.executor)
         controlling_movement_intent = start_controlling_movement_action.perform()
 
-        controlling_movement_action = deferred.call(controlling_movement_intent.serialized_action)
-        controlling_movement_action.travel_action = TravelInDirectionAction(moving_entity, self.direction)
-        controlling_movement_intent.serialized_action = deferred.serialize(controlling_movement_action)
+        with controlling_movement_intent as controlling_movement_action:
+            controlling_movement_action.travel_action = TravelInDirectionAction(moving_entity, self.direction)
 
         general.EventCreator.base(Events.CHANGE_MOVEMENT_DIRECTION, rng=self.rng,
                                   params={
@@ -1657,10 +1655,9 @@ class StopMovementAction(Action):
         start_controlling_movement_action = StartControllingMovementAction(self.executor)
         controlling_movement_intent = start_controlling_movement_action.perform()
 
-        controlling_movement_action = deferred.call(controlling_movement_intent.serialized_action)
-        controlling_movement_action.travel_action = None
-        controlling_movement_action.target_action = None
-        controlling_movement_intent.serialized_action = deferred.serialize(controlling_movement_action)
+        with controlling_movement_intent as controlling_movement_action:
+            controlling_movement_action.travel_action = None
+            controlling_movement_action.target_action = None
 
         general.EventCreator.base(Events.STOP_MOVEMENT, rng=self.rng, params={"groups": {
             "vehicle": moving_entity.pyslatize(),

@@ -239,10 +239,9 @@ def character_goto_location(entity_id):
     start_controlling_movement_action = actions.StartControllingMovementAction(g.character)
     control_movement_intent = start_controlling_movement_action.perform()
 
-    control_movement_action = deferred.call(control_movement_intent.serialized_action)  # TODO improve in #99
-    control_movement_action.travel_action = actions.TravelToEntityAction(
-        control_movement_intent.target, entity)
-    control_movement_intent.serialized_action = deferred.serialize(control_movement_action)
+    with control_movement_intent as control_movement_action:
+        control_movement_action.travel_action = actions.TravelToEntityAction(
+            control_movement_intent.target, entity)
 
     db.session.commit()
     return ()
