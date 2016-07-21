@@ -11,7 +11,11 @@ import inspect
 import itertools
 import logging
 
+import copy
+
 __author__ = "edelooff"
+
+logger = logging.getLogger(__name__)
 
 
 class TrackedObject(object):
@@ -19,8 +23,7 @@ class TrackedObject(object):
     _type_mapping = {}
 
     def __init__(self, *args, **kwds):
-        self.logger = logging.getLogger(type(self).__name__)
-        self.logger.debug('%s: __init__', self._repr())
+        logger.debug('%s: __init__', self._repr())
         self.parent = None
         super(TrackedObject, self).__init__(*args, **kwds)
 
@@ -33,8 +36,8 @@ class TrackedObject(object):
         The message (if provided) will be debug logged.
         """
         if message is not None:
-            self.logger.debug('%s: %s', self._repr(), message % args)
-        self.logger.debug('%s: changed', self._repr())
+            logger.debug('%s: %s', self._repr(), message % args)
+        logger.debug('%s: changed', self._repr())
         if self.parent is not None:
             self.parent.changed_event()
 
@@ -136,6 +139,18 @@ class TrackedDict(TrackedObject, dict):
             self.convert_mapping(source, self),
             self.convert_mapping(kwds, self)))
 
+    def __copy__(self):
+        result = self.__class__()
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        result = self.__class__()
+        memo[id(self)] = result
+        for k, v in self.items():  # keys are immutable, so needn't be copied
+            result[k] = copy.deepcopy(v, memo)
+        return result
+
 
 @TrackedObject.register(list)
 class TrackedList(TrackedObject, list):
@@ -172,3 +187,15 @@ class TrackedList(TrackedObject, list):
     def sort(self, cmp=None, key=None, reverse=False):
         self.changed_event('sort')
         super(TrackedList, self).sort(cmp=cmp, key=key, reverse=reverse)
+
+    def __copy__(self):
+        result = self.__class__()
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        result = self.__class__()
+        memo[id(self)] = result
+        for el in self:
+            result.append(copy.deepcopy(el, memo))
+        return result

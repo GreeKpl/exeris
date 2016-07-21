@@ -1,5 +1,6 @@
 import inspect
 
+import copy
 import wrapt
 
 import project_root
@@ -29,7 +30,9 @@ def call(json_to_call, **injected_args):
     function_id, kwargs = json_to_call[0], json_to_call[1]
 
     func = object_import(function_id)
+    kwargs = copy.deepcopy(kwargs)
     kwargs.update(injected_args)
+
     return func(**kwargs)
 
 

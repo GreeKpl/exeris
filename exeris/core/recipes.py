@@ -97,7 +97,7 @@ class ActivityFactory:
         actions = []
 
         for action_name, action_args in result:
-            action_args = dict(action_args)
+            action_args = copy.deepcopy(action_args)
             action_class = deferred.object_import(action_name)  # get result class by name
 
             if hasattr(action_class, "_form_inputs"):

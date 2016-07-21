@@ -1289,8 +1289,6 @@ class AddEntityToActivityAction(ActionOnItemAndActivity):
         else:
             raise main.ItemNotApplicableForActivityException(item=self.item, activity=self.activity)
 
-        self.activity.requirements = req
-
 
 class EatAction(ActionOnItem):
     @convert(executor=models.Character, item=models.Item)
