@@ -657,6 +657,7 @@ class Character(Entity):
 
     def get_equipment(self):
         eq_property = self.get_property(P.PREFERRED_EQUIPMENT)
+        eq_property = eq_property if eq_property else {}
         equipment = {k: Item.by_id(v) for k, v in eq_property.items()}
 
         def in_range(item):

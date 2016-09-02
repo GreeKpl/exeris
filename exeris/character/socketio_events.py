@@ -247,6 +247,31 @@ def character_goto_location(entity_id):
     return ()
 
 
+@socketio_character_event("character.get_info")
+def character_goto_location(target_character_id):
+    target_character_id = app.decode(target_character_id)
+    target_character = models.Character.by_id(target_character_id)
+
+    if not general.VisibilityBasedRange(10).is_near(g.character, target_character):
+        raise main.EntityTooFarAwayException(entity=target_character)
+
+    intent_worked_on = models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).first()
+
+    action_worked_on = deferred.call(intent_worked_on.serialized_action) if intent_worked_on else None
+    location = target_character.get_location()
+    modifiers = target_character.modifiers
+    equipment = target_character.get_equipment()
+    combat_action = target_character.get_combat_action()
+    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(), html=True)
+    stripped_character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
+
+    modal = render_template("modal_character_info.html", character=target_character, name=character_observed_name,
+                            stripped_name=stripped_character_observed_name, action_worked_on=action_worked_on,
+                            combat_action=combat_action, location=location, modifiers=modifiers, equipment=equipment)
+
+    return modal,
+
+
 @socketio_character_event("open_readable_contents")
 def open_readable_contents(entity_id):
     entity_id = app.decode(entity_id)
@@ -399,7 +424,7 @@ def _get_entity_info(entity):
     if isinstance(entity, models.PassageToNeighbour):
         full_name = g.pyslate.t("entity_info",
                                 other_side=entity.other_side.pyslatize(html=True, detailed=True),
-                                **entity.passage.pyslatize(html=True, detailed=True))
+                                **entity.passage.pyslatize(detailed=True))
         passage_to_neighbour = entity
         entity = passage_to_neighbour.passage
         other_side = passage_to_neighbour.other_side

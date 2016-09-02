@@ -1,0 +1,53 @@
+<div class="modal fade" id="character_info_modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">{{ name|safe }} - character info</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    <label>Name: <input class="character_info-rename-field"
+                                        data-character-id="{{ encode(character.id) }}" type="text"
+                                        value="{{ stripped_name }}"></label>
+                    <button class="character_info-rename-confirm">Rename</button>
+                </p>
+                <p>
+                    {% if action_worked_on %}
+                        Working on: {{ t("action_info", **action_worked_on.pyslatize()) }}
+                    {% endif %}
+                </p>
+                <p>
+                    Being in: {{ t("location_info", **location.pyslatize()) }}
+                </p>
+                {% if combat_action %}
+                    <p>
+                        Combat:
+                        <button class="character_info-show_combat"
+                                value="{{ encode(combat_action.combat_entity.id) }}">
+                            {{ t("action_info", **combat_action.pyslatize()) }}
+                        </button>
+                    </p>
+                {% endif %}
+                <p>
+                    {% for modifier in modifiers %}
+                        {{ modifier }}
+                    {% endfor %}
+                </p>
+                <ul>
+                    {% for equipment_part in equipment %}
+                        <li>{{ t("item_info", **equipment_part.pyslatize()) }}</li>
+                    {% endfor %}
+                </ul>
+                These values will be descriptive instead of numeric:
+                <ul>
+                    <li>Damage: {{ character.damage }}</li>
+                    <li>Hunger: {{ character.hunger }}</li>
+                    <li>Tiredness: {{ character.tiredness }}</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
