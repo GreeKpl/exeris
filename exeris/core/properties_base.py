@@ -22,6 +22,7 @@ class P:
     EQUIPPABLE = "Equippable"
     WEAPONIZABLE = "Weaponizable"
     CONTROLLING_MOVEMENT = "ControllingMovement"
+    BURYABLE = "Buryable"
 
 
 __registry = {}

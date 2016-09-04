@@ -288,6 +288,22 @@ class AddNameToEntityAction(ActivityAction):
             entity.title = self.entity_name
 
 
+class BuryEntityAction(ActivityAction):
+    @convert(entity=models.Entity)
+    def __init__(self, entity, **injected_args):
+        self.entity = entity
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        position = self.entity.get_position()
+        buried_content = models.BuriedContent.query.filter(
+            models.BuriedContent.position == position.wkt).first()
+        if not buried_content:
+            buried_content = models.BuriedContent(position)
+            db.session.add(buried_content)
+        self.entity.being_in = buried_content
+
+
 ##############################
 #      SCHEDULER ACTIONS     #
 ##############################
@@ -1665,3 +1681,18 @@ class StopMovementAction(Action):
         general.EventCreator.base(Events.STOP_MOVEMENT, rng=self.rng, params={"groups": {
             "vehicle": moving_entity.pyslatize(),
         }}, doer=self.executor)
+
+
+class StartBuryingEntityAction(ActionOnEntity):
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity)
+
+    def perform_action(self):
+        if self.entity.has_activity():
+            raise main.ActivityAlreadyExistsOnEntity(entity=self.entity)
+
+        bury_entity_action = deferred.serialize(BuryEntityAction(self.entity))
+        burying_activity = models.Activity(self.entity, "burying_entity", {"entity": self.entity.pyslatize()},
+                                           {"location_types": [main.Types.OUTSIDE]}, 15, self.executor)
+        burying_activity.result_actions = [bury_entity_action]
+        db.session.add(burying_activity)

@@ -524,7 +524,7 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
         rng = general.SameLocationRange()
         if not rng.is_near(g.character, selected_machine):
             raise main.EntityTooFarAwayException(entity=selected_machine)
-        if models.Activity.query.filter(models.Activity.is_in(selected_machine)).first():
+        if selected_machine.has_activity():
             raise main.ActivityAlreadyExistsOnEntity(entity=selected_machine)
 
         activitys_being_in = selected_machine
@@ -541,5 +541,15 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
     activity = activity_factory.create_from_recipe(recipe, activitys_being_in, g.character, user_input=user_input)
 
     db.session.add_all([activity])
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("character.start_burying_entity")
+def start_burying_entity(entity_id):
+    entity = models.Entity.by_id(app.decode(entity_id))
+
+    start_burying_entity_action = actions.StartBuryingEntityAction(g.character, entity)
+    start_burying_entity_action.perform()
     db.session.commit()
     return ()

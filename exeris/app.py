@@ -306,6 +306,10 @@ def create_database():
         db.session.add_all(
             [stone_group, granite_type, sandstone_type, marble_type, granite_pile, sandstone_pile, marble_pile])
 
+    dead_body_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
+    if not dead_body_type.has_property(P.BURYABLE):
+        dead_body_type.properties.append(models.EntityTypeProperty(P.BURYABLE))
+
     from exeris.translations import data
     for tag_key in data:
         for language in data[tag_key]:

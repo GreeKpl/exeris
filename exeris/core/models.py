@@ -32,6 +32,7 @@ ENTITY_ACTIVITY = "activity"
 ENTITY_TERRAIN_AREA = "terrain_area"
 ENTITY_GROUP = "group"
 ENTITY_COMBAT = "combat"
+ENTITY_BURIED_CONTENT = "buried_content"
 
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
@@ -138,6 +139,15 @@ class EntityType(db.Model):
 
     def contains(self, entity_type):
         return entity_type == self  # is member of "itself" group
+
+    def get_property(self, name):
+        type_property = EntityTypeProperty.query.filter_by(type=self, name=name).first()
+        if type_property:
+            return type_property.data
+        return None
+
+    def has_property(self, name):
+        return self.get_property(name) is not None
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -480,6 +490,9 @@ class Entity(db.Model):
                 return False
         return not Entity.query.filter(Entity.is_in(self)).filter(~Entity.id.in_(excluding)).count()
 
+    def has_activity(self):
+        return Activity.query.filter(Activity.is_in(self)).count() > 0
+
     def get_position(self):
         return self.get_root().position
 
@@ -550,7 +563,6 @@ class Intent(db.Model):
     def __exit__(self, type, value, traceback):
         from exeris.core import deferred
         self.serialized_action = deferred.serialize(self._value)
-
 
     def __repr__(self):
         return "{{Intent, executor: {}, type: {}, target: {}, action: {}}}".format(self.executor, self.type,
@@ -1329,6 +1341,57 @@ class RootLocation(Location):
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_ROOT_LOCATION,
+    }
+
+
+class BuriedContent(Entity):
+    __tablename__ = "buried_contents"
+
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    _position = sql.Column(gis.Geometry("POINT"), nullable=True)
+
+    def __init__(self, position):
+        self.position = position
+        self.being_in = None
+        self.weight = 0
+
+    @hybrid_property
+    def position(self):
+        if self._position is None:
+            return None
+        return to_shape(self._position)
+
+    @position.setter
+    def position(self, position):  # we assume position is a Point
+        x, y = position.x, position.y
+        if not (0 <= x < MAP_WIDTH):
+            x %= MAP_WIDTH
+        if y < 0:
+            y = -y
+            x = (x + MAP_WIDTH / 2) % MAP_WIDTH
+        if y > MAP_HEIGHT:
+            y = MAP_HEIGHT - (y - MAP_HEIGHT)
+            x = (x + MAP_WIDTH / 2) % MAP_WIDTH
+        self._position = from_shape(Point(x, y))
+
+    @position.expression
+    def position(cls):
+        return cls._position
+
+    def remove(self):
+        if not self.is_empty():
+            raise ValueError("trying to remove BuriedContent (id: {}) which is not empty".format(self.id))
+        db.session.delete(self)  # remove itself from the database
+
+    def pyslatize(self, **overwrites):
+        raise NotImplementedError("BuriedContent cannot be pyslatized")
+
+    def __repr__(self):
+        return "{{BuriedContent id={}, pos={}}}".format(self.id, self.position, self.type_name)
+
+    __mapper_args__ = {
+        'polymorphic_identity': ENTITY_BURIED_CONTENT,
     }
 
 
