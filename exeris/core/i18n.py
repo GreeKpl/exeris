@@ -18,7 +18,7 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
             from exeris.app import app
             classes = ["entity", entity_type_name, "id_{}".format(app.encode(entity_id))]
             classes += ["dynamic_nameable"] if params.get("dynamic_nameable", False) else []
-            return '<span class="{}">{}</span>'.format(" ".join(classes), result_text)
+            return '<span class="{}">{}</span>'.format(" ".join(classes), html.escape(result_text))
 
         return g
 
