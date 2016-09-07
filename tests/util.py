@@ -1,8 +1,9 @@
 import datetime
-from shapely.geometry import Point
-from exeris.core.main import create_app, db
+
 from exeris.core import general
+from exeris.core.main import create_app
 from exeris.core.models import Player, Character, GameDateCheckpoint, init_database_contents
+from shapely.geometry import Point
 
 
 def set_up_app_with_database(self):
