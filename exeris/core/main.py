@@ -123,11 +123,12 @@ class States:
     PERCEPTION = "perception"
 
 
-def create_app(database=db, config_object_module="exeris.config.DevelopmentConfig"):
+def create_app(database=db, own_config_file_path=""):
     global app
 
     app = Flask("exeris")
-    app.config.from_object(config_object_module)
+    app.config.from_object("exeris.config.default_config.Config")
+    app.config.from_pyfile(own_config_file_path, silent=True)
 
     if app.config["DEBUG"]:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)

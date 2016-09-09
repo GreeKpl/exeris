@@ -1,6 +1,14 @@
 import os
 
-_author__ = 'alek'
+
+# DO NOT EDIT!
+# This is a default Exeris server configuration.
+# You shouldn't modify it in any way, because it may cause troubles when upgrading.
+# When you want to setup custom variables then create a new python file
+# with config represented as module-level variables.
+# An example file is testing_config.py
+# To use config for the server you need to specify a config path (relative to the exeris root directory)
+# in environment variable EXERIS_CONFIG_PATH
 
 
 class Config:
@@ -20,26 +28,11 @@ class Config:
     SECURITY_SEND_REGISTER_EMAIL = False
     SECURITY_LOGIN_WITHOUT_CONFIRMATION = True
     SECURITY_DEFAULT_REMEMBER_ME = True
+    SECURITY_PASSWORD_HASH = "bcrypt"
     ENABLE_SSO_FOR_DISCOURSE = False
     DISCOURSE_SSO_LOGIN_BACK_URL = ""
     DISCOURSE_SSO_SECRET = "CHOCOLATE IS NICE"
-
-
-class ProductionConfig(Config):
-    DEBUG = False
-    TESTING = False
-
-
-class DevelopmentConfig(Config):
-    DEBUG = True
-    SQLALCHEMY_ECHO = False
-
-
-class TestingConfig(Config):
-    TESTING = True
-
-    SQLALCHEMY_DATABASE_URI_BASE = "postgresql://postgres:root@localhost/"
-    SQLALCHEMY_DATABASE_NAME = "exeris_test"
-    SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI_BASE + SQLALCHEMY_DATABASE_NAME
-    SQLALCHEMY_ECHO = False
-    SQLALCHEMY_RECORD_QUERIES = True
+    ENABLE_CHARACTER_CREATION = True
+    USE_RECAPTCHA_IN_FORMS = False
+    RECAPTCHA_PUBLIC_KEY = ""
+    RECAPTCHA_PRIVATE_KEY = ""

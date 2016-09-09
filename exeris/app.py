@@ -2,7 +2,9 @@ import datetime
 import traceback
 
 import flask_socketio as client_socket
+import os
 import psycopg2
+import redis
 from exeris.core import models, main, general
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import create_app, db, Types
@@ -12,7 +14,6 @@ from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
 from flask.ext.login import current_user
 from flask.ext.redis import FlaskRedis
-import redis
 from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 from flask.ext.socketio import SocketIO
@@ -29,7 +30,8 @@ import eventlet
 
 eventlet.monkey_patch()
 
-app = create_app()
+exeris_config_path = os.environ.get("EXERIS_CONFIG_PATH", "")
+app = create_app(own_config_file_path=exeris_config_path)
 
 Bootstrap(app)
 socketio = SocketIO(app, message_queue=app.config["SOCKETIO_REDIS_DATABASE_URI"])
