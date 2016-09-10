@@ -262,7 +262,7 @@ def character_goto_location(target_character_id):
     modifiers = target_character.modifiers
     equipment = target_character.get_equipment()
     combat_action = target_character.get_combat_action()
-    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(), html=True)
+    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(html=True))
     stripped_character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
 
     modal = render_template("modal_character_info.html", character=target_character, name=character_observed_name,
