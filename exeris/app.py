@@ -18,6 +18,7 @@ from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
 from flask.ext.socketio import SocketIO
 from functools import wraps
+from flask_wtf import RecaptchaField
 from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
 from shapely.geometry import Point, Polygon
@@ -41,9 +42,12 @@ redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
 
 
 class ExtendedRegisterForm(RegisterForm):
-    id = StringField('login', [Required()])
-    language = SelectField('language', [Required()], choices=[("en", "English")])
+    id = StringField('Login', [Required()])
+    language = SelectField('Language', [Required()], choices=[("en", "English")])
 
+
+if app.config["USE_RECAPTCHA_IN_FORMS"]:
+    ExtendedRegisterForm.recaptcha = RecaptchaField("Recaptcha")
 
 user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
 security = Security(app, user_datastore, register_form=ExtendedRegisterForm)
@@ -142,9 +146,6 @@ def create_database():
         ch_pt = models.GameDateCheckpoint(game_date=0, real_date=datetime.datetime.now().timestamp())
         db.session.add(ch_pt)
 
-        new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
-        db.session.add(new_plr)
-
         character_type = models.EntityType.by_name(Types.ALIVE_CHARACTER)
 
         character_type.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
@@ -174,10 +175,6 @@ def create_database():
                                                   6, gathering_build_menu_category,
                                                   result=chopping_result, activity_container="oak_tree")
         db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe])
-
-        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
-                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
-        db.session.add(character)
 
         item_in_construction_type = models.ItemType("portable_item_in_constr", 1, portable=True)
         db.session.add(item_in_construction_type)
@@ -311,6 +308,14 @@ def create_database():
     dead_body_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
     if not dead_body_type.has_property(P.BURYABLE):
         dead_body_type.properties.append(models.EntityTypeProperty(P.BURYABLE))
+
+    if app.config["DEBUG"]:
+        new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
+        db.session.add(new_plr)
+
+        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
+                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
+        db.session.add(character)
 
     from exeris.translations import data
     for tag_key in data:
