@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-from exeris.core import general, models
-
-from exeris.core.main import create_app, db
-
 import exeris.extra.scheduler as scheduler
-
-app = create_app()
+from exeris.app import app
+from exeris.core import general, models
+from exeris.core.main import db
 
 with app.app_context():
     db.create_all()
