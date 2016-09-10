@@ -6,18 +6,32 @@
     </nav>
 
     <br><br><br>
-    Welcome {{ player.id }}! Używasz Microsoft Internet Explorer 5<br>
+    Welcome {{ player.id }}!<br>
 
-    <label for="char_name">Character name: </label><input type="text" id="char_name">
-    <button id="create_character">New character</button>
+    {% if config.ENABLE_CHARACTER_CREATION %}
+        <label for="char_name">Character name: </label><input type="text" id="char_name">
+        <button id="create_character">New character</button>
+    {% else %}
+        <p>Character creation is disabled by the server administrator.</p>
+    {% endif %}
+    {% if config.DASHBOARD_ANNOUNCEMENT %}
+        <div class="alert alert-info" style="width:500px;max-width:100%;">
+            <strong>Announcement!</strong>
+            <br>
+            {{ config.DASHBOARD_ANNOUNCEMENT }}
+        </div>
+    {% endif %}
     <br><br>
-    Achievements:<br>
-    <ul>
-        {% for achievement in achievements %}
-            <li><b>{{ achievement[0] }}</b><br>
-                {{ achievement[1] }}</li>
-        {% endfor %}
-    </ul>
+    {% if achievements %}
+        Achievements:<br>
+        <ul>
+            {% for achievement in achievements %}
+                <li><b>{{ achievement[0] }}</b><br>
+                    {{ achievement[1] }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <a class="btn btn-default" role="button" href="../logout">Logout</a>
 {% endblock %}
 
 {% block scripts %}
@@ -25,7 +39,8 @@
 
     <script type="text/javascript" src="{{ url_for("player.static", filename="js/services/global.js") }}"></script>
     <script type="text/javascript" src="{{ url_for("player.static", filename="js/services/top_bar.js") }}"></script>
-    
-    <script type="text/javascript" src="{{ url_for("player.static", filename="js/player/page_dashboard.js") }}"></script>
+
+    <script type="text/javascript"
+            src="{{ url_for("player.static", filename="js/player/page_dashboard.js") }}"></script>
 
 {% endblock %}
