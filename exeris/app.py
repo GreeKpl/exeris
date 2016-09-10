@@ -23,6 +23,8 @@ from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
 from shapely.geometry import Point, Polygon
 from wtforms import StringField, SelectField
+# At top of file
+from flask_mail import Mail
 
 # noinspection PyUnresolvedReferences
 from exeris.core import achievements
@@ -37,6 +39,8 @@ app = create_app(own_config_file_path=exeris_config_path)
 Bootstrap(app)
 socketio = SocketIO(app, message_queue=app.config["SOCKETIO_REDIS_DATABASE_URI"])
 Bower(app)
+
+mail = Mail(app)
 
 redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
 
