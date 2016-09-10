@@ -1,3 +1,4 @@
+import html
 import statistics
 import math
 
@@ -107,9 +108,13 @@ class ReadablePropertyType(PropertyType):
         text_content = self._fetch_text_content()
         return text_content.title or ""
 
-    def read_contents(self):
+    def read_contents(self, allow_html=False):
         md = markdown.Markdown()
-        return md.convert(self.read_raw_contents())
+
+        md_text = self.read_raw_contents()
+        if not allow_html:
+            md_text = html.escape(md_text)
+        return md.convert(md_text)
 
     def read_raw_contents(self):
         text_content = self._fetch_text_content()

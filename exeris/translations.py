@@ -84,7 +84,7 @@ data = {
         "en": "'%{title@escape_html}'",
     },
     "tp_character_title": {
-        "en": "'%{title@escape_html}'",
+        "en": "%{title@escape_html}",
     },
     "say_to_all_button": {
         "en": "Say to all",

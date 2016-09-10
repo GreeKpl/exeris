@@ -423,7 +423,7 @@ def _get_entity_info(entity):
     other_side = None
     if isinstance(entity, models.PassageToNeighbour):
         full_name = g.pyslate.t("entity_info",
-                                other_side=entity.other_side.pyslatize(html=True, detailed=True),
+                                other_side=entity.other_side.pyslatize(detailed=True),
                                 **entity.passage.pyslatize(detailed=True))
         passage_to_neighbour = entity
         entity = passage_to_neighbour.passage
