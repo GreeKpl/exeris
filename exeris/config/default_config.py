@@ -44,3 +44,4 @@ class Config:
     MAIL_PASSWORD = None
 
     SECURITY_POST_LOGIN_VIEW = "/player"
+    SECURITY_POST_REGISTER_VIEW = "/register"
