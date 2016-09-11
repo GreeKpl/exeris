@@ -32,7 +32,8 @@ players_on_source = get_player_ids(cur_source)
 missing_players_ids = [player for player in players_on_source if player not in players_on_destination]
 
 if missing_players_ids:
-    cur_source.execute("SELECT * FROM players WHERE id IN %s", (tuple(missing_players_ids),))
+    cur_source.execute("SELECT * FROM players WHERE id IN %s AND confirmed_at IS NOT NULL",
+                       (tuple(missing_players_ids),))
     players_to_add = cur_source.fetchall()
 
     for player_tuple in players_to_add:

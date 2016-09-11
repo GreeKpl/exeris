@@ -15,6 +15,7 @@ class Config:
     DEBUG = False
     TESTING = False
     LOGIN_DISABLED = False
+    SERVER_NAME = "localhost:5000"
     SQLALCHEMY_DATABASE_URI_BASE = "postgresql://postgres:root@localhost/"
     SQLALCHEMY_DATABASE_NAME = "exeris1"
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI_BASE + SQLALCHEMY_DATABASE_NAME
