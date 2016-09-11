@@ -7,7 +7,7 @@
                     <small>a browser-based crafting and exploration game</small>
                 </h2>
                 <p>
-                    It's a prealpha version of the Exeris game. I hope you've already noticed it's using an early
+                    It's a prealpha version of the Exeris game. I hope you've already noticed it's an early
                     development build. ;)
                     <br>
                     I'm focused on the internals at the moment and that's why the game lacks user interface,
@@ -50,7 +50,12 @@
                     </li>
                 </ul>
 
-                {% include "security/_menu.html" %}
+                {% if logged_in %}
+                    <a href="{{ url_for("player.page_player") }}" class="btn btn-default">Player dashboard</a>
+                    <a href="/logout" class="btn btn-default">Logout</a>
+                {% else %}
+                    {% include "security/_menu.html" %}
+                {% endif %}
             </div>
         </div>
     </div>
