@@ -3,8 +3,6 @@ import time
 
 from exeris.core import models, deferred, general
 from exeris.core.main import db
-# noinspection PyUnresolvedReferences
-from exeris.extra import hooks
 
 
 class Scheduler:

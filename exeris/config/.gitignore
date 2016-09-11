@@ -1,0 +1,6 @@
+*
+
+!.gitignore
+!__init__.py
+!default_config.py
+!test_config.py
