@@ -11,8 +11,8 @@ if len(sys.argv) < 3:
     print("Invalid arguments. Command format: python3 sync_users.py [SOURCE_CONFIG] [DESTINATION_CONFIG]")
     exit(1)
 
-source_config = importlib.machinery.SourceFileLoader('config', sys.argv[1]).load_module()
-destination_config = importlib.machinery.SourceFileLoader('config', sys.argv[2]).load_module()
+source_config = importlib.machinery.SourceFileLoader('config1', sys.argv[1]).load_module()
+destination_config = importlib.machinery.SourceFileLoader('config2', sys.argv[2]).load_module()
 
 conn_source = psycopg2.connect(source_config.SQLALCHEMY_DATABASE_URI)
 conn_destination = psycopg2.connect(destination_config.SQLALCHEMY_DATABASE_URI)
@@ -38,7 +38,7 @@ if missing_players_ids:
 
     for player_tuple in players_to_add:
         cur_destination.execute("INSERT INTO players VALUES %s", (player_tuple,))
-    cur_destination.commit()
+    conn_destination.commit()
 
     print("Players:", missing_players_ids, "have been copied from source to destination")
 else:
