@@ -54,7 +54,8 @@ if app.config["USE_RECAPTCHA_IN_FORMS"]:
     ExtendedRegisterForm.recaptcha = RecaptchaField("Recaptcha")
 
 user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
-security = Security(app, user_datastore, register_form=ExtendedRegisterForm)
+security = Security(app, user_datastore, register_form=ExtendedRegisterForm,
+                    confirm_register_form=ExtendedRegisterForm)
 
 
 def socketio_outer_event(*args, **kwargs):
