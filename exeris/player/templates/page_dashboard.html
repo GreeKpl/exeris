@@ -15,10 +15,10 @@
         <p>Character creation is disabled by the server administrator.</p>
     {% endif %}
     {% if config.DASHBOARD_ANNOUNCEMENT %}
-        <div class="alert alert-info" style="width:500px;max-width:100%;">
+        <div class="alert alert-info" style="width:700px;max-width:100%;">
             <strong>Announcement!</strong>
             <br>
-            {{ config.DASHBOARD_ANNOUNCEMENT }}
+            {{ config.DASHBOARD_ANNOUNCEMENT|safe }}
         </div>
     {% endif %}
     <br><br>

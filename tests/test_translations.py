@@ -148,6 +148,9 @@ data = {
         "en": "'%{title}'",
         "pl": "„%{title}”",
     },
+    "tp_character_title": {
+        "en": "%{title@escape_html}",
+    },
     "tp_dead_character": {
         "en": "dead %{name}",
         "pl": "martw%{tag_v:m?y|f?a} %{name}",

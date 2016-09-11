@@ -1,14 +1,21 @@
 import random
 
-from exeris.core import actions, deferred, models, general, main
+from exeris.core import deferred, models, general, main
 from exeris.core.properties_base import P
+
+SIDE_ATTACKER = 0
+SIDE_DEFENDER = 1
+
+STANCE_OFFENSIVE = "stance_offensive"
+STANCE_DEFENSIVE = "stance_defensive"
+STANCE_RETREAT = "stance_retreat"
 
 
 def get_combat_actions_of_visible_foes_and_allies(character, combat_entity):
     attackers, defenders = get_combat_actions_of_attackers_and_defenders(character, combat_entity)
 
     own_combat_action = character.get_combat_action()
-    if own_combat_action.side == actions.CombatProcess.SIDE_ATTACKER:
+    if own_combat_action.side == SIDE_ATTACKER:
         foes, allies = defenders, attackers
     else:
         foes, allies = attackers, defenders
@@ -21,9 +28,9 @@ def get_combat_actions_of_attackers_and_defenders(character, combat_entity):
     combat_actions_of_both_sides = [deferred.call(intent.serialized_action) for intent in combatant_intents]
 
     attacker_combat_actions = [action for action in combat_actions_of_both_sides if
-                               action.side == actions.CombatProcess.SIDE_ATTACKER]
+                               action.side == SIDE_ATTACKER]
     defender_combat_actions = [action for action in combat_actions_of_both_sides if
-                               action.side == actions.CombatProcess.SIDE_DEFENDER]
+                               action.side == SIDE_DEFENDER]
 
     combat_range = general.VisibilityBasedRange(10)
     visible_combatants = combat_range.characters_near(character)

@@ -1,6 +1,6 @@
 import copy
 
-from exeris.core import actions, models, deferred, general, main
+from exeris.core import models, deferred, general, main
 from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
@@ -167,6 +167,7 @@ class ActivityFactory:
             except main.GameException as exception:
                 errors.append(exception)
 
+        from exeris.core import actions
         make_error_check_if_required("mandatory_machines", lambda req_value:
         actions.ActivityProgress.check_mandatory_machines(req_value, character.get_location(), {}))
 

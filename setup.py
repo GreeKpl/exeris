@@ -25,7 +25,7 @@ setup(
 
     install_requires=['sqlalchemy>=1.1.0b2', 'flask', 'flask-bootstrap', 'flask-bower', 'flask-sqlalchemy',
                       'flask-socketio', 'flask-security==1.7.4', 'flask-login==0.2.11', 'flask_redis',
-                      'pycrypto', 'geoalchemy2', 'eventlet',
+                      'pycrypto', 'geoalchemy2', 'eventlet', 'bcrypt',
                       'psycopg2', 'shapely', 'pillow', 'markdown', 'wtforms', 'pyslate', 'wrapt', 'redis',
                       "pydiscourse"],
 

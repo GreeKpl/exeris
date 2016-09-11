@@ -440,9 +440,9 @@ class FightInCombatAction(Action):
 
     def calculate_hit_damage(self, targets_combat_action):
         hit_damage = 0.1  # trololo hit damage formula
-        if self.stance == CombatProcess.STANCE_OFFENSIVE:
+        if self.stance == combat.STANCE_OFFENSIVE:
             hit_damage *= 1.5
-        if targets_combat_action.stance == CombatProcess.STANCE_DEFENSIVE:
+        if targets_combat_action.stance == combat.STANCE_DEFENSIVE:
             hit_damage /= 2
         return hit_damage
 
@@ -1016,13 +1016,6 @@ class DecayProcess(ProcessAction):
 
 
 class CombatProcess(ProcessAction):
-    STANCE_OFFENSIVE = "stance_offensive"
-    STANCE_DEFENSIVE = "stance_defensive"
-    STANCE_RETREAT = "stance_retreat"
-
-    SIDE_ATTACKER = 0
-    SIDE_DEFENDER = 1
-
     SCHEDULER_RUNNING_INTERVAL = 30  # 3 * general.GameDate.SEC_IN_HOUR
     INITIAL_RUN_DELAY = 3  # 6 * general.GameDate.SEC_IN_HOUR
 
@@ -1056,7 +1049,7 @@ class CombatProcess(ProcessAction):
             all_potential_targets = all_potential_targets.union(
                 [action.executor for action in potential_targets_actions])
 
-            if fighter_combat_action.stance == CombatProcess.STANCE_RETREAT:
+            if fighter_combat_action.stance == combat.STANCE_RETREAT:
                 logger.debug("Try to retreat")
                 if self.try_to_retreat(fighter_intent):
                     logger.debug("Retreat successful")
@@ -1447,11 +1440,11 @@ class AttackCharacterAction(ActionOnCharacter):
         db.session.flush()
 
         fighting_action = FightInCombatAction(self.executor, combat_entity,
-                                              CombatProcess.SIDE_ATTACKER, CombatProcess.STANCE_OFFENSIVE)
+                                              combat.SIDE_ATTACKER, combat.STANCE_OFFENSIVE)
         combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, combat_entity,
                                       deferred.serialize(fighting_action))
         foe_fighting_action = FightInCombatAction(self.character, combat_entity,
-                                                  CombatProcess.SIDE_DEFENDER, CombatProcess.STANCE_OFFENSIVE)
+                                                  combat.SIDE_DEFENDER, combat.STANCE_OFFENSIVE)
         foe_combat_intent = models.Intent(self.character, main.Intents.COMBAT, 1, combat_entity,
                                           deferred.serialize(foe_fighting_action))
 
@@ -1471,11 +1464,11 @@ class JoinCombatAction(ActionOnEntity):
         self.side = side
 
     def perform_action(self):
-        if self.side not in [CombatProcess.SIDE_ATTACKER, CombatProcess.SIDE_DEFENDER]:
+        if self.side not in [combat.SIDE_ATTACKER, combat.SIDE_DEFENDER]:
             raise ValueError("{} is an invalid side in combat".format(self.side))
 
         fighting_action = FightInCombatAction(self.executor, self.entity,
-                                              self.side, CombatProcess.STANCE_OFFENSIVE)
+                                              self.side, combat.STANCE_OFFENSIVE)
 
         combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, self.entity,
                                       deferred.serialize(fighting_action))
@@ -1490,9 +1483,9 @@ class ChangeCombatStanceAction(ActionOnSelf):
         self.new_stance = new_stance
 
     def perform_action(self):
-        if self.new_stance not in [CombatProcess.STANCE_OFFENSIVE,
-                                   CombatProcess.STANCE_DEFENSIVE,
-                                   CombatProcess.STANCE_RETREAT]:
+        if self.new_stance not in [combat.STANCE_OFFENSIVE,
+                                   combat.STANCE_DEFENSIVE,
+                                   combat.STANCE_RETREAT]:
             raise ValueError("{} is an invalid stance".format(self.new_stance))
 
         combat_intent = models.Intent.query.filter_by(executor=self.executor, type=main.Intents.COMBAT).one()

@@ -60,28 +60,28 @@ class CombatTest(TestCase):
         ROMAN_SIDE = 1
         roman1_combat = Intent(roman1, main.Intents.COMBAT, 1, combat_entity,
                                deferred.serialize(FightInCombatAction(roman1, combat_entity, ROMAN_SIDE,
-                                                                      CombatProcess.STANCE_OFFENSIVE)))
+                                                                      combat.STANCE_OFFENSIVE)))
         roman2_combat = Intent(roman2, main.Intents.COMBAT, 1, combat_entity,
                                deferred.serialize(FightInCombatAction(roman2, combat_entity, ROMAN_SIDE,
-                                                                      CombatProcess.STANCE_OFFENSIVE)))
+                                                                      combat.STANCE_OFFENSIVE)))
         roman3_combat = Intent(roman3, main.Intents.COMBAT, 1, combat_entity,
                                deferred.serialize(FightInCombatAction(roman3, combat_entity, ROMAN_SIDE,
-                                                                      CombatProcess.STANCE_OFFENSIVE)))
+                                                                      combat.STANCE_OFFENSIVE)))
 
         GAUL_SIDE = 0
         gaul1_combat = Intent(gaul1, main.Intents.COMBAT, 1, combat_entity,
                               deferred.serialize(
-                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
+                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, combat.STANCE_OFFENSIVE)))
         gaul2_combat = Intent(gaul2, main.Intents.COMBAT, 1, combat_entity,
                               deferred.serialize(
-                                  FightInCombatAction(gaul2, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
+                                  FightInCombatAction(gaul2, combat_entity, GAUL_SIDE, combat.STANCE_OFFENSIVE)))
         gaul3_combat = Intent(gaul3, main.Intents.COMBAT, 1, combat_entity,
                               deferred.serialize(
-                                  FightInCombatAction(gaul3, combat_entity, GAUL_SIDE, CombatProcess.STANCE_OFFENSIVE)))
+                                  FightInCombatAction(gaul3, combat_entity, GAUL_SIDE, combat.STANCE_OFFENSIVE)))
         gaul_on_a_ship_combat = Intent(gaul_on_a_ship, main.Intents.COMBAT, 1, combat_entity,
                                        deferred.serialize(
                                            FightInCombatAction(gaul_on_a_ship, combat_entity, GAUL_SIDE,
-                                                               CombatProcess.STANCE_OFFENSIVE)))
+                                                               combat.STANCE_OFFENSIVE)))
 
         db.session.add_all([roman1_combat, roman2_combat, roman3_combat,
                             gaul1_combat, gaul2_combat, gaul3_combat, gaul_on_a_ship_combat])
@@ -151,15 +151,15 @@ class CombatTest(TestCase):
         ROMAN_SIDE = 1
         roman1_combat = Intent(roman1, main.Intents.COMBAT, 1, combat_entity,
                                deferred.serialize(FightInCombatAction(roman1, combat_entity, ROMAN_SIDE,
-                                                                      CombatProcess.STANCE_OFFENSIVE)))
+                                                                      combat.STANCE_OFFENSIVE)))
         roman2_combat = Intent(roman2, main.Intents.COMBAT, 1, combat_entity,
                                deferred.serialize(FightInCombatAction(roman2, combat_entity, ROMAN_SIDE,
-                                                                      CombatProcess.STANCE_OFFENSIVE)))
+                                                                      combat.STANCE_OFFENSIVE)))
 
         GAUL_SIDE = 0
         gaul1_combat = Intent(gaul1, main.Intents.COMBAT, 1, combat_entity,
                               deferred.serialize(
-                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, CombatProcess.STANCE_DEFENSIVE)))
+                                  FightInCombatAction(gaul1, combat_entity, GAUL_SIDE, combat.STANCE_DEFENSIVE)))
 
         db.session.add_all([roman1_combat, roman2_combat, gaul1_combat])
 
@@ -183,7 +183,7 @@ class CombatTest(TestCase):
         CombatProcess.RETREAT_CHANCE = 1.0  # retreat is always successful
         with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.01):
             with roman1_combat as roman1_combat_action:
-                roman1_combat_action.stance = CombatProcess.STANCE_RETREAT
+                roman1_combat_action.stance = combat.STANCE_RETREAT
 
             task_mock = TaskMock()
             task_mock.stop_repeating = MagicMock()
@@ -195,7 +195,7 @@ class CombatTest(TestCase):
             self.assertCountEqual([roman2_combat, gaul1_combat], Intent.query.all())
 
             with gaul1_combat as gaul1_combat_action:
-                gaul1_combat_action.stance = CombatProcess.STANCE_RETREAT
+                gaul1_combat_action.stance = combat.STANCE_RETREAT
 
             task_mock = TaskMock()
             task_mock.stop_repeating = MagicMock()
@@ -224,31 +224,31 @@ class CombatTest(TestCase):
         fighter_intents = Intent.query.filter_by(type=main.Intents.COMBAT).all()
         fighter_actions = [intent.serialized_action for intent in fighter_intents]
         self.assertCountEqual([["exeris.core.actions.FightInCombatAction",
-                                {"side": CombatProcess.SIDE_ATTACKER, "executor": roman1.id,
-                                 "stance": CombatProcess.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}],
+                                {"side": combat.SIDE_ATTACKER, "executor": roman1.id,
+                                 "stance": combat.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}],
                                ["exeris.core.actions.FightInCombatAction",
-                                {"side": CombatProcess.SIDE_DEFENDER, "executor": gaul1.id,
-                                 "stance": CombatProcess.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}]],
+                                {"side": combat.SIDE_DEFENDER, "executor": gaul1.id,
+                                 "stance": combat.STANCE_OFFENSIVE, "combat_entity": combat_entity.id}]],
                               fighter_actions)
 
         # join ongoing combat
         gaul2 = util.create_character("gaul1", rl, util.create_player("abc231"))
 
-        join_combat_action = JoinCombatAction(gaul2, combat_entity, CombatProcess.SIDE_DEFENDER)
+        join_combat_action = JoinCombatAction(gaul2, combat_entity, combat.SIDE_DEFENDER)
         join_combat_action.perform()
 
         self.assertIsNotNone(gaul2.get_combat_action())
-        self.assertEqual(CombatProcess.SIDE_DEFENDER, gaul2.get_combat_action().side)
+        self.assertEqual(combat.SIDE_DEFENDER, gaul2.get_combat_action().side)
         self.assertEqual(3, Intent.query.filter_by(target=combat_entity).count())
 
         # change stance in combat
 
-        self.assertEqual(CombatProcess.STANCE_OFFENSIVE, gaul2.get_combat_action().stance)
+        self.assertEqual(combat.STANCE_OFFENSIVE, gaul2.get_combat_action().stance)
 
-        change_stance_action = ChangeCombatStanceAction(gaul2, CombatProcess.STANCE_RETREAT)
+        change_stance_action = ChangeCombatStanceAction(gaul2, combat.STANCE_RETREAT)
         change_stance_action.perform()
 
-        self.assertEqual(CombatProcess.STANCE_RETREAT, gaul2.get_combat_action().stance)
+        self.assertEqual(combat.STANCE_RETREAT, gaul2.get_combat_action().stance)
 
     def test_raise_exception_on_invalid_argument_for_combat_actions(self):
         util.initialize_date()
