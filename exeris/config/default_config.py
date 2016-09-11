@@ -37,7 +37,10 @@ class Config:
     RECAPTCHA_PUBLIC_KEY = ""
     RECAPTCHA_PRIVATE_KEY = ""
     DASHBOARD_ANNOUNCEMENT = None
+    FRONT_PAGE_ANNOUNCEMENT = None
     MAIL_SERVER = "smtp.exeris.org"
     MAIL_PORT = 587
     MAIL_USERNAME = None
     MAIL_PASSWORD = None
+
+    SECURITY_POST_LOGIN_VIEW = "/player"

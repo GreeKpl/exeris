@@ -314,7 +314,7 @@ def create_database():
     if not dead_body_type.has_property(P.BURYABLE):
         dead_body_type.properties.append(models.EntityTypeProperty(P.BURYABLE))
 
-    if app.config["DEBUG"]:
+    if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
 
