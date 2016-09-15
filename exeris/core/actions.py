@@ -1467,6 +1467,9 @@ class JoinCombatAction(ActionOnEntity):
         if self.side not in [combat.SIDE_ATTACKER, combat.SIDE_DEFENDER]:
             raise ValueError("{} is an invalid side in combat".format(self.side))
 
+        if self.executor.combat_action:
+            raise main.AlreadyBeingInCombat()
+
         fighting_action = FightInCombatAction(self.executor, self.entity,
                                               self.side, combat.STANCE_OFFENSIVE)
 

@@ -661,14 +661,16 @@ class Character(Entity):
     def is_alive(self):
         return self.type_name == Types.ALIVE_CHARACTER
 
-    def get_combat_action(self):
+    @hybrid_property
+    def combat_action(self):
         combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
         if combat_intent:
             from exeris.core import deferred
             return deferred.call(combat_intent.serialized_action)
         return None
 
-    def set_combat_action(self, combat_action):
+    @combat_action.setter
+    def combat_action(self, combat_action):
         combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
         if combat_intent:
             from exeris.core import deferred

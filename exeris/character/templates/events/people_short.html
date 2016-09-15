@@ -8,8 +8,8 @@
                 data-id="{{ encode(character.id) }}">{{ t("character_info", html=True, **character.pyslatize())|safe }}
                 <button class="select-listener btn btn-default">speak</button>
                 <button class="select-whisper-listener btn btn-default">whisper</button>
-                {% if character.get_combat_action() %}
-                    <button class="show_combat" value="{{ encode(character.get_combat_action().combat_entity.id) }}">⚔
+                {% if character.combat_action %}
+                    <button class="show_combat" value="{{ encode(character.combat_action.combat_entity.id) }}">⚔
                     </button>
                 {% endif %}
             </li>

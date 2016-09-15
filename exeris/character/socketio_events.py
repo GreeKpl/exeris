@@ -264,7 +264,7 @@ def character_goto_location(target_character_id):
     location = target_character.get_location()
     modifiers = target_character.modifiers
     equipment = target_character.get_equipment()
-    combat_action = target_character.get_combat_action()
+    combat_action = target_character.combat_action
     character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(html=True))
     stripped_character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
 

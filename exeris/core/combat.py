@@ -14,7 +14,7 @@ STANCE_RETREAT = "stance_retreat"
 def get_combat_actions_of_visible_foes_and_allies(character, combat_entity):
     attackers, defenders = get_combat_actions_of_attackers_and_defenders(character, combat_entity)
 
-    own_combat_action = character.get_combat_action()
+    own_combat_action = character.combat_action
     if own_combat_action.side == SIDE_ATTACKER:
         foes, allies = defenders, attackers
     else:
@@ -69,10 +69,6 @@ def get_hit_target(character_combat_action, foe_combat_actions):
     combat_entity = character_combat_action.combat_entity
     foe_combat_actions = [action for action in foe_combat_actions if combat_entity.is_able_to_fight(action.executor)]
 
-    def has_ranged_weapon(character):
-        weapon = character.get_weapon()
-        return weapon.get_property(P.WEAPONIZABLE).get("ranged", False)
-
     if not has_ranged_weapon(character_combat_action.executor):
         character = character_combat_action.executor
 
@@ -90,6 +86,12 @@ def get_hit_target(character_combat_action, foe_combat_actions):
         return None
 
     return _get_random(foe_combat_actions)
+
+
+def has_ranged_weapon(character):
+    weapon = character.get_weapon()
+    weapon_prop = weapon.get_property(P.WEAPONIZABLE)
+    return weapon_prop is not None and weapon_prop.get("ranged", False)
 
 
 def _get_random(foe_actions):

@@ -237,18 +237,22 @@ class CombatTest(TestCase):
         join_combat_action = JoinCombatAction(gaul2, combat_entity, combat.SIDE_DEFENDER)
         join_combat_action.perform()
 
-        self.assertIsNotNone(gaul2.get_combat_action())
-        self.assertEqual(combat.SIDE_DEFENDER, gaul2.get_combat_action().side)
+        self.assertIsNotNone(gaul2.combat_action)
+        self.assertEqual(combat.SIDE_DEFENDER, gaul2.combat_action.side)
         self.assertEqual(3, Intent.query.filter_by(target=combat_entity).count())
+
+        # make it impossible to join the combat again
+        join_combat_action = JoinCombatAction(gaul2, combat_entity, combat.SIDE_DEFENDER)
+        self.assertRaises(main.AlreadyBeingInCombat, join_combat_action.perform)
 
         # change stance in combat
 
-        self.assertEqual(combat.STANCE_OFFENSIVE, gaul2.get_combat_action().stance)
+        self.assertEqual(combat.STANCE_OFFENSIVE, gaul2.combat_action.stance)
 
         change_stance_action = ChangeCombatStanceAction(gaul2, combat.STANCE_RETREAT)
         change_stance_action.perform()
 
-        self.assertEqual(combat.STANCE_RETREAT, gaul2.get_combat_action().stance)
+        self.assertEqual(combat.STANCE_RETREAT, gaul2.combat_action.stance)
 
     def test_raise_exception_on_invalid_argument_for_combat_actions(self):
         util.initialize_date()

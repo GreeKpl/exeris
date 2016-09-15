@@ -341,11 +341,11 @@ class RootLocationTest(TestCase):
         self.assertFalse(center.can_be_permanent())
 
         center = self._prepare_center(40, 50)
-        loc_with_not_mobile_location = RootLocation(Point(42, 50), 23)
-        loc_with_not_mobile_location.title = "with_not_mobile_location"
+        loc_with_immobile_location = RootLocation(Point(42, 50), 23)
+        loc_with_immobile_location.title = "with_immobile_location"
 
         building_type = LocationType("building", 100)
-        building = Location(loc_with_not_mobile_location, building_type)
+        building = Location(loc_with_immobile_location, building_type)
         db.session.add_all([building_type, building])
 
         self.assertFalse(center.can_be_permanent())
