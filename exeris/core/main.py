@@ -1,7 +1,10 @@
+import json
 import logging
-import sys
+import logging.config
 
 import hashlib
+import os
+import project_root
 from Crypto.Cipher import AES
 from flask import Flask, g
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -130,10 +133,9 @@ def create_app(database=db, own_config_file_path=""):
     app.config.from_object("exeris.config.default_config.Config")
     app.config.from_pyfile(own_config_file_path, silent=True)
 
-    if app.config["DEBUG"]:
-        logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-    else:
-        pass  # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+    logger_config_path = os.path.join(project_root.ROOT_PATH, app.config["LOGGER_CONFIG_PATH"])
+    with open(logger_config_path, "r") as config_file:
+        logging.config.dictConfig(json.load(config_file))
 
     database.init_app(app)
     return app

@@ -1,4 +1,5 @@
 import html
+import logging
 import statistics
 import math
 
@@ -8,6 +9,7 @@ from exeris.core import models, main
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, __registry, P
 
+logger = logging.getLogger(__name__)
 
 @property_class
 class DynamicNameablePropertyType(PropertyType):
@@ -137,4 +139,4 @@ class ReadablePropertyType(PropertyType):
         return text_content
 
 
-print("metody: ", __registry.keys())
+logger.info("Methods of entity properties: %s", __registry.keys())

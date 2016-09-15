@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "short_date": {
+      "class": "logging.Formatter",
+      "style": "{",
+      "datefmt": "%H:%M:%S",
+      "format": "[{asctime:s}] [{levelname:s}] {threadName:s} - {name:s} line {lineno:d}: {message:s}"
+    },
+    "standard": {
+      "class": "logging.Formatter",
+      "style": "{",
+      "datefmt": "%Y-%m-%d %H:%M:%S",
+      "format": "[{asctime:s}] [{levelname:s}] {threadName:5s} - {name:s} line {lineno:d}: {message:s}"
+    }
+  },
+  "handlers": {
+    "console_handler": {
+      "class": "logging.StreamHandler",
+      "formatter": "short_date",
+      "stream": "ext://sys.stderr",
+      "level": "DEBUG"
+    },
+    "log_file_handler": {
+      "class": "logging.handlers.WatchedFileHandler",
+      "formatter": "standard",
+      "filename": "exeris.log",
+      "mode": "a",
+      "encoding": "utf-8",
+      "level": "INFO"
+    }
+  },
+  "root": {
+    "handlers": [
+      "console_handler",
+      "log_file_handler"
+    ],
+    "level": "NOTSET"
+  },
+  "loggers": {
+  }
+}
+

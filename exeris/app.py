@@ -1,4 +1,5 @@
 import datetime
+import logging
 import traceback
 
 import flask_socketio as client_socket
@@ -32,6 +33,8 @@ from exeris.core import achievements
 import eventlet
 
 eventlet.monkey_patch()
+
+logger = logging.getLogger(__name__)
 
 exeris_config_path = os.environ.get("EXERIS_CONFIG_PATH", "")
 app = create_app(own_config_file_path=exeris_config_path)
@@ -82,7 +85,7 @@ def socketio_player_event(*args, **kwargs):
         @wraps(f)
         def fg(*a, **k):
             if not current_user.is_authenticated():
-                print("DISCONNECTED UNWANTED USER")
+                logger.warn("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
 
             character_id = request.args.get("character_id", 0)
@@ -109,7 +112,7 @@ def socketio_character_event(*args, **kwargs):
         @wraps(f)
         def fg(*a, **k):
             if not current_user.is_authenticated():
-                print("DISCONNECTED UNWANTED USER")
+                logger.warn("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
             character_id = request.args.get("character_id")
             g.player = current_user
@@ -426,7 +429,7 @@ def error_handler(exception):
     if isinstance(exception, main.GameException):
         client_socket.emit("global.show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs))
     else:
-        print(traceback.format_exc())
+        logger.exception(exception)
         client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
     return False,
 
@@ -435,8 +438,7 @@ def error_handler(exception):
 def handle_error(exception):
     if isinstance(exception, main.GameException):
         return g.pyslate.t(exception.error_tag, **exception.error_kwargs)
-    print(exception)
-    print(traceback.print_tb(exception.__traceback__))
+    logger.exception(exception)
     return traceback.print_tb(exception.__traceback__), 404
 
 

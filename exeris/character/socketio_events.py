@@ -1,3 +1,4 @@
+import logging
 import time
 
 import flask_socketio as client_socket
@@ -6,6 +7,8 @@ from exeris.core import models, actions, accessible_actions, recipes, deferred, 
 from exeris.core.main import db, app
 from exeris.core.properties_base import P
 from flask import g, render_template
+
+logger = logging.getLogger(__name__)
 
 
 @socketio_character_event("rename_entity")
@@ -111,15 +114,15 @@ def pull_events_initial():
         .order_by(models.Event.id.asc()).all()
 
     queried = time.time()
-    print("query: ", queried - start)
+    logger.debug("Initial pull of events on events page")
+    logger.debug("query time: %s", queried - start)
 
     events = [{"id": event.id, "text": g.pyslate.t("game_date", game_date=event.date) + ": " +
                                        g.pyslate.t(event.type_name, html=True, **event.params)} for event in events]
 
     tran = time.time()
-    print("translations:", tran - queried)
-    all_time = time.time()
-    print("esc: ", all_time - tran)
+    logger.debug("translations: %s", tran - queried)
+
     db.session.commit()
     return events,
 

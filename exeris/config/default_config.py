@@ -1,6 +1,5 @@
 import os
 
-
 # DO NOT EDIT!
 # This is a default Exeris server configuration.
 # You shouldn't modify it in any way, because it may cause troubles when upgrading.
@@ -42,6 +41,8 @@ class Config:
     MAIL_PORT = 587
     MAIL_USERNAME = None
     MAIL_PASSWORD = None
+
+    LOGGER_CONFIG_PATH = "exeris/config/default_logging_config.json"
 
     SECURITY_POST_LOGIN_VIEW = "/player"
     SECURITY_POST_REGISTER_VIEW = "/register"

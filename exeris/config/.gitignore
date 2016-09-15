@@ -4,3 +4,4 @@
 !__init__.py
 !default_config.py
 !test_config.py
+!default_logging_config.json

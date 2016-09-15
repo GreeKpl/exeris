@@ -1,9 +1,8 @@
 import inspect
 
 import copy
-import wrapt
-
 import project_root
+import wrapt
 from exeris.core import main, models
 from exeris.core.main import db
 
@@ -37,23 +36,19 @@ def call(json_to_call, **injected_args):
 
 
 def get_qualified_class_name(cls):
-    def remove_last_part(text):
-        return "/".join(text.split("/")[:-1])
-
     class_module = inspect.getfile(cls)
-    root_path = remove_last_part(project_root.__file__)
-    path_in_project = class_module.replace(root_path, "")
+    path_in_project = project_root.relative_to_project_root(class_module)
     module_path = path_in_project.replace("/", ".").strip(".").replace(".py", "")
     full_qualified_name = module_path + "." + cls.__qualname__
     return full_qualified_name
+
 
 def get_qualified_name(obj):
     def remove_last_part(text):
         return "/".join(text.split("/")[:-1])
 
-    class_module = inspect.getmodule(obj)
-    root_path = remove_last_part(project_root.__file__)
-    path_in_project = class_module.__file__.replace(root_path, "")
+    class_module_path = inspect.getmodule(obj).__file__
+    path_in_project = project_root.relative_to_project_root(class_module_path)
     module_path = path_in_project.replace("/", ".").strip(".").replace(".py", "")
     full_qualified_name = module_path + "." + obj.__class__.__qualname__
     return full_qualified_name
