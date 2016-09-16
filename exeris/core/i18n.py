@@ -185,9 +185,10 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
 
         if "location_terrain" in params:
             location_terrain = params["location_terrain"]
-            return helper.translation("terrain_" + location_terrain)
+            return helper.translation("terrain_" + location_terrain + helper.pass_the_suffix(tag_name))
 
-        location_name, form = helper.translation_and_form("entity_" + params["location_name"])
+        location_name, form = helper.translation_and_form(
+            "entity_" + params["location_name"] + helper.pass_the_suffix(tag_name))
         location_name += " "
 
         material_text = ""
@@ -316,5 +317,13 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         return helper.translation(action_tag, **params)
 
     pyslate.register_function("action_info", func_action_info)
+
+    def func_list_of_entities(helper, tag_name, params):
+
+        entities = params["entities"]
+        tag_for_each_entity = "entity_info" + helper.pass_the_suffix(tag_name)
+        return ", ".join([helper.translation(tag_for_each_entity, **dict(entity_info, **params)) for entity_info in entities])
+
+    pyslate.register_function("list_of_entities", func_list_of_entities)
 
     return pyslate

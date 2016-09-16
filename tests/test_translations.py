@@ -28,6 +28,15 @@ data = {
     "entity_building": {
         "en": "building",
     },
+    "entity_building#p": {
+        "en": "buildings",
+    },
+    "entity_hall": {
+        "en": "hall",
+    },
+    "entity_hall#p": {
+        "en": "halls",
+    },
     "entity_carrot": {
         "en": "carrot",
         "pl": "marchewka",
@@ -550,3 +559,38 @@ class GameDateDisplayTest(TestCase):
         pyslate_en = create_pyslate("en", backend=backend)
         date = GameDate.from_date(11, 3, 1, 2, 3)
         self.assertEqual("3-11m. 1:02", pyslate_en.t("game_date", game_date=date))
+
+
+class SpecialFunctionsTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_game_date(self):
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend)
+
+        rl = RootLocation(Point(1, 1), 30)
+        sword_type = ItemType("sword", 10)
+        axe_type = ItemType("axe", 5)
+
+        sword = Item(sword_type, rl)
+        axe = Item(axe_type, rl)
+
+        db.session.add_all([rl, sword_type, axe_type, sword, axe])
+        db.session.flush()
+
+        entities_to_show = [sword.pyslatize(detailed=True), axe.pyslatize(detailed=True)]
+        self.assertEqual("sword, axe", pyslate_en.t("list_of_entities", entities=entities_to_show))
+
+
+        building_type = LocationType("building", 300)
+        hall_type = LocationType("hall", 500)
+
+        building = Location(rl, building_type)
+        hall = Location(rl, hall_type)
+
+        db.session.add_all([building_type, building, hall_type, hall])
+        db.session.flush()
+
+        entities_to_show = [building.pyslatize(), hall.pyslatize()]
+        self.assertEqual("buildings, halls", pyslate_en.t("list_of_entities#p", entities=entities_to_show))
