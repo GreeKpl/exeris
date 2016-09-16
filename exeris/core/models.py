@@ -146,8 +146,17 @@ class EntityType(db.Model):
             return type_property.data
         return None
 
-    def has_property(self, name):
-        return self.get_property(name) is not None
+    def has_property(self, name, **kwargs):
+        prop = self.get_property(name)
+        if prop is None:
+            return False
+        for key, value in kwargs.items():
+            if key not in prop or prop[key] != value:
+                return False
+        return True
+
+    def key_value_pair_exists(self, key, value, kv_dict):
+        return key in kv_dict and kv_dict[key] == value
 
     __mapper_args__ = {
         "polymorphic_identity": ENTITY_BASE,
@@ -388,14 +397,13 @@ class Entity(db.Model):
         return props
 
     def has_property(self, name, **kwargs):
-        if not kwargs:
-            return self.get_property(name) is not None
-        else:
-            assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
-            key, value = next(iter(kwargs.items()))
-
-            prop = self.get_property(name)
-            return prop is not None and key in prop and prop[key] == value
+        prop = self.get_property(name)
+        if prop is None:
+            return False
+        for key, value in kwargs.items():
+            if key not in prop or prop[key] != value:
+                return False
+        return True
 
     @classmethod
     def query_entities_having_property(cls, name, **kwargs):
