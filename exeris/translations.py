@@ -71,6 +71,12 @@ data = {
     "event_hit_target_in_combat_doer": {
         "en": "You hit ${target:entity_info}.",
     },
+    "event_end_of_combat_observer": {
+        "en": "You see the combat between ${list_of_entities} ends, because there are no active participants on one side."
+    },
+    "event_end_of_combat_doer": {
+        "en": "You see the combat between ${list_of_entities} ends, because there are no active participants on one side."
+    },
     "entity_character#f": {
         "en": "unknown woman",
     },

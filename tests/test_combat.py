@@ -288,3 +288,22 @@ class CombatTest(TestCase):
         INCORRECT_SIDE = 123
         join_combat_on_incorrect_side = JoinCombatAction(germanic1, roman_gaul_combat, INCORRECT_SIDE)
         self.assertRaises(ValueError, join_combat_on_incorrect_side.perform)
+
+    def test_if_character_has_ranged_weapon(self):
+        rl = RootLocation(Point(1, 1), 30)
+        char = util.create_character("uga", rl, util.create_player("buga"))
+
+        bow_type = ItemType("bow", 200)
+        bow_type.properties += [
+            EntityTypeProperty(P.WEAPONIZABLE, {"ranged": True}),
+            EntityTypeProperty(P.EQUIPPABLE, {"eq_part": main.EqParts.WEAPON}),
+        ]
+
+        bow = Item(bow_type, char)
+        db.session.add_all([rl, bow_type, bow])
+
+        self.assertFalse(combat.has_ranged_weapon(char))
+
+        char.set_preferred_equipment_part(bow)
+
+        self.assertTrue(combat.has_ranged_weapon(char))

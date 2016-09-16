@@ -156,7 +156,7 @@ def combat_refresh_box(combat_id=None):
 
     rendered = render_template("combat.html", own_action=own_combat_action,
                                attackers=attackers, defenders=defenders,
-                               combat_entity=combat_entity, combat_stances=actions.CombatProcess)
+                               combat_entity=combat_entity, combat_stances=combat)
 
     return rendered,
 
