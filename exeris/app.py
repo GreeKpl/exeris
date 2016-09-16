@@ -24,15 +24,10 @@ from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
 from shapely.geometry import Point, Polygon
 from wtforms import StringField, SelectField
-# At top of file
 from flask_mail import Mail
 
 # noinspection PyUnresolvedReferences
 from exeris.core import achievements
-
-import eventlet
-
-eventlet.monkey_patch()
 
 logger = logging.getLogger(__name__)
 

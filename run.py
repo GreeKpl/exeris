@@ -1,3 +1,7 @@
+import eventlet
+
+eventlet.monkey_patch()
+
 import sys
 
 from exeris.app import app, socketio
