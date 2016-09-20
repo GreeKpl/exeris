@@ -1071,15 +1071,16 @@ class CombatProcess(ProcessAction):
 
         if not there_are_fighters_on_both_sides:
             logger.info("Not enough fighters. Removing combat")
-            self._remove_combat(fighter_intents)
+            fighters_in_the_fight = [intent for intent in fighter_intents if intent not in retreated_fighters_intents]
+            self._remove_combat(fighters_in_the_fight)
 
-    def _remove_combat(self, last_standing_fighter_intents):
+    def _remove_combat(self, left_fighter_intents):
         db.session.delete(self.combat_entity)
-        pyslatized_fighters = [fighter_intent.executor.pyslatize() for fighter_intent in last_standing_fighter_intents]
-        general.EventCreator.base(main.Events.END_OF_COMBAT, doer=last_standing_fighter_intents[0].executor,
+        pyslatized_participants = [fighter_intent.executor.pyslatize() for fighter_intent in left_fighter_intents]
+        general.EventCreator.base(main.Events.END_OF_COMBAT, doer=left_fighter_intents[0].executor,
                                   # next to random combatant
                                   rng=general.VisibilityBasedRange(10),
-                                  params={"entities": pyslatized_fighters})
+                                  params={"entities": pyslatized_participants})
         self.task.stop_repeating()
 
     def try_to_retreat(self, fighting_intent):
