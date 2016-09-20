@@ -20,6 +20,7 @@ from flask.ext.security.forms import Required
 from flask.ext.socketio import SocketIO
 from functools import wraps
 from flask_wtf import RecaptchaField
+from wtforms import validators
 from geoalchemy2.shape import from_shape
 from pyslate.backends import postgres_backend
 from shapely.geometry import Point, Polygon
@@ -44,7 +45,11 @@ redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
 
 
 class ExtendedRegisterForm(RegisterForm):
-    id = StringField('Login', [Required()])
+    id = StringField('Username', [Required(),
+                                  validators.Regexp(r'^[a-zA-Z0-9][a-zA-Z0-9_\-]+$',
+                                                    message='Identifiers can contain only alphanumerics, ' +
+                                                            '"_" and "-". It must start with an alphanumeric character'),
+                                  validators.Length(min=3, max=20)])
     language = SelectField('Language', [Required()], choices=[("en", "English")])
 
 
