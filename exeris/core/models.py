@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 
 roles_users = db.Table('player_roles',
                        db.Column('player_id', db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id')),
-                       db.Column('role_id', db.Integer, db.ForeignKey('roles.id')))
+                       db.Column('role_id', db.Integer, db.ForeignKey('roles.id')),
+                       db.Index("player_roles_index", "player_id", "role_id"))
 
 
 class Role(db.Model, RoleMixin):
@@ -63,7 +64,7 @@ class Player(db.Model, UserMixin):
     register_game_date = sql.Column(sql.BigInteger)
     password = sql.Column(sql.String)
 
-    active = db.Column(db.Boolean)
+    active = db.Column(db.Boolean, index=True)
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
@@ -312,6 +313,8 @@ class Entity(db.Model):
                                          foreign_keys=parent_entity_id, remote_side=id, uselist=False)
     role = sql.Column(sql.SmallInteger, nullable=True)
 
+    __table_args__ = (sql.Index("parent_entity_role_index", "parent_entity_id", "role", "discriminator_type"),)
+
     title = sql.Column(sql.String, nullable=True)
     properties = sql.orm.relationship("EntityProperty", back_populates="entity",
                                       cascade="all, delete, delete-orphan")
@@ -555,10 +558,10 @@ class Intent(db.Model):
     executor_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id), primary_key=True)
     executor = sql.orm.relationship(Entity, uselist=False, backref="intents", foreign_keys=executor_id)
 
-    type = sql.Column(sql.String(20))
+    type = sql.Column(sql.String(20), index=True)
     priority = sql.Column(sql.Integer)
 
-    target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id, ondelete="CASCADE"), nullable=True)
+    target_id = sql.Column(sql.Integer, sql.ForeignKey(Entity.id, ondelete="CASCADE"), nullable=True, index=True)
     target = sql.orm.relationship(Entity, uselist=False, foreign_keys=target_id)
 
     serialized_action = sql.Column(sqlalchemy_json_mutable.JsonList)  # single action
@@ -621,7 +624,7 @@ class Character(Entity):
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
-    player_id = sql.Column(sql.String(PLAYER_ID_MAXLEN), sql.ForeignKey('players.id'))
+    player_id = sql.Column(sql.String(PLAYER_ID_MAXLEN), sql.ForeignKey('players.id'), index=True)
     player = sql.orm.relationship(Player, uselist=False)
 
     language = sql.Column(sql.String(2))
@@ -629,10 +632,10 @@ class Character(Entity):
     spawn_date = sql.Column(sql.BigInteger)
     spawn_position = sql.Column(gis.Geometry("POINT"))
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), index=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {main.States.MODIFIERS: {}})
+    states = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {main.States.MODIFIERS: {}})  # maybe index
     eating_queue = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {})
 
     @hybrid_property
@@ -834,7 +837,7 @@ class Item(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"), index=True)
     type = sql.orm.relationship(ItemType, uselist=False)
 
     visible_parts = sql.Column(sqlalchemy_json_mutable.JsonList, default=lambda x: [])  # sorted list of item type names
@@ -847,7 +850,7 @@ class Item(Entity):
         visible_parts = [part if isinstance(part, str) else part.name for part in visible_parts]
         return sorted(visible_parts)
 
-    damage = sql.Column(sql.Float, default=0)
+    damage = sql.Column(sql.Float, default=0, index=True)  # index for items to be deleted
 
     @validates("damage")
     def validate_damage(self, key, damage):
@@ -933,10 +936,10 @@ class Activity(Entity):
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
     name_params = sql.Column(sqlalchemy_json_mutable.JsonDict)
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), index=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"))
+    initiator_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), index=True)
     initiator = sql.orm.relationship("Character", uselist=False, primaryjoin="Activity.initiator_id == Character.id",
                                      post_update=True)
 
@@ -948,7 +951,7 @@ class Activity(Entity):
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
 
-    damage = sql.Column(sql.Float)
+    damage = sql.Column(sql.Float, index=True)
 
     @validates("damage")
     def validate_damage(self, key, damage):
@@ -1022,7 +1025,7 @@ class EventTypeGroup(db.Model):
     __tablename__ = "event_type_groups"
 
     id = sql.Column(sql.Integer, primary_key=True)
-    name = sql.Column(sql.String(32))
+    name = sql.Column(sql.String(32), index=True)
 
 
 class SkillType(db.Model):
@@ -1033,7 +1036,7 @@ class SkillType(db.Model):
         self.general_name = general_name
 
     name = sql.Column(sql.String(20), primary_key=True)
-    general_name = sql.Column(sql.String(20))
+    general_name = sql.Column(sql.String(20), index=True)
 
 
 class EventType(db.Model):
@@ -1045,7 +1048,7 @@ class EventType(db.Model):
 
     name = sql.Column(sql.String, primary_key=True)
     severity = sql.Column(sql.SmallInteger)
-    group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"), nullable=True)
+    group_id = sql.Column(sql.Integer, sql.ForeignKey("event_type_groups.id"), nullable=True, index=True)
     group = sql.orm.relationship(EventTypeGroup, uselist=False)
 
     def __init__(self, name, severity=NORMAL, group=None):
@@ -1215,7 +1218,7 @@ class Location(Entity):
 
         self.title = title
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(LocationType.name))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(LocationType.name), index=True)
     type = sql.orm.relationship(LocationType, uselist=False)
 
     @hybrid_property
@@ -1270,7 +1273,7 @@ class RootLocation(Location):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), primary_key=True)
 
-    _position = sql.Column(gis.Geometry("POINT"), nullable=True)
+    _position = sql.Column(gis.Geometry("POINT"), nullable=True, index=True)
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, direction):
@@ -1359,7 +1362,7 @@ class BuriedContent(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    _position = sql.Column(gis.Geometry("POINT"), nullable=True)
+    _position = sql.Column(gis.Geometry("POINT"), nullable=True, index=True)
 
     def __init__(self, position):
         self.position = position
@@ -1485,11 +1488,11 @@ class Passage(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("passage_types.name"))
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("passage_types.name"), index=True)
     type = sql.orm.relationship(PassageType, uselist=False)
 
-    left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
-    right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"))
+    left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
+    right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
 
     left_location = sql.orm.relationship(Location, primaryjoin=left_location_id == Location.id,
                                          backref="left_passages", uselist=False)
@@ -1581,10 +1584,10 @@ class Notification(db.Model):
         if add_close_option:
             self.add_close_option()
 
-    player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True)
+    player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True, index=True)
     player = sql.orm.relationship(Player, uselist=False)
 
-    character_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), nullable=True)
+    character_id = sql.Column(sql.Integer, sql.ForeignKey("characters.id"), nullable=True, index=True)
     character = sql.orm.relationship(Character, uselist=False)
 
     title_tag = sql.Column(sql.String)
@@ -1618,7 +1621,7 @@ class ScheduledTask(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
 
     process_data = sql.Column(sqlalchemy_json_mutable.JsonList)
-    execution_game_timestamp = sql.Column(sql.BigInteger)
+    execution_game_timestamp = sql.Column(sql.BigInteger, index=True)
     execution_interval = sql.Column(sql.Integer, nullable=True)
 
     def __init__(self, process_json, execution_game_timestamp, execution_interval=None):
@@ -1658,9 +1661,9 @@ class EntityRecipe(db.Model):
     result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
-    activity_container = sql.Column(psql.JSON, default="entity_specific_item")  # Cannot use mutable JSON types
+    activity_container = sql.Column(psql.JSON, default="entity_specific_item")  # It cannot use mutable JSON types
 
-    build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"))
+    build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), index=True)
     build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)
 
 
@@ -1674,7 +1677,7 @@ class BuildMenuCategory(db.Model):
         self.parent = parent
 
     name = sql.Column(sql.String)
-    parent_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), nullable=True)
+    parent_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), nullable=True, index=True)
     parent = sql.orm.relationship("BuildMenuCategory", primaryjoin=parent_id == id,
                                   foreign_keys=parent_id, remote_side=id, backref="child_categories", uselist=False)
 
@@ -1704,7 +1707,7 @@ class ResourceArea(db.Model):
     resource_type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
     resource_type = sql.orm.relationship(ItemType, uselist=False)
 
-    center = sql.Column(gis.Geometry("POINT"))
+    center = sql.Column(gis.Geometry("POINT"))  # TODO check if it's possible to have a precomp. index "center + radius"
     radius = sql.Column(sql.Float)
 
     @validates("center")
@@ -1751,7 +1754,7 @@ class TerrainArea(Entity):
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
-    _terrain = sql.Column(gis.Geometry("POLYGON"))
+    _terrain = sql.Column(gis.Geometry("POLYGON"), index=True)
     priority = sql.Column(sql.SmallInteger)
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("terrain_types.name"))
     type = sql.orm.relationship(TerrainType, uselist=False)
@@ -1814,8 +1817,8 @@ class PropertyArea(db.Model):
     terrain_area_id = sql.Column(sql.Integer, sql.ForeignKey("terrain_areas.id"), nullable=True)
     terrain_area = sql.orm.relationship(TerrainArea, uselist=False)
 
-    kind = sql.Column(sql.SmallInteger)
-    priority = sql.Column(sql.Integer)
+    kind = sql.Column(sql.SmallInteger, index=True)
+    priority = sql.Column(sql.Integer, index=True)
     value = sql.Column(sql.Float)
 
     _area = sql.Column(gis.Geometry("POLYGON"))
