@@ -400,10 +400,15 @@ def move_entity_to_position(entity, direction, target_position):
         raise ValueError("RootLocation {} should always be immobile".format(entity))
     entity_root = entity.get_root()
 
-    new_root_location = models.RootLocation(target_position, direction)
-    db.session.add(new_root_location)
+    if entity_root.position != target_position:
+        new_root_location = models.RootLocation(target_position, direction)
+        db.session.add(new_root_location)
 
-    move_entity_between_entities(entity, entity_root, new_root_location)
+        move_entity_between_entities(entity, entity_root, new_root_location)
+        logger.debug("Moving entity %s to position %s", entity.id, target_position)
+    else:
+        logger.debug("Not moving entity %s to position %s, because target position was the same", entity.id,
+                     target_position)
 
 
 class FightInCombatAction(Action):
