@@ -2,18 +2,19 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                        aria-hidden="true">&times;</span></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Hide"><span
+                        aria-hidden="true">_</span></button>
                 <h4 class="modal-title">{{ t(notification.title_tag, **notification.title_params) }}</h4>
             </div>
             <div class="modal-body">
                 <p>{{ notification.text_tag }} {{ notification.text_params }}</p>
             </div>
             <div class="modal-footer">
-                {% for option in notification.options %}
-                    <button type="button" class="btn" data-params="{{ option[3] }}"
-                            data-endpoint="{{ option[2] }}"
-                            data-dismiss="modal">{{ t(option[0], **option[1]) }}</button>
+                {% for option in notification_options %}
+                    <button type="button" class="btn notification_option"
+                            data-params="{{ option.request_params | tojson | escape }}"
+                            data-endpoint="{{ option.endpoint }}">
+                        {{ t(option.name_tag, **option.name_params) }}</button>
                 {% endfor %}
             </div>
         </div>

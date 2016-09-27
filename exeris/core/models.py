@@ -1568,8 +1568,7 @@ class Notification(db.Model):
 
     id = sql.Column(sql.Integer, primary_key=True)
 
-    def __init__(self, title_tag, title_params, text_tag, text_params, count=1, character=None, player=None,
-                 add_close_option=True):
+    def __init__(self, title_tag, title_params, text_tag, text_params, count=1, character=None, player=None):
         self.title_tag = title_tag
         self.title_params = title_params
         self.text_tag = text_tag
@@ -1580,9 +1579,7 @@ class Notification(db.Model):
 
         from exeris.core import general
         self.game_date = general.GameDate.now().game_timestamp
-
-        if add_close_option:
-            self.add_close_option()
+        self.options = []
 
     player_id = sql.Column(sql.String, sql.ForeignKey("players.id"), nullable=True, index=True)
     player = sql.orm.relationship(Player, uselist=False)
@@ -1607,12 +1604,32 @@ class Notification(db.Model):
         self.game_date = general.GameDate.now().game_timestamp
 
     def add_close_option(self):
-        self.add_option("option_close", {}, "close", {})
+        if not self.id:
+            db.session.add(self)
+            db.session.flush()  # to make sure that ID is available
+        self.add_option("notification_close", {}, "notification.close", [self.id])
 
     def add_option(self, name_tag, name_params, endpoint, request_params):
-        options = list(self.options) if self.options else []
-        options.append([name_tag, name_params, endpoint, request_params])
-        self.options = options
+        encoded_params_indexes = []
+        for i in range(len(request_params)):
+            param = request_params[i]
+            if isinstance(param, Entity):
+                request_params[i] = param.id
+                encoded_params_indexes += [i]
+
+        self.options.append({"name_tag": name_tag, "name_params": name_params,
+                             "endpoint": endpoint, "request_params": request_params,
+                             "encoded_indexes": encoded_params_indexes})
+
+    def get_option(self, endpoint_name):
+        for option in self.options:
+            if option["endpoint"] == endpoint_name:
+                return option
+        return None
+
+    @classmethod
+    def by_id(cls, entity_id):
+        return cls.query.get(entity_id)
 
 
 class ScheduledTask(db.Model):

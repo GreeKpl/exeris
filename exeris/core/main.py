@@ -42,6 +42,7 @@ class Errors:
     TARGET_ALREADY_IN_COMBAT = "error_target_already_in_combat"
     ALREADY_BEING_IN_COMBAT = "error_already_being_in_combat"
     NO_RESOURCE_AVAILABLE = "error_no_resource_available"
+    INVALID_OPTION_FOR_NOTIFICATION = "error_invalid_option_for_notification"
 
 
 class Types:
@@ -403,3 +404,8 @@ class TooCloseToPermanentLocation(GameException):
 class CharacterDeadException(CharacterException):
     def __init__(self, *, character):
         super().__init__(Errors.CHARACTER_DEAD, name=character.name)
+
+
+class InvalidOptionForNotification(PlayerException, MalformedInputErrorMixin):
+    def __init__(self, *, player, option_name):
+        super().__init__(Errors.INVALID_OPTION_FOR_NOTIFICATION, player=player, option_name=option_name)

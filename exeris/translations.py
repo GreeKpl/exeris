@@ -235,7 +235,7 @@ data = {
     "achievement_unlocked": {
         "en": "Achievement %{name} unlocked!",
     },
-    "option_close": {
+    "notification_close": {
         "en": "Close",
     },
     "entity_invisible_to_animal": {

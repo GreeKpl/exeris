@@ -48,6 +48,7 @@ def check_achievement_progress(player):
                     notification = models.Notification("achievement_unlocked", {"name": achievement[0]}, "well_done",
                                                        {}, player=player)
                     db.session.add(notification)
+                    notification.add_close_option()
                     main.call_hook(main.Hooks.NEW_CHARACTER_NOTIFICATION, character=character, notification=notification)
 
 

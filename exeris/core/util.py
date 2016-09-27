@@ -62,5 +62,8 @@ def pos_for_distance_in_direction(initial_pos, direction_deg, distance):
 
 
 def serialize_notifications(notifications, pyslate):
+    def close_is_the_only_option(notification):
+        return len(notification.options) == 1 and notification.get_option("notification.close") is not None
+
     return [{"notification_id": n.id, "title": pyslate.t(n.title_tag, **n.title_params),
-             "count": n.count, "date": n.game_date} for n in notifications]
+             "count": n.count, "date": n.game_date, "easy_close": close_is_the_only_option(n)} for n in notifications]

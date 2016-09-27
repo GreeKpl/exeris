@@ -392,6 +392,7 @@ class WorkProcess(ProcessAction):
             failure_notification = models.Notification(error_tag, error_kwargs, error_tag, error_kwargs,
                                                        character=worker, player=None)
             db.session.add(failure_notification)
+            failure_notification.add_close_option()
         main.call_hook(main.Hooks.NEW_CHARACTER_NOTIFICATION, character=worker, notification=failure_notification)
 
 
