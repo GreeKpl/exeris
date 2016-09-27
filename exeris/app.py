@@ -371,7 +371,8 @@ class SocketioUsers:
     def __init__(self):
         # redis_db.delete("sid_by_player_id")
         # redis_db.delete("sid_by_character_id")
-        redis_db.flushdb()
+        # redis_db.flushdb()
+       pass
 
     def get_all_by_player_id(self, player_id):
         result_from_redis = redis_db.smembers("sid_by_player_id:" + str(player_id))

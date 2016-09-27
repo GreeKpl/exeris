@@ -12,7 +12,7 @@ with app.app_context():
                                              general.GameDate.now().game_timestamp, 5)
         db.session.add(activity_task)
         eating_task = models.ScheduledTask(["exeris.core.actions.EatingProcess", {}],
-                                           general.GameDate.now().game_timestamp, 20)
+                                           general.GameDate.now().game_timestamp, 3600)
         db.session.add(eating_task)
 
         db.session.commit()

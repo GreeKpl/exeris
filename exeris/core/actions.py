@@ -1549,9 +1549,13 @@ class DeathAction(Action):
 
         self.turn_into_body()
 
+        death_notification = models.Notification("title_character_death", self.executor.pyslatize(),
+                                                 "character_death", {}, player=self.executor.player)
+        db.session.add(death_notification)
+        death_notification.add_close_option()
+
         main.call_hook(main.Hooks.NEW_PLAYER_NOTIFICATION, player=self.executor.player,
-                       notification=models.Notification("title_character_death", self.executor.pyslatize(),
-                                                        "character_death", {}, player=self.executor.player))
+                       notification=death_notification)
 
     def turn_into_body(self):
         self.executor.type = models.EntityType.by_name(main.Types.DEAD_CHARACTER)
