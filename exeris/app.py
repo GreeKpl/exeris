@@ -430,8 +430,9 @@ def error_handler(exception):
     if isinstance(exception, main.GameException):
         client_socket.emit("global.show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs))
     else:
-        logger.exception(exception)
         client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
+    if isinstance(exception, main.MalformedInputErrorMixin) or not isinstance(exception, main.GameException):
+        logger.exception(exception)
     return False,
 
 

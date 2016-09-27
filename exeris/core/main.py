@@ -208,6 +208,10 @@ class ItemException(GameException):
     pass
 
 
+class MalformedInputErrorMixin:
+    """Marker class for errors which are most likely caused by a cracking attempt"""
+
+
 class CharacterException(GameException):
     pass
 

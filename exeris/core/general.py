@@ -441,7 +441,8 @@ class ItemQueryHelper:
     @staticmethod
     def query_all_types_near(types, being_in):
         """
-        Return pre-prepared query which will filter Item query to specified types and "being_in" property
+        Return pre-prepared query which will filter Item query to specified types, and are in `being_in`
+        or are in the same entity as the one specified in `being_in`
         :param types: list of ItemType instances or ItemType.type_name identifiers
         :param being_in: list of places where items should be located (their 'being_in' attribute)
         :return: query with two filters applied
