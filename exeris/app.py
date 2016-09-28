@@ -372,7 +372,7 @@ class SocketioUsers:
         # redis_db.delete("sid_by_player_id")
         # redis_db.delete("sid_by_character_id")
         # redis_db.flushdb()
-       pass
+        pass
 
     def get_all_by_player_id(self, player_id):
         result_from_redis = redis_db.smembers("sid_by_player_id:" + str(player_id))
@@ -452,3 +452,5 @@ app.register_blueprint(character_static)
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
 app.jinja_env.globals.update(encode=main.encode)
 app.jinja_env.globals.update(decode=main.decode)
+app.jinja_env.globals.update(debug_dict=lambda data_dict: {k: round(v, 2) if type(v) is float else v
+                                                           for (k, v) in data_dict.items()})
