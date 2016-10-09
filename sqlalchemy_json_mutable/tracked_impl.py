@@ -19,13 +19,16 @@ logger = logging.getLogger(__name__)
 
 
 class TrackedObject(object):
-    """A base class for delegated change-tracking."""
+    """A base class for delegated change-tracking.
+    It's possible to register listeners for any change of this object by adding a function to the listeners' list.
+    The function should take a singl argument: reference to the tracked object."""
     _type_mapping = {}
 
     def __init__(self, *args, **kwds):
         logger.debug('%s: __init__', self._repr())
         self.parent = None
         super(TrackedObject, self).__init__(*args, **kwds)
+        self.listeners = []
 
     def changed_event(self, message=None, *args):
         """Marks the object as changed.
@@ -40,6 +43,8 @@ class TrackedObject(object):
         logger.debug('%s: changed', self._repr())
         if self.parent is not None:
             self.parent.changed_event()
+        for listener in self.listeners:
+            listener(self)
 
     @classmethod
     def register(cls, origin_types):
