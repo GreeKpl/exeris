@@ -903,18 +903,18 @@ class EatingProcess(ProcessAction):
         characters = models.Character.query.all()
 
         for character in characters:
-            character.hunger += EatingProcess.HUNGER_INCREASE
+            character.states[main.States.HUNGER] += EatingProcess.HUNGER_INCREASE
 
             eating_queue = character.eating_queue
 
             hunger_attr_points = eating_queue.get(main.States.HUNGER)
             if hunger_attr_points:
-                character.hunger += max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
+                character.states[main.States.HUNGER] += max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
                 eating_queue[main.States.HUNGER] -= max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
 
             attributes_to_increase = {}
             for attribute in properties.EdiblePropertyType.FOOD_BASED_ATTR:
-                setattr(character, attribute, getattr(character, attribute) - EatingProcess.FOOD_BASED_ATTR_DECAY)
+                character.states[attribute] -= EatingProcess.FOOD_BASED_ATTR_DECAY
 
                 queue_attr_points = eating_queue.get(attribute, 0)
                 increase = min(queue_attr_points, EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE)
@@ -922,11 +922,10 @@ class EatingProcess(ProcessAction):
                 eating_queue[attribute] = eating_queue.get(attribute, 0) - increase
 
             for attribute, increase in attributes_to_increase.items():
-                setattr(character, attribute, getattr(character, attribute) + increase * EatingProcess.bonus_mult(
-                    attributes_to_increase.values()))
+                character.states[attribute] += increase * EatingProcess.bonus_mult(attributes_to_increase.values())
             character.eating_queue = eating_queue
 
-        hungry_characters = db.session.query(models.Character) \
+        hungry_characters = models.Character.query \
             .filter(models.Character.states[main.States.HUNGER].astext.cast(sql.Float) == 1.0).all()
         for character in hungry_characters:
             character.damage += EatingProcess.STARVATION_DAMAGE

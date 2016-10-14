@@ -128,6 +128,9 @@ class States:
     PERCEPTION = "perception"
 
 
+NORMALIZED_STATES = (States.DAMAGE, States.TIREDNESS, States.HUNGER, States.SATIATION)
+
+
 def create_app(database=db, own_config_file_path=""):
     global app
 

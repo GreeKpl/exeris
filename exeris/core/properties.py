@@ -1,15 +1,15 @@
 import html
 import logging
-import statistics
 import math
+import statistics
 
 import markdown
-
 from exeris.core import models, main
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, __registry, P
 
 logger = logging.getLogger(__name__)
+
 
 @property_class
 class DynamicNameablePropertyType(PropertyType):
@@ -87,7 +87,7 @@ class EdiblePropertyType(PropertyType):
 
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
-        satiation_left = (1 - eater.satiation)
+        satiation_left = (1 - eater.states[main.States.SATIATION])
         return math.floor(satiation_left / edible_prop[main.States.SATIATION])
 
     def eat(self, eater, amount):
@@ -97,7 +97,7 @@ class EdiblePropertyType(PropertyType):
         for attribute in list(EdiblePropertyType.FOOD_BASED_ATTR) + [main.States.HUNGER]:
             if edible_prop.get(attribute):
                 queue[attribute] = queue.get(attribute, 0) + amount * edible_prop.get(attribute)
-        eater.satiation += amount * edible_prop[main.States.SATIATION]
+        eater.states[main.States.SATIATION] += amount * edible_prop[main.States.SATIATION]
 
         eater.eating_queue = queue
 

@@ -249,6 +249,25 @@ class EntityTest(TestCase):
 
         activity.remove()
 
+    def test_persistence_of_normalized_states(self):
+        """
+        Test two normalized states: tiredness and damage (because it can be accessed through a hybrid property)
+        """
+        rl = RootLocation(Point(1, 1), 10)
+        test_char = util.create_character("jan", rl, util.create_player("ala123"))
+
+        self.assertEqual(0, test_char.damage)  # hard-coded default value
+        self.assertEqual(0, test_char.states["tiredness"])  # default value stored in EntityTypeProperty
+
+        test_char.states["damage"] += 0.1
+        self.assertEqual(0.1, test_char.damage)
+
+        test_char.states["tiredness"] = 2
+        self.assertEqual(1, test_char.states["tiredness"])
+
+        test_char.states["tiredness"] -= 0.5
+        self.assertEqual(0.5, test_char.states["tiredness"])
+
 
 class RootLocationTest(TestCase):
     create_app = util.set_up_app_with_database

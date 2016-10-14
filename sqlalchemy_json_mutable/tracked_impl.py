@@ -43,8 +43,6 @@ class TrackedObject(object):
         logger.debug('%s: changed', self._repr())
         if self.parent is not None:
             self.parent.changed_event()
-        for listener in self.listeners:
-            listener(self)
 
     @classmethod
     def register(cls, origin_types):
@@ -119,30 +117,32 @@ class TrackedDict(TrackedObject, dict):
             self.convert_mapping(kwds, self)))
 
     def __setitem__(self, key, value):
-        self.changed_event('__setitem__: %r=%r', key, value)
         super(TrackedDict, self).__setitem__(key, self.convert(value, self))
+        self.changed_event('__setitem__: %r=%r', key, value)
 
     def __delitem__(self, key):
-        self.changed_event('__delitem__: %r', key)
         super(TrackedDict, self).__delitem__(key)
+        self.changed_event('__delitem__: %r', key)
 
     def clear(self):
-        self.changed_event('clear')
         super(TrackedDict, self).clear()
+        self.changed_event('clear')
 
     def pop(self, *key_and_default):
+        value = super(TrackedDict, self).pop(*key_and_default)
         self.changed_event('pop: %r', key_and_default)
-        return super(TrackedDict, self).pop(*key_and_default)
+        return value
 
     def popitem(self):
+        value = super(TrackedDict, self).popitem()
         self.changed_event('popitem')
-        return super(TrackedDict, self).popitem()
+        return value
 
     def update(self, source=(), **kwds):
-        self.changed_event('update(%r, %r)', source, kwds)
         super(TrackedDict, self).update(itertools.chain(
             self.convert_mapping(source, self),
             self.convert_mapping(kwds, self)))
+        self.changed_event('update(%r, %r)', source, kwds)
 
     def __copy__(self):
         result = self.__class__()
@@ -165,33 +165,34 @@ class TrackedList(TrackedObject, list):
         super(TrackedList, self).__init__(self.convert_iterable(iterable, self))
 
     def __setitem__(self, key, value):
-        self.changed_event('__setitem__: %r=%r', key, value)
         super(TrackedList, self).__setitem__(key, self.convert(value, self))
+        self.changed_event('__setitem__: %r=%r', key, value)
 
     def __delitem__(self, key):
-        self.changed_event('__delitem__: %r', key)
         super(TrackedList, self).__delitem__(key)
+        self.changed_event('__delitem__: %r', key)
 
     def __iadd__(self, iterable):
-        self.changed_event('__iadd__: %r', iterable)
         super(TrackedList, self).extend(self.convert_iterable(iterable, self))
+        self.changed_event('__iadd__: %r', iterable)
         return self
 
     def append(self, item):
-        self.changed_event('append: %r', item)
         super(TrackedList, self).append(self.convert(item, self))
+        self.changed_event('append: %r', item)
 
     def extend(self, iterable):
-        self.changed_event('extend: %r', iterable)
         super(TrackedList, self).extend(self.convert_iterable(iterable, self))
+        self.changed_event('extend: %r', iterable)
 
     def pop(self, index=None):
+        value = super(TrackedList, self).pop(index)
         self.changed_event('pop: %d', index)
-        return super(TrackedList, self).pop(index)
+        return value
 
     def sort(self, cmp=None, key=None, reverse=False):
-        self.changed_event('sort')
         super(TrackedList, self).sort(cmp=cmp, key=key, reverse=reverse)
+        self.changed_event('sort')
 
     def __copy__(self):
         result = self.__class__()

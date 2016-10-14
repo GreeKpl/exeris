@@ -89,19 +89,19 @@ class SchedulerTravelTest(TestCase):
         for i in range(2):  # come closer
             go_to_entity_and_eat_action.perform()
 
-        self.assertEqual(0, traveler.satiation)
+        self.assertEqual(0, traveler.states["satiation"])
         self.assertAlmostEqual(2.89820927, traveler.get_root().position.x)
         self.assertAlmostEqual(2.89820927, traveler.get_root().position.y)
 
         go_to_entity_and_eat_action.perform()  # eat half of potatoes
         # food is eaten
-        self.assertEqual(0.5, traveler.satiation)
+        self.assertEqual(0.5, traveler.states["satiation"])
 
         # action if finished, so it's not necessary to move and do it again, so force to do it again
         go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
         go_to_entity_and_eat_action.target_action = eat_action
         go_to_entity_and_eat_action.perform()  # eat the rest of potatoes
-        self.assertEqual(1, traveler.satiation)
+        self.assertEqual(1, traveler.states["satiation"])
 
         self.assertTrue(sql.inspect(potatoes).deleted)
 
@@ -156,12 +156,12 @@ class SchedulerTravelTest(TestCase):
         # come closer, not eat the potatoes
         for _ in range(2):
             travel_process.perform()
-        self.assertEqual(0, traveler.satiation)
+        self.assertEqual(0, traveler.states["satiation"])
         self.assertEqual(10, potatoes.amount)
 
         travel_process.perform()  # now it's close enough
 
-        self.assertEqual(0.5, traveler.satiation)
+        self.assertEqual(0.5, traveler.states["satiation"])
         self.assertEqual(5, potatoes.amount)
 
         # intent's action is completed and thus removed
@@ -636,18 +636,18 @@ class SchedulerEatingTest(TestCase):
         process = EatingProcess(None)
         process.perform()
 
-        self.assertEqual(EatingProcess.HUNGER_INCREASE, char.hunger)
+        self.assertEqual(EatingProcess.HUNGER_INCREASE, char.states["hunger"])
 
         process = EatingProcess(None)
         process.perform()
 
-        self.assertEqual(2 * EatingProcess.HUNGER_INCREASE, char.hunger)
+        self.assertEqual(2 * EatingProcess.HUNGER_INCREASE, char.states["hunger"])
 
         value_after_two_ticks = Character.FOOD_BASED_ATTR_INITIAL_VALUE - 2 * EatingProcess.FOOD_BASED_ATTR_DECAY
-        self.assertAlmostEqual(value_after_two_ticks, char.strength)
-        self.assertAlmostEqual(value_after_two_ticks, char.durability)
-        self.assertAlmostEqual(value_after_two_ticks, char.fitness)
-        self.assertAlmostEqual(value_after_two_ticks, char.perception)
+        self.assertAlmostEqual(value_after_two_ticks, char.states["strength"])
+        self.assertAlmostEqual(value_after_two_ticks, char.states["durability"])
+        self.assertAlmostEqual(value_after_two_ticks, char.states["fitness"])
+        self.assertAlmostEqual(value_after_two_ticks, char.states["perception"])
 
     def test_eating_applying_single_attr_food(self):
         rl = RootLocation(Point(1, 1), 111)
@@ -656,18 +656,18 @@ class SchedulerEatingTest(TestCase):
 
         char.eating_queue = dict(strength=0.3, hunger=0.2)
 
-        char.hunger = 0.3
+        char.states["hunger"] = 0.3
 
         process = EatingProcess(None)
         process.perform()
 
         hunger_after_tick = 0.3 + EatingProcess.HUNGER_INCREASE - EatingProcess.HUNGER_MAX_DECREASE
-        self.assertAlmostEqual(hunger_after_tick, char.hunger)
+        self.assertAlmostEqual(hunger_after_tick, char.states["hunger"])
 
         # increase of just a single parameter, so no diversity bonus applies
         value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE - EatingProcess.FOOD_BASED_ATTR_DECAY \
                            + EatingProcess.FOOD_BASED_ATTR_MAX_POSSIBLE_INCREASE
-        self.assertEqual(value_after_tick, char.strength)
+        self.assertEqual(value_after_tick, char.states["strength"])
 
     def test_bonus_multiplier_value(self):
         values = [0.01]
@@ -697,10 +697,10 @@ class SchedulerEatingTest(TestCase):
 
         # increase all parameters parameter, diversity bonus applies
         value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE + 0.003 * 1.09 - EatingProcess.FOOD_BASED_ATTR_DECAY
-        self.assertEqual(value_after_tick, char.strength)
+        self.assertEqual(value_after_tick, char.states["strength"])
 
         value_after_tick = Character.FOOD_BASED_ATTR_INITIAL_VALUE + 0.01 * 1.09 - EatingProcess.FOOD_BASED_ATTR_DECAY
-        self.assertEqual(value_after_tick, char.durability)
+        self.assertEqual(value_after_tick, char.states["durability"])
 
     def test_death_of_starvation(self):
         util.initialize_date()
@@ -708,8 +708,7 @@ class SchedulerEatingTest(TestCase):
         rl = RootLocation(Point(1, 1), 111)
         db.session.add(rl)
         char = util.create_character("testing", rl, util.create_player("DEF"))
-
-        char.hunger = 0.99  # very hungry
+        char.states["hunger"] = 0.99  # very hungry
 
         process = EatingProcess(None)
         process.perform()

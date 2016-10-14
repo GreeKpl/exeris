@@ -56,6 +56,14 @@ def direction_degrees(point_a, point_b):
     return (360 + math.degrees(math.atan2(y_difference, x_difference))) % 360
 
 
+def clamp(value, minimum, maximum):
+    return sorted([minimum, value, maximum])[1]
+
+
+def clamp_0_1(value):
+    return clamp(value, 0, 1)
+
+
 def pos_for_distance_in_direction(initial_pos, direction_deg, distance):
     return Point(initial_pos.x + math.cos(math.radians(direction_deg)) * distance,
                  initial_pos.y + math.sin(math.radians(direction_deg)) * distance)

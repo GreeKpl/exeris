@@ -4,8 +4,15 @@ import logging
 import types
 
 import geoalchemy2 as gis
+import sqlalchemy
 import sqlalchemy as sql
 import sqlalchemy.dialects.postgresql as psql
+import sqlalchemy_json_mutable
+from exeris.core import main
+from exeris.core import properties_base, util
+from exeris.core.main import db, Types, Events
+from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
+from exeris.core.properties_base import P
 from flask.ext.security import RoleMixin
 from flask.ext.security import UserMixin
 from geoalchemy2.shape import to_shape, from_shape
@@ -13,13 +20,6 @@ from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import validates
 from sqlalchemy.sql import or_
-
-from exeris.core import main
-import sqlalchemy_json_mutable
-from exeris.core import properties_base
-from exeris.core.main import db, Types, Events
-from exeris.core.properties_base import P
-from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
@@ -296,6 +296,13 @@ class TypeGroup(EntityType):
         return "{TypeGroup, name: " + self.name + "}"
 
 
+def clamp_to_0_1(states):
+    for state, value in states.items():
+        if state in main.NORMALIZED_STATES:
+            if value < 0 or value > 1:
+                states[state] = util.clamp_0_1(value)
+
+
 class Entity(db.Model):
     """
     Abstract base for all entities in the game, like items or locations
@@ -306,6 +313,24 @@ class Entity(db.Model):
     ROLE_USED_FOR = 2
 
     id = sql.Column(sql.Integer, primary_key=True)
+
+    def __init__(self):
+        self.states = {
+            main.States.DAMAGE: 0,
+            main.States.MODIFIERS: {},
+        }
+
+        if hasattr(self, "type"):
+            states_type_property = EntityTypeProperty.query.get((self.type.name, P.STATES))
+            if states_type_property:
+                self._add_initial_states_to_dict(states_type_property)
+
+        self.states.listeners.append(clamp_to_0_1)
+
+    def _add_initial_states_to_dict(self, states_type_property):
+        for state, state_prop in states_type_property.data.items():
+            self.states[state] = state_prop["initial"]
+
     weight = sql.Column(sql.Integer)
 
     parent_entity_id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), nullable=True)
@@ -318,6 +343,8 @@ class Entity(db.Model):
     title = sql.Column(sql.String, nullable=True)
     properties = sql.orm.relationship("EntityProperty", back_populates="entity",
                                       cascade="all, delete, delete-orphan")
+
+    states = sql.Column(sqlalchemy_json_mutable.JsonDict, index=True)  # index for items to be deleted
 
     @hybrid_property
     def being_in(self):
@@ -407,6 +434,18 @@ class Entity(db.Model):
             if key not in prop or prop[key] != value:
                 return False
         return True
+
+    @hybrid_property
+    def damage(self):
+        return self.states[main.States.DAMAGE]
+
+    @damage.setter
+    def damage(self, new_value):
+        self.states[main.States.DAMAGE] = new_value
+
+    @hybrid_property
+    def modifiers(self):
+        return self.states[main.States.MODIFIERS]
 
     @classmethod
     def query_entities_having_property(cls, name, **kwargs):
@@ -540,6 +579,12 @@ class Entity(db.Model):
         return str(self.__class__) + str(self.__dict__)
 
 
+@sqlalchemy.event.listens_for(Entity, "load")
+def add_death_listener(target, _):
+    target.states = sqlalchemy_json_mutable.mutable_types.NestedMutableDict.coerce("states", target.states)
+    target.states.listeners.append(clamp_to_0_1)
+
+
 class Intent(db.Model):
     """
     Represents entity's will or plan to perform certain action (which can be impossible at the moment)
@@ -596,6 +641,14 @@ class LocationType(EntityType):
     }
 
 
+def create_death_listener(self):
+    def listen_for_death(states):
+        if states[main.States.DAMAGE] >= 1.0:
+            main.call_hook(main.Hooks.CHARACTER_DEATH, character=self)
+
+    return listen_for_death
+
+
 class Character(Entity):
     __tablename__ = "characters"
 
@@ -609,7 +662,7 @@ class Character(Entity):
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
     def __init__(self, name, sex, player, language, spawn_date, spawn_position, being_in):
-        super().__init__()
+
         self.being_in = being_in
         self.name = name
         self.sex = sex
@@ -621,6 +674,9 @@ class Character(Entity):
         self.spawn_date = spawn_date
 
         self.type = EntityType.by_name(Types.ALIVE_CHARACTER)
+        super().__init__()
+
+        self.states.listeners.append(create_death_listener(self))
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
@@ -635,7 +691,6 @@ class Character(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), index=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    states = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {main.States.MODIFIERS: {}})  # maybe index
     eating_queue = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda x: {})
 
     @hybrid_property
@@ -715,81 +770,7 @@ class Character(Entity):
             return self  # character is a weapon itself
         return weapon_used
 
-    @hybrid_property
-    def hunger(self):
-        return self.states.get(main.States.HUNGER, 0)
-
-    @hunger.setter
-    def hunger(self, value):
-        self.states = dict(self.states, hunger=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def tiredness(self):
-        return self.states.get(main.States.TIREDNESS, 0)
-
-    @tiredness.setter
-    def tiredness(self, value):
-        self.states = dict(self.states, tiredness=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def damage(self):
-        return self.states.get(main.States.DAMAGE, 0)
-
-    @damage.setter
-    def damage(self, value):
-        self.states = dict(self.states, damage=max(0, min(value, 1.0)))
-        if value >= 1.0:
-            main.call_hook(main.Hooks.CHARACTER_DEATH, character=self)
-
     FOOD_BASED_ATTR_INITIAL_VALUE = 0.1
-
-    @hybrid_property
-    def strength(self):
-        return self.states.get(main.States.STRENGTH, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
-
-    @strength.setter
-    def strength(self, value):
-        self.states = dict(self.states, strength=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def durability(self):
-        return self.states.get(main.States.DURABILITY, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
-
-    @durability.setter
-    def durability(self, value):
-        self.states = dict(self.states, durability=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def fitness(self):
-        return self.states.get(main.States.FITNESS, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
-
-    @fitness.setter
-    def fitness(self, value):
-        self.states = dict(self.states, fitness=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def perception(self):
-        return self.states.get(main.States.PERCEPTION, Character.FOOD_BASED_ATTR_INITIAL_VALUE)
-
-    @perception.setter
-    def perception(self, value):
-        self.states = dict(self.states, perception=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def satiation(self):
-        return self.states.get(main.States.SATIATION, 0.0)
-
-    @satiation.setter
-    def satiation(self, value):
-        self.states = dict(self.states, satiation=max(0, min(value, 1.0)))
-
-    @hybrid_property
-    def modifiers(self):
-        return self.states[main.States.MODIFIERS]
-
-    @modifiers.setter
-    def modifiers(self, value):
-        self.states = dict(self.states, modifiers=value)
 
     @validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
@@ -814,6 +795,12 @@ class Character(Entity):
     }
 
 
+@sqlalchemy.event.listens_for(Character, "load")
+def add_death_listener(target, _):
+    target.states = sqlalchemy_json_mutable.mutable_types.NestedMutableDict.coerce("states", target.states)
+    target.states.listeners.append(create_death_listener(target))
+
+
 class Item(Entity):
     __tablename__ = "items"
 
@@ -834,6 +821,7 @@ class Item(Entity):
         else:
             self.weight = item_type.unit_weight
         self.quality = quality
+        super().__init__()
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
@@ -849,12 +837,6 @@ class Item(Entity):
         # turn (optional) item types into names
         visible_parts = [part if isinstance(part, str) else part.name for part in visible_parts]
         return sorted(visible_parts)
-
-    damage = sql.Column(sql.Float, default=0, index=True)  # index for items to be deleted
-
-    @validates("damage")
-    def validate_damage(self, key, damage):
-        return max(0.0, min(1.0, damage))  # in range [0, 1]
 
     quality = sql.Column(sql.Float, default=1.0)
 
@@ -929,9 +911,9 @@ class Activity(Entity):
 
         self.quality_ticks = 0.0
         self.quality_sum = 0
-        self.damage = 0
 
         self.type = EntityType.by_name(Types.ACTIVITY)
+        super().__init__()
 
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
     name_params = sql.Column(sqlalchemy_json_mutable.JsonDict)
@@ -950,12 +932,6 @@ class Activity(Entity):
     quality_ticks = sql.Column(sql.Integer)
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
-
-    damage = sql.Column(sql.Float, index=True)
-
-    @validates("damage")
-    def validate_damage(self, key, damage):
-        return max(0.0, min(1.0, damage))  # in range [0, 1]
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
@@ -979,7 +955,7 @@ class Combat(Entity):
     __tablename__ = "combats"
 
     def __init__(self):
-        pass
+        super().__init__()
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
     recorded_violence = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda: {})
@@ -1217,6 +1193,7 @@ class Location(Entity):
             db.session.add(Passage(self.being_in, self, passage_type))
 
         self.title = title
+        super().__init__()
 
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(LocationType.name), index=True)
     type = sql.orm.relationship(LocationType, uselist=False)
@@ -1368,6 +1345,7 @@ class BuriedContent(Entity):
         self.position = position
         self.being_in = None
         self.weight = 0
+        super().__init__()
 
     @hybrid_property
     def position(self):
@@ -1453,8 +1431,8 @@ class Passage(Entity):
         self.right_location = right_location
         if not passage_type:
             passage_type = EntityType.by_name(Types.DOOR)
-
         self.type = passage_type
+        super().__init__()
 
     @hybrid_method
     def between(self, first_loc, second_loc):
@@ -1768,6 +1746,7 @@ class TerrainArea(Entity):
         self.terrain = terrain_poly
         self.priority = priority
         self.type = terrain_type
+        super().__init__()
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
 
@@ -1901,8 +1880,20 @@ def init_database_contents():
     if not EntityType.by_name(Types.ALIVE_CHARACTER):
         alive_character = EntityType(Types.ALIVE_CHARACTER)
         alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
+        alive_character.properties.append(EntityTypeProperty(P.STATES, data={
+            main.States.TIREDNESS: {"initial": 0},
+            main.States.SATIATION: {"initial": 0},
+            main.States.HUNGER: {"initial": 0},
+            main.States.STRENGTH: {"initial": 0.1},
+            main.States.DURABILITY: {"initial": 0.1},
+            main.States.FITNESS: {"initial": 0.1},
+            main.States.PERCEPTION: {"initial": 0.1},
+        }))
         alive_character.properties.append(
-            EntityTypeProperty(P.MOBILE, data={"speed": 10, "traversable_terrains": [TerrainType.TRAVEL_LAND]}))
+            EntityTypeProperty(P.MOBILE, data={
+                "speed": 10,
+                "traversable_terrains": [TerrainType.TRAVEL_LAND]
+            }))
         alive_character.properties.append(EntityTypeProperty(P.CONTROLLING_MOVEMENT))  # char can control own mobility
         alive_character.properties.append(EntityTypeProperty(P.WEAPONIZABLE, data={"attack": 5}))  # weaponless attack
         alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
@@ -1916,7 +1907,13 @@ def init_database_contents():
         group_any_terrain.add_to_group(group_water_terrain)
         db.session.add_all([group_any_terrain, group_land_terrain, group_water_terrain])
 
-    db.session.merge(EntityType(Types.DEAD_CHARACTER))
+    if not EntityType.by_name(Types.DEAD_CHARACTER):
+        dead_character = EntityType(Types.DEAD_CHARACTER)
+        dead_character.properties.append(EntityTypeProperty(P.STATES, data={
+            main.States.MODIFIERS: {"initial": {}},
+        }))
+        db.session.add(dead_character)
+
     db.session.merge(EntityType(Types.ACTIVITY))
 
     db.session.merge(LocationType(Types.OUTSIDE, 0))

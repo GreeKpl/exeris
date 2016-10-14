@@ -1,11 +1,11 @@
 import sqlalchemy
-from sqlalchemy.ext import mutable
 import sqlalchemy.dialects.postgresql as psql
+from sqlalchemy.ext import mutable
 
 from . import tracked_impl
 
 
-class NestedMutableDict(mutable.MutableDict, tracked_impl.TrackedDict):
+class NestedMutableDict(tracked_impl.TrackedDict, mutable.MutableDict):
     """SQLAlchemy `mutable` extension dictionary with nested change tracking."""
 
     @classmethod
@@ -18,10 +18,12 @@ class NestedMutableDict(mutable.MutableDict, tracked_impl.TrackedDict):
         return super(NestedMutableDict, cls).coerce(key, value)
 
     def changed_event(self, *args):
+        for listener in self.listeners:
+            listener(self)
         self.changed()
 
 
-class NestedMutableList(mutable.MutableList, tracked_impl.TrackedList):
+class NestedMutableList(tracked_impl.TrackedList, mutable.MutableList):
     """SQLAlchemy `mutable` extension list with nested change tracking."""
 
     @classmethod
@@ -35,6 +37,7 @@ class NestedMutableList(mutable.MutableList, tracked_impl.TrackedList):
 
     def changed_event(self, *args):
         self.changed()
+
 
 class _JsonTypeDecorator(sqlalchemy.TypeDecorator):
     impl = psql.JSONB

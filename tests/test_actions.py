@@ -657,7 +657,7 @@ class CharacterActionsTest(TestCase):
         action = EatAction(char, potatoes, 3)
         action.perform()
 
-        self.assertAlmostEqual(0.03, char.satiation)
+        self.assertAlmostEqual(0.03, char.states["satiation"])
         self.assertAlmostEqual(0.6, char.eating_queue["hunger"])
         self.assertAlmostEqual(0.9, char.eating_queue["strength"])
 
