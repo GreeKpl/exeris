@@ -222,12 +222,15 @@ def character_stop_movement():
 def get_moving_entity_info():
     control_movement_class_name = deferred.get_qualified_class_name(actions.ControlMovementAction)
 
-    moving_entity_intent = models.Intent.query \
-        .filter_by(target=actions.get_moving_entity(g.character)) \
-        .filter(models.Intent.serialized_action[0] == control_movement_class_name).first()
+    try:
+        moving_entity_intent = models.Intent.query \
+            .filter_by(target=actions.get_moving_entity(g.character)) \
+            .filter(models.Intent.serialized_action[0] == control_movement_class_name).first()
 
-    rendered_info_page = render_template("map/control_movement.html", moving_entity_intent=moving_entity_intent)
-    return rendered_info_page,
+        rendered_info_page = render_template("map/control_movement.html", moving_entity_intent=moving_entity_intent)
+        return rendered_info_page,
+    except main.CannotControlMovementException:
+        return "",
 
 
 @socketio_character_event("character.go_to_location")
