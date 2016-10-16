@@ -14,6 +14,7 @@ from flask import g, request
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.bower import Bower
 from flask.ext.login import current_user
+from flask.ext.oauthlib.provider import OAuth2Provider
 from flask.ext.redis import FlaskRedis
 from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
 from flask.ext.security.forms import Required
@@ -42,6 +43,8 @@ Bower(app)
 mail = Mail(app)
 
 redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
+
+oauth = OAuth2Provider(app)
 
 
 class ExtendedRegisterForm(RegisterForm):

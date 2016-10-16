@@ -69,6 +69,8 @@ class Player(db.Model, UserMixin):
                             backref=db.backref('players', lazy='dynamic'))
     confirmed_at = sql.Column(sql.DateTime)
 
+    serial_id = sql.Column(sql.Integer, sql.Sequence('player_serial_id'), nullable=False)
+
     def __init__(self, id, email, language, password, active=True, register_date=None, register_game_date=None,
                  **kwargs):
         self.id = id
@@ -101,6 +103,10 @@ class Player(db.Model, UserMixin):
 
     def get_id(self):
         return self.id
+
+    @classmethod
+    def by_id(cls, player_id):
+        return cls.query.get(player_id)
 
 
 class TranslatedText(db.Model):
@@ -1682,6 +1688,62 @@ class BuildMenuCategory(db.Model):
 
     def get_recipes(self):
         return EntityRecipe.query.filter_by(build_menu_category=self).all()
+
+
+# tables used by oauth2
+
+class GrantToken(db.Model):
+    __tablename__ = "grant_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id', ondelete='CASCADE'))
+    user = db.relationship(Player)
+    client_id = db.Column(db.String(40), nullable=False)
+    code = db.Column(db.String(255), index=True, nullable=False)
+
+    redirect_uri = db.Column(db.String(255))
+    expires = db.Column(db.DateTime)
+
+    _scopes = db.Column(db.Text)
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+        return self
+
+    @property
+    def scopes(self):
+        if self._scopes:
+            return self._scopes.split()
+        return []
+
+
+class BearerToken(db.Model):
+    __tablename__ = "bearer_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.String(40), nullable=False)
+
+    user_id = db.Column(db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id'))
+    user = db.relationship(Player)
+
+    token_type = db.Column(db.String(40))
+
+    access_token = db.Column(db.String(255), unique=True)
+    refresh_token = db.Column(db.String(255), unique=True)
+    expires = db.Column(db.DateTime)
+    _scopes = db.Column(db.Text)
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+        return self
+
+    @property
+    def scopes(self):
+        if self._scopes:
+            return self._scopes.split()
+        return []
 
 
 class ResourceArea(db.Model):

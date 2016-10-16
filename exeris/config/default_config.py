@@ -46,3 +46,5 @@ class Config:
 
     SECURITY_POST_LOGIN_VIEW = "/player"
     SECURITY_POST_REGISTER_VIEW = "/register"
+
+    OAUTH2_CLIENTS = []
