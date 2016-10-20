@@ -5,7 +5,7 @@
 
 import sqlalchemy
 from exeris.app import socketio
-from flask.ext.sqlalchemy import SignallingSession
+from flask_sqlalchemy import SignallingSession
 
 _notifications_to_send = []
 _events_to_send = []

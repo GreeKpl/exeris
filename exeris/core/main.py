@@ -7,7 +7,7 @@ import os
 import project_root
 from Crypto.Cipher import AES
 from flask import Flask, g
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 app = None

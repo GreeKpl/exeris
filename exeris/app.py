@@ -11,14 +11,14 @@ from exeris.core.i18n import create_pyslate
 from exeris.core.main import create_app, db, Types
 from exeris.core.properties_base import P
 from flask import g, request
-from flask.ext.bootstrap import Bootstrap
-from flask.ext.bower import Bower
-from flask.ext.login import current_user
-from flask.ext.oauthlib.provider import OAuth2Provider
-from flask.ext.redis import FlaskRedis
-from flask.ext.security import SQLAlchemyUserDatastore, Security, RegisterForm
-from flask.ext.security.forms import Required
-from flask.ext.socketio import SocketIO
+from flask_bootstrap import Bootstrap
+from flask_bower import Bower
+from flask_login import current_user
+from flask_oauthlib.provider import OAuth2Provider
+from flask_redis import FlaskRedis
+from flask_security import SQLAlchemyUserDatastore, Security, RegisterForm
+from flask_security.forms import Required
+from flask_socketio import SocketIO
 from functools import wraps
 from flask_wtf import RecaptchaField
 from wtforms import validators
@@ -87,7 +87,7 @@ def socketio_player_event(*args, **kwargs):
     def dec(f):
         @wraps(f)
         def fg(*a, **k):
-            if not current_user.is_authenticated():
+            if not current_user.is_authenticated:
                 logger.warn("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
 
@@ -114,7 +114,7 @@ def socketio_character_event(*args, **kwargs):
     def dec(f):
         @wraps(f)
         def fg(*a, **k):
-            if not current_user.is_authenticated():
+            if not current_user.is_authenticated:
                 logger.warn("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
             character_id = request.args.get("character_id")
@@ -350,7 +350,7 @@ def outer_preprocessor(endpoint, values):
 
 @player_bp.before_request
 def player_before_request():
-    if not current_user.is_authenticated():
+    if not current_user.is_authenticated:
         return app.login_manager.unauthorized()
     g.player = current_user
     g.language = g.player.language
@@ -360,7 +360,7 @@ def player_before_request():
 
 @character_bp.url_value_preprocessor
 def character_preprocessor(endpoint, values):
-    if not current_user.is_authenticated():
+    if not current_user.is_authenticated:
         return app.login_manager.unauthorized()
     character_id = values.pop('character_id')
     g.player = current_user
@@ -417,7 +417,7 @@ def on_connect():
     character_id = request.args.get("character_id", None)
     character_id = int(character_id) if character_id else 0
 
-    if current_user.is_authenticated():
+    if current_user.is_authenticated:
         socketio_users.add_for_player_id(request.sid, current_user.id)
         character = models.Character.by_id(character_id)
         if character and character.player == current_user and character.is_alive:

@@ -8,13 +8,11 @@ import sqlalchemy
 import sqlalchemy as sql
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy_json_mutable
-from exeris.core import main
-from exeris.core import properties_base, util
+from exeris.core import main, properties_base, util
 from exeris.core.main import db, Types, Events
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.properties_base import P
-from flask.ext.security import RoleMixin
-from flask.ext.security import UserMixin
+from flask_security import UserMixin, RoleMixin
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
@@ -88,12 +86,15 @@ class Player(db.Model, UserMixin):
     def validate_register_game_date(self, key, register_game_date):
         return register_game_date.game_timestamp
 
+    @property
     def is_authenticated(self):
         return True
 
+    @property
     def is_active(self):
         return True
 
+    @property
     def is_anonymous(self):
         return False
 
