@@ -174,7 +174,7 @@ def create_database():
 
         potatoes_type = models.EntityType.query.filter_by(name="potatoes").one()
         potatoes_type.properties.append(
-            models.EntityTypeProperty(P.EDIBLE, {main.States.HUNGER: -0.1, main.States.SATIATION: 0.05}))
+            models.EntityTypeProperty(P.EDIBLE, {"states": {main.States.HUNGER: -0.1, main.States.SATIATION: 0.05}}))
 
         gathering_build_menu_category = models.BuildMenuCategory("gathering")
         oak_type = models.ItemType("oak", 50, stackable=True)

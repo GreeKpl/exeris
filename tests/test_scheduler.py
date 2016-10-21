@@ -67,7 +67,9 @@ class SchedulerTravelTest(TestCase):
 
         potato_loc = RootLocation(Point(10, 10), 55)
         potato_type = ItemType("potato", 10, stackable=True)
-        potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {"satiation": 0.1, "strength": 0.01}))
+        potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {
+            "states": {"satiation": 0.1, "strength": 0.01}
+        }))
         potatoes = Item(potato_type, potato_loc, amount=10)
 
         land_trav_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, accessible_area,
@@ -121,7 +123,9 @@ class SchedulerTravelTest(TestCase):
 
         potato_loc = RootLocation(Point(10, 10), 55)
         potato_type = ItemType("potato", 10, stackable=True)
-        potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {"satiation": 0.1, "strength": 0.01}))
+        potato_type.properties.append(EntityTypeProperty(P.EDIBLE, {
+            "states": {"satiation": 0.1, "strength": 0.01}
+        }))
         potatoes = Item(potato_type, potato_loc, amount=10)
 
         potatoes_away = Item(potato_type, far_away_loc, amount=11)

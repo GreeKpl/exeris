@@ -88,16 +88,16 @@ class EdiblePropertyType(PropertyType):
     def get_max_edible(self, eater):
         edible_prop = self.get_property(P.EDIBLE)
         satiation_left = (1 - eater.states[main.States.SATIATION])
-        return math.floor(satiation_left / edible_prop[main.States.SATIATION])
+        return math.floor(satiation_left / edible_prop["states"][main.States.SATIATION])
 
     def eat(self, eater, amount):
         edible_prop = self.get_property(P.EDIBLE)
 
         queue = eater.eating_queue
         for attribute in list(EdiblePropertyType.FOOD_BASED_ATTR) + [main.States.HUNGER]:
-            if edible_prop.get(attribute):
-                queue[attribute] = queue.get(attribute, 0) + amount * edible_prop.get(attribute)
-        eater.states[main.States.SATIATION] += amount * edible_prop[main.States.SATIATION]
+            if edible_prop["states"].get(attribute):
+                queue[attribute] = queue.get(attribute, 0) + amount * edible_prop["states"].get(attribute)
+        eater.states[main.States.SATIATION] += amount * edible_prop["states"][main.States.SATIATION]
 
         eater.eating_queue = queue
 

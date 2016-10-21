@@ -80,7 +80,7 @@ class ActionsSerializationTest(TestCase):
             ]}, serialized[1])
 
 
-class CharacterActionsTest(TestCase):
+class FinishActivityActionsTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
 
@@ -241,6 +241,11 @@ class CharacterActionsTest(TestCase):
 
         used_stone = Item.query.filter(Item.is_used_for(new_building)).one()
         self.assertEqual(20, used_stone.amount)
+
+
+class CharacterActionsTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_drop_item_action_on_hammer(self):
         util.initialize_date()
@@ -650,7 +655,9 @@ class CharacterActionsTest(TestCase):
         potatoes = Item(potatoes_type, char, amount=30)
 
         potatoes_type.properties.append(
-            EntityTypeProperty(P.EDIBLE, data={"satiation": 0.01, "hunger": 0.2, "strength": 0.3}))
+            EntityTypeProperty(P.EDIBLE, data={
+                "states": {"satiation": 0.01, "hunger": 0.2, "strength": 0.3}
+            }))
 
         db.session.add_all([rl, potatoes_type, potatoes])
 
