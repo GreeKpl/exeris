@@ -3,11 +3,13 @@ import inspect
 
 # property
 class P:
+    ANIMAL = "Animal"
     ANY = "Any"  # special property which exists for every entity
     CLOSEABLE = "Closeable"
     READABLE = "Readable"
     HAS_DEPENDENT = "HasDependent"
     EDIBLE = "Edible"
+    EDIBLE_BY_ANIMAL = "EdibleByAnimal"
     ENTERABLE = "Enterable"
     SKILLS = "Skills"
     DYNAMIC_NAMEABLE = "DynamicNameable"

@@ -9,7 +9,8 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction
+    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
+    CollectGatheredResourcesAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
@@ -97,6 +98,10 @@ class FinishActivityActionsTest(TestCase):
 
         hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": "potatoes"}, 100, initiator)
         db.session.add(hammer_activity)
+
+        invalid_amount_action = CreateItemAction(item_type=hammer_type, properties={}, amount=0,
+                                                 activity=hammer_activity, initiator=initiator, used_materials="all")
+        self.assertRaises(ValueError, invalid_amount_action.perform)
 
         action = CreateItemAction(item_type=hammer_type, properties={"Edible": {"hunger": 5}},
                                   activity=hammer_activity, initiator=initiator, used_materials="all")
@@ -241,6 +246,68 @@ class FinishActivityActionsTest(TestCase):
 
         used_stone = Item.query.filter(Item.is_used_for(new_building)).one()
         self.assertEqual(20, used_stone.amount)
+
+    def test_collect_gathered_resources_action(self):
+        potato_type = ItemType("potato", 5, stackable=True)
+        carrot_type = ItemType("carrot", 10, stackable=True)
+        anvil_type = ItemType("anvil", 200, portable=False)
+        rl = RootLocation(Point(1, 1), 134)
+        initiator = util.create_character("test", rl, util.create_player("abc"))
+        anvil = Item(anvil_type, rl)
+        activity = Activity(anvil, "dummy_activity", {}, {}, 1, initiator)
+        db.session.add_all([potato_type, anvil_type, rl, anvil, activity])
+
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        number_of_potato_piles = Item.query.filter_by(type=potato_type).count()  # no resources areas -> no potatoes
+        self.assertEqual(0, number_of_potato_piles)
+
+        first_resource_area = models.ResourceArea(potato_type, Point(0, 0), 3, 5, 7)
+        db.session.add(first_resource_area)
+        other_resource_area = models.ResourceArea(carrot_type, Point(0, 0), 5, 10, 20)
+        db.session.add(other_resource_area)
+
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        result_potato_pile = Item.query.filter_by(type=potato_type).first()
+        self.assertEqual(5, result_potato_pile.amount)
+
+        # do it again, but just 2 potatoes left in the resource area
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        self.assertEqual(7, result_potato_pile.amount)
+
+        # remove all old gathered resources
+        items = Item.query.filter_by(type=potato_type).all()
+        [item.remove() for item in items]
+
+        # start from the beginning
+        first_resource_area.amount = 7  # regenerate the first resource area
+        second_resource_area = models.ResourceArea(potato_type, Point(0, 0), 3, 3, 2)
+        db.session.add(second_resource_area)
+
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        pile_of_potatoes = Item.query.filter_by(type=potato_type).one()
+        # 2.5 is from the first and 1.5 from the second (efficiency/number of areas)
+        self.assertEqual(4, pile_of_potatoes.amount)
+        self.assertEqual(4.5, first_resource_area.amount)
+        self.assertEqual(0.5, second_resource_area.amount)
+
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        # added 2.5 from the first and 0.5 from the second, because only that is left
+        self.assertEqual(4 + 3, pile_of_potatoes.amount)
 
 
 class CharacterActionsTest(TestCase):

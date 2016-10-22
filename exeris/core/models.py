@@ -892,6 +892,10 @@ class Item(Entity):
         if not self.parent_entity:
             logger.warn("Item with id=%s has no parent entity", self.id)
             return "{{Item id={}, type={}, NO PARENT ENTITY}}".format(self.id, self.type_name)
+        if self.amount > 1:
+            return "{{Item id={}, type={}, amount={}, parent={}, parent_type={}}}" \
+                .format(self.id, self.type_name, self.amount, self.parent_entity.id,
+                        self.parent_entity.discriminator_type)
         return "{{Item id={}, type={}, parent={}, parent_type={}}}" \
             .format(self.id, self.type_name, self.parent_entity.id, self.parent_entity.discriminator_type)
 
@@ -1761,6 +1765,14 @@ class ResourceArea(db.Model):
         self.amount = amount
         if amount is None:
             self.amount = self.max_amount
+
+    @hybrid_method
+    def in_area(self, position):
+        return self.center.ST_DWithin(position.wkt, self.radius)
+
+    @in_area.expression
+    def in_area(self, position):
+        return self.center.ST_DWithin(position.wkt, self.radius)
 
     resource_type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("item_types.name"))
     resource_type = sql.orm.relationship(ItemType, uselist=False)

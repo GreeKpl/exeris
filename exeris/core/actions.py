@@ -44,7 +44,7 @@ class PlayerAction(AbstractAction):
 
 class Action(AbstractAction):
     """
-    A top-level character action. All we know is that it's done by a character
+    A top-level character action. All we know is that it's done by an executor (most likely a character)
     """
 
     def __init__(self, executor):
@@ -144,7 +144,8 @@ def set_visible_material(activity, visible_material, entity):
 @form_on_setup(amount=recipes.AmountInput)
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
-    def __init__(self, *, item_type, properties, used_materials, amount=1, visible_material=None, **injected_args):
+    def __init__(self, *, item_type, properties, used_materials, amount=1,
+                 visible_material=None, visible_parts=None, **injected_args):
         self.item_type = item_type
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
@@ -153,38 +154,58 @@ class CreateItemAction(ActivityAction):
         self.injected_args = injected_args
         self.properties = properties
         self.visible_material = visible_material if visible_material else {}
+        self.visible_parts = visible_parts if visible_parts else []
 
     def perform_action(self):
-
         result_loc = self.activity.being_in.being_in
 
-        if self.item_type.portable and self.initiator.being_in == result_loc:  # if being in the same location then go to inventory
+        # if initiator is in the same location then put into inventory
+        if self.item_type.portable and self.initiator.being_in == result_loc:
             result_loc = self.initiator
 
-        new_items = []
-        if self.item_type.stackable:  # create one item with specified 'amount'
-            weight = self.amount * self.item_type.unit_weight
-            new_items += [self.create_item(result_loc, weight)]
-        else:  # create 'amount' of single items
-            for _ in range(self.amount):
-                new_items += [self.create_item(result_loc, self.item_type.unit_weight)]
+        if self.amount <= 0:
+            raise ValueError("Amount: {} for CIA of activity {} should be positive", self.amount, self.activity)
 
+        if self.item_type.stackable:  # create one item of specified 'amount'
+            weight = self.amount * self.item_type.unit_weight
+            new_items = [self.create_or_update_stackable_item(result_loc, weight)]
+        else:  # create 'amount' of single items
+            new_items = []
+            for _ in range(self.amount):
+                new_items += [self.create_nonstackable_item(result_loc, self.item_type.unit_weight)]
         return new_items
 
-    def create_item(self, result_loc, item_weight):
+    def create_or_update_stackable_item(self, result_loc, item_weight):
+        existing_pile = models.Item.query.filter_by(type=self.item_type). \
+            filter(models.Item.is_in(result_loc)).filter_by(visible_parts=self.visible_parts).first()
+
+        if existing_pile:
+            existing_pile.weight += item_weight
+            return existing_pile
+        else:
+            new_pile = models.Item(self.item_type, result_loc, weight=item_weight)
+            new_pile.visible_parts = self.visible_parts
+            db.session.add(new_pile)
+            return new_pile
+
+    def create_nonstackable_item(self, result_loc, item_weight):
         new_item = models.Item(self.item_type, result_loc, weight=item_weight)
         db.session.add(new_item)
         for property_name in self.properties:
             new_item.properties.append(models.EntityProperty(property_name, self.properties[property_name]))
+
+        self.add_info_about_used_materials(new_item)
+        if self.visible_material:
+            set_visible_material(self.activity, self.visible_material, new_item)
+        return new_item
+
+    def add_info_about_used_materials(self, new_item):
         if self.used_materials == "all":  # all the materials used for an activity were set to build this item
             for material_type in models.Item.query.filter(models.Item.is_used_for(self.activity)).all():
                 material_type.used_for = new_item
         else:  # otherwise it's a dict and we need to look into it
             for material_type_name in self.used_materials:
                 self.extract_used_material(material_type_name, new_item)
-        if self.visible_material:
-            set_visible_material(self.activity, self.visible_material, new_item)
-        return new_item
 
     def extract_used_material(self, material_type_name, new_item):
         for req_material_name, requirement_params in self.activity.requirements.get("input",
@@ -211,20 +232,23 @@ class CollectGatheredResourcesAction(ActivityAction):
     def perform_action(self):
         position = self.activity.get_position()
         resources_in_proximity = models.ResourceArea.query.filter(
-            models.ResourceArea.center.ST_DWithin(
-                position.wkt, models.ResourceArea.radius)) \
+            models.ResourceArea.in_area(position)) \
             .filter_by(resource_type=self.resource_type).all()
 
         number_of_resource_areas = len(resources_in_proximity)
         amount_of_resource = 0
         for resource in resources_in_proximity:
-            amount_from_this_area = min(round(resource.efficiency / number_of_resource_areas), resource.amount)
+            amount_from_this_area = min(resource.efficiency / number_of_resource_areas, resource.amount)
             resource.amount -= amount_from_this_area
             amount_of_resource += amount_from_this_area
 
-        create_item_action = CreateItemAction(item_type=self.resource_type, properties={},
-                                              used_materials={}, amount=amount_of_resource, **self.injected_args)
-        return create_item_action.perform()
+        if amount_of_resource > 0:
+            create_item_action = CreateItemAction(item_type=self.resource_type, properties={},
+                                                  used_materials={}, amount=round(amount_of_resource),
+                                                  **self.injected_args)
+            return create_item_action.perform()
+        else:
+            return []
 
 
 class RemoveItemAction(ActivityAction):
@@ -1140,7 +1164,7 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
 
         if isinstance(entity, models.Item) and entity.type.stackable:
             weight = amount * entity.type.unit_weight
-            move_stackable_resource(entity, source, destination, weight, to_be_used_for)
+            move_stackable_item(entity, source, destination, weight, to_be_used_for)
         elif isinstance(entity, models.Location):  # currently only leaves can be moved
             for passage_view in entity.passages_to_neighbours:
                 if passage_view.other_side == source:
@@ -1157,7 +1181,7 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
         raise main.InvalidInitialLocationException(entity=entity)
 
 
-def move_stackable_resource(item, source, goal, weight, to_be_used_for=False):
+def move_stackable_item(item, source, goal, weight, to_be_used_for=False):
     if item.parent_entity != source:
         raise main.InvalidInitialLocationException(entity=item)
     # remove from the source
@@ -1317,7 +1341,6 @@ class EatAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
-
         if not self.executor.has_access(self.item, rng=general.TraversabilityBasedRange(10, allowed_terrain_types=[
             main.Types.LAND_TERRAIN])):
             raise main.EntityTooFarAwayException(entity=self.item)
