@@ -15,7 +15,7 @@ from exeris.core.models import Activity, ItemType, RootLocation, Item, Scheduled
     LocationType, Location
 from exeris.core.properties_base import P
 from exeris.extra.scheduler import Scheduler
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 from tests import util
 
@@ -534,6 +534,61 @@ class SchedulerActivityTest(TestCase):
 
         self.assertRaises(main.TooManyExistingEntitiesException,
                           lambda: ActivityProgress.check_excluded_by_entities({"field": 2}, rl))
+
+    def test_check_permanence_of_location(self):
+        rl = RootLocation(Point(1, 1), 123)
+        rl_near = RootLocation(Point(2, 2), 123)
+        rl_far = RootLocation(Point(51, 51), 123)
+
+        immobile_type = ItemType("immobile", 300, portable=False)
+        portable_type = ItemType("portable", 300, portable=True)
+
+        db.session.add_all([rl, rl_near, rl_far, immobile_type, portable_type])
+
+        # nothing there, so it can be permanent
+        ActivityProgress.check_permanence_of_location(rl)
+
+        immobile_item = Item(immobile_type, rl)
+        db.session.add(immobile_item)
+        ActivityProgress.check_permanence_of_location(rl)
+
+        portable_item_near = Item(portable_type, rl_near)
+        db.session.add(portable_item_near)
+        ActivityProgress.check_permanence_of_location(rl)
+
+        immobile_item_far = Item(immobile_type, rl_far)
+        db.session.add(immobile_item_far)
+        ActivityProgress.check_permanence_of_location(rl)
+
+        immobile_item_near = Item(immobile_type, rl_near)
+        db.session.add(immobile_item_near)
+        self.assertRaises(main.TooCloseToPermanentLocation,
+                          lambda: ActivityProgress.check_permanence_of_location(rl))
+
+    def test_check_optional_machines(self):
+        rl = RootLocation(Point(1, 1), 123)
+
+        bronze_anvil_type = ItemType("bronze_anvil", 300, portable=False)
+        steel_anvil_type = ItemType("steel_anvil", 300, portable=False)
+        bronze_anvil = Item(bronze_anvil_type, rl)
+
+        anvil_group = TypeGroup("anvil")
+        anvil_group.add_to_group(bronze_anvil_type, efficiency=1.5)
+        anvil_group.add_to_group(steel_anvil_type, efficiency=2)
+
+        db.session.add_all([rl, bronze_anvil_type, steel_anvil_type,
+                            anvil_group, bronze_anvil])
+
+        activity_params = {}
+        ActivityProgress.check_optional_machines({"bronze_anvil": 0.5}, rl, activity_params)
+        self.assertEqual(activity_params["progress_ratio"], 0.5)
+
+        steel_anvil = Item(steel_anvil_type, rl)
+        db.session.add(steel_anvil)
+
+        activity_params = {}
+        ActivityProgress.check_optional_machines({"anvil": 0.5}, rl, activity_params)
+        self.assertEqual(activity_params["progress_ratio"], 1.0)
 
     def test_check_activitys_skills(self):
         rl = RootLocation(Point(1, 1), 123)

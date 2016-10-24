@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, combat, deferred, models

@@ -1,21 +1,19 @@
 import sqlalchemy
-from flask.ext.testing import TestCase
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
-
-from exeris.core import actions, properties_base, main, general
+from exeris.core import actions, properties_base, main
+from exeris.core import recipes
 from exeris.core.general import GameDate
-from exeris.core.main import db
+from exeris.core.main import db, Types
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
     Entity, Activity, SkillType
 from exeris.core.properties_base import EntityPropertyException, P
-from exeris.core.recipes import ActivityFactory
-from tests import util
-
-# noinspection PyUnresolvedReferences
+from exeris.core.recipes import ActivityFactory, RecipeListProducer
 from exeris.extra import hooks
+from flask_testing import TestCase
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+from tests import util
 
 
 class LocationTest(TestCase):
@@ -536,17 +534,90 @@ class GroupTest(TestCase):
 
         recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"input": {stone_type.name: 20.0}}, 11,
                               tools_category, result_entity=hammer_type)
-
         db.session.add(recipe)
 
         initiator = util.create_character("John", rl, util.create_player("AAA"))
 
         factory = ActivityFactory()
-
         activity = factory.create_from_recipe(recipe, rl, initiator, user_input={"item_name": "mloteczek", "amount": 3})
 
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
+
+        portable_item_in_constr = ItemType("portable_item_in_constr", 1, portable=True)
+        db.session.add(portable_item_in_constr)
+        recipe.activity_container = "entity_specific_item"
+        activity = factory.create_from_recipe(recipe, rl, initiator, user_input={"amount": 3})
+        self.assertEqual(ItemType.by_name(Types.PORTABLE_ITEM_IN_CONSTRUCTION), activity.being_in.type)
+
+        anvil_type = ItemType("anvil", 100, portable=False)
+        anvil = Item(anvil_type, rl)
+        db.session.add_all([anvil_type, anvil])
+        recipe.activity_container = "selected_machine"
+
+        activity = factory.create_from_recipe(recipe, anvil, initiator, user_input={"amount": 3})
+        self.assertEqual(anvil, activity.being_in)
+
+        recipe.result_entity = None
+        recipe.result = [["exeris.core.actions.CreateItemAction", dict(item_type=hammer_type.name, properties={},
+                                                                       used_materials="all")]]
+
+        self.assertEqual(hammer_type.name, factory.get_first_entity_creation_action(recipe))
+
+    def test_available_user_inputs_for_recipe(self):
+        stone_type = ItemType("stone", 50, stackable=True)
+        hammer_type = ItemType("hammer", 100)
+
+        tools_category = BuildMenuCategory("tools")
+        rl = RootLocation(Point(1, 1), 32)
+        db.session.add_all([rl, hammer_type, stone_type, tools_category])
+        db.session.flush()
+
+        recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
+                              {"input": {stone_type.name: 20.0}, "mandatory_machines": ["anvil"]}, 11,
+                              tools_category, result_entity=hammer_type, activity_container="selected_machine")
+        db.session.add(recipe)
+
+        initiator = util.create_character("John", rl, util.create_player("AAA"))
+        factory = ActivityFactory()
+
+        user_inputs = factory.get_user_inputs_for_recipe(recipe)
+        self.assertEqual({"amount": recipes.AmountInput}, user_inputs)
+
+        anvil_type = ItemType("anvil", 100, portable=False)
+        anvil1 = Item(anvil_type, rl)
+        anvil2 = Item(anvil_type, rl)
+        db.session.add_all([anvil_type, anvil1, anvil2])
+
+        selectable_machines = factory.get_selectable_machines(recipe, initiator)
+        self.assertCountEqual([anvil1, anvil2], selectable_machines)
+
+    def test_get_recipes_list(self):
+        rl = RootLocation(Point(1, 1), 32)
+        initiator = util.create_character("John", rl, util.create_player("AAA"))
+
+        stone_type = ItemType("stone", 50, stackable=True)
+        hammer_type = ItemType("hammer", 100)
+        anvil_type = ItemType("anvil", 100)
+
+        tools_category = BuildMenuCategory("tools")
+        rl = RootLocation(Point(1, 1), 32)
+        db.session.add_all([rl, hammer_type, stone_type, anvil_type, tools_category])
+        db.session.flush()
+
+        unavailable_recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
+                                          {"input": {stone_type.name: 20.0}, "mandatory_machines": ["anvil"]}, 11,
+                                          tools_category, result_entity=hammer_type,
+                                          activity_container="selected_machine")
+        available_recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
+                                        {"input": {stone_type.name: 20.0}, "optional_machines": {"anvil": 1}}, 11,
+                                        tools_category, result_entity=hammer_type,
+                                        activity_container="selected_machine")
+        db.session.add_all([unavailable_recipe, available_recipe])
+
+        recipe_list_producer = RecipeListProducer(initiator)
+
+        self.assertEqual([available_recipe], recipe_list_producer.get_recipe_list())
 
     def test_perform_error_check_for_activity_from_recipe_creation(self):
         hammer_type = ItemType("hammer", 100)

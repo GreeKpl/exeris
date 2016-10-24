@@ -1,5 +1,5 @@
 from exeris.core import main
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Point
 
 from exeris.core.actions import ActivityProgressProcess

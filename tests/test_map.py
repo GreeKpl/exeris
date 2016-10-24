@@ -1,4 +1,4 @@
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Polygon
 from exeris.core.main import db
 from exeris.core.models import TerrainArea, TerrainType

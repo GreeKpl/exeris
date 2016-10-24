@@ -1,6 +1,6 @@
 from exeris.core.main import db
 from exeris.core.models import ScheduledTask, ItemType, EntityTypeProperty
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from tests import util
 
 

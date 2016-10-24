@@ -1,6 +1,6 @@
 from flask import g
 
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Point
 from exeris.core import models, main
 
