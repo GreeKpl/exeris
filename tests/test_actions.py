@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import sqlalchemy as sql
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import deferred
@@ -10,13 +10,13 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
     AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
-    CollectGatheredResourcesAction
+    CollectGatheredResourcesAction, BuryEntityAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
-    Intent
+    Intent, BuriedContent
 from exeris.core.properties import P
 from tests import util
 
@@ -821,6 +821,24 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
         self.assertEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"])
         self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
+
+    def test_burying_entity(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+        coffin_type = ItemType("coffin", 100, portable=True)
+        coffin_type.properties.append(EntityTypeProperty(P.BURYABLE))
+
+        coffin = Item(coffin_type, rl)
+        db.session.add_all([rl, coffin_type, coffin])
+
+        bury_entity_action = BuryEntityAction(coffin)
+        bury_entity_action.perform()
+
+        buried_content = BuriedContent.query.one()
+        self.assertEqual(Point(1, 1), buried_content.position)
+
+        self.assertEqual(buried_content, coffin.being_in)
 
 
 class IntentTest(TestCase):

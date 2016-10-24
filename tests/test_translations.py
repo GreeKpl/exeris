@@ -1,5 +1,6 @@
+from exeris.core.actions import ControlMovementAction, TravelInDirectionAction
 from flask import g
-from flask.ext.testing import TestCase
+from flask_testing import TestCase
 from shapely import geometry
 from shapely.geometry import Point
 
@@ -8,7 +9,7 @@ from exeris.core.general import GameDate
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import db, Types
 from exeris.core.models import Item, ItemType, RootLocation, EntityProperty, Character, ObservedName, Location, \
-    LocationType, TerrainArea, TerrainType, Passage, Activity, PassageType, EntityType
+    LocationType, TerrainArea, TerrainType, Passage, Activity, PassageType, EntityType, EntityTypeProperty
 from exeris.core.properties import P
 from pyslate.backends import json_backend
 from tests import util
@@ -582,7 +583,6 @@ class SpecialFunctionsTest(TestCase):
         entities_to_show = [sword.pyslatize(detailed=True), axe.pyslatize(detailed=True)]
         self.assertEqual("sword, axe", pyslate_en.t("list_of_entities", entities=entities_to_show))
 
-
         building_type = LocationType("building", 300)
         hall_type = LocationType("hall", 500)
 
@@ -594,3 +594,47 @@ class SpecialFunctionsTest(TestCase):
 
         entities_to_show = [building.pyslatize(), hall.pyslatize()]
         self.assertEqual("buildings, halls", pyslate_en.t("list_of_entities#p", entities=entities_to_show))
+
+
+class ActionTranslationTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_pyslatize_of_control_movement_action(self):
+        rl = RootLocation(Point(1, 1), 0)
+        cart_type = LocationType("cart", 100)
+        cart_type.properties.append(EntityTypeProperty(P.MOBILE))
+        char = util.create_character("abc", rl, util.create_player("jan"))
+
+        cart = Location(rl, cart_type)
+        db.session.add_all([rl, cart_type, cart])
+        db.session.flush()
+        cart.properties.append(EntityProperty(P.CONTROLLING_MOVEMENT, {"moving_entity_id": cart.id}))
+
+        control_movement_action = ControlMovementAction(char, char, None, None)
+        self.assertEqual({"action_tag": "action_walking_standing"}, control_movement_action.pyslatize())
+
+        travel_in_direction_action = TravelInDirectionAction(char, 100)
+        control_movement_action.travel_action = travel_in_direction_action
+        self.assertEqual({
+            "action_tag": "action_walking",
+            "groups": {
+                "movement_action": {
+                    "action_tag": "action_travel_in_direction",
+                    "direction": 100
+                }
+            }
+        }, control_movement_action.pyslatize())
+
+        char.being_in = cart
+        control_movement_action = ControlMovementAction(char, cart, travel_in_direction_action, None)
+        self.assertEqual({
+            "action_tag": "action_controlling_vehicle",
+            "groups": {
+                "vehicle": cart.pyslatize(),
+                "movement_action": {
+                    "action_tag": "action_travel_in_direction",
+                    "direction": 100
+                }
+            }
+        }, control_movement_action.pyslatize())
