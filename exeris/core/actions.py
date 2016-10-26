@@ -244,7 +244,7 @@ class CollectGatheredResourcesAction(ActivityAction):
 
         if amount_of_resource > 0:
             create_item_action = CreateItemAction(item_type=self.resource_type, properties={},
-                                                  used_materials={}, amount=round(amount_of_resource),
+                                                  used_materials={}, amount=int(round(amount_of_resource)),
                                                   **self.injected_args)
             return create_item_action.perform()
         else:
@@ -1359,6 +1359,68 @@ class EatAction(ActionOnItem):
         general.EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)
 
         main.call_hook(main.Hooks.EATEN, character=self.executor, item=self.item, amount=self.amount)
+
+
+class FindAndEatAnimalFood(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    def perform_action(self):
+        animal_prop = self.executor.get_property(P.ANIMAL)
+        if animal_prop is None:
+            raise ValueError("{} is not an animal".format(self.executor))
+
+        neighbouring_locations = general.NeighbouringLocationsRange(only_through_unlimited=True)
+        any_root_location_near = neighbouring_locations.root_locations_near(self.executor)
+        if any_root_location_near:
+            self.eat_from_ground()
+
+        if self.executor.states[main.States.HUNGER] > 0:  # need to eat more from storages
+            self.try_to_eat_from_storages()
+
+    def eat_from_ground(self):
+        resource_areas = models.ResourceArea.query \
+            .filter(models.ResourceArea.in_area(self.executor.get_position())) \
+            .filter(models.ItemType.has_property(P.EDIBLE_BY_ANIMAL)).all()
+        for resource_area in resource_areas:  # eat from the ground
+            resource_type = resource_area.resource_type
+            edible_by_animal_prop = resource_type.get_property(P.EDIBLE_BY_ANIMAL)
+            if self.is_edible_by_animal(edible_by_animal_prop["eater_types"]):
+                hunger_decrease_per_piece = edible_by_animal_prop["states"][main.States.HUNGER]
+                max_edible_per_day = min(resource_area.efficiency, resource_area.amount)
+                pieces_eaten = min(math.ceil(self.executor.states[main.States.HUNGER] / -hunger_decrease_per_piece),
+                                   max_edible_per_day)
+
+                resource_area.amount -= pieces_eaten
+                self.executor.states[main.States.HUNGER] += pieces_eaten * hunger_decrease_per_piece
+
+    def try_to_eat_from_storages(self):
+        storages = models.Item.query.filter(models.Item.is_in(self.executor.being_in)) \
+            .all()  # .filter(is an open storage)
+        for storage in storages:
+            foods_in_storage = models.Item.query \
+                .filter(models.Item.is_in(storage)) \
+                .filter(models.ItemType.has_property(P.EDIBLE_BY_ANIMAL)) \
+                .all()
+
+            for food in foods_in_storage:
+                self.try_to_eat_food_from_storage(food)
+
+    def try_to_eat_food_from_storage(self, food):
+        edible_by_animal_prop = food.get_property(P.EDIBLE_BY_ANIMAL)
+        if self.is_edible_by_animal(edible_by_animal_prop["eater_types"]):
+            hunger_decrease_per_piece = edible_by_animal_prop["states"][main.States.HUNGER]
+            pieces_eaten = min(math.ceil(self.executor.states[main.States.HUNGER] / -hunger_decrease_per_piece),
+                               food.amount)
+
+            food.amount -= pieces_eaten
+            self.executor.states[main.States.HUNGER] += pieces_eaten * hunger_decrease_per_piece
+
+    def is_edible_by_animal(self, eater_types):
+        for eater_type in eater_types:
+            if models.EntityType.by_name(eater_type).contains(self.executor.type):
+                return True
+        return False
 
 
 class SayAloudAction(ActionOnSelf):

@@ -10,13 +10,13 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
     AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
-    CollectGatheredResourcesAction, BuryEntityAction
+    CollectGatheredResourcesAction, BuryEntityAction, FindAndEatAnimalFood
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
-from exeris.core.main import db, Events
+from exeris.core.main import db, Events, Types, States
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
-    Intent, BuriedContent
+    Intent, BuriedContent, ResourceArea
 from exeris.core.properties import P
 from tests import util
 
@@ -734,6 +734,70 @@ class CharacterActionsTest(TestCase):
         self.assertAlmostEqual(0.03, char.states["satiation"])
         self.assertAlmostEqual(0.6, char.eating_queue["hunger"])
         self.assertAlmostEqual(0.9, char.eating_queue["strength"])
+
+    def test_find_and_eat_animal_food_action(self):
+        self._set_up_entities_for_animal_eating()
+        grass_type = ItemType.by_name("grass")
+        rl = RootLocation.query.one()
+        cow_type = LocationType.by_name("cow")
+        cow = Location.query.filter_by(type=cow_type).one()
+
+        grass_area = ResourceArea(grass_type, Point(1, 1), 5, 3, 8)
+        db.session.add(grass_area)
+
+        cow.states[States.HUNGER] = 0.25
+        # try to eat grass from the resource area
+        find_and_eat_animal_food = FindAndEatAnimalFood(cow)
+        find_and_eat_animal_food.perform()
+
+        self.assertEqual(0, cow.states[States.HUNGER])
+        self.assertEqual(5, grass_area.amount)
+
+        # try again, but with less amount left
+        cow.states[States.HUNGER] = 0.45
+        find_and_eat_animal_food.perform()
+
+        # only 3 pieces of food eaten, because amount is capped by efficiency
+        self.assertAlmostEqual(0.15, cow.states[States.HUNGER])
+        self.assertEqual(2, grass_area.amount)
+
+        basket_type = ItemType("basket", 100)
+        basket = Item(basket_type, rl)
+        grass_in_basket = Item(grass_type, basket, amount=20)
+        db.session.add_all([basket_type, basket, grass_in_basket])
+
+        # eat first from resource area and then from basket
+        cow.states[States.HUNGER] = 0.3
+        find_and_eat_animal_food.perform()
+
+        self.assertAlmostEqual(0, cow.states[States.HUNGER])
+        self.assertEqual(0, grass_area.amount)
+        self.assertEqual(19, grass_in_basket.amount)
+
+    def _set_up_entities_for_animal_eating(self):
+        rl = RootLocation(Point(1, 1), 100)
+        cow_type = LocationType("cow", 100)
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        cow_type.properties.append(EntityTypeProperty(P.STATES, {
+            States.HUNGER: {"initial": 0},
+            States.MILKINESS: {"initial": 0},
+        }))
+
+        cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+
+        grass_type = ItemType("grass", 10, stackable=True)
+        grass_type.properties.append(
+            EntityTypeProperty(P.EDIBLE_BY_ANIMAL, {
+                "states": {
+                    States.HUNGER: -0.1,
+                    States.SATIATION: 0.2
+                },
+                "eater_types": ["herbivore"],
+            }))
+        herbivore_group = TypeGroup("herbivore")
+        herbivore_group.add_to_group(cow_type)
+
+        db.session.add_all([rl, cow_type, cow, grass_type, herbivore_group])
 
     def test_create_open_then_close_then_open_action(self):
         util.initialize_date()
