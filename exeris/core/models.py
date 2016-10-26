@@ -154,6 +154,7 @@ class EntityType(db.Model):
             return type_property.data
         return None
 
+    @hybrid_method
     def has_property(self, name, **kwargs):
         prop = self.get_property(name)
         if prop is None:
@@ -162,6 +163,13 @@ class EntityType(db.Model):
             if key not in prop or prop[key] != value:
                 return False
         return True
+
+    @has_property.expression
+    def has_property(self, name):
+        return sql.select([True]) \
+            .where(sql.and_(EntityTypeProperty.name == name,
+                            EntityTypeProperty.type_name == self.name)) \
+            .label("property_exists")
 
     def key_value_pair_exists(self, key, value, kv_dict):
         return key in kv_dict and kv_dict[key] == value
@@ -433,6 +441,7 @@ class Entity(db.Model):
             return None
         return props
 
+    @hybrid_method
     def has_property(self, name, **kwargs):
         prop = self.get_property(name)
         if prop is None:
@@ -441,6 +450,16 @@ class Entity(db.Model):
             if key not in prop or prop[key] != value:
                 return False
         return True
+
+    @has_property.expression
+    def has_property(self, name):
+        return sql.select([True]).where(
+            sql.or_(
+                sql.and_(EntityProperty.name == name,
+                         EntityProperty.entity_id == self.id),
+                sql.and_(EntityTypeProperty.name == name,
+                         EntityTypeProperty.type_name == self.type_name))
+        ).label("property_exists")
 
     @hybrid_property
     def damage(self):
