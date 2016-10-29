@@ -4,6 +4,7 @@ import inspect
 # property
 class P:
     ANIMAL = "Animal"
+    DOMESTICATED = "Domesticated"
     ANY = "Any"  # special property which exists for every entity
     CLOSEABLE = "Closeable"
     READABLE = "Readable"

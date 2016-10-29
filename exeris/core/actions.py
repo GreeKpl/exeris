@@ -1423,6 +1423,20 @@ class FindAndEatAnimalFood(Action):
         return False
 
 
+class AnimalsProcess(ProcessAction):
+    SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
+
+    def __init__(self, task):
+        super().__init__(task)
+
+    def perform_action(self):
+        animals = models.Entity.query.filter(models.Entity.has_property(P.DOMESTICATED)).all()
+
+        for animal in animals:
+            eat_food_action = FindAndEatAnimalFood(animal)
+            eat_food_action.perform()
+
+
 class SayAloudAction(ActionOnSelf):
     def __init__(self, executor, message):
         super().__init__(executor, rng=general.VisibilityBasedRange(20))
