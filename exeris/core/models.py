@@ -4,8 +4,8 @@ import logging
 import types
 
 import geoalchemy2 as gis
-import sqlalchemy
 import sqlalchemy as sql
+import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy_json_mutable
 from exeris.core import main, properties_base, util
@@ -16,8 +16,6 @@ from flask_security import UserMixin, RoleMixin
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from sqlalchemy.orm import validates
-from sqlalchemy.sql import or_
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
@@ -82,7 +80,7 @@ class Player(db.Model, UserMixin):
         from exeris.core import general
         self.register_game_date = register_game_date if register_game_date else general.GameDate.now()
 
-    @validates("register_game_date")
+    @sql.orm.validates("register_game_date")
     def validate_register_game_date(self, key, register_game_date):
         return register_game_date.game_timestamp
 
@@ -165,11 +163,22 @@ class EntityType(db.Model):
         return True
 
     @has_property.expression
-    def has_property(self, name):
-        return sql.select([True]) \
-            .where(sql.and_(EntityTypeProperty.name == name,
-                            EntityTypeProperty.type_name == self.name)) \
-            .label("property_exists")
+    def has_property(self, name, **kwargs):
+        if not kwargs:
+            return sql.select([True]) \
+                .where(sql.and_(EntityTypeProperty.name == name,
+                                EntityTypeProperty.type_name == self.name)) \
+                .label("property_exists")
+        else:
+            entity_type_query_parts = []
+            for key, value in kwargs.items():
+                cast_value = util.Sql.cast_json_value_to_psql_type(EntityTypeProperty.data[key], value)
+                entity_type_query_parts += [cast_value == value]
+            return sql.select([True]) \
+                .where(sql.and_(EntityTypeProperty.name == name,
+                                EntityTypeProperty.type_name == self.name,
+                                *entity_type_query_parts)) \
+                .label("property_exists")
 
     def key_value_pair_exists(self, key, value, kv_dict):
         return key in kv_dict and kv_dict[key] == value
@@ -452,14 +461,42 @@ class Entity(db.Model):
         return True
 
     @has_property.expression
-    def has_property(self, name):
-        return sql.select([True]).where(
-            sql.or_(
-                sql.and_(EntityProperty.name == name,
-                         EntityProperty.entity_id == self.id),
-                sql.and_(EntityTypeProperty.name == name,
-                         EntityTypeProperty.type_name == self.type_name))
-        ).label("property_exists")
+    def has_property(cls, name, **kwargs):
+        if not kwargs:
+            cls_subquery = sql.orm.aliased(cls)
+            return db.session.query(cls_subquery.id) \
+                .filter(cls.id == cls_subquery.id) \
+                .outerjoin(EntityProperty, sql.and_(EntityProperty.entity_id == cls_subquery.id,
+                                                    EntityProperty.name == name)) \
+                .outerjoin(EntityTypeProperty, sql.and_(EntityTypeProperty.type_name == cls_subquery.type_name,
+                                                        EntityTypeProperty.name == name)) \
+                .filter(
+                sql.or_(
+                    EntityProperty.name.isnot(None),
+                    EntityTypeProperty.name.isnot(None)
+                )).correlate(cls).exists()
+        else:
+            entity_or_type_query_parts = []
+            for key, value in kwargs.items():
+                entity_cast_value = util.Sql.cast_json_value_to_psql_type(EntityProperty.data[key], value)
+                type_cast_value = util.Sql.cast_json_value_to_psql_type(EntityTypeProperty.data[key], value)
+
+                entity_or_type_query_parts += [sql.or_(
+                    entity_cast_value == value,
+                    sql.and_(
+                        type_cast_value == value,
+                        sql.sql.functions.coalesce(entity_cast_value == value, True)
+                    )
+                )]
+
+                cls_subquery = sql.orm.aliased(cls)
+            return db.session.query(cls_subquery.id) \
+                .filter(cls.id == cls_subquery.id) \
+                .outerjoin(EntityProperty, sql.and_(EntityProperty.entity_id == cls_subquery.id,
+                                                    EntityProperty.name == name)) \
+                .outerjoin(EntityTypeProperty, sql.and_(EntityTypeProperty.type_name == cls_subquery.type_name,
+                                                        EntityTypeProperty.name == name)) \
+                .filter(sql.and_(*entity_or_type_query_parts)).correlate(cls).exists()
 
     @hybrid_property
     def damage(self):
@@ -472,34 +509,6 @@ class Entity(db.Model):
     @hybrid_property
     def modifiers(self):
         return self.states[main.States.MODIFIERS]
-
-    @classmethod
-    def query_entities_having_property(cls, name, **kwargs):
-        """
-        A method building a query that looks for entities having a property of specific name set for itself
-        (EntityProperty) or its type (EntityTypeProperty).
-
-        The returned query can get be further filtered by using filter method referencing attributes of `cls` class.
-
-        Example:
-        Item.query_entities_having_property("Sad", value=0.0).filter(Item.role == Entity.ROLE_BEING_IN).all()
-
-        :param name: name of the property being searched for
-        :param kwargs: key-value pair that must exist in the property to be found. Currently only 1 property can be searched for
-        :return: a query object which will return only entities of specific type having a property.
-        """
-
-        entity_related_where_clause = [Entity.id == EntityProperty.entity_id, EntityProperty.name == name]
-        type_related_where_clause = [EntityType.name == EntityTypeProperty.type_name, EntityTypeProperty.name == name]
-        if kwargs:
-            assert len(kwargs) == 1, "Only single key-value pair can be checked for property in this version"
-            key, value = next(iter(kwargs.items()))
-            entity_json_data, type_json_data = cls._cast_to_correct_psql_type(key, value)
-            entity_related_where_clause += [entity_json_data == value]
-            type_related_where_clause += [type_json_data == value]
-        return db.session.query(cls).distinct().outerjoin(Entity.properties).outerjoin(EntityType.properties).filter(
-            sql.or_(sql.and_(*entity_related_where_clause),
-                    sql.and_(*type_related_where_clause)))
 
     def remove(self):
         parent_entity = self.being_in
@@ -514,18 +523,6 @@ class Entity(db.Model):
         db.session.delete(self)
 
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=parent_entity)
-
-    @staticmethod
-    def _cast_to_correct_psql_type(key, value):
-        entity_column_value = EntityProperty.data[key].astext
-        type_column_value = EntityTypeProperty.data[key].astext
-        if isinstance(value, int):
-            entity_column_value = entity_column_value.cast(sql.Integer)
-            type_column_value = type_column_value.cast(sql.Integer)
-        elif isinstance(value, float):
-            entity_column_value = entity_column_value.cast(sql.Float)
-            type_column_value = type_column_value.cast(sql.Float)
-        return entity_column_value, type_column_value
 
     def alter_property(self, name, data=None):
         """
@@ -798,11 +795,11 @@ class Character(Entity):
 
     FOOD_BASED_ATTR_INITIAL_VALUE = 0.1
 
-    @validates("spawn_position")
+    @sql.orm.validates("spawn_position")
     def validate_position(self, key, spawn_position):  # we assume position is a Polygon
         return from_shape(spawn_position)
 
-    @validates("spawn_date")
+    @sql.orm.validates("spawn_date")
     def validate_spawn_date(self, key, spawn_date):
         return spawn_date.game_timestamp
 
@@ -856,7 +853,7 @@ class Item(Entity):
 
     visible_parts = sql.Column(sqlalchemy_json_mutable.JsonList, default=lambda x: [])  # sorted list of item type names
 
-    @validates("visible_parts")
+    @sql.orm.validates("visible_parts")
     def validate_visible_parts(self, key, visible_parts):
         if visible_parts is None:
             visible_parts = []
@@ -1288,7 +1285,7 @@ class RootLocation(Location):
         self.position = position
         self.direction = direction
 
-    @validates("direction")
+    @sql.orm.validates("direction")
     def validate_direction(self, key, direction):
         return direction % 360
 
@@ -1471,8 +1468,8 @@ class Passage(Entity):
 
     @between.expression
     def between(self, first_loc, second_loc):
-        return or_((self.left_location == first_loc) & (self.right_location == second_loc),
-                   (self.right_location == first_loc) & (self.left_location == second_loc))
+        return sql.or_((self.left_location == first_loc) & (self.right_location == second_loc),
+                       (self.right_location == first_loc) & (self.left_location == second_loc))
 
     @hybrid_method
     def incident(self, loc):
@@ -1480,7 +1477,7 @@ class Passage(Entity):
 
     @incident.expression
     def incident(self, loc):
-        return or_((self.left_location == loc), (self.right_location == loc))
+        return sql.or_((self.left_location == loc), (self.right_location == loc))
 
     def is_accessible(self, only_through_unlimited=False):
         """
@@ -1799,7 +1796,7 @@ class ResourceArea(db.Model):
     center = sql.Column(gis.Geometry("POINT"))  # TODO check if it's possible to have a precomp. index "center + radius"
     radius = sql.Column(sql.Float)
 
-    @validates("center")
+    @sql.orm.validates("center")
     def validate_center(self, key, center):
         return from_shape(center)
 

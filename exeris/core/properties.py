@@ -69,7 +69,7 @@ class LineOfSightPropertyType(PropertyType):
 
     def get_line_of_sight(self):
         mobile_property = self.get_property(P.LINE_OF_SIGHT)
-        items_affecting_vision = models.Item.query_entities_having_property(P.AFFECT_LINE_OF_SIGHT) \
+        items_affecting_vision = models.Item.query.filter(models.Item.has_property(P.AFFECT_LINE_OF_SIGHT)) \
             .filter(models.Entity.is_in(self)).all()
 
         base_range = mobile_property["base_range"]

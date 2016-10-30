@@ -202,12 +202,69 @@ class EntityTest(TestCase):
 
         db.session.add_all([item_type, item, item_without_properties, rl, activity, item_in_activity])
 
-        Item.query_entities_having_property("Happy").filter(Item.role == Entity.ROLE_BEING_IN).one()
+        Item.query.filter(Item.has_property("Happy")).filter(Item.role == Entity.ROLE_BEING_IN).one()
         self.assertEqual(2,
-                         Item.query_entities_having_property("Sad").filter(Item.role == Entity.ROLE_BEING_IN).count())
+                         Item.query.filter(Item.has_property("Sad")).filter(Item.role == Entity.ROLE_BEING_IN).count())
 
-        Item.query_entities_having_property("Happy", feel="blue").filter(Item.role == Entity.ROLE_BEING_IN).one()
-        Item.query_entities_having_property("Sad", value=0.0).filter(Item.role == Entity.ROLE_BEING_IN).one()
+        Item.query.filter(Item.has_property("Happy", feel="blue")).filter(Item.role == Entity.ROLE_BEING_IN).one()
+        Item.query.filter(Item.has_property("Sad", value=0.0)).filter(Item.role == Entity.ROLE_BEING_IN).one()
+
+    def test_entity_and_entity_type_has_property_expression(self):
+        rl = RootLocation(Point(1, 2), 31)
+        item_type = ItemType("hammer", 1)
+
+        item = Item(item_type, rl, weight=100)
+
+        db.session.add_all([rl, item_type, item])
+
+        item_type.properties.append(EntityTypeProperty(P.SKILLS, {"crafting": 5}))
+
+        ItemType.query.filter(ItemType.has_property(P.SKILLS)).one()
+        self.assertEqual(0, ItemType.query.filter(ItemType.has_property(P.CLOSEABLE)).count())
+
+        Item.query.filter(Item.has_property(P.SKILLS)).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.CLOSEABLE)).count())
+
+        ItemType.query.filter(ItemType.has_property(P.SKILLS, crafting=5)).one()
+        self.assertEqual(0, ItemType.query.filter(ItemType.has_property(P.CLOSEABLE, crafting=1)).count())
+        self.assertEqual(0, ItemType.query.filter(ItemType.has_property(P.SKILLS, crafting=1)).count())
+
+        Item.query.filter(Item.has_property(P.SKILLS, crafting=5)).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.CLOSEABLE, crafting=1)).count())
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.SKILLS, crafting=1)).count())
+
+        propertyless_item = Item(item_type, rl, weight=150)  # a test item that should never be selected
+        item.properties.append(EntityProperty(P.EDIBLE, {"yummy": True}))
+        db.session.add(propertyless_item)
+
+        Item.query.filter(Item.has_property(P.EDIBLE)).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.CLOSEABLE)).count())
+
+        item_type.properties.append(EntityTypeProperty(P.EDIBLE, {"yummy": False}))
+
+        Item.query.filter(Item.has_property(P.EDIBLE, yummy=True)).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.CLOSEABLE, yummy=False)).count())
+
+        self.assertEqual(propertyless_item, Item.query.filter(Item.has_property(P.EDIBLE, yummy=False)).one())
+
+        item_edible_property = EntityProperty.query.filter_by(entity=item, name=P.EDIBLE).one()
+        item_edible_property.data = {"yummy": True, "level": 5, "help": "me"}
+
+        Item.query.filter(
+            Item.has_property(P.EDIBLE, yummy=True, level=5, help="me")).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.EDIBLE, yummy=False, level=5, help="me")).count())
+
+        item_edible_property.data = {"level": 5, "help": "me"}
+
+        # yummy is from type, level and help are from entity
+        Item.query.filter(
+            Item.has_property(P.EDIBLE, yummy=False, level=5, help="me")).one()  # there should be exactly one item
+        self.assertEqual(0, Item.query.filter(Item.has_property(P.EDIBLE, yummy=True, level=5, help="me")).count())
+
+        Item.query.filter(
+            Item.has_property(P.EDIBLE, level=5)).one()  # there should be exactly one item
+        Item.query.filter(
+            Item.has_property(P.EDIBLE, level=5, help="me")).one()  # there should be exactly one item
 
     def test_change_character_name(self):
         util.initialize_date()

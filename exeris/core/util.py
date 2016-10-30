@@ -5,6 +5,8 @@ import math
 from exeris.core import map_data
 from shapely.geometry import Point
 
+import sqlalchemy as sql
+
 
 def round_probabilistic(value):
     """
@@ -75,3 +77,16 @@ def serialize_notifications(notifications, pyslate):
 
     return [{"notification_id": n.id, "title": pyslate.t(n.title_tag, **n.title_params),
              "count": n.count, "date": n.game_date, "easy_close": close_is_the_only_option(n)} for n in notifications]
+
+
+class Sql:
+    @staticmethod
+    def cast_json_value_to_psql_type(field, value):
+        field = field.astext
+        if isinstance(value, bool):
+            field = field.cast(sql.Boolean)
+        elif isinstance(value, int):
+            field = field.cast(sql.Integer)
+        elif isinstance(value, float):
+            field = field.cast(sql.Float)
+        return field
