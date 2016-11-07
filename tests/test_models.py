@@ -639,7 +639,10 @@ class GroupTest(TestCase):
         factory = ActivityFactory()
 
         user_inputs = factory.get_user_inputs_for_recipe(recipe)
-        self.assertEqual({"amount": recipes.AmountInput}, user_inputs)
+        self.assertEqual(["amount"], list(user_inputs.keys()))
+        self.assertEqual("exeris.core.actions.CreateItemAction", user_inputs["amount"].action_name)
+        self.assertEqual({"item_type": hammer_type.name, "properties": {}, "used_materials": "all"},
+                         user_inputs["amount"].action_args)
 
         anvil_type = ItemType("anvil", 100, portable=False)
         anvil1 = Item(anvil_type, rl)

@@ -99,11 +99,11 @@ class ActivityFactory:
         for action_name, action_args in result:
             action_args = copy.deepcopy(action_args)
             action_class = deferred.object_import(action_name)  # get result class by name
-
             if hasattr(action_class, "_form_inputs"):
-                for in_name, in_data in action_class._form_inputs.items():
-                    if in_name not in action_args:  # if wasn't already set explicitly
-                        action_args[in_name] = user_input[in_name]  # inject user defined form input to result dict
+                for input_name, input_class in action_class._form_inputs.items():
+                    # if user_input wasn't already set explicitly
+                    if input_name not in action_args and input_class.has_input():
+                        action_args[input_name] = user_input[input_name]  # inject user form input to result dict
             actions.append([action_name, action_args])
         return actions
 
@@ -134,12 +134,19 @@ class ActivityFactory:
             result_entity_action_and_args[0] = deferred.object_import(result_entity_action_and_args[0])
             if hasattr(result_entity_action_and_args[0], "_form_inputs"):
                 result_actions_requiring_input.append(result_entity_action_and_args)
+
         form_inputs = {}
         for action_and_args in result_actions_requiring_input:
+            # show inputs unless the parameter was already set explicitly
             form_inputs.update(
-                {k: v for k, v in action_and_args[0]._form_inputs.items() if
-                 k not in action_and_args[1]})  # show inputs unless the parameter was already set explicitly
+                {input_field_name: ActivityFactory._input_field_for_action(field_class, action_and_args)
+                 for input_field_name, field_class in action_and_args[0]._form_inputs.items()
+                 if input_field_name not in action_and_args[1]})
         return form_inputs
+
+    @staticmethod
+    def _input_field_for_action(field_class, action_and_args):
+        return field_class(deferred.get_qualified_class_name(action_and_args[0]), action_and_args[1])
 
     @classmethod
     def get_selectable_machines(cls, recipe, character):
@@ -274,12 +281,40 @@ class RecipeListProducer:
 
 
 class InputField:
-    pass
+    __name__ = "InputField"
+
+    def __init__(self, action_name, action_args):
+        self.action_name = action_name
+        self.action_args = action_args
+
+    @classmethod
+    def has_input(cls):
+        return True
+
+    def convert(self, value):
+        pass
 
 
 class NameInput(InputField):
-    CAST_FUNCTION = str
+    __name__ = "NameInput"
+
+    def convert(self, value):
+        return value
 
 
 class AmountInput(InputField):
-    CAST_FUNCTION = int
+    __name__ = "AmountInput"
+
+    def convert(self, value):
+        return int(value)
+
+
+class AnimalResourceLevel(InputField):
+    __name__ = "AnimalResourceLevel"
+
+    def convert(self, value):
+        return None
+
+    @classmethod
+    def has_input(cls):
+        return False

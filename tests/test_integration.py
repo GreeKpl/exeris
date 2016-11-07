@@ -11,6 +11,7 @@ from tests import util
 
 class ProductionIntegrationTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     # kind of integration test
     def test_activity_process_for_axe_production(self):
@@ -41,7 +42,8 @@ class ProductionIntegrationTest(TestCase):
         self.assertEqual(anvil, activity.being_in)
 
         work_intent = Intent(worker, main.Intents.WORK, 1, activity,
-               ["exeris.core.actions.WorkOnActivityAction", {"executor": worker.id, "activity": activity.id}])
+                             ["exeris.core.actions.WorkOnActivityAction",
+                              {"executor": worker.id, "activity": activity.id}])
         db.session.add(work_intent)
         db.session.flush()
 
@@ -51,5 +53,3 @@ class ProductionIntegrationTest(TestCase):
         new_axe = Item.query.filter_by(type=axe_type).one()
         self.assertEqual(worker, new_axe.being_in)
         self.assertEqual("mloteczek", new_axe.title)
-
-    tearDown = util.tear_down_rollback

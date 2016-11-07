@@ -536,13 +536,13 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
         activitys_being_in = selected_machine
 
     activity_factory = recipes.ActivityFactory()
-    form_input_type_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
+    form_input_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)
 
     recipe_setup_errors = activity_factory.get_list_of_errors(recipe, g.character)
     if recipe_setup_errors:
         raise recipe_setup_errors[0]
 
-    user_input = {name: form_input_type_by_name[name].CAST_FUNCTION(value) for name, value in user_input.items()}
+    user_input = {name: form_input_by_name[name].convert(value) for name, value in user_input.items()}
 
     activity = activity_factory.create_from_recipe(recipe, activitys_being_in, g.character, user_input=user_input)
 
