@@ -306,7 +306,9 @@ def _get_entities_in(parent_entity, excluded=None):
     excluded = excluded if excluded else []
 
     entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
-        .filter(~models.Entity.id.in_([e.id for e in excluded])).all()
+        .filter(~models.Entity.id.in_([e.id for e in excluded])) \
+        .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY) \
+        .all()
 
     if isinstance(parent_entity, models.Location):
         entities += [passage for passage in parent_entity.passages_to_neighbours if
@@ -448,20 +450,26 @@ def _get_entity_info(entity):
     possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if
                         has_needed_prop(action) and action.other_req(entity)]
 
+    activities = []
     # TODO translation
     activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
+    if activity:
+        activities.append(activity)
 
     if isinstance(entity, models.Passage):
         expandable = models.Entity.query.filter(models.Entity.is_in(other_side)) \
                          .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
         if expandable:
-            expandable = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side, )
+            expandable = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side)
+        activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
+        if activity:
+            activities.append(activity)
     else:
         expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
                          .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
 
     entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
-                                  actions=possible_actions, activity=activity, expandable=expandable,
+                                  actions=possible_actions, activities=activities, expandable=expandable,
                                   other_side=other_side)
     return {"html": entity_html, "id": app.encode(entity.id)}
 

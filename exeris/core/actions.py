@@ -1482,7 +1482,7 @@ class JoinActivityAction(ActionOnActivity):
         super().__init__(executor, activity, rng=None)
 
     def perform_action(self):
-        if not self.executor.has_access(self.activity, rng=general.SameLocationRange()):
+        if not self.executor.has_access(self.activity, rng=self.range_to_access_activity(self.activity)):
             raise main.TooFarFromActivityException(activity=self.activity)
 
         # only 1 activity allowed at once TODO #72
@@ -1491,6 +1491,11 @@ class JoinActivityAction(ActionOnActivity):
         work_intent = models.Intent(self.executor, main.Intents.WORK, 1, self.activity,
                                     deferred.serialize(WorkOnActivityAction(self.executor, self.activity)))
         db.session.add(work_intent)
+
+    def range_to_access_activity(self, activity):
+        if isinstance(activity.being_in, models.Location):
+            return general.NeighbouringLocationsRange(False)
+        return general.SameLocationRange()
 
 
 class MoveToLocationAction(ActionOnLocation):

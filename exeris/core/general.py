@@ -178,6 +178,8 @@ class SameLocationRange(RangeSpec):
     def locations_near(self, entity):
         if isinstance(entity, models.Location):
             return [entity]
+        if isinstance(entity, models.Passage):
+            return [entity.left_location, entity.right_location]
         return [entity.being_in]
 
 
@@ -196,14 +198,14 @@ def visit_subgraph(node, only_through_unlimited=False):
     number_of_door_passed = {node: 0}
     visited_locations = {node}
     while len(passages_left):
-        passage = passages_left.popleft()
-        if passage.passage.is_accessible(only_through_unlimited=only_through_unlimited):
-            if passage.other_side not in visited_locations:
-                number_of_door_passed[passage.other_side] = number_of_door_passed[passage.own_side]
-                if not passage.passage.type.unlimited:
-                    number_of_door_passed[passage.other_side] += 1
-                visited_locations.add(passage.other_side)
-                new_passages = passage.other_side.passages_to_neighbours
+        directed_passage = passages_left.popleft()
+        if directed_passage.passage.is_accessible(only_through_unlimited=only_through_unlimited):
+            if directed_passage.other_side not in visited_locations:
+                number_of_door_passed[directed_passage.other_side] = number_of_door_passed[directed_passage.own_side]
+                if not directed_passage.passage.type.unlimited:
+                    number_of_door_passed[directed_passage.other_side] += 1
+                visited_locations.add(directed_passage.other_side)
+                new_passages = directed_passage.other_side.passages_to_neighbours
                 passages_left.extend([p for p in new_passages if p.other_side not in visited_locations])
     return {loc for loc in visited_locations if number_of_door_passed[loc] <= 2}
 

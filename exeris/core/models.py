@@ -146,6 +146,9 @@ class EntityType(db.Model):
     def contains(self, entity_type):
         return entity_type == self  # is member of "itself" group
 
+    def get_descending_types(self):
+        return [(self, 1.0)]
+
     def get_property(self, name):
         type_property = EntityTypeProperty.query.filter_by(type=self, name=name).first()
         if type_property:
@@ -226,9 +229,6 @@ class ItemType(EntityType):
         if entity_type == self:
             return 1.0
         raise ValueError
-
-    def get_descending_types(self):
-        return [(self, 1.0)]
 
     def __repr__(self):
         return "{{ItemType, name: {}}}".format(self.name)
@@ -568,6 +568,9 @@ class Entity(db.Model):
 
     def get_position(self):
         return self.get_root().position
+
+    def parent_locations(self):
+        return self.being_in.parent_locations()
 
     def get_location(self):
         return self._get_parent_of_class(Location)
@@ -1237,6 +1240,13 @@ class Location(Entity):
         neighbours.extend([PassageToNeighbour(passage, passage.right_location) for passage in self.left_passages])
         return neighbours
 
+    @hybrid_property
+    def quality(self):
+        return 1.0
+
+    def parent_locations(self):
+        return [self]
+
     def get_characters_inside(self):
         return Character.query.filter(Character.is_in(self)).all()
 
@@ -1503,6 +1513,9 @@ class Passage(Entity):
                                          backref="left_passages", uselist=False)
     right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
                                           backref="right_passages", uselist=False)
+
+    def parent_locations(self):
+        return [self.left_location, self.right_location]
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name)

@@ -7,10 +7,16 @@
     {% endfor %}
     {% if expandable %}
         <button class="expand_subtree">\/</button>{% endif %}
-    {% if activity %}
-        <p class="activity_info"> -> {{ activity.name_tag }} - {{ activity.ticks_needed - activity.ticks_left }}
-            / {{ activity.ticks_needed }} -
-            <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">Join</button>
-        </p>
+    {% if activities %}
+        <ul class="list-unstyled">
+            {% for activity in activities %}
+                <li class="activity_info"> -> {{ activity.name_tag }}
+                    - {{ activity.ticks_needed - activity.ticks_left }}
+                    / {{ activity.ticks_needed }} -
+                    <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">Join
+                    </button>
+                </li>
+            {% endfor %}
+        </ul>
     {% endif %}
 </div>
