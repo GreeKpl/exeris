@@ -534,8 +534,8 @@ def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
     activitys_being_in = g.character.get_location()
     if selected_machine_id:
         selected_machine_id = app.decode(selected_machine_id)
-        selected_machine = models.Item.by_id(selected_machine_id)
-        rng = general.SameLocationRange()
+        selected_machine = models.Entity.by_id(selected_machine_id)
+        rng = actions.most_strict_range_spec_for_entity(selected_machine)
         if not rng.is_near(g.character, selected_machine):
             raise main.EntityTooFarAwayException(entity=selected_machine)
         if selected_machine.has_activity():

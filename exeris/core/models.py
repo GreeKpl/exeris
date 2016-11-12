@@ -965,7 +965,8 @@ class Activity(Entity):
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
-                          activity_name=self.name_tag, activity_params=self.name_params)
+                          activity_name=self.name_tag, activity_params=self.name_params,
+                          enclosing_entity=self.being_in.pyslatize())
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
         return dict(pyslatized, **overwrites)

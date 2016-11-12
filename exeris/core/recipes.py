@@ -39,7 +39,7 @@ class ActivityFactory:
 
         activity.result_actions += all_actions
 
-        if recipe.activity_container:
+        if recipe.activity_container and recipe.activity_container != "selected_machine":
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
 
         db.session.add(activity)
@@ -155,11 +155,12 @@ class ActivityFactory:
             return []
 
         selectable_machine_type = mandatory_machines[0]  # first mandatory machine is the one to hold the activity
-        selectable_machine_type = models.ItemType.by_name(selectable_machine_type)
+        selectable_machine_type = models.EntityType.by_name(selectable_machine_type)
         type_eff_pairs = selectable_machine_type.get_descending_types()
         allowed_types = [pair[0] for pair in type_eff_pairs]
 
-        return general.ItemQueryHelper.query_all_types_in(allowed_types, character.get_location()).all()
+        from exeris.core import actions
+        return actions.ActivityProgress.get_all_machines_around_entity(allowed_types, character)
 
     @classmethod
     def get_list_of_errors(cls, recipe, character):
@@ -176,7 +177,7 @@ class ActivityFactory:
 
         from exeris.core import actions
         make_error_check_if_required("mandatory_machines", lambda req_value:
-        actions.ActivityProgress.check_mandatory_machines(req_value, character.get_location(), {}))
+        actions.ActivityProgress.check_mandatory_machines(req_value, character, {}))
 
         make_error_check_if_required("targets", lambda req_value:
         actions.ActivityProgress.check_target_proximity(req_value, character.get_location()))
@@ -261,7 +262,9 @@ class RecipeListProducer:
                     group = models.EntityType.by_name(machine_name)
                     type_eff_pairs = group.get_descending_types()
                     allowed_types = [pair[0] for pair in type_eff_pairs]
-                    machines = general.ItemQueryHelper.query_all_types_near(allowed_types, location).first()
+                    from exeris.core import actions
+                    machines = actions.ActivityProgress.get_all_machines_around_entity(allowed_types,
+                                                                                       self.character)
                     if not machines:
                         return False
 

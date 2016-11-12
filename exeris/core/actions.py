@@ -141,6 +141,12 @@ def set_visible_material(activity, visible_material, entity):
     entity.properties.append(models.EntityProperty(P.VISIBLE_MATERIAL, visible_material_property))
 
 
+def most_strict_range_spec_for_entity(entity):
+    if isinstance(entity, models.Location):
+        return general.NeighbouringLocationsRange(False)
+    return general.SameLocationRange()
+
+
 @form_on_setup(amount=recipes.AmountInput)
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
@@ -637,16 +643,16 @@ class ActivityProgressProcess(AbstractAction):
         if "mandatory_machines" in req:
             logger.info("checking mandatory_machines")
             ActivityProgress.check_mandatory_machines(req["mandatory_machines"],
-                                                      self.entity_worked_on.get_location(), activity_params)
+                                                      self.entity_worked_on, activity_params)
 
         if "optional_machines" in req:
             logger.info("checking optional_machines")
             ActivityProgress.check_optional_machines(req["optional_machines"],
-                                                     self.entity_worked_on.get_location(), activity_params)
+                                                     self.entity_worked_on, activity_params)
 
         if "targets" in req:
             logger.info("checking targets")
-            ActivityProgress.check_target_proximity(req["targets"], self.entity_worked_on.get_location())
+            ActivityProgress.check_target_proximity(req["targets"], self.entity_worked_on)
 
         if "target_with_properties" in req:
             pass
@@ -737,7 +743,7 @@ class ActivityProgressProcess(AbstractAction):
 class ActivityProgress:
     @classmethod
     def check_worker_proximity(cls, activity, worker):
-        rng = general.SameLocationRange()
+        rng = most_strict_range_spec_for_entity(activity.being_in)
 
         if not worker.has_access(activity, rng=rng):
             raise main.TooFarFromActivityException(activity=activity)
@@ -760,7 +766,7 @@ class ActivityProgress:
             if not tools:
                 raise main.NoToolForActivityException(tool_name=group.name)
 
-            tool_best_relative_quality = cls._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
+            tool_best_relative_quality = cls._get_most_efficient_entity_relative_quality(tools, type_eff_pairs)
 
             # tool quality affects quality of activity result
             worker_impact["tool_based_quality"] += [tool_best_relative_quality]
@@ -777,13 +783,13 @@ class ActivityProgress:
             if not tools:
                 continue
 
-            tool_best_relative_quality = cls._get_most_efficient_item_relative_quality(tools, type_eff_pairs)
+            tool_best_relative_quality = cls._get_most_efficient_entity_relative_quality(tools, type_eff_pairs)
 
             # quality affects only progress ratio increased
             worker_impact["progress_ratio"] += tools_progress_bonus[tool_type_name] * tool_best_relative_quality
 
     @classmethod
-    def _get_most_efficient_item_relative_quality(cls, tools, type_eff_pairs):
+    def _get_most_efficient_entity_relative_quality(cls, tools, type_eff_pairs):
         efficiency_of_type = {pair[0]: pair[1] for pair in type_eff_pairs}
         relative_quality = lambda item: efficiency_of_type[item.type] * item.quality
 
@@ -792,21 +798,48 @@ class ActivityProgress:
         return relative_quality(most_efficient_tool)
 
     @classmethod
-    def check_mandatory_machines(cls, machines, location, activity_params):
+    def check_mandatory_machines(cls, machines, entity_having_activity, activity_params):
         activity_params["machine_based_quality"] = []
         for machine_name in machines:
             group = models.EntityType.by_name(machine_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
 
-            machines = general.ItemQueryHelper.query_all_types_near(allowed_types, location).all()
-            if not machines:
+            found_machines = cls.get_all_machines_around_entity(allowed_types, entity_having_activity)
+            if not found_machines:
                 raise main.NoMachineForActivityException(machine_name=group.name)
 
-            machine_best_relative_quality = cls._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+            machine_best_relative_quality = cls._get_most_efficient_entity_relative_quality(found_machines,
+                                                                                            type_eff_pairs)
 
             # machine quality affects quality of activity result
             activity_params["machine_based_quality"] += [machine_best_relative_quality]
+
+    @classmethod
+    def get_all_machines_around_entity(cls, allowed_types, parent_entity):
+        item_types = [entity_type.name for entity_type in allowed_types if isinstance(entity_type, models.ItemType)]
+        location_types = [entity_type.name for entity_type in allowed_types if
+                          isinstance(entity_type, models.LocationType)]
+        # todo wait for sqlalchemy support for in_ for relationships
+
+        items = []
+        if item_types:
+            items = models.Item.query.filter(models.Item.type_name.in_(item_types),
+                                             models.Item.is_in(parent_entity.parent_locations())).all()
+
+        machine_locations = []
+        if location_types:
+            locs = [parent_entity]  # it will be ignored if it's not a location
+            for loc in parent_entity.parent_locations():
+                locs += [directed_passage.other_side for directed_passage in loc.passages_to_neighbours
+                         if directed_passage.passage.is_accessible(False)]
+
+            machine_locations = models.Location.query.filter(models.Location.type_name.in_(location_types),
+                                                             models.Location.id.in_([n.id for n in locs])) \
+                .all()
+
+        found_machines = items + machine_locations
+        return found_machines
 
     @classmethod
     def check_optional_machines(cls, machine_progress_bonus, location, activity_params):
@@ -819,7 +852,7 @@ class ActivityProgress:
             if not machines:
                 continue
 
-            machine_best_relative_quality = cls._get_most_efficient_item_relative_quality(machines, type_eff_pairs)
+            machine_best_relative_quality = cls._get_most_efficient_entity_relative_quality(machines, type_eff_pairs)
 
             # quality affects only progress ratio increased
             progress_ratio_change = machine_progress_bonus[machine_type_name] * machine_best_relative_quality
@@ -1482,7 +1515,7 @@ class JoinActivityAction(ActionOnActivity):
         super().__init__(executor, activity, rng=None)
 
     def perform_action(self):
-        if not self.executor.has_access(self.activity, rng=self.range_to_access_activity(self.activity)):
+        if not self.executor.has_access(self.activity, rng=most_strict_range_spec_for_entity(self.activity.being_in)):
             raise main.TooFarFromActivityException(activity=self.activity)
 
         # only 1 activity allowed at once TODO #72
@@ -1491,11 +1524,6 @@ class JoinActivityAction(ActionOnActivity):
         work_intent = models.Intent(self.executor, main.Intents.WORK, 1, self.activity,
                                     deferred.serialize(WorkOnActivityAction(self.executor, self.activity)))
         db.session.add(work_intent)
-
-    def range_to_access_activity(self, activity):
-        if isinstance(activity.being_in, models.Location):
-            return general.NeighbouringLocationsRange(False)
-        return general.SameLocationRange()
 
 
 class MoveToLocationAction(ActionOnLocation):

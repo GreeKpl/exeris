@@ -12,7 +12,7 @@ from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
     SkillType, Character, EntityTypeProperty, Intent, PropertyArea, TerrainType, TerrainArea, Notification, \
     ResourceArea, \
-    LocationType, Location
+    LocationType, Location, Passage
 from exeris.core.properties_base import P
 from exeris.extra.scheduler import Scheduler
 from flask_testing import TestCase
@@ -418,26 +418,37 @@ class SchedulerActivityTest(TestCase):
         spindles_group = TypeGroup("group_spindles", stackable=False)
         spindles_group.add_to_group(wooden_spindle_type, efficiency=2.0)
 
-        db.session.add_all(
-            [rl, worked_on_type, worked_on, worker, activity, bucket_type, wooden_spindle_type, spindles_group])
+        db.session.add_all([rl, worked_on_type, worked_on, worker, activity, bucket_type,
+                            wooden_spindle_type, spindles_group])
 
         self.assertRaises(main.NoMachineForActivityException,
-                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
+                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], worked_on,
+                                                                            {}))
 
-        bucket = Item(bucket_type, worker, quality=2)
+        bucket = Item(bucket_type, rl, quality=2)
         db.session.add(bucket)
         self.assertRaises(main.NoMachineForActivityException,
-                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, {}))
+                          lambda: ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], worked_on,
+                                                                            {}))
 
         spindle_on_ground = Item(wooden_spindle_type, rl, quality=0.75)
         db.session.add(spindle_on_ground)
 
         # should return without raising an exception
         activity_params = {}
-        ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], rl, activity_params)
+        ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], worked_on, activity_params)
 
         # check quality change for an activity. It'd add 0.75 for axe and 3 for bone hammer
         self.assertCountEqual([2, 1.5], activity_params["machine_based_quality"])
+
+        # it should be possible to have an activity in the passage
+        building_type = LocationType("building", 500)
+        building = Location(rl, building_type)
+        db.session.add_all([building_type, building])
+
+        passage_with_activity = Passage.query.filter(Passage.between(rl, building)).one()
+
+        ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], passage_with_activity, activity_params)
 
     def test_check_existence_of_resource(self):
         rl = RootLocation(Point(1, 1), 123)

@@ -6,7 +6,7 @@ from exeris.core.main import db, Types
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
-    Entity, Activity, SkillType
+    Entity, Activity, SkillType, PassageType
 from exeris.core.properties_base import EntityPropertyException, P
 from exeris.core.recipes import ActivityFactory, RecipeListProducer
 from exeris.extra import hooks
@@ -620,6 +620,51 @@ class GroupTest(TestCase):
                                                                        used_materials="all")]]
 
         self.assertEqual(hammer_type.name, factory.get_first_entity_creation_action(recipe))
+
+    def test_create_activity_in_location_being_machine_for_recipe(self):
+        mare_type = LocationType("mare", 400)
+        rl = RootLocation(Point(1, 1), 100)
+        milk_type = ItemType("milk", 20, stackable=True)
+        invisible_passage = PassageType.query.filter_by(name=Types.INVISIBLE_PASSAGE).one()
+        mare = Location(rl, mare_type, passage_type=invisible_passage)
+        char = util.create_character("heheszki", rl, util.create_player("123"))
+
+        build_menu_category = BuildMenuCategory("domestication")
+        milking_result = ["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction", {"resource_type": "milk"}]
+        recipe = EntityRecipe("milking_animal", {"milk": "yes"}, {"mandatory_machines": ["mare"]}, 10,
+                              build_menu_category, result=[milking_result], activity_container="selected_machine")
+        db.session.add_all([mare_type, rl, invisible_passage, mare, recipe, milk_type])
+
+        factory = ActivityFactory()
+        activity = factory.create_from_recipe(recipe, mare, char)
+        self.assertEqual("milking_animal", activity.name_tag)
+        self.assertEqual({"milk": "yes"}, activity.name_params)
+
+        self.assertEqual(mare, activity.being_in)
+        self.assertEqual("exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
+                         activity.result_actions[0][0])
+        self.assertEqual({"resource_type": "milk"},
+                         activity.result_actions[0][1])
+
+    def test_create_activity_in_passage_being_machine_for_recipe(self):
+        rl = RootLocation(Point(1, 1), 100)
+        building_type = LocationType("building", 100)
+        building = Location(rl, building_type)
+
+        char = util.create_character("heheszki", rl, util.create_player("123"))
+
+        build_menu_category = BuildMenuCategory("locks")
+        recipe = EntityRecipe("building_lock", {"abc": 1}, {"mandatory_machines": [Types.DOOR]}, 10,
+                              build_menu_category, result=[], activity_container="selected_machine")
+        db.session.add_all([building_type, rl, building, build_menu_category, recipe])
+
+        factory = ActivityFactory()
+        passage = Passage.query.filter(Passage.between(rl, building)).one()
+        activity = factory.create_from_recipe(recipe, passage, char)
+        self.assertEqual("building_lock", activity.name_tag)
+        self.assertEqual({"abc": 1}, activity.name_params)
+
+        self.assertEqual(passage, activity.being_in)
 
     def test_available_user_inputs_for_recipe(self):
         stone_type = ItemType("stone", 50, stackable=True)
