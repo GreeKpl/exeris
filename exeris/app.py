@@ -329,6 +329,48 @@ def create_database():
                                      general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
         db.session.add(character)
 
+    cow_type = models.EntityType.by_name("cow")
+    if not cow_type:
+        milk_type = models.ItemType("milk", 20, stackable=True)
+        beef_type = models.ItemType("beef", 40, stackable=True)
+        cow_type = models.LocationType("cow", 3000)
+        cow_type.properties.append(models.EntityTypeProperty(P.STATES, {
+            main.States.HUNGER: {"initial": 0},
+            main.States.MILKINESS: {"initial": 0.2},
+            main.States.MILK: {"initial": 0},
+        }))
+        cow_type.properties.append(models.EntityTypeProperty(P.ANIMAL))
+        cow_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+                main.States.MILK: {
+                    "increase": 6,  # affected by every animal's milkiness
+                    "max": 30,
+                    "resource_type": milk_type.name,
+                },
+                main.States.FATNESS: {
+                    "increase": 4,
+                    "max": 80,
+                    "resource_type": beef_type.name,
+                },
+            }
+        }))
+
+        milkable_group = models.TypeGroup("milkable_animal")
+        milkable_group.add_to_group(cow_type)
+        rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).one()
+        impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
+        cow = models.Location(rl, cow_type, passage_type=impassable_to_animal)
+
+        domestication_build_menu_category = models.BuildMenuCategory("domestication")
+        milking_cow_result = [["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
+                               {"state_name": "milk"}]]
+        milking_cow_recipe = models.EntityRecipe("milking_animal", {},
+                                                 {"mandatory_machines": ["milkable_animal"]},
+                                                 10, domestication_build_menu_category,
+                                                 result=milking_cow_result, activity_container="selected_machine")
+
+        db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe])
+
     from exeris.translations import data
     for tag_key in data:
         for language in data[tag_key]:

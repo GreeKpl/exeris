@@ -10,7 +10,8 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
     AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
-    CollectGatheredResourcesAction, BuryEntityAction, FindAndEatAnimalFood
+    CollectGatheredResourcesAction, BuryEntityAction, FindAndEatAnimalFoodAction, AnimalStateProgressAction, \
+    CollectResourcesFromDomesticatedAnimalAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -747,7 +748,7 @@ class CharacterActionsTest(TestCase):
 
         cow.states[States.HUNGER] = 0.25
         # try to eat grass from the resource area
-        find_and_eat_animal_food = FindAndEatAnimalFood(cow)
+        find_and_eat_animal_food = FindAndEatAnimalFoodAction(cow)
         find_and_eat_animal_food.perform()
 
         self.assertEqual(0, cow.states[States.HUNGER])
@@ -798,6 +799,74 @@ class CharacterActionsTest(TestCase):
         herbivore_group.add_to_group(cow_type)
 
         db.session.add_all([rl, cow_type, cow, grass_type, herbivore_group])
+
+    def test_animal_states_progress_action(self):
+        rl = RootLocation(Point(1, 1), 100)
+        milk_type = ItemType("milk", 10, stackable=True)
+        cow_type = LocationType("cow", 100)
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        cow_type.properties.append(EntityTypeProperty(P.STATES, {
+            States.MILK: {"initial": 0},
+            States.MILKINESS: {"initial": 0.1},
+        }))
+        cow_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+                States.MILK: {
+                    "increase": 10,  # affected by every animal's milkiness
+                    "max": 100,
+                    "resource_type": milk_type.name,
+                },
+            }
+        }))
+
+        cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+        db.session.add_all([rl, cow_type, cow, milk_type])
+
+        animal_state_progress_action = AnimalStateProgressAction(cow)
+        animal_state_progress_action.perform()
+        self.assertEqual(1, cow.states[States.MILK])
+
+        # non-default milkiness
+        cow.states[States.MILKINESS] = 0.5
+        animal_state_progress_action = AnimalStateProgressAction(cow)
+        animal_state_progress_action.perform()
+        self.assertEqual(1 + 5, cow.states[States.MILK])
+
+        cow.states[States.MILK] = 98
+        animal_state_progress_action = AnimalStateProgressAction(cow)
+        animal_state_progress_action.perform()
+        self.assertEqual(100, cow.states[States.MILK])
+
+    def test_collect_resources_from_domesticated_animal_action(self):
+        rl = RootLocation(Point(1, 1), 100)
+        milk_type = ItemType("milk", 10, stackable=True)
+        cow_type = LocationType("cow", 100)
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        cow_type.properties.append(EntityTypeProperty(P.STATES, {
+            States.MILK: {"initial": 0},
+        }))
+        cow_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+                States.MILK: {
+                    "increase": 10,  # affected by every animal's milkiness
+                    "max": 100,
+                    "resource_type": milk_type.name,
+                },
+            }
+        }))
+
+        char = util.create_character("abc", rl, util.create_player("def"))
+        cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+        activity = Activity(cow, "milking_cow", {}, {}, 1, char)
+        db.session.add_all([rl, cow_type, cow, milk_type, activity])
+        cow.states[States.MILK] = 17
+        collect_resources_from_animal = CollectResourcesFromDomesticatedAnimalAction(state_name=States.MILK,
+                                                                                     activity=activity, initiator=char)
+        collect_resources_from_animal.perform()
+
+        self.assertEqual(0, cow.states[States.MILK])
+        milk_in_inventory = Item.query.filter_by(type=milk_type).one()
+        self.assertEqual(17, milk_in_inventory.amount)
 
     def test_create_open_then_close_then_open_action(self):
         util.initialize_date()

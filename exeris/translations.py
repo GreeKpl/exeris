@@ -196,6 +196,12 @@ data = {
     "entity_oak#p": {
         "en": "oak branches",
     },
+    "entity_milk": {
+        "en": "pint of milk",
+    },
+    "entity_milk#p": {
+        "en": "pints of milk",
+    },
     "entity_anvil": {
         "en": "anvil",
     },

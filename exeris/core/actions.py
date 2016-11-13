@@ -257,6 +257,27 @@ class CollectGatheredResourcesAction(ActivityAction):
             return []
 
 
+@form_on_setup(animal_resource_info=recipes.AnimalResourceLevel)
+class CollectResourcesFromDomesticatedAnimalAction(ActivityAction):
+    def __init__(self, *, state_name, **injected_args):
+        self.state_name = state_name
+        self.activity = injected_args["activity"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        animal = self.activity.being_in
+        animal_states = animal.get_property(P.DOMESTICATED)["states"]
+        resource_type_name = animal_states[self.state_name]["resource_type"]
+        resource_type = models.ItemType.by_name(resource_type_name)
+        amount_collected = math.floor(animal.states[self.state_name])
+        animal.states[self.state_name] -= amount_collected
+
+        if amount_collected > 0:
+            create_resource_action = CreateItemAction(item_type=resource_type, properties={}, used_materials="all",
+                                                      amount=int(amount_collected), **self.injected_args)
+            return create_resource_action.perform()
+
+
 class RemoveItemAction(ActivityAction):
     @convert(item=models.Item)
     def __init__(self, item, gracefully=True):
@@ -1394,7 +1415,7 @@ class EatAction(ActionOnItem):
         main.call_hook(main.Hooks.EATEN, character=self.executor, item=self.item, amount=self.amount)
 
 
-class FindAndEatAnimalFood(Action):
+class FindAndEatAnimalFoodAction(Action):
     def __init__(self, executor):
         super().__init__(executor)
 
@@ -1456,6 +1477,30 @@ class FindAndEatAnimalFood(Action):
         return False
 
 
+class AnimalStateProgressAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    STATE_AND_DERIVATIVE = (
+        (main.States.MILK, main.States.MILKINESS),
+        (main.States.EGGS, main.States.EGGS_INCREASE),
+        (main.States.WOOL, main.States.WOOL_GROWTH),
+    )
+
+    def perform_action(self):
+        domesticated_prop = self.executor.get_property(P.DOMESTICATED)
+        if domesticated_prop is None:
+            raise ValueError("{} is not domesticated".format(self.executor))
+
+        for state_name, derivative in self.STATE_AND_DERIVATIVE:
+            if state_name in domesticated_prop["states"]:
+                animal_state = domesticated_prop["states"][state_name]
+                efficiency_multiplier = self.executor.states[derivative]
+                self.executor.states[state_name] = min(animal_state["max"],
+                                                       self.executor.states[state_name]
+                                                       + animal_state["increase"] * efficiency_multiplier)
+
+
 class AnimalsProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
 
@@ -1463,11 +1508,16 @@ class AnimalsProcess(ProcessAction):
         super().__init__(task)
 
     def perform_action(self):
-        animals = models.Entity.query.filter(models.Entity.has_property(P.DOMESTICATED)).all()
+        animals = models.Item.query.filter(models.Item.has_property(P.DOMESTICATED)).all() \
+                  + models.Location.query.filter(models.Location.has_property(P.DOMESTICATED)).all()
+        # todo till #130 when it'll be possible to use Entity.has_property
 
         for animal in animals:
-            eat_food_action = FindAndEatAnimalFood(animal)
+            eat_food_action = FindAndEatAnimalFoodAction(animal)
             eat_food_action.perform()
+
+            animal_state_progress_action = AnimalStateProgressAction(animal)
+            animal_state_progress_action.perform()
 
 
 class SayAloudAction(ActionOnSelf):
