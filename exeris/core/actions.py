@@ -1235,6 +1235,25 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
         raise main.InvalidInitialLocationException(entity=entity)
 
 
+def add_stackable_items(item_type, goal, weight, visible_parts=None, to_be_used_for=False):
+    visible_parts = visible_parts if visible_parts else []
+    if weight <= 0:
+        return
+
+    if to_be_used_for:
+        existing_pile = models.Item.query.filter_by(type=item_type) \
+            .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=visible_parts).first()
+    else:
+        existing_pile = models.Item.query.filter_by(type=item_type). \
+            filter(models.Item.is_in(goal)).filter_by(visible_parts=visible_parts).first()
+    if existing_pile:
+        existing_pile.weight += weight
+    else:
+        new_pile = models.Item(item_type, goal, weight=weight, role_being_in=not to_be_used_for)
+        new_pile.visible_parts = visible_parts
+        db.session.add(new_pile)
+
+
 def move_stackable_item(item, source, goal, weight, to_be_used_for=False):
     if item.parent_entity != source:
         raise main.InvalidInitialLocationException(entity=item)
@@ -1244,20 +1263,7 @@ def move_stackable_item(item, source, goal, weight, to_be_used_for=False):
     else:
         item.weight -= weight
 
-    # add to the goal
-    if to_be_used_for:
-        existing_pile = models.Item.query.filter_by(type=item.type) \
-            .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=item.visible_parts).first()
-    else:
-        existing_pile = models.Item.query.filter_by(type=item.type). \
-            filter(models.Item.is_in(goal)).filter_by(visible_parts=item.visible_parts).first()
-
-    if existing_pile:
-        existing_pile.weight += weight
-    else:
-        new_pile = models.Item(item.type, goal, weight=weight, role_being_in=not to_be_used_for)
-        new_pile.visible_parts = item.visible_parts
-        db.session.add(new_pile)
+    add_stackable_items(item.type, goal, weight, visible_parts=item.visible_parts, to_be_used_for=to_be_used_for)
 
 
 def overwrite_item_amount(item, amount):
@@ -1501,6 +1507,31 @@ class AnimalStateProgressAction(Action):
                                                        + animal_state["increase"] * efficiency_multiplier)
 
 
+class LayEggsAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    def perform_action(self):
+        domesticated_prop = self.executor.get_property(P.DOMESTICATED)
+        if domesticated_prop is None:
+            raise ValueError("{} is not domesticated".format(self.executor))
+
+        if main.States.EGGS in domesticated_prop["states"]:
+            eggs_state = domesticated_prop["states"][main.States.EGGS]
+            if self.executor.states[main.States.EGGS] >= eggs_state["max"]:  # if unable to get more eggs then drop them
+                egg_type = models.ItemType.by_name(eggs_state["resource_type"])
+                amount_of_eggs = int(math.floor(self.executor.states[main.States.EGGS]))
+
+                preferred_goal = models.Item.query.filter(models.Item.has_property(P.BIRD_NEST)) \
+                    .filter(models.Item.is_in(self.executor.being_in)).first()
+                # todo consider nest capacity after introducing storages in #94
+                if not preferred_goal:  # if no nest then eggs are laid on ground
+                    preferred_goal = self.executor.being_in
+
+                self.executor.states[main.States.EGGS] -= amount_of_eggs
+                add_stackable_items(egg_type, preferred_goal, egg_type.unit_weight * amount_of_eggs)
+
+
 class AnimalsProcess(ProcessAction):
     SCHEDULER_RUNNING_INTERVAL = 10 * general.GameDate.SEC_IN_MIN
 
@@ -1518,6 +1549,10 @@ class AnimalsProcess(ProcessAction):
 
             animal_state_progress_action = AnimalStateProgressAction(animal)
             animal_state_progress_action.perform()
+
+            if main.States.EGGS in animal.states:  # the animal can lay eggs
+                lay_eggs_action = LayEggsAction(animal)
+                lay_eggs_action.perform()
 
 
 class SayAloudAction(ActionOnSelf):

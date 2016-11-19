@@ -27,6 +27,7 @@ class P:
     CONTROLLING_MOVEMENT = "ControllingMovement"
     BURYABLE = "Buryable"
     STATES = "States"
+    BIRD_NEST = "BirdNest"
 
 
 __registry = {}

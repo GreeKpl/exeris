@@ -11,7 +11,7 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
     AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, FindAndEatAnimalFoodAction, AnimalStateProgressAction, \
-    CollectResourcesFromDomesticatedAnimalAction
+    CollectResourcesFromDomesticatedAnimalAction, LayEggsAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -867,6 +867,55 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(0, cow.states[States.MILK])
         milk_in_inventory = Item.query.filter_by(type=milk_type).one()
         self.assertEqual(17, milk_in_inventory.amount)
+
+    def test_animal_laying_eggs_action(self):
+        rl = RootLocation(Point(1, 1), 100)
+        egg_type = ItemType("eggs", 10, stackable=True)
+        hen_type = ItemType("hen", 100)
+        hen_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        hen_type.properties.append(EntityTypeProperty(P.STATES, {
+            States.EGGS: {"initial": 0},
+        }))
+        hen_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+                States.EGGS: {
+                    "increase": 1,  # affected by every animal's milkiness
+                    "max": 5,
+                    "resource_type": egg_type.name,
+                },
+            }
+        }))
+
+        hen = Item(hen_type, rl)
+        db.session.add_all([rl, egg_type, hen_type, hen])
+
+        hen.states[States.EGGS] = 4
+        lay_eggs_action = LayEggsAction(hen)
+        lay_eggs_action.perform()
+        # nothing should happen, because level of eggs is not equal to maximum allowed
+        self.assertEqual(0, Item.query.filter_by(type=egg_type).count())
+
+        hen.states[States.EGGS] = 5
+        lay_eggs_action = LayEggsAction(hen)
+        lay_eggs_action.perform()
+        # should create eggs on the ground
+        eggs_on_ground = Item.query.filter_by(type=egg_type).filter(Item.is_in(rl)).one()
+        self.assertEqual(5, eggs_on_ground.amount)
+
+        eggs_on_ground.remove()
+        nest_type = ItemType("nest", 100, portable=False)
+        nest_type.properties.append(EntityTypeProperty(P.BIRD_NEST))
+        nest = Item(nest_type, rl)
+        db.session.add_all([nest_type, nest])
+
+        # lay eggs again, but now they should land in the nest
+        hen.states[States.EGGS] = 5
+        lay_eggs_action = LayEggsAction(hen)
+        lay_eggs_action.perform()
+
+        eggs_in_nest = Item.query.filter_by(type=egg_type).filter(Item.is_in(nest)).one()
+        self.assertEqual(5, eggs_in_nest.amount)
+
 
     def test_create_open_then_close_then_open_action(self):
         util.initialize_date()
