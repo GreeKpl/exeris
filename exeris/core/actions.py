@@ -1775,7 +1775,7 @@ class DeathAction(Action):
                        notification=death_notification)
 
     def turn_into_body(self):
-        self.executor.type = models.EntityType.by_name(main.Types.DEAD_CHARACTER)
+        self.executor.alter_type(models.EntityType.by_name(main.Types.DEAD_CHARACTER))
 
     @staticmethod
     def create_death_info_property():
@@ -1924,3 +1924,64 @@ class StartBuryingEntityAction(ActionOnEntity):
                                            {"location_types": [main.Types.OUTSIDE]}, 15, self.executor)
         burying_activity.result_actions = [bury_entity_action]
         db.session.add(burying_activity)
+
+
+class StartTamingAnimalAction(ActionOnEntity):
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity)
+
+    def perform_action(self):
+        if self.entity.has_activity():
+            raise main.ActivityAlreadyExistsOnEntity(entity=self.entity)
+
+        if not self.entity.has_property(P.TAMABLE):
+            raise ValueError("Animal {} is not domesticable", self.entity)
+
+        result = []
+        if not self.entity.has_property(P.DOMESTICATED):
+            result += [["exeris.core.actions.TurnIntoDomesticatedSpecies", {}]]
+
+        result += [["exeris.core.actions.MakeAnimalTrustInitiator", {}]]
+
+        taming_activity = models.Activity(self.entity, "taming_animal", {},
+                                          {"targets": [self.entity.id]}, 10, self.executor)
+        taming_activity.result_actions = result
+        db.session.add(taming_activity)
+
+        general.EventCreator.base(Events.START_TAMING, rng=general.NeighbouringLocationsRange(True),
+                                  params={"animal": self.entity}, doer=self.executor)
+
+
+class MakeAnimalTrustInitiator(ActivityAction):
+    @convert(animal=models.Entity)
+    def __init__(self, **injected_args):
+        self.activity = injected_args["activity"]
+        self.initiator = injected_args["initiator"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        animal = self.activity.being_in
+        domesticated_prop = models.EntityProperty.query.filter_by(entity=animal, name=P.DOMESTICATED).one()
+        trusted_characters = domesticated_prop.data["trusted"]
+        trusted_characters[str(self.initiator.id)] = 1.0
+
+
+class TurnIntoDomesticatedSpecies(ActivityAction):
+    def __init__(self, **injected_args):
+        self.activity = injected_args["activity"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        animal = self.activity.being_in
+
+        tamable_prop = animal.get_property(P.TAMABLE)
+        if tamable_prop is None:
+            raise main.AnimalNotTamableException(animal=animal)
+
+        domesticated_type = models.EntityType.by_name(tamable_prop["domesticated_type"])
+
+        if not domesticated_type.has_property(P.DOMESTICATED):
+            raise ValueError("{} is not a domesticated animal", domesticated_type)
+
+        animal.alter_type(domesticated_type)
+        animal.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))

@@ -11,7 +11,7 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
     AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, FindAndEatAnimalFoodAction, AnimalStateProgressAction, \
-    CollectResourcesFromDomesticatedAnimalAction, LayEggsAction
+    CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -916,6 +916,52 @@ class CharacterActionsTest(TestCase):
         eggs_in_nest = Item.query.filter_by(type=egg_type).filter(Item.is_in(nest)).one()
         self.assertEqual(5, eggs_in_nest.amount)
 
+    def test_taming_animal_action(self):
+        util.initialize_date()
+        stallion_type = LocationType("stallion", 400)
+        stallion_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        stallion_type.properties.append(EntityTypeProperty(P.DOMESTICATED))
+        stallion_type.properties.append(EntityTypeProperty(P.TAMABLE))
+
+        wild_stallion_type = LocationType("wild_stallion", 400)
+        wild_stallion_type.properties.append(EntityTypeProperty(P.ANIMAL))
+        wild_stallion_type.properties.append(EntityTypeProperty(P.TAMABLE, {
+            "domesticated_type": stallion_type.name
+        }))
+
+        rl = RootLocation(Point(1, 1), 300)
+        first_owner = util.create_character("first_owner", rl, util.create_player("aldw"))
+        invisible_passage = PassageType.by_name(Types.INVISIBLE_PASSAGE)
+        wild_stallion = Location(rl, wild_stallion_type, passage_type=invisible_passage)
+        db.session.add_all([stallion_type, wild_stallion_type, rl, wild_stallion])
+
+        start_taming_animal_action = StartTamingAnimalAction(first_owner, wild_stallion)
+        start_taming_animal_action.perform()
+
+        taming_activity = Activity.query.one()
+        self.assertEqual("exeris.core.actions.TurnIntoDomesticatedSpecies", taming_activity.result_actions[0][0])
+        self.assertEqual("exeris.core.actions.MakeAnimalTrustInitiator", taming_activity.result_actions[1][0])
+
+        ActivityProgress.finish_activity(taming_activity)
+
+        # activity succeeds, the wild animal is now a domesticated one which trusts the first_owner
+        stallion = Location.query.filter_by(type=stallion_type).one()
+        self.assertTrue(stallion.has_property(P.DOMESTICATED))
+        self.assertEqual({str(first_owner.id): 1.0}, stallion.get_property(P.DOMESTICATED)["trusted"])
+
+        db.session.delete(taming_activity)
+
+        other_char = util.create_character("other_char", rl, util.create_player("kodw"))
+        start_taming_animal_action = StartTamingAnimalAction(other_char, stallion)
+        start_taming_animal_action.perform()
+
+        new_taming_activity = Activity.query.one()
+
+        self.assertEqual(other_char, new_taming_activity.initiator)
+        ActivityProgress.finish_activity(new_taming_activity)
+
+        self.assertEqual({str(first_owner.id): 1.0, str(other_char.id): 1.0},
+                         stallion.get_property(P.DOMESTICATED)["trusted"])
 
     def test_create_open_then_close_then_open_action(self):
         util.initialize_date()

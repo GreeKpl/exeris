@@ -43,6 +43,7 @@ class Errors:
     ALREADY_BEING_IN_COMBAT = "error_already_being_in_combat"
     NO_RESOURCE_AVAILABLE = "error_no_resource_available"
     INVALID_OPTION_FOR_NOTIFICATION = "error_invalid_option_for_notification"
+    ANIMAL_NOT_TAMABLE = "error_animal_not_tamable"
 
 
 class Types:
@@ -82,6 +83,7 @@ class Events:
     HIT_TARGET_IN_COMBAT = "event_hit_target_in_combat"
     RETREAT_FROM_COMBAT = "event_retreat_from_combat"
     END_OF_COMBAT = "event_end_of_combat"
+    START_TAMING = "event_start_taming"
 
 
 class Hooks:
@@ -421,3 +423,8 @@ class CharacterDeadException(CharacterException):
 class InvalidOptionForNotification(PlayerException, MalformedInputErrorMixin):
     def __init__(self, *, player, option_name):
         super().__init__(Errors.INVALID_OPTION_FOR_NOTIFICATION, player=player, option_name=option_name)
+
+
+class AnimalNotTamableException(GameException):
+    def __init__(self, *, animal):
+        super().__init__(Errors.ANIMAL_NOT_TAMABLE, animal=animal)

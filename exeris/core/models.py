@@ -344,16 +344,18 @@ class Entity(db.Model):
             main.States.MODIFIERS: {},
         }
 
-        if hasattr(self, "type"):
-            states_type_property = EntityTypeProperty.query.get((self.type.name, P.STATES))
-            if states_type_property:
-                self._add_initial_states_to_dict(states_type_property)
-
+        self.add_type_specific_states()
         self.states.listeners.append(clamp_to_0_1)
 
-    def _add_initial_states_to_dict(self, states_type_property):
+    def add_type_specific_states(self):
+        states_type_property = EntityTypeProperty.query.get((self.type.name, P.STATES))
+        if states_type_property:
+            self._add_initial_states_to_states(states_type_property)
+
+    def _add_initial_states_to_states(self, states_type_property):
         for state, state_prop in states_type_property.data.items():
-            self.states[state] = state_prop["initial"]
+            if state not in self.states:
+                self.states[state] = state_prop["initial"]
 
     weight = sql.Column(sql.Integer)
 
@@ -422,6 +424,10 @@ class Entity(db.Model):
     def used_for(self, parent_entity):
         self.parent_entity = parent_entity
         self.role = Entity.ROLE_USED_FOR
+
+    def alter_type(self, new_type):
+        self.type = new_type
+        self.add_type_specific_states()
 
     def __getattr__(self, item):
         try:

@@ -3,9 +3,10 @@ import inspect
 
 # property
 class P:
+    ANY = "Any"  # special property which exists for every entity
     ANIMAL = "Animal"
     DOMESTICATED = "Domesticated"
-    ANY = "Any"  # special property which exists for every entity
+    TAMABLE = "Tamable"
     CLOSEABLE = "Closeable"
     READABLE = "Readable"
     HAS_DEPENDENT = "HasDependent"
