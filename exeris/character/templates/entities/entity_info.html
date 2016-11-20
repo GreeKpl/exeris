@@ -2,7 +2,7 @@
      data-other-side="{{ encode(other_side.id) }}"{% endif %}>
     {{ full_name|safe }}
     {% for action in actions %}
-        <button class="entity_action btn btn-default" data-entity="{{ encode(entity_id) }}"
+        <button class="entity_action btn btn-default" data-entity="{{ encode(action.entity.id) }}"
                 data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
     {% endfor %}
     {% if expandable %}
@@ -13,7 +13,8 @@
                 <li class="activity_info"> -> {{ activity.name_tag }}
                     - {{ activity.ticks_needed - activity.ticks_left }}
                     / {{ activity.ticks_needed }} -
-                    <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">Join
+                    <button data-activity="{{ encode(activity.id) }}" class="join_activity btn btn-default">
+                        Join
                     </button>
                 </li>
             {% endfor %}

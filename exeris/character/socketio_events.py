@@ -442,13 +442,10 @@ def _get_entity_info(entity):
     else:
         raise ValueError("Entity to show is of type {}".format(type(entity)))
 
-    def has_needed_prop(action):
+    def has_needed_prop(entity, action):
         if action.required_property == P.ANY:
             return True
         return entity.has_property(action.required_property)
-
-    possible_actions = [action for action in accessible_actions.ACTIONS_ON_GROUND if
-                        has_needed_prop(action) and action.other_req(entity)]
 
     activities = []
     # TODO translation
@@ -456,14 +453,24 @@ def _get_entity_info(entity):
     if activity:
         activities.append(activity)
 
+    possible_actions = [accessible_actions.EntityActionRecord(entity, action)
+                        for action in accessible_actions.ACTIONS_ON_GROUND
+                        if has_needed_prop(entity, action) and action.other_req(entity)]
     if isinstance(entity, models.Passage):
-        expandable = models.Entity.query.filter(models.Entity.is_in(other_side)) \
-                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
-        if expandable:
-            expandable = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side)
-        activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
-        if activity:
-            activities.append(activity)
+        can_see_the_other_side = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side)
+        if can_see_the_other_side:
+            possible_actions += [accessible_actions.EntityActionRecord(other_side, action)
+                                 for action in accessible_actions.ACTIONS_ON_GROUND
+                                 if has_needed_prop(other_side, action) and action.other_req(other_side)]
+
+        entities_on_other_side = models.Entity.query.filter(models.Entity.is_in(other_side)) \
+            .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).count()
+        expandable = entities_on_other_side and can_see_the_other_side
+
+        if can_see_the_other_side:
+            activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
+            if activity:
+                activities.append(activity)
     else:
         expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
                          .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None

@@ -11,6 +11,16 @@ class ActionRecord:
         self.other_req = other_req
 
 
+class EntityActionRecord:
+    def __init__(self, entity, action):
+        self.entity = entity
+        self.tag_name = action.tag_name
+        self.image = action.image
+        self.required_property = action.required_property
+        self.endpoint = action.endpoint
+        self.other_req = action.other_req
+
+
 ACTIONS_ON_GROUND = [
     ActionRecord("eat", "image", P.EDIBLE, "eat"),
     ActionRecord("enter", "image", P.ENTERABLE, "move_to_location"),
@@ -18,7 +28,7 @@ ACTIONS_ON_GROUND = [
     ActionRecord("add_to_activity", "image", P.ANY, "form_add_item_to_activity",
                  lambda x: isinstance(x, models.Item)),
     ActionRecord("go_to_location", "image", P.ANY, "character.go_to_location",
-                 lambda x: isinstance(x, models.Location)),
+                 lambda x: isinstance(x, models.RootLocation)),
     ActionRecord("open", "image", P.CLOSEABLE, "toggle_closeable",
                  lambda x: x.has_property(P.CLOSEABLE, closed=True)),
     ActionRecord("close", "image", P.CLOSEABLE, "toggle_closeable",

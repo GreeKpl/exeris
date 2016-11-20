@@ -238,6 +238,12 @@ data = {
     "entity_group_stone": {
         "en": "stone",
     },
+    "entity_female_aurochs": {
+        "en": "female aurochs",
+    },
+    "entity_cow": {
+        "en": "cow",
+    },
     "achievement_unlocked": {
         "en": "Achievement %{name} unlocked!",
     },
