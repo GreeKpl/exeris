@@ -26,5 +26,6 @@ ACTIONS_ON_GROUND = [
     ActionRecord("attack_character", "image", P.ANY, "attack_character",
                  lambda x: isinstance(x, models.Character)),
     ActionRecord("bury_body", "image", P.BURYABLE, "character.start_burying_entity",
-                 lambda x: isinstance(x, models.Character))
+                 lambda x: isinstance(x, models.Character)),
+    ActionRecord("tame_animal", "image", P.TAMABLE, "character.start_taming_animal"),
 ]

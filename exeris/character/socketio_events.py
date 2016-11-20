@@ -567,3 +567,14 @@ def start_burying_entity(entity_id):
     start_burying_entity_action.perform()
     db.session.commit()
     return ()
+
+
+@socketio_character_event("character.start_taming_animal")
+def start_taming_animal(entity_id):
+    entity = models.Entity.by_id(app.decode(entity_id))
+
+    start_taming_animal_action = actions.StartTamingAnimalAction(g.character, entity)
+    start_taming_animal_action.perform()
+
+    db.session.commit()
+    return ()

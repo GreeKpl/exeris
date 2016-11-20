@@ -317,17 +317,8 @@ def create_database():
         db.session.add_all(
             [stone_group, granite_type, sandstone_type, marble_type, granite_pile, sandstone_pile, marble_pile])
 
-    dead_body_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
-    if not dead_body_type.has_property(P.BURYABLE):
+        dead_body_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
         dead_body_type.properties.append(models.EntityTypeProperty(P.BURYABLE))
-
-    if app.config["DEBUG"] and not models.Player.query.count():
-        new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
-        db.session.add(new_plr)
-
-        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
-                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
-        db.session.add(character)
 
     cow_type = models.EntityType.by_name("cow")
     if not cow_type:
@@ -370,6 +361,27 @@ def create_database():
                                                  result=milking_cow_result, activity_container="selected_machine")
 
         db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe])
+
+        cow_type = models.LocationType.by_name("cow")
+        female_aurochs_type = models.LocationType("female_aurochs", 3000)
+        female_aurochs_type.properties.append(models.EntityTypeProperty(P.ANIMAL))
+        female_aurochs_type.properties.append(models.EntityTypeProperty(P.TAMABLE, {
+            "domesticated_type": cow_type.name,
+        }))
+
+        female_aurochs1 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+        female_aurochs2 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+        female_aurochs3 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+
+        db.session.add_all([female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
+
+    if app.config["DEBUG"] and not models.Player.query.count():
+        new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
+        db.session.add(new_plr)
+
+        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
+                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
+        db.session.add(character)
 
     from exeris.translations import data
     for tag_key in data:
