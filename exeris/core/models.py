@@ -911,6 +911,9 @@ class Item(Entity):
         prop = self.get_property(P.HAS_DEPENDENT)
         if prop:
             pyslatized["item_dependent"] = prop["name"]
+        domesticated_prop = self.get_property(P.DOMESTICATED)
+        if domesticated_prop and "trusted" in domesticated_prop:
+            pyslatized["trusted"] = domesticated_prop["trusted"]
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
@@ -1277,6 +1280,9 @@ class Location(Entity):
             pyslatized["location_material"] = prop
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
+        domesticated_prop = self.get_property(P.DOMESTICATED)
+        if domesticated_prop and "trusted" in domesticated_prop:
+            pyslatized["trusted"] = domesticated_prop["trusted"]
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):

@@ -102,10 +102,10 @@ data = {
         "en": "Whisper to ${character_info}",
     },
     "tp_item_info": {
-        "en": "%{main_material}%{dependent}%{item_name}%{parts}",
+        "en": "%{main_material}%{dependent}%{item_name}%{parts}%{trust}",
     },
     "tp_location_info": {
-        "en": "%{main_material}%{location_name}%{title}",
+        "en": "%{main_material}%{location_name}%{title}%{trust}",
     },
     "tp_item_title": {
         "en": "'%{title@escape_html}'",
@@ -141,6 +141,12 @@ data = {
     },
     "tp_detailed_passage_other_side": {
         "en": "%{states} %{passage_name} to ${other_side:entity_info}",
+    },
+    "domestication_most_trusted": {
+        "en": "(trusting you most)",
+    },
+    "domestication_trusted": {
+        "en": "(trusting you)",
     },
     "passage_closed": {
         "en": "closed",

@@ -43,6 +43,17 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
 
         return "[MISSING TAG {}]".format(key)
 
+    def get_the_most_trusted(trusted_dict):
+        """
+        :arg trusted_dict a dict where key is a character id (as str) and value is trust level (float)
+        :return the id having the highest trust level. None if the dict is empty
+        """
+        the_most_trusted = None
+        for trusted_id in trusted_dict:
+            if the_most_trusted is None or trusted_dict[trusted_id] > trusted_dict[str(the_most_trusted)]:
+                the_most_trusted = int(trusted_id)
+        return the_most_trusted
+
     if character:  # add character-specific data if character is specified
         kwargs["context"] = dict(kwargs.get("context", {}), observer=character, obs_gen=character.sex)
 
@@ -70,6 +81,7 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         damage_text = ""
         title_text = ""
         states_text = ""
+        trust_text = ""
 
         number = 1
         if params.get("item_amount", None):
@@ -112,11 +124,19 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
             title_text = helper.translation("tp_item_title", title=params["item_title"])
             title_text += " "
 
+        if "observer" in params and "trusted" in params:
+            observer_id = params["observer"].id
+            trust_dict = params.get("trusted", {})
+            if observer_id == get_the_most_trusted(trust_dict):
+                trust_text = " " + helper.translation("domestication_most_trusted")
+            elif str(observer_id) in trust_dict:
+                trust_text = " " + helper.translation("domestication_trusted")
+
         if detailed:
             return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
                                       dependent=dependent_text, amount=number_text, item_name=item_text,
                                       parts=parts_text, title=title_text,
-                                      states=states_text).strip()  # TODO such strip is weak
+                                      states=states_text, trust=trust_text).strip()  # TODO such strip is weak
         else:
             return helper.translation("tp_item_info", dependent=dependent_text, main_material=material_text,
                                       item_name=item_text, parts=parts_text).strip()  # TODO such strip is weak
@@ -199,8 +219,17 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
                                                item_form=form)
             material_text += " "
 
+        trust_text = ""
+        if "observer" in params and "trusted" in params:
+            observer_id = params["observer"].id
+            trust_dict = params.get("trusted", {})
+            if observer_id == get_the_most_trusted(trust_dict):
+                trust_text = " " + helper.translation("domestication_most_trusted")
+            elif str(observer_id) in trust_dict:
+                trust_text = " " + helper.translation("domestication_trusted")
+
         return helper.translation("tp_location_info", location_name=location_name, title=title_text,
-                                  main_material=material_text).strip()
+                                  main_material=material_text, trust=trust_text).strip()
 
     pyslate.register_function("location_info", func_location_info)
 
@@ -322,7 +351,8 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
 
         entities = params["entities"]
         tag_for_each_entity = "entity_info" + helper.pass_the_suffix(tag_name)
-        return ", ".join([helper.translation(tag_for_each_entity, **dict(entity_info, **params)) for entity_info in entities])
+        return ", ".join(
+            [helper.translation(tag_for_each_entity, **dict(entity_info, **params)) for entity_info in entities])
 
     pyslate.register_function("list_of_entities", func_list_of_entities)
 
