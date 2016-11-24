@@ -31,7 +31,7 @@ class SchedulerTravelTest(TestCase):
         util.initialize_date()
 
         rl = RootLocation(Point(1, 1), 123)
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_type)
         traversability_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
@@ -59,7 +59,7 @@ class SchedulerTravelTest(TestCase):
         util.initialize_date()
 
         rl = RootLocation(Point(2.8, 2.8), 123)
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_type)
         accessible_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
@@ -115,7 +115,7 @@ class SchedulerTravelTest(TestCase):
 
         rl = RootLocation(Point(2.8, 2.8), 123)
         far_away_loc = RootLocation(Point(40, 40), 12)
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_type)
         accessible_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
@@ -198,7 +198,7 @@ class SchedulerTravelTest(TestCase):
         rl = RootLocation(Point(1.02, 1.972222222222221), 123)
 
         land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
-        grass_terrain = TerrainType("grass")
+        grass_terrain = TerrainType("grassland")
         land_terrain.add_to_group(grass_terrain)
         water_terrain = TypeGroup.by_name(Types.WATER_TERRAIN)
         deep_water_terrain = TerrainType("deep_water", travel_type=TerrainType.TRAVEL_WATER)
@@ -503,7 +503,7 @@ class SchedulerActivityTest(TestCase):
         worker = util.create_character("John", rl, util.create_player("ABC"))
 
         swamp_type = TerrainType("swamp")
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         road_type = TerrainType("road")
         terrain_poly = Polygon([(0, 0), (2, 0), (2, 2), (0, 2)])
         swamp_area = TerrainArea(terrain_poly, swamp_type, priority=1)
@@ -512,9 +512,9 @@ class SchedulerActivityTest(TestCase):
         db.session.add_all([rl, swamp_type, road_type, grass_type, swamp_area, road_area])
 
         self.assertRaises(main.InvalidTerrainTypeException,
-                          lambda: ActivityProgress.check_terrain_types(["grass"], rl))
+                          lambda: ActivityProgress.check_terrain_types(["grassland"], rl))
 
-        ActivityProgress.check_terrain_types(["road", "grass"], rl)
+        ActivityProgress.check_terrain_types(["road", "grassland"], rl)
 
     def test_check_excluded_by_entities(self):
         rl = RootLocation(Point(1, 1), 123)

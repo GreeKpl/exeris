@@ -73,7 +73,7 @@ class RangeSpecTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_edge_wrapping(self):
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
         land_terrain.add_to_group(grass_type)
 
@@ -136,7 +136,7 @@ class RangeSpecTest(TestCase):
                           (map_data.MAP_WIDTH - 4, 2)], list(line_strings[1].coords))
 
     def test_circular_area(self):
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         road_type = TerrainType("road")
         forest_type = TerrainType("forest")
         land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
@@ -213,7 +213,7 @@ class RangeSpecTest(TestCase):
         loc_type = LocationType("building", 300)
         unlimited = PassageType("unlimited", True)
 
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         TypeGroup.by_name(Types.LAND_TERRAIN).add_to_group(grass_type)
         grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
         grass_terrain = TerrainArea(grass_poly, grass_type)

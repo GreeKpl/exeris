@@ -596,7 +596,7 @@ class CharacterActionsTest(TestCase):
     def test_say_aloud_action(self):
         util.initialize_date()
 
-        grass_type = TerrainType("grass")
+        grass_type = TerrainType("grassland")
         TypeGroup.by_name(main.Types.LAND_TERRAIN).add_to_group(grass_type)
         grass_poly = Polygon([(0, 0), (0, 30), (30, 30), (30, 0)])
         grass_terrain = TerrainArea(grass_poly, grass_type)
@@ -738,7 +738,7 @@ class CharacterActionsTest(TestCase):
 
     def test_find_and_eat_animal_food_action(self):
         self._set_up_entities_for_animal_eating()
-        grass_type = ItemType.by_name("grass")
+        grass_type = ItemType.by_name("grassland")
         rl = RootLocation.query.one()
         cow_type = LocationType.by_name("cow")
         cow = Location.query.filter_by(type=cow_type).one()
@@ -786,7 +786,7 @@ class CharacterActionsTest(TestCase):
 
         cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
 
-        grass_type = ItemType("grass", 10, stackable=True)
+        grass_type = ItemType("grassland", 10, stackable=True)
         grass_type.properties.append(
             EntityTypeProperty(P.EDIBLE_BY_ANIMAL, {
                 "states": {
