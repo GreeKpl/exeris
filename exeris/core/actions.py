@@ -1445,7 +1445,8 @@ class FindAndEatAnimalFoodAction(Action):
         for resource_area in resource_areas:  # eat from the ground
             resource_type = resource_area.resource_type
             edible_by_animal_prop = resource_type.get_property(P.EDIBLE_BY_ANIMAL)
-            if self.is_edible_by_animal(edible_by_animal_prop["eater_types"]):
+            if self.is_edible_by_animal(edible_by_animal_prop["eater_types"]) \
+                    and self.can_eat_from_terrain_type(edible_by_animal_prop.get("terrain_types", {})):
                 hunger_decrease_per_piece = edible_by_animal_prop["states"][main.States.HUNGER]
                 max_edible_per_day = min(resource_area.efficiency, resource_area.amount)
                 pieces_eaten = min(math.ceil(self.executor.states[main.States.HUNGER] / -hunger_decrease_per_piece),
@@ -1481,6 +1482,15 @@ class FindAndEatAnimalFoodAction(Action):
             if models.EntityType.by_name(eater_type).contains(self.executor.type):
                 return True
         return False
+
+    def can_eat_from_terrain_type(self, terrain_types):
+        if not terrain_types:
+            return True
+
+        position = self.executor.get_position()
+        terrain = models.TerrainArea.query.filter(models.TerrainArea.terrain.ST_Intersects(position.wkt)) \
+            .filter(models.TerrainArea.type_name.in_(terrain_types)).first()
+        return terrain is not None
 
 
 class AnimalStateProgressAction(Action):
