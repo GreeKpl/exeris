@@ -1973,6 +1973,11 @@ class MakeAnimalTrustInitiator(ActivityAction):
         animal = self.activity.being_in
         domesticated_prop = models.EntityProperty.query.filter_by(entity=animal, name=P.DOMESTICATED).one()
         trusted_characters = domesticated_prop.data["trusted"]
+        for trusted_character_id in trusted_characters:  # make everyone else less trusted
+            trusted_characters[trusted_character_id] -= 0.1
+            if trusted_characters[trusted_character_id] <= 0:
+                del trusted_characters[trusted_character_id]
+
         trusted_characters[str(self.initiator.id)] = 1.0
 
 

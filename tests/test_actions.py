@@ -960,7 +960,7 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(other_char, new_taming_activity.initiator)
         ActivityProgress.finish_activity(new_taming_activity)
 
-        self.assertEqual({str(first_owner.id): 1.0, str(other_char.id): 1.0},
+        self.assertEqual({str(first_owner.id): 0.9, str(other_char.id): 1.0},
                          stallion.get_property(P.DOMESTICATED)["trusted"])
 
     def test_create_open_then_close_then_open_action(self):
