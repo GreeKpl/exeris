@@ -995,10 +995,13 @@ class Combat(Entity):
     __tablename__ = "combats"
 
     def __init__(self):
+        self.type = EntityType.by_name(Types.COMBAT)
         super().__init__()
 
     id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
     recorded_violence = sql.Column(sqlalchemy_json_mutable.JsonDict, default=lambda: {})
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name), index=True)
+    type = sql.orm.relationship(EntityType, uselist=False)
 
     def get_recorded_damage(self, character):
         if isinstance(character, Entity):
@@ -1391,10 +1394,14 @@ class BuriedContent(Entity):
 
     _position = sql.Column(gis.Geometry("POINT"), nullable=True, index=True)
 
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("entity_types.name"), index=True)
+    type = sql.orm.relationship(EntityType, uselist=False)
+
     def __init__(self, position):
         self.position = position
         self.being_in = None
         self.weight = 0
+        self.type = EntityType.by_name(Types.BURIED_HOLE)
         super().__init__()
 
     @hybrid_property
@@ -1989,12 +1996,10 @@ def init_database_contents():
         door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
         door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
-    if not PassageType.by_name(Types.INVISIBLE_PASSAGE):
         invisible_passage = PassageType(Types.INVISIBLE_PASSAGE, True)
         invisible_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         invisible_passage.properties.append(EntityTypeProperty(P.INVISIBLE_PASSAGE))
         db.session.add(invisible_passage)
-    if not EntityType.by_name(Types.ALIVE_CHARACTER):
         alive_character = EntityType(Types.ALIVE_CHARACTER)
         alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
         alive_character.properties.append(EntityTypeProperty(P.STATES, data={
@@ -2016,7 +2021,6 @@ def init_database_contents():
         alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
         db.session.add(alive_character)
 
-    if not TypeGroup.by_name(Types.ANY_TERRAIN):
         group_any_terrain = TypeGroup(Types.ANY_TERRAIN)
         group_land_terrain = TypeGroup(Types.LAND_TERRAIN)
         group_water_terrain = TypeGroup(Types.WATER_TERRAIN)
@@ -2024,7 +2028,6 @@ def init_database_contents():
         group_any_terrain.add_to_group(group_water_terrain)
         db.session.add_all([group_any_terrain, group_land_terrain, group_water_terrain])
 
-    if not EntityType.by_name(Types.DEAD_CHARACTER):
         dead_character = EntityType(Types.DEAD_CHARACTER)
         dead_character.properties.append(EntityTypeProperty(P.STATES, data={
             main.States.MODIFIERS: {"initial": {}},
@@ -2032,9 +2035,11 @@ def init_database_contents():
         db.session.add(dead_character)
 
     db.session.merge(EntityType(Types.ACTIVITY))
+    db.session.merge(EntityType(Types.BURIED_HOLE))
+    db.session.merge(EntityType(Types.COMBAT))
 
     db.session.merge(LocationType(Types.OUTSIDE, 0))
-    db.session.merge(TerrainType("sea"))
+    db.session.merge(TerrainType(Types.SEA))
 
     db.session.flush()
 

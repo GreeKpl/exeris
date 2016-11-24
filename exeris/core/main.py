@@ -47,6 +47,8 @@ class Errors:
 
 
 class Types:
+    COMBAT = "combat"
+    BURIED_HOLE = "buried_hole"
     LAND_TERRAIN = "group_land_terrain"
     WATER_TERRAIN = "group_water_terrain"
     ANY_TERRAIN = "group_any_terrain"
