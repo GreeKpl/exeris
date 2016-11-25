@@ -365,6 +365,7 @@ def create_database():
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).one()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         cow = models.Location(rl, cow_type, passage_type=impassable_to_animal)
+        cow.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
 
         domestication_build_menu_category = models.BuildMenuCategory("domestication")
         milking_cow_result = [["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
