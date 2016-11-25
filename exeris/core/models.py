@@ -611,8 +611,8 @@ class Entity(db.Model):
         return str(self.__class__) + str(self.__dict__)
 
 
-@sqlalchemy.event.listens_for(Entity, "load")
-def add_death_listener(target, _):
+@sqlalchemy.event.listens_for(Entity, "load", propagate=True)
+def clamp_states_to_0_1(target, _):
     target.states = sqlalchemy_json_mutable.mutable_types.NestedMutableDict.coerce("states", target.states)
     target.states.listeners.append(clamp_to_0_1)
 

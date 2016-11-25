@@ -212,7 +212,7 @@ def create_database():
                                          activity_container="fixed_item")
         db.session.add_all([hut_type, hut_recipe])
 
-        grass_terrain = models.TerrainType("grass")
+        grass_terrain = models.TerrainType("grassland")
         forest_terrain = models.TerrainType("forest")
         deep_water_terrain = models.TerrainType("deep_water")
         road_terrain = models.TerrainType("road")
@@ -345,7 +345,21 @@ def create_database():
                 },
             }
         }))
+        cow_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
 
+        grass_type = models.ItemType("grass", 100, stackable=True)
+        grass_type.properties.append(models.EntityTypeProperty(P.EDIBLE_BY_ANIMAL, {
+            "eater_types": ["herbivore"],
+            "terrain_types": ["grassland"],
+            "states": {
+                main.States.HUNGER: -0.5,
+            },
+        }))
+
+        grass_area = models.ResourceArea(grass_type, Point(5, 5), 8, 20, 500)
+
+        herbivore_group = models.TypeGroup("herbivore")
+        herbivore_group.add_to_group(cow_type)
         milkable_group = models.TypeGroup("milkable_animal")
         milkable_group.add_to_group(cow_type)
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).one()
@@ -360,7 +374,8 @@ def create_database():
                                                  10, domestication_build_menu_category,
                                                  result=milking_cow_result, activity_container="selected_machine")
 
-        db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe])
+        db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe, grass_type,
+                            herbivore_group, grass_area])
 
         cow_type = models.LocationType.by_name("cow")
         female_aurochs_type = models.LocationType("female_aurochs", 3000)

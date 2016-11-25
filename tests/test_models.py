@@ -468,6 +468,7 @@ class PassageTest(TestCase):
 
 class GroupTest(TestCase):
     create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
 
     def test_group_direct_modification(self):
         self._setup_hammers()
@@ -768,4 +769,32 @@ class GroupTest(TestCase):
         self.assertCountEqual([steel_tools, bone_tools], tools.child_categories)
         self.assertCountEqual([steel_hammer, steel_needle], steel_tools.get_recipes())
 
+
+class ListenersTest(TestCase):
+    create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
+
+    def test_listeners_for_entities(self):
+        test_item_type = ItemType("test_item", 100)
+        rl = RootLocation(Point(1, 1), 100)
+        test_item = Item(test_item_type, rl)
+        db.session.add_all([test_item_type, rl, test_item])
+        db.session.flush()
+
+        # test whether listener in __init__ worked fine
+        test_item.states[main.States.HUNGER] = 0.5
+        self.assertEqual(0.5, test_item.states[main.States.HUNGER])
+        test_item.states[main.States.HUNGER] = 1.5
+        self.assertEqual(1.0, test_item.states[main.States.HUNGER])
+        test_item.states[main.States.HUNGER] = -1
+        self.assertEqual(0, test_item.states[main.States.HUNGER])
+
+        test_item, test_entity = None, None
+
+        test_item = Item.query.one()
+        test_item.states[main.States.HUNGER] = -1
+        self.assertEqual(0, test_item.states[main.States.HUNGER])
+
+        test_item = Item.query.one()
+        test_item.states[main.States.HUNGER] = 1.3
+        self.assertEqual(1, test_item.states[main.States.HUNGER])
