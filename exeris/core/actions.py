@@ -1421,7 +1421,9 @@ class EatAction(ActionOnItem):
         main.call_hook(main.Hooks.EATEN, character=self.executor, item=self.item, amount=self.amount)
 
 
-class FindAndEatAnimalFoodAction(Action):
+class AnimalEatingAction(Action):
+    HUNGER_INCREASE = 0.1
+
     def __init__(self, executor):
         super().__init__(executor)
 
@@ -1429,6 +1431,8 @@ class FindAndEatAnimalFoodAction(Action):
         animal_prop = self.executor.get_property(P.ANIMAL)
         if animal_prop is None:
             raise ValueError("{} is not an animal".format(self.executor))
+
+        self.executor.states[main.States.HUNGER] += AnimalEatingAction.HUNGER_INCREASE
 
         neighbouring_locations = general.NeighbouringLocationsRange(only_through_unlimited=True)
         any_root_location_near = neighbouring_locations.root_locations_near(self.executor)
@@ -1439,23 +1443,30 @@ class FindAndEatAnimalFoodAction(Action):
             self.try_to_eat_from_storages()
 
     def eat_from_ground(self):
+        logger.debug("Eat from the ground")
         resource_areas = models.ResourceArea.query \
             .filter(models.ResourceArea.in_area(self.executor.get_position())) \
             .filter(models.ItemType.has_property(P.EDIBLE_BY_ANIMAL)).all()
         for resource_area in resource_areas:  # eat from the ground
+            logger.debug("Trying to eat from %s", resource_area)
             resource_type = resource_area.resource_type
             edible_by_animal_prop = resource_type.get_property(P.EDIBLE_BY_ANIMAL)
-            if self.is_edible_by_animal(edible_by_animal_prop["eater_types"]) \
-                    and self.can_eat_from_terrain_type(edible_by_animal_prop.get("terrain_types", {})):
+
+            edible_by_animal = self.is_edible_by_animal(edible_by_animal_prop["eater_types"])
+            valid_terrain_type = self.can_eat_from_terrain_type(edible_by_animal_prop.get("terrain_types", {}))
+            logger.debug("Is edible: %s, is valid terrain: %s", edible_by_animal, valid_terrain_type)
+            if edible_by_animal and valid_terrain_type:
                 hunger_decrease_per_piece = edible_by_animal_prop["states"][main.States.HUNGER]
                 max_edible_per_day = min(resource_area.efficiency, resource_area.amount)
                 pieces_eaten = min(math.ceil(self.executor.states[main.States.HUNGER] / -hunger_decrease_per_piece),
                                    max_edible_per_day)
-
                 resource_area.amount -= pieces_eaten
                 self.executor.states[main.States.HUNGER] += pieces_eaten * hunger_decrease_per_piece
+                logger.debug("Has eaten %s pieces of %s, hunger altered by %s so it's %s", pieces_eaten, resource_type,
+                             pieces_eaten * hunger_decrease_per_piece, self.executor.states[main.States.HUNGER])
 
     def try_to_eat_from_storages(self):
+        logger.debug("Eat from the storages")
         storages = models.Item.query.filter(models.Item.is_in(self.executor.being_in)) \
             .all()  # .filter(is an open storage)
         for storage in storages:
@@ -1465,7 +1476,9 @@ class FindAndEatAnimalFoodAction(Action):
                 .all()
 
             for food in foods_in_storage:
-                self.try_to_eat_food_from_storage(food)
+                if self.executor.states[main.States.HUNGER] > 0:
+                    logger.debug("Eating %s from %s", food, storage)
+                    self.try_to_eat_food_from_storage(food)
 
     def try_to_eat_food_from_storage(self, food):
         edible_by_animal_prop = food.get_property(P.EDIBLE_BY_ANIMAL)
@@ -1554,7 +1567,7 @@ class AnimalsProcess(ProcessAction):
         # todo till #130 when it'll be possible to use Entity.has_property
 
         for animal in animals:
-            eat_food_action = FindAndEatAnimalFoodAction(animal)
+            eat_food_action = AnimalEatingAction(animal)
             eat_food_action.perform()
 
             animal_state_progress_action = AnimalStateProgressAction(animal)
