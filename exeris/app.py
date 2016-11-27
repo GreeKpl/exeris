@@ -280,26 +280,54 @@ def create_database():
         if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
             outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
 
+        dead_pig_type = models.LocationType("dead_pig", 30000)
         pig_type = models.LocationType("pig", 30000)
-        horse_type = models.LocationType("horse", 200000)
+        pig_type.properties.append(models.EntityTypeProperty(P.STATES, {
+            main.States.HUNGER: {"initial": 0},
+        }))
+        pig_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
+            "dead_type": dead_pig_type.name,
+        }))
+        pig_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+            }
+        }))
+        pig_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
+
+        dead_mare_type = models.LocationType("dead_mare", 200000)
+        mare_type = models.LocationType("mare", 200000)
+        mare_type.properties.append(models.EntityTypeProperty(P.STATES, {
+            main.States.HUNGER: {"initial": 0},
+        }))
+        mare_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
+            "dead_type": dead_mare_type.name,
+        }))
+        mare_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
+            "states": {
+            }
+        }))
+        mare_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
+
         impassable_to_animal = models.PassageType("impassable_to_animal", True)
         invisible_to_animal = models.PassageType("invisible_to_animal", True)
         invisible_to_animal.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         invisible_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
         impassable_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
 
-        horse_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
-        horse_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
+        mare_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
+        mare_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
-        db.session.add_all([pig_type, horse_type, impassable_to_animal, invisible_to_animal])
+        db.session.add_all([pig_type, mare_type, impassable_to_animal, invisible_to_animal])
 
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         invisible_to_animal = models.PassageType.by_name("invisible_to_animal")
         pig = models.Location(rl, pig_type, passage_type=impassable_to_animal)
-        horse = models.Location(rl, horse_type, passage_type=invisible_to_animal)
+        pig.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
+        mare = models.Location(rl, mare_type, passage_type=invisible_to_animal)
+        mare.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
 
-        db.session.add_all([pig, horse])
+        db.session.add_all([pig, mare])
 
         stone_group = models.TypeGroup("group_stone", stackable=True)
         granite_type = models.ItemType("granite", 20, stackable=True)
@@ -324,13 +352,16 @@ def create_database():
     if not cow_type:
         milk_type = models.ItemType("milk", 20, stackable=True)
         beef_type = models.ItemType("beef", 40, stackable=True)
+        dead_cow_type = models.LocationType("dead_cow", 3000)
         cow_type = models.LocationType("cow", 3000)
         cow_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
             main.States.MILKINESS: {"initial": 0.2},
             main.States.MILK: {"initial": 0},
         }))
-        cow_type.properties.append(models.EntityTypeProperty(P.ANIMAL))
+        cow_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
+            "dead_type": dead_cow_type.name,
+        }))
         cow_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
             "states": {
                 main.States.MILK: {
@@ -378,9 +409,12 @@ def create_database():
         db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe, grass_type,
                             herbivore_group, grass_area])
 
+        dead_aurochs_type = models.LocationType("dead_aurochs", 3000)
         cow_type = models.LocationType.by_name("cow")
         female_aurochs_type = models.LocationType("female_aurochs", 3000)
-        female_aurochs_type.properties.append(models.EntityTypeProperty(P.ANIMAL))
+        female_aurochs_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
+            "dead_type": dead_aurochs_type.name,
+        }))
         female_aurochs_type.properties.append(models.EntityTypeProperty(P.TAMABLE, {
             "domesticated_type": cow_type.name,
         }))
@@ -389,7 +423,7 @@ def create_database():
         female_aurochs2 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
         female_aurochs3 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
 
-        db.session.add_all([female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
+        db.session.add_all([dead_aurochs_type, female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")

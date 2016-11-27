@@ -220,8 +220,8 @@ data = {
     "entity_pig": {
         "en": "pig"
     },
-    "entity_horse": {
-        "en": "horse"
+    "entity_mare": {
+        "en": "mare"
     },
     "entity_granite": {
         "en": "granite",

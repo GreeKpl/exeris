@@ -1,16 +1,20 @@
 import exeris
 from exeris.app import app
 from exeris.core import main, actions, models, util
+from exeris.core.properties_base import P
 from exeris.extra import notifications_service
 from exeris.core.i18n import create_pyslate
 from pyslate.backends import postgres_backend
 import psycopg2
 
 
-@main.hook(main.Hooks.CHARACTER_DEATH)
-def on_character_death(character):
-    if character.type_name == main.Types.ALIVE_CHARACTER:
-        death_action = actions.DeathAction(executor=character)
+@main.hook(main.Hooks.DAMAGE_EXCEEDED)
+def on_character_death(entity):
+    if entity.type_name == main.Types.ALIVE_CHARACTER:
+        death_action = actions.CharacterDeathAction(executor=entity)
+        death_action.perform()
+    elif isinstance(entity, (models.Item, models.Location)) and entity.has_property(P.ANIMAL):
+        death_action = actions.AnimalDeathAction(executor=entity)
         death_action.perform()
 
 

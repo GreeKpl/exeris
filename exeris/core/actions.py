@@ -1772,7 +1772,7 @@ class ToggleCloseableAction(ActionOnEntity):
                                   doer=self.executor)
 
 
-class DeathAction(Action):
+class CharacterDeathAction(Action):
     def __init__(self, executor):
         super().__init__(executor)
 
@@ -1804,6 +1804,25 @@ class DeathAction(Action):
     def create_death_info_property():
         return models.EntityProperty(P.DEATH_INFO,
                                      {"date": general.GameDate.now().game_timestamp})
+
+
+class AnimalDeathAction(Action):
+    def __init__(self, executor):
+        super().__init__(executor)
+
+    def perform_action(self):
+        animal = self.executor
+
+        animal_prop = animal.get_property(P.ANIMAL)
+        dead_animal_type = models.EntityType.by_name(animal_prop["dead_type"])
+        animal.alter_type(dead_animal_type)
+
+        domesticated_prop = animal_prop.get_property(P.DOMESTICATED)
+        if domesticated_prop is not None:
+            domesticated_entity_prop = models.EntityProperty.filter_by(type=animal.type, name=P.DOMESTICATED).one()
+            db.session.delete(domesticated_entity_prop)
+
+            # drop resources
 
 
 class ControlMovementAction(Action):

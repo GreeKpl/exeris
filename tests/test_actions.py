@@ -9,7 +9,8 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, DeathAction, StartControllingMovementAction, ChangeMovementDirectionAction, \
+    AbstractAction, Action, TakeItemAction, CharacterDeathAction, StartControllingMovementAction, \
+    ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress
 from exeris.core.deferred import convert
@@ -1044,7 +1045,7 @@ class CharacterActionsTest(TestCase):
 
         db.session.add(rl)
 
-        action = DeathAction(char)
+        action = CharacterDeathAction(char)
         action.perform()
 
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)

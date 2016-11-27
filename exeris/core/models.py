@@ -346,6 +346,7 @@ class Entity(db.Model):
 
         self.add_type_specific_states()
         self.states.listeners.append(clamp_to_0_1)
+        self.states.listeners.append(create_death_listener(self))
 
     def add_type_specific_states(self):
         states_type_property = EntityTypeProperty.query.get((self.type.name, P.STATES))
@@ -676,8 +677,8 @@ class LocationType(EntityType):
 def create_death_listener(self):
     def listen_for_death(states):
         if states[main.States.DAMAGE] >= 1.0:
-            main.call_hook(main.Hooks.CHARACTER_DEATH, character=self)
-
+            if isinstance(self, Character):
+                main.call_hook(main.Hooks.DAMAGE_EXCEEDED, entity=self)
     return listen_for_death
 
 
@@ -707,8 +708,6 @@ class Character(Entity):
 
         self.type = EntityType.by_name(Types.ALIVE_CHARACTER)
         super().__init__()
-
-        self.states.listeners.append(create_death_listener(self))
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
@@ -827,7 +826,7 @@ class Character(Entity):
     }
 
 
-@sqlalchemy.event.listens_for(Character, "load")
+@sqlalchemy.event.listens_for(Entity, "load", propagate=True)
 def add_death_listener(target, _):
     target.states = sqlalchemy_json_mutable.mutable_types.NestedMutableDict.coerce("states", target.states)
     target.states.listeners.append(create_death_listener(target))

@@ -98,7 +98,7 @@ class Hooks:
     NEW_CHARACTER_NOTIFICATION = "new_character_notification"
     NEW_PLAYER_NOTIFICATION = "new_player_notification"
     ENTITY_CONTENTS_COUNT_DECREASED = "entity_contents_count_decreased"
-    CHARACTER_DEATH = "character_death"
+    DAMAGE_EXCEEDED = "damage_exceeded"
 
 
 class Intents:
