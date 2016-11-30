@@ -6,7 +6,8 @@ import sqlalchemy as sql
 from exeris.core import main, deferred, models
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
     WorkProcess, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
-    CreateItemAction, ActivityProgress, StartControllingMovementAction, TravelToEntityAction, ControlMovementAction
+    CreateItemAction, ActivityProgress, StartControllingMovementAction, TravelToEntityAction, ControlMovementAction, \
+    AnimalsProcess
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.models import Activity, ItemType, RootLocation, Item, ScheduledTask, TypeGroup, EntityProperty, \
@@ -800,6 +801,73 @@ class SchedulerEatingTest(TestCase):
         self.assertAlmostEqual(12.24744, ActivityProgress.calculate_resultant_progress(10, 1.5), places=3)
         self.assertAlmostEqual(10, ActivityProgress.calculate_resultant_progress(10, 0.5))  # if q < 1 then q = 1
         self.assertAlmostEqual(1.5, ActivityProgress.calculate_resultant_progress(1, 2.25))
+
+
+class SchedulerAnimalsProcessTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_animal_process_on_hen(self):
+        self._set_up_hen_entity_and_type()
+
+        hen_type = ItemType.by_name("hen")
+        egg_type = ItemType.by_name("egg")
+        rl = RootLocation.query.one()
+
+        hen = Item(hen_type, rl)
+        hen.states[main.States.HUNGER] = 0
+        hen_animal_prop = EntityProperty(P.ANIMAL, {
+            "resources": {
+                egg_type.name: 2,
+            }
+        })
+        hen.properties.append(hen_animal_prop)
+        hen.properties.append(EntityProperty(P.DOMESTICATED, {
+            "resources_increase": {
+                "eggs_increase": 3,
+            }
+        }))
+        db.session.add(hen)
+
+        animals_process = AnimalsProcess(None)
+        animals_process.perform()
+
+        # should become more hungry
+        self.assertAlmostEqual(0.1, hen.states[main.States.HUNGER])
+
+        # increase amount of eggs by 3 and then drop them onto ground and reduce amount of eggs to 0
+        self.assertAlmostEqual(0.0, hen_animal_prop.data["resources"][egg_type.name])
+
+        dropped_eggs = Item.query.filter_by(type=egg_type).one()
+        self.assertEqual(5, dropped_eggs.amount)
+
+    def _set_up_hen_entity_and_type(self):
+        rl = RootLocation(Point(1, 1), 100)
+        egg_type = ItemType("egg", 10, stackable=True)
+        hen_type = ItemType("hen", 100)
+
+        hen_type.properties.append(EntityTypeProperty(P.ANIMAL, {
+            "type_resources": {
+                egg_type.name: {
+                    "initial": 0,
+                    "max": 5,
+                }
+            },
+            "can_lay_eggs": True,
+            "laid_types": [egg_type.name],
+        }))
+        hen_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
+            "type_resources_increase": {
+                "eggs_increase": {
+                    "initial": 0,
+                    "affected_resources": {
+                        egg_type.name: 1,
+                    },
+                },
+            }
+        }))
+
+        db.session.add_all([rl, egg_type, hen_type])
 
 
 class SchedulerDecayTest(TestCase):

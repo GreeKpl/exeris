@@ -280,6 +280,7 @@ def create_database():
         if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
             outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
 
+        pork_type = models.ItemType("pork", 30, stackable=True)
         dead_pig_type = models.LocationType("dead_pig", 30000)
         pig_type = models.LocationType("pig", 30000)
         pig_type.properties.append(models.EntityTypeProperty(P.STATES, {
@@ -287,13 +288,26 @@ def create_database():
         }))
         pig_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_pig_type.name,
+            "type_resources": {
+                pork_type.name: {
+                    "initial": 30,
+                    "max": 60,
+                },
+            }
         }))
         pig_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
+            "type_resources_increase": {
+                "fatness": {
+                    "initial": 5,
+                    "affected_resources": {
+                        pork_type.name: 0.4,
+                    },
+                },
             }
         }))
         pig_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
 
+        horsemeat_type = models.ItemType("horse_meat", 30, stackable=True)
         dead_mare_type = models.LocationType("dead_mare", 200000)
         mare_type = models.LocationType("mare", 200000)
         mare_type.properties.append(models.EntityTypeProperty(P.STATES, {
@@ -301,10 +315,22 @@ def create_database():
         }))
         mare_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_mare_type.name,
+            "type_resources": {
+                horsemeat_type.name: {
+                    "initial": 20,
+                    "max": 40,
+                },
+            }
         }))
         mare_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
-            }
+            "type_resources_increase": {
+                "fatness": {
+                    "initial": 5,
+                    "affected_resources": {
+                        horsemeat_type.name: 0.1,
+                    },
+                },
+            },
         }))
         mare_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
 
@@ -317,15 +343,35 @@ def create_database():
         mare_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
         mare_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
-        db.session.add_all([pig_type, mare_type, impassable_to_animal, invisible_to_animal])
+        db.session.add_all([pork_type, horsemeat_type, pig_type, mare_type, impassable_to_animal, invisible_to_animal])
 
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         invisible_to_animal = models.PassageType.by_name("invisible_to_animal")
         pig = models.Location(rl, pig_type, passage_type=impassable_to_animal)
-        pig.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
+        pig.properties(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                pork_type.name: 30
+            }
+        }))
+        pig.properties.append(models.EntityProperty(P.DOMESTICATED, {
+            "trusted": {},
+            "resources_increase": {
+                "fatness": 5,
+            }
+        }))
         mare = models.Location(rl, mare_type, passage_type=invisible_to_animal)
-        mare.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
+        mare.properties(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                horsemeat_type.name: 20
+            }
+        }))
+        mare.properties.append(models.EntityProperty(P.DOMESTICATED, {
+            "trusted": {},
+            "resources_increase": {
+                "fatness": 5,
+            }
+        }))
 
         db.session.add_all([pig, mare])
 
@@ -351,29 +397,44 @@ def create_database():
     cow_type = models.EntityType.by_name("cow")
     if not cow_type:
         milk_type = models.ItemType("milk", 20, stackable=True)
+        cow_skull_type = models.ItemType("cow_skull", 50, stackable=True)
         beef_type = models.ItemType("beef", 40, stackable=True)
         dead_cow_type = models.LocationType("dead_cow", 3000)
         cow_type = models.LocationType("cow", 3000)
         cow_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
-            main.States.MILKINESS: {"initial": 0.2},
-            main.States.MILK: {"initial": 0},
         }))
         cow_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_cow_type.name,
+            "type_resources": {
+                milk_type.name: {
+                    "initial": 0,
+                    "max": 30,
+                },
+                beef_type.name: {
+                    "initial": 40,
+                    "max": 80,
+                },
+                cow_skull_type.name: {
+                    "initial": 1,
+                    "max": 1,
+                },
+            }
         }))
         cow_type.properties.append(models.EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
-                main.States.MILK: {
-                    "increase": 6,  # affected by every animal's milkiness
-                    "max": 30,
-                    "resource_type": milk_type.name,
+            "type_resources_increase": {
+                "milkiness": {
+                    "initial": 0,
+                    "affected_resources": {
+                        "milk": 0.1,
+                    },
                 },
-                main.States.FATNESS: {
-                    "increase": 4,
-                    "max": 80,
-                    "resource_type": beef_type.name,
-                },
+                "fatness": {
+                    "initial": 0,
+                    "affected_resources": {
+                        "beef": 0.1,
+                    },
+                }
             }
         }))
         cow_type.properties.append(models.EntityTypeProperty(P.TAMABLE))
@@ -396,7 +457,20 @@ def create_database():
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).one()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         cow = models.Location(rl, cow_type, passage_type=impassable_to_animal)
-        cow.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
+        cow.properties.append(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                "milk": 0,
+                "beef": 40,
+                "cow_skull": 1,
+            }
+        }))
+        cow.properties.append(models.EntityProperty(P.DOMESTICATED, {
+            "trusted": {},
+            "resources_increase": {
+                "milkiness": 5,
+                "fatness": 1,
+            },
+        }))
 
         domestication_build_menu_category = models.BuildMenuCategory("domestication")
         milking_cow_result = [["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
@@ -406,22 +480,50 @@ def create_database():
                                                  10, domestication_build_menu_category,
                                                  result=milking_cow_result, activity_container="selected_machine")
 
-        db.session.add_all([milk_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe, grass_type,
-                            herbivore_group, grass_area])
+        db.session.add_all(
+            [milk_type, cow_skull_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe, grass_type,
+             herbivore_group, grass_area])
 
         dead_aurochs_type = models.LocationType("dead_aurochs", 3000)
-        cow_type = models.LocationType.by_name("cow")
         female_aurochs_type = models.LocationType("female_aurochs", 3000)
         female_aurochs_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_aurochs_type.name,
+            "type_resources": {
+                beef_type.name: {
+                    "initial": 40,
+                    "max": 40,
+                },
+                cow_skull_type.name: {
+                    "initial": 1,
+                    "max": 1,
+                },
+            }
         }))
         female_aurochs_type.properties.append(models.EntityTypeProperty(P.TAMABLE, {
             "domesticated_type": cow_type.name,
         }))
 
         female_aurochs1 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+        female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                beef_type.name: 40,
+                cow_skull_type.name: 1,
+            }
+        }))
         female_aurochs2 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+        female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                beef_type.name: 40,
+                cow_skull_type.name: 1,
+            }
+        }))
         female_aurochs3 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
+        female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {
+            "resources": {
+                beef_type.name: 40,
+                cow_skull_type.name: 1,
+            }
+        }))
 
         db.session.add_all([dead_aurochs_type, female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
 

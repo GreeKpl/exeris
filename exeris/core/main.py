@@ -130,15 +130,6 @@ class States:
     DURABILITY = "durability"
     FITNESS = "fitness"
     PERCEPTION = "perception"
-    # animal-specific states
-    MILKINESS = "milkiness"
-    MILK = "milk"
-    WOOL_GROWTH = "wool_growth"
-    WOOL = "wool"
-    EGGS_INCREASE = "eggs_increase"
-    EGGS = "eggs"
-    FAT_GROWTH = "fat_growth"
-    FATNESS = "fatness"
 
 
 NORMALIZED_STATES = (States.DAMAGE, States.TIREDNESS, States.HUNGER, States.SATIATION)

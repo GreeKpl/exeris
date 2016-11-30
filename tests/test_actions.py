@@ -784,7 +784,6 @@ class CharacterActionsTest(TestCase):
         cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
         cow_type.properties.append(EntityTypeProperty(P.STATES, {
             States.HUNGER: {"initial": 0},
-            States.MILKINESS: {"initial": 0},
         }))
 
         cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
@@ -806,67 +805,100 @@ class CharacterActionsTest(TestCase):
         rl = RootLocation(Point(1, 1), 100)
         milk_type = ItemType("milk", 10, stackable=True)
         cow_type = LocationType("cow", 100)
-        cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
-        cow_type.properties.append(EntityTypeProperty(P.STATES, {
-            States.MILK: {"initial": 0},
-            States.MILKINESS: {"initial": 0.1},
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL, {
+            "type_resources": {
+                milk_type.name: {
+                    "initial": 0,
+                    "max": 100,
+                },
+            },
         }))
         cow_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
-                States.MILK: {
-                    "increase": 10,  # affected by every animal's milkiness
-                    "max": 100,
-                    "resource_type": milk_type.name,
+            "type_resources_increase": {
+                "milkiness": {
+                    "initial": 0.1,
+                    "affected_resources": {
+                        milk_type.name: 10,
+                    },
                 },
             }
         }))
 
         cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+        cow_animal_prop = EntityProperty(P.ANIMAL, {
+            "resources": {
+                milk_type.name: 0,
+            }
+        })
+        cow.properties.append(cow_animal_prop)
+        cow_domesticated_prop = EntityProperty(P.DOMESTICATED, {
+            "resources_increase": {
+                "milkiness": 0.1,
+            }
+        })
+        cow.properties.append(cow_domesticated_prop)
         db.session.add_all([rl, cow_type, cow, milk_type])
 
         animal_state_progress_action = AnimalStateProgressAction(cow)
         animal_state_progress_action.perform()
-        self.assertEqual(1, cow.states[States.MILK])
+        self.assertEqual(1, cow_animal_prop.data["resources"][milk_type.name])
 
         # non-default milkiness
-        cow.states[States.MILKINESS] = 0.5
+        cow_domesticated_prop.data["resources_increase"]["milkiness"] = 0.5
         animal_state_progress_action = AnimalStateProgressAction(cow)
         animal_state_progress_action.perform()
-        self.assertEqual(1 + 5, cow.states[States.MILK])
+        self.assertEqual(1 + 5, cow_animal_prop.data["resources"][milk_type.name])
 
-        cow.states[States.MILK] = 98
+        cow_animal_prop.data["resources"][milk_type.name] = 98
         animal_state_progress_action = AnimalStateProgressAction(cow)
         animal_state_progress_action.perform()
-        self.assertEqual(100, cow.states[States.MILK])
+        self.assertEqual(100, cow_animal_prop.data["resources"][milk_type.name])
 
     def test_collect_resources_from_domesticated_animal_action(self):
         rl = RootLocation(Point(1, 1), 100)
         milk_type = ItemType("milk", 10, stackable=True)
         cow_type = LocationType("cow", 100)
-        cow_type.properties.append(EntityTypeProperty(P.ANIMAL))
-        cow_type.properties.append(EntityTypeProperty(P.STATES, {
-            States.MILK: {"initial": 0},
-        }))
-        cow_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
-                States.MILK: {
-                    "increase": 10,  # affected by every animal's milkiness
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL, {
+            "type_resources": {
+                milk_type.name: {
+                    "initial": 0,
                     "max": 100,
-                    "resource_type": milk_type.name,
+                },
+            },
+        }))
+
+        cow_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
+            "type_resources_increase": {
+                "milkiness": {
+                    "initial": 1,
+                    "affected_resources": {
+                        milk_type.name: 1,
+                    },
                 },
             }
         }))
 
         char = util.create_character("abc", rl, util.create_player("def"))
         cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+        cow_animal_prop = EntityProperty(P.ANIMAL, {
+            "resources": {
+                milk_type.name: 0,
+            }
+        })
+        cow.properties.append(EntityProperty(P.DOMESTICATED, {
+            "resources_increase": {
+                "milkiness": 1,
+            }
+        }))
+        cow.properties.append(cow_animal_prop)
         activity = Activity(cow, "milking_cow", {}, {}, 1, char)
         db.session.add_all([rl, cow_type, cow, milk_type, activity])
-        cow.states[States.MILK] = 17
-        collect_resources_from_animal = CollectResourcesFromDomesticatedAnimalAction(state_name=States.MILK,
+        cow_animal_prop.data["resources"][milk_type.name] = 17
+        collect_resources_from_animal = CollectResourcesFromDomesticatedAnimalAction(resource_type=milk_type,
                                                                                      activity=activity, initiator=char)
         collect_resources_from_animal.perform()
 
-        self.assertEqual(0, cow.states[States.MILK])
+        self.assertEqual(0, cow_animal_prop.data["resources"][milk_type.name])
         milk_in_inventory = Item.query.filter_by(type=milk_type).one()
         self.assertEqual(17, milk_in_inventory.amount)
 
@@ -874,30 +906,48 @@ class CharacterActionsTest(TestCase):
         rl = RootLocation(Point(1, 1), 100)
         egg_type = ItemType("eggs", 10, stackable=True)
         hen_type = ItemType("hen", 100)
-        hen_type.properties.append(EntityTypeProperty(P.ANIMAL))
-        hen_type.properties.append(EntityTypeProperty(P.STATES, {
-            States.EGGS: {"initial": 0},
+        hen_type.properties.append(EntityTypeProperty(P.ANIMAL, {
+            "type_resources": {
+                egg_type.name: {
+                    "initial": 0,
+                    "max": 5,
+                }
+            },
+            "can_lay_eggs": True,
+            "laid_types": [egg_type.name],
         }))
         hen_type.properties.append(EntityTypeProperty(P.DOMESTICATED, {
-            "states": {
-                States.EGGS: {
-                    "increase": 1,  # affected by every animal's milkiness
-                    "max": 5,
-                    "resource_type": egg_type.name,
+            "type_resources_increase": {
+                "eggs_increase": {
+                    "initial": 0,
+                    "affected_resources": {
+                        egg_type.name: 1,
+                    },
                 },
             }
         }))
 
         hen = Item(hen_type, rl)
+        hen_animal_prop = EntityProperty(P.ANIMAL, {
+            "resources": {
+                egg_type.name: 0,
+            }
+        })
+        hen.properties.append(hen_animal_prop)
+        hen.properties.append(EntityProperty(P.DOMESTICATED, {
+            "resources_increase": {
+                "eggs_increase": 1,
+            }
+        }))
         db.session.add_all([rl, egg_type, hen_type, hen])
 
-        hen.states[States.EGGS] = 4
+        hen_animal_prop.data["resources"][egg_type.name] = 4
         lay_eggs_action = LayEggsAction(hen)
         lay_eggs_action.perform()
         # nothing should happen, because level of eggs is not equal to maximum allowed
         self.assertEqual(0, Item.query.filter_by(type=egg_type).count())
 
-        hen.states[States.EGGS] = 5
+        hen_animal_prop.data["resources"][egg_type.name] = 5
         lay_eggs_action = LayEggsAction(hen)
         lay_eggs_action.perform()
         # should create eggs on the ground
@@ -911,7 +961,7 @@ class CharacterActionsTest(TestCase):
         db.session.add_all([nest_type, nest])
 
         # lay eggs again, but now they should land in the nest
-        hen.states[States.EGGS] = 5
+        hen_animal_prop.data["resources"][egg_type.name] = 5
         lay_eggs_action = LayEggsAction(hen)
         lay_eggs_action.perform()
 
@@ -1049,7 +1099,7 @@ class CharacterActionsTest(TestCase):
         action.perform()
 
         self.assertEqual(main.Types.DEAD_CHARACTER, char.type.name)
-        self.assertEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"])
+        self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
         self.assertAlmostEqual(GameDate.now().game_timestamp, char.get_property(P.DEATH_INFO)["date"], delta=3)
 
     def test_burying_entity(self):

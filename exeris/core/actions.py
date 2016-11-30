@@ -259,21 +259,21 @@ class CollectGatheredResourcesAction(ActivityAction):
 
 @form_on_setup(animal_resource_info=recipes.AnimalResourceLevel)
 class CollectResourcesFromDomesticatedAnimalAction(ActivityAction):
-    def __init__(self, *, state_name, **injected_args):
-        self.state_name = state_name
+    @convert(resource=models.ItemType)
+    def __init__(self, *, resource_type, **injected_args):
+        self.resource_type = resource_type
         self.activity = injected_args["activity"]
         self.injected_args = injected_args
 
     def perform_action(self):
         animal = self.activity.being_in
-        animal_states = animal.get_property(P.DOMESTICATED)["states"]
-        resource_type_name = animal_states[self.state_name]["resource_type"]
-        resource_type = models.ItemType.by_name(resource_type_name)
-        amount_collected = math.floor(animal.states[self.state_name])
-        animal.states[self.state_name] -= amount_collected
+        resource_name = self.resource_type.name
+        animal_resources = animal.get_entity_property(P.ANIMAL).data["resources"]
+        amount_collected = math.floor(animal_resources[resource_name])
+        animal_resources[resource_name] -= amount_collected
 
         if amount_collected > 0:
-            create_resource_action = CreateItemAction(item_type=resource_type, properties={}, used_materials="all",
+            create_resource_action = CreateItemAction(item_type=self.resource_type, properties={}, used_materials="all",
                                                       amount=int(amount_collected), **self.injected_args)
             return create_resource_action.perform()
 
@@ -1510,24 +1510,19 @@ class AnimalStateProgressAction(Action):
     def __init__(self, executor):
         super().__init__(executor)
 
-    STATE_AND_DERIVATIVE = (
-        (main.States.MILK, main.States.MILKINESS),
-        (main.States.EGGS, main.States.EGGS_INCREASE),
-        (main.States.WOOL, main.States.WOOL_GROWTH),
-    )
-
     def perform_action(self):
+        animal_prop = self.executor.get_property(P.ANIMAL)
+        animal_entity_prop = self.executor.get_entity_property(P.ANIMAL)
         domesticated_prop = self.executor.get_property(P.DOMESTICATED)
-        if domesticated_prop is None:
+        if animal_prop is None or domesticated_prop is None:
             raise ValueError("{} is not domesticated".format(self.executor))
 
-        for state_name, derivative in self.STATE_AND_DERIVATIVE:
-            if state_name in domesticated_prop["states"]:
-                animal_state = domesticated_prop["states"][state_name]
-                efficiency_multiplier = self.executor.states[derivative]
-                self.executor.states[state_name] = min(animal_state["max"],
-                                                       self.executor.states[state_name]
-                                                       + animal_state["increase"] * efficiency_multiplier)
+        for growth_name, growth_data in domesticated_prop["type_resources_increase"].items():
+            for increased_resource, increase_multiplier in growth_data["affected_resources"].items():
+                animal_entity_prop.data["resources"][increased_resource] = \
+                    min(animal_prop["type_resources"][increased_resource]["max"],
+                        animal_entity_prop.data["resources"][increased_resource]
+                        + domesticated_prop["resources_increase"][growth_name] * increase_multiplier)
 
 
 class LayEggsAction(Action):
@@ -1535,15 +1530,19 @@ class LayEggsAction(Action):
         super().__init__(executor)
 
     def perform_action(self):
+        animal_entity_prop = self.executor.get_entity_property(P.ANIMAL)
+        animal_prop = self.executor.get_property(P.ANIMAL)
         domesticated_prop = self.executor.get_property(P.DOMESTICATED)
-        if domesticated_prop is None:
+        if domesticated_prop is None or animal_prop is None:
             raise ValueError("{} is not domesticated".format(self.executor))
 
-        if main.States.EGGS in domesticated_prop["states"]:
-            eggs_state = domesticated_prop["states"][main.States.EGGS]
-            if self.executor.states[main.States.EGGS] >= eggs_state["max"]:  # if unable to get more eggs then drop them
-                egg_type = models.ItemType.by_name(eggs_state["resource_type"])
-                amount_of_eggs = int(math.floor(self.executor.states[main.States.EGGS]))
+        animal_resources = animal_prop["resources"]
+        for egg_type_name in animal_prop["laid_types"]:
+
+            # if unable to get more eggs then drop them
+            if animal_resources[egg_type_name] >= animal_prop["type_resources"][egg_type_name]["max"]:
+                egg_type = models.ItemType.by_name(egg_type_name)
+                amount_of_eggs = int(math.floor(animal_resources[egg_type_name]))
 
                 preferred_goal = models.Item.query.filter(models.Item.has_property(P.BIRD_NEST)) \
                     .filter(models.Item.is_in(self.executor.being_in)).first()
@@ -1551,7 +1550,7 @@ class LayEggsAction(Action):
                 if not preferred_goal:  # if no nest then eggs are laid on ground
                     preferred_goal = self.executor.being_in
 
-                self.executor.states[main.States.EGGS] -= amount_of_eggs
+                animal_entity_prop.data["resources"][egg_type_name] -= amount_of_eggs
                 add_stackable_items(egg_type, preferred_goal, egg_type.unit_weight * amount_of_eggs)
 
 
@@ -1573,7 +1572,8 @@ class AnimalsProcess(ProcessAction):
             animal_state_progress_action = AnimalStateProgressAction(animal)
             animal_state_progress_action.perform()
 
-            if main.States.EGGS in animal.states:  # the animal can lay eggs
+            has_eggs = animal.has_property(P.ANIMAL, can_lay_eggs=True)
+            if has_eggs:
                 lay_eggs_action = LayEggsAction(animal)
                 lay_eggs_action.perform()
 

@@ -457,6 +457,9 @@ class Entity(db.Model):
             return None
         return props
 
+    def get_entity_property(self, name):
+        return EntityProperty.query.filter_by(entity=self, name=name).first()
+
     @hybrid_method
     def has_property(self, name, **kwargs):
         prop = self.get_property(name)
@@ -679,6 +682,7 @@ def create_death_listener(self):
         if states[main.States.DAMAGE] >= 1.0:
             if isinstance(self, Character):
                 main.call_hook(main.Hooks.DAMAGE_EXCEEDED, entity=self)
+
     return listen_for_death
 
 
