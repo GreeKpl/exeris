@@ -550,14 +550,6 @@ class Entity(db.Model):
         else:
             self.properties.append(EntityProperty(name, data=data))
 
-    def get_entity_property(self, name):
-        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
-        if not entity_property:
-            entity_property = EntityProperty(name, {}, self)
-            db.session.add(entity_property)
-
-        return entity_property
-
     def is_empty(self, excluding=None):
         """
         Checks if there's anything inside (being_in) or directly neighbouring of this entity.
@@ -712,6 +704,7 @@ class Character(Entity):
 
         self.type = EntityType.by_name(Types.ALIVE_CHARACTER)
         super().__init__()
+        self.properties.append(EntityProperty(P.PREFERRED_EQUIPMENT))
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 
