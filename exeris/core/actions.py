@@ -1423,6 +1423,7 @@ class EatAction(ActionOnItem):
 
 class AnimalEatingAction(Action):
     HUNGER_INCREASE = 0.1
+    DAMAGE_WHEN_STARVING = 0.1
 
     def __init__(self, executor):
         super().__init__(executor)
@@ -1441,6 +1442,9 @@ class AnimalEatingAction(Action):
 
         if self.executor.states[main.States.HUNGER] > 0:  # need to eat more from storages
             self.try_to_eat_from_storages()
+
+        if self.executor.states[main.States.HUNGER] >= 1.0:  # animal is starving
+            self.executor.states[main.States.DAMAGE] += AnimalEatingAction.DAMAGE_WHEN_STARVING
 
     def eat_from_ground(self):
         logger.debug("Eat from the ground")
@@ -1815,14 +1819,22 @@ class AnimalDeathAction(Action):
 
         animal_prop = animal.get_property(P.ANIMAL)
         dead_animal_type = models.EntityType.by_name(animal_prop["dead_type"])
-        animal.alter_type(dead_animal_type)
 
-        domesticated_prop = animal_prop.get_property(P.DOMESTICATED)
-        if domesticated_prop is not None:
-            domesticated_entity_prop = models.EntityProperty.filter_by(type=animal.type, name=P.DOMESTICATED).one()
+        domesticated_entity_prop = animal.get_entity_property(P.DOMESTICATED)
+        if domesticated_entity_prop is not None:
             db.session.delete(domesticated_entity_prop)
 
-            # drop resources
+        self.put_resources_to_body(animal_prop)
+        animal_entity_prop = animal.get_entity_property(P.ANIMAL)
+        db.session.delete(animal_entity_prop)
+
+        animal.alter_type(dead_animal_type)
+
+    def put_resources_to_body(self, animal_prop):
+        for res_name, res_amount in animal_prop["resources"].items():
+            resource_type = models.ItemType.by_name(res_name)
+            resource = models.Item(resource_type, self.executor, amount=int(round(res_amount)))
+            db.session.add(resource)
 
 
 class ControlMovementAction(Action):

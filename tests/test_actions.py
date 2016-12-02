@@ -12,7 +12,8 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     AbstractAction, Action, TakeItemAction, CharacterDeathAction, StartControllingMovementAction, \
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
-    CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress
+    CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
+    AnimalDeathAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -967,6 +968,52 @@ class CharacterActionsTest(TestCase):
 
         eggs_in_nest = Item.query.filter_by(type=egg_type).filter(Item.is_in(nest)).one()
         self.assertEqual(5, eggs_in_nest.amount)
+
+    def test_animal_death_action(self):
+        rl = RootLocation(Point(1, 1), 100)
+
+        beef_type = ItemType("beef", 20, stackable=True)
+        cow_head_type = ItemType("cow_head", 50, stackable=True)
+
+        dead_cow_type = LocationType("dead_cow", 100)
+        cow_type = LocationType("cow", 100)
+        cow_type.properties.append(EntityTypeProperty(P.ANIMAL, {
+            "type_resources": {
+                beef_type.name: {
+                    "initial": 0,
+                    "max": 100,
+                },
+                cow_head_type.name: {
+                    "initial": 1,
+                    "max": 1,
+                }
+            },
+            "dead_type": dead_cow_type.name,
+        }))
+
+        cow = Location(rl, cow_type, PassageType.by_name(Types.INVISIBLE_PASSAGE))
+        cow.properties.append(EntityProperty(P.ANIMAL, {
+            "resources": {
+                beef_type.name: 100,
+                cow_head_type.name: 1,
+            }
+        }))
+
+        db.session.add_all([rl, cow_type, beef_type, cow_head_type, cow, dead_cow_type])
+        db.session.flush()
+
+        animal_death_action = AnimalDeathAction(cow)
+        animal_death_action.perform()
+
+        self.assertEqual(dead_cow_type, cow.type)
+        self.assertFalse(cow.has_property(P.ANIMAL))
+        self.assertFalse(cow.has_property(P.DOMESTICATED))
+
+        # amount of resources inside
+        cow_heads_pile = Item.query.filter_by(type=cow_head_type).filter(Item.is_in(cow)).one()
+        self.assertEqual(1, cow_heads_pile.amount)
+        beef_pile = Item.query.filter_by(type=beef_type).filter(Item.is_in(cow)).one()
+        self.assertEqual(100, beef_pile.amount)
 
     def test_taming_animal_action(self):
         util.initialize_date()
