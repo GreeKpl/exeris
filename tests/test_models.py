@@ -102,7 +102,7 @@ class LocationTest(TestCase):
         db.session.add(plr)
         db.session.add(ch1)
 
-        self.assertCountEqual([ch1], loc.get_characters_inside())
+        self.assertCountEqual([ch1], loc.characters_inside())
 
     def _loc_is_in_loc(self, moved_loc, parent_loc):
         # there's an exactly one passage

@@ -1215,6 +1215,10 @@ class PassageToNeighbour:
 
         raise ValueError("location {} is not on any side of passage {}", own_side, passage)
 
+    def __repr__(self):
+        return "{{PassageToNeighbour own={}, other={}, passage={}}}".format(
+            self.own_side, self.other_side, self.passage)
+
 
 class Location(Entity):
     __tablename__ = "locations"
@@ -1256,8 +1260,9 @@ class Location(Entity):
     def parent_locations(self):
         return [self]
 
-    def get_characters_inside(self):
-        return Character.query.filter(Character.is_in(self)).all()
+    def characters_inside(self):
+        return Character.query.filter(Character.is_in(self)) \
+            .filter_by(type_name=Types.ALIVE_CHARACTER).all()
 
     def get_items_inside(self):
         return Item.query.filter(Item.is_in(self)).all()
@@ -1265,7 +1270,7 @@ class Location(Entity):
     def remove(self):
         raise NotImplemented("remove is not yet implemented for Location")
         # TODO remove all passages to neighbours
-        # make sure the path to RootLocation to every neighbour exists
+        # make sure the path to RootLocation from every neighbour exists
         # or decide that all dependent locations will be destroyed
         # self.being_in = None
 
@@ -1542,6 +1547,10 @@ class Passage(Entity):
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
         return dict(pyslatized, **overwrites)
+
+    def __repr__(self):
+        return "{{Passage id={}, type={}, left={}, right={}}}".format(self.id, self.type_name,
+                                                                      self.left_location, self.right_location)
 
     __mapper_args__ = {
         'polymorphic_identity': ENTITY_PASSAGE,

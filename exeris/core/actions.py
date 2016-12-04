@@ -1291,24 +1291,6 @@ class DropItemAction(ActionOnItem):
         general.EventCreator.base(Events.DROP_ITEM, self.rng, event_args, self.executor)
 
 
-class TakeItemAction(ActionOnItem):
-    def __init__(self, executor, item, amount=1):
-        super().__init__(executor, item)
-        self.amount = amount
-
-    def perform_action(self):
-        if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
-            raise main.EntityTooFarAwayException(entity=self.item)
-
-        if self.amount < 0 or self.amount > self.item.amount:
-            raise main.InvalidAmountException(amount=self.amount)
-
-        move_entity_between_entities(self.item, self.executor.being_in, self.executor, self.amount)
-
-        event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
-        general.EventCreator.base(Events.TAKE_ITEM, self.rng, event_args, self.executor)
-
-
 class GiveItemAction(ActionOnItemAndCharacter):
     def __init__(self, executor, item, receiver, amount=1):
         super().__init__(executor, item, receiver)
@@ -2044,3 +2026,42 @@ class TurnIntoDomesticatedSpecies(ActivityAction):
 
         animal.alter_type(domesticated_type)
         animal.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
+
+
+class PutIntoStorageAction(ActionOnEntity):
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity)
+
+    def perform_action(self):
+        raise NotImplementedError()
+
+
+class TakeItemAction(ActionOnItem):
+    def __init__(self, executor, item, amount=1):
+        super().__init__(executor, item)
+        self.amount = amount
+
+    def perform_action(self):
+        top_level_item = self.item
+
+        while isinstance(top_level_item.being_in, models.Item):
+            top_level_item = top_level_item.being_in
+            if not top_level_item.has_property(P.STORAGE):
+                raise ValueError("{} is not a storage".format(top_level_item))
+            self.check_storage_lock()
+        location = top_level_item.being_in
+
+        if not self.executor.has_access(top_level_item, rng=general.NeighbouringLocationsRange(False)):
+            raise main.EntityTooFarAwayException(entity=top_level_item)
+
+        if self.amount < 0 or self.amount > self.item.amount:
+            raise main.InvalidAmountException(amount=self.amount)
+        move_entity_between_entities(self.item, self.item.being_in, self.executor, self.amount)
+
+        self.create_events(location, top_level_item)
+
+    def check_storage_lock(self):  # implement in #95
+        pass
+
+    def create_events(self, location, top_level_item):
+        pass

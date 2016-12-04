@@ -29,6 +29,7 @@ class P:
     BURYABLE = "Buryable"
     STATES = "States"
     BIRD_NEST = "BirdNest"
+    STORAGE = "Storage"
 
 
 __registry = {}

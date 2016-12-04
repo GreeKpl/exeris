@@ -9,11 +9,11 @@ from exeris.core import main, models
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
-    AbstractAction, Action, TakeItemAction, CharacterDeathAction, StartControllingMovementAction, \
+    AbstractAction, Action, CharacterDeathAction, StartControllingMovementAction, \
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
-    AnimalDeathAction
+    AnimalDeathAction, TakeItemAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -594,6 +594,45 @@ class CharacterActionsTest(TestCase):
         self.assertEqual({tools_group.name: {"needed": 10, "left": 9, "used_type": hammer_type.name, "quality": 0.75}},
                          activity.requirements["input"])
         self.assertEqual(activity, hammer.used_for)
+
+    def test_take_from_storage_action(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 10)
+        char = util.create_character("abda", rl, util.create_player("adqw"))
+        building_type = LocationType("building", 1000)
+        loc1 = Location(rl, building_type)
+        loc2 = Location(loc1, building_type)
+        basket_type = ItemType("basket", 100)
+        basket_type.properties.append(EntityTypeProperty(P.STORAGE))
+        hammer_type = ItemType("hammer", 50)
+
+        basket_in_rl = Item(basket_type, rl)
+        basket_in_loc2 = Item(basket_type, loc2)
+        db.session.add_all([rl, building_type, basket_type, hammer_type, loc1, loc2, basket_in_rl, basket_in_loc2])
+
+        # take hammer from the ground
+        hammer = Item(hammer_type, rl)
+        take_from_storage_action = TakeItemAction(char, hammer)
+        take_from_storage_action.perform()
+        self.assertEqual(char, hammer.being_in)
+
+        # take hammer from the storage in the same location
+        hammer.being_in = basket_in_rl
+        take_from_storage_action = TakeItemAction(char, hammer)
+        take_from_storage_action.perform()
+        self.assertEqual(char, hammer.being_in)
+
+        # take hammer from the neighbouring location
+        hammer.being_in = loc2
+        take_from_storage_action = TakeItemAction(char, hammer)
+        take_from_storage_action.perform()
+        self.assertEqual(char, hammer.being_in)
+
+        # take hammer from the storage in the neighbouring location
+        hammer.being_in = basket_in_loc2
+        take_from_storage_action = TakeItemAction(char, hammer)
+        take_from_storage_action.perform()
+        self.assertEqual(char, hammer.being_in)
 
     def test_say_aloud_action(self):
         util.initialize_date()
@@ -1197,9 +1236,10 @@ class IntentTest(TestCase):
                                                            "travel_action": ["exeris.core.actions.TravelToEntityAction",
                                                                              {"entity": hammer.id,
                                                                               "executor": char.id}],
-                                                           "target_action": ["exeris.core.actions.TakeItemAction",
-                                                                             {"executor": char.id,
-                                                                              "item": hammer.id, "amount": 1}]
+                                                           "target_action": [
+                                                               deferred.get_qualified_class_name(TakeItemAction),
+                                                               {"executor": char.id,
+                                                                "item": hammer.id, "amount": 1}]
                                                            }],
             Intent.query.one().serialized_action)
         self.assertEqual(main.Intents.WORK, Intent.query.one().type)
