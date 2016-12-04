@@ -9,7 +9,7 @@ import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy_json_mutable
 from exeris.core import main, properties_base, util
-from exeris.core.main import db, Types, Events
+from exeris.core.main import db, Types, Events, PartialEvents
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.properties_base import P
 from flask_security import UserMixin, RoleMixin
@@ -1995,6 +1995,11 @@ def init_database_contents():
         db.session.merge(EventType(type_name + "_doer"))
         db.session.merge(EventType(type_name + "_observer"))
         db.session.merge(EventType(type_name + "_target"))
+
+    partial_events = [type_name for key_name, type_name in PartialEvents.__dict__.items()
+                      if not key_name.startswith("__")]
+    for type_name in partial_events:
+        db.session.merge(EventType(type_name))
 
     if not PassageType.by_name(Types.DOOR):
         door_passage = PassageType(Types.DOOR, False)

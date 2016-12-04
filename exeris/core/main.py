@@ -65,6 +65,9 @@ class Types:
 
 
 class Events:
+    TAKE_ITEM_FROM_STORAGE_IN_LOCATION = "event_take_item_from_storage_in_location"
+    TAKE_ITEM_FROM_LOCATION = "event_take_item_from_location"
+    TAKE_ITEM_FROM_STORAGE = "event_take_item_from_storage"
     STOP_MOVEMENT = "event_stop_movement"
     CHANGE_MOVEMENT_DIRECTION = "event_change_movement_direction"
     START_CONTROLLING_MOVEMENT = "event_start_controlling_movement"
@@ -86,6 +89,14 @@ class Events:
     RETREAT_FROM_COMBAT = "event_retreat_from_combat"
     END_OF_COMBAT = "event_end_of_combat"
     START_TAMING = "event_start_taming"
+
+
+class PartialEvents:
+    """
+    List of exact event types which aren't used in standard doer-observer way.
+    """
+    TAKE_ITEM_FROM_OTHER_LOCATION_OBSERVER = "event_take_item_from_other_location_observer"
+    TAKE_ITEM_FROM_STORAGE_FROM_OTHER_LOCATION_OBSERVER = "event_take_item_from_storage_from_other_location_observer"
 
 
 class Hooks:
