@@ -6,7 +6,7 @@ from shapely.geometry import Point, Polygon
 from exeris.core import models, map_data
 from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
-    EventCreator, TraversabilityBasedRange
+    EventCreator, TraversabilityBasedRange, RangeSpec
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
     EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea, TypeGroup
 from exeris.core.properties import P
@@ -308,6 +308,25 @@ class RangeSpecTest(TestCase):
         items = rng.items_near(loc2)
 
         self.assertCountEqual([i2_1, i2_2, irl_1, i21_1, i11_1, i11_2, iorl_1, io1_1], items)
+
+    def test_get_path_between_locations(self):
+        building_type = LocationType("building", 1000)
+        rl1 = RootLocation(Point(1, 1), 0)
+
+        loc1 = Location(rl1, building_type)
+        loc2 = Location(loc1, building_type)
+        loc3 = Location(loc2, building_type)
+        loc4 = Location(loc3, building_type)
+        loc5 = Location(loc4, building_type)
+
+        passage_from_1_to_5 = Passage(loc1, loc5)
+        passage_from_1_to_5.properties.append(EntityProperty(P.CLOSEABLE, {"closed": True}))
+
+        db.session.add_all([building_type, rl1, loc1, loc2, loc3, loc4, loc5, passage_from_1_to_5])
+
+        self.assertEqual([loc1], RangeSpec.get_path_between_locations(loc1, loc1))
+        self.assertEqual([loc1, loc2], RangeSpec.get_path_between_locations(loc1, loc2))
+        self.assertEqual([loc1, loc2, loc3, loc4, loc5], RangeSpec.get_path_between_locations(loc1, loc5))
 
 
 class EventCreatorTest(TestCase):

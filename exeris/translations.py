@@ -224,19 +224,28 @@ data = {
         "en": "mare"
     },
     "entity_granite": {
-        "en": "granite",
+        "en": "block of granite",
+    },
+    "entity_granite#p": {
+        "en": "blocks of granite",
     },
     "entity_granite_adj": {
         "en": "granite",
     },
     "entity_sandstone": {
-        "en": "sandstone",
+        "en": "block of sandstone",
+    },
+    "entity_sandstone#p": {
+        "en": "blocks of sandstone",
     },
     "entity_sandstone_adj": {
         "en": "sandstone",
     },
     "entity_marble": {
-        "en": "marble",
+        "en": "block of marble",
+    },
+    "entity_marble#p": {
+        "en": "blocks of marble",
     },
     "entity_marble_adj": {
         "en": "marble",

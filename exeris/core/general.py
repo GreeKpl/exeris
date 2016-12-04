@@ -159,6 +159,44 @@ class RangeSpec:
             return [entity]
         return [entity.being_in]
 
+    @staticmethod
+    def get_path_between_locations(loc1, loc2, only_through_unlimited=False):
+        if loc1 == loc2:
+            return [loc1]
+
+        if loc1.get_root() == loc2.get_root():
+            passages_all = loc1.passages_to_neighbours
+            passages_left = deque([[direct_neighbour] for direct_neighbour in passages_all])
+            number_of_door_passed = {loc1: 0}
+            visited_locations = {loc1}
+            while len(passages_left):
+                directed_passage_path_list = passages_left.popleft()
+                farthest_directed_passage = directed_passage_path_list[-1]
+                if farthest_directed_passage.passage.is_accessible(only_through_unlimited=only_through_unlimited):
+                    if farthest_directed_passage.other_side == loc2:  # found the path
+                        return [p.own_side for p in directed_passage_path_list] + [loc2]
+                    if farthest_directed_passage.other_side not in visited_locations:
+                        number_of_door_passed[farthest_directed_passage.other_side] = number_of_door_passed[
+                            farthest_directed_passage.own_side]
+                        if not farthest_directed_passage.passage.type.unlimited:
+                            number_of_door_passed[farthest_directed_passage.other_side] += 1
+                        visited_locations.add(farthest_directed_passage.other_side)
+                        new_passages = farthest_directed_passage.other_side.passages_to_neighbours
+                        passages_left.extend([directed_passage_path_list + [p]
+                                              for p in new_passages if p.other_side not in visited_locations])
+            raise ValueError("it's impossible to go from {} to {} with given criteria".format(loc1, loc2))
+        else:
+            path_from_loc1_to_root = RangeSpec._path_to_root_location(loc1)
+            path_from_root_to_loc2 = list(reversed(RangeSpec._path_to_root_location(loc2)))
+            return path_from_loc1_to_root + path_from_root_to_loc2
+
+    @staticmethod
+    def _path_to_root_location(loc):
+        path_to_root = [loc]
+        while not isinstance(path_to_root[-1], models.RootLocation):
+            path_to_root.append(path_to_root[-1].being_in)
+        return path_to_root
+
 
 class InsideRange(RangeSpec):
     def locations_near(self, entity):
@@ -190,6 +228,16 @@ class NeighbouringLocationsRange(RangeSpec):
     def locations_near(self, entity):
         loc = self._locationize(entity)[0]
         return visit_subgraph(loc, self.only_through_unlimited)
+
+
+class AdjacentLocationsRange(RangeSpec):
+    def __init__(self, only_through_unlimited):
+        self.only_through_unlimited = only_through_unlimited
+
+    def locations_near(self, entity):
+        loc = self._locationize(entity)[0]
+        return [loc] + [psg.other_side for psg in loc.passages_to_neighbours
+                        if psg.passage.is_accessible(self.only_through_unlimited)]
 
 
 def visit_subgraph(node, only_through_unlimited=False):
@@ -469,6 +517,21 @@ class EventCreator:
 
     @classmethod
     def base(cls, tag_base, rng=None, params=None, doer=None, target=None):
+        """
+        An utility method for creating a set of events for the following groups of the characters:
+        doer (a character performing the action), target (A CHARACTER being object of the action),
+        observer (everyone else who is close enough based on the range specification.
+
+        Adds 'doer' and 'target' to the event JSON parameters.
+
+        :param tag_base: a base part of the event type names.
+            The specific events are created by adding a correct suffix: "_doer", "_target" and "_observer"
+        :param rng: a range specification used to get a group of characters next to the doer.
+        :param params: custom params injected to
+        :param doer: a character who is going to get tag_base + _doer event. It can be None.
+        :param target: a character who is going to get tag_base + _target event. It can be None.
+        :return:
+        """
 
         tag_doer = tag_base + "_doer"
         tag_target = tag_base + "_target"
@@ -476,13 +539,16 @@ class EventCreator:
         EventCreator.create(rng, tag_doer, tag_target, tag_observer, params, doer, target)
 
     @classmethod
-    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None, doer=None, target=None):
+    def create(cls, rng=None, tag_doer=None, tag_target=None, tag_observer=None, params=None,
+               doer=None, target=None, locations=None):
         """
-        Either tag_base or tag_doer should be specified. If tag_base is specified then event
-        for doer and observers (based on specified range) are emitted.
-
         Preferable way is to explicitly specify tag shown for doer, target and observers.
-        Everyone use the same args dict, which is used as args parameters.
+        Everyone use the params dict, which is used as event JSON parameters for pyslate.
+        It's also extended by 'doer' and 'target' if these are not None.
+
+        To show an event for the observers tag_observer should be not None and either
+        locations (locations with characters) or doer and rng (range specification for characters around doer)
+        should be specified.
         """
         if not tag_doer and not tag_observer:
             raise ValueError("EventCreator doesn't have neither tag_doer nor tag_observer specified")
@@ -525,7 +591,7 @@ class EventCreator:
             db.session.add_all([event_for_target, event_obs_target])
             main.call_hook(main.Hooks.NEW_EVENT, event_observer=event_obs_target)
 
-        if rng and tag_observer:
+        if (rng or locations) and tag_observer:
             obs_params = copy.deepcopy(base_params)
             if doer:
                 obs_params.setdefault("groups", {})["doer"] = doer.pyslatize()
@@ -534,10 +600,8 @@ class EventCreator:
 
             event_for_observer = models.Event(tag_observer, obs_params)
             db.session.add(event_for_observer)
-            character_obs = set(rng.characters_near(doer))
+            character_obs = EventCreator.get_observers(rng, doer, target, locations)
 
-            if target:
-                character_obs.update(rng.characters_near(target))
             event_obs = [models.EventObserver(event_for_observer, char) for char in character_obs
                          if char not in (doer, target)]
 
@@ -545,3 +609,17 @@ class EventCreator:
 
             for obs in event_obs:
                 main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)
+
+    @classmethod
+    def get_observers(self, rng, doer, target, locations):
+        if rng:
+            character_obs = set(rng.characters_near(doer))
+            if target:
+                character_obs.update(rng.characters_near(target))
+        elif locations:
+            character_obs = set()
+            for loc in locations:
+                character_obs.update(loc.characters_inside())
+        else:
+            raise ValueError("EventCreator requires either 'rng' or 'locations'")
+        return character_obs
