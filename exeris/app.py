@@ -201,7 +201,7 @@ def create_database():
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
-        hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        # hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         hut_recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}, "permanence": True}, 3,
                                          build_menu_category,
                                          result=[["exeris.core.actions.CreateLocationAction",
@@ -349,10 +349,10 @@ def create_database():
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
         invisible_to_animal = models.PassageType.by_name("invisible_to_animal")
         pig = models.Location(rl, pig_type, passage_type=impassable_to_animal)
-        pig.properties(models.EntityProperty(P.ANIMAL, {
+        pig.properties.append(models.EntityProperty(P.ANIMAL, {
             "resources": {
-                pork_type.name: 30
-            }
+                pork_type.name: 30,
+            },
         }))
         pig.properties.append(models.EntityProperty(P.DOMESTICATED, {
             "trusted": {},
@@ -361,7 +361,7 @@ def create_database():
             }
         }))
         mare = models.Location(rl, mare_type, passage_type=invisible_to_animal)
-        mare.properties(models.EntityProperty(P.ANIMAL, {
+        mare.properties.append(models.EntityProperty(P.ANIMAL, {
             "resources": {
                 horsemeat_type.name: 20
             }
@@ -511,14 +511,14 @@ def create_database():
             }
         }))
         female_aurochs2 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
-        female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {
+        female_aurochs2.properties.append(models.EntityProperty(P.ANIMAL, {
             "resources": {
                 beef_type.name: 40,
                 cow_skull_type.name: 1,
             }
         }))
         female_aurochs3 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
-        female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {
+        female_aurochs3.properties.append(models.EntityProperty(P.ANIMAL, {
             "resources": {
                 beef_type.name: 40,
                 cow_skull_type.name: 1,

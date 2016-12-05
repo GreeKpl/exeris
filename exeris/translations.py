@@ -72,10 +72,21 @@ data = {
         "en": "You hit ${target:entity_info}.",
     },
     "event_end_of_combat_observer": {
-        "en": "You see the combat between ${list_of_entities} ends, because there are no active participants on one side."
+        "en": "You see the combat between ${list_of_entities} ends, "
+              "because there are no active participants on one side."
     },
     "event_end_of_combat_doer": {
-        "en": "You see the combat between ${list_of_entities} ends, because there are no active participants on one side."
+        "en": "You see the combat between ${list_of_entities} ends, "
+              "because there are no active participants on one side."
+    },
+    "event_take_item_doer": {
+        "en": "You take ${item:item_info}."
+    },
+    "event_take_item_from_location_doer": {
+        "en": "You take ${item:item_info} from ${item_loc:location_info}."
+    },
+    "event_take_item_from_other_location_observer": {
+        "en": "You see ${doer:entity_info} from ${doer_loc:location_info} take ${item:item_info}."
     },
     "entity_character#f": {
         "en": "unknown woman",
@@ -102,7 +113,7 @@ data = {
         "en": "Whisper to ${character_info}",
     },
     "tp_item_info": {
-        "en": "%{main_material}%{dependent}%{item_name}%{parts}%{trust}",
+        "en": "%{main_material}%{dependent}%{item_name}%{parts}",
     },
     "tp_location_info": {
         "en": "%{main_material}%{location_name}%{title}%{trust}",
@@ -114,7 +125,7 @@ data = {
         "en": "item",
     },
     "tp_detailed_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{dependent}%{item_name}%{title}%{states}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{dependent}%{item_name}%{title}%{states}%{parts}%{trust}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",

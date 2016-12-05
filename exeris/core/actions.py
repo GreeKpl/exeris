@@ -6,7 +6,7 @@ import random
 import sqlalchemy as sql
 from exeris.core import deferred, main, util, combat, models, general, properties, recipes
 from exeris.core.deferred import convert
-from exeris.core.main import db, Events
+from exeris.core.main import db, Events, PartialEvents
 from exeris.core.properties import P
 from flask import logging
 from sqlalchemy import func
@@ -2049,19 +2049,67 @@ class TakeItemAction(ActionOnItem):
             if not top_level_item.has_property(P.STORAGE):
                 raise ValueError("{} is not a storage".format(top_level_item))
             self.check_storage_lock()
-        location = top_level_item.being_in
 
-        if not self.executor.has_access(top_level_item, rng=general.NeighbouringLocationsRange(False)):
+        if not self.executor.has_access(top_level_item, rng=general.AdjacentLocationsRange(False)):
             raise main.EntityTooFarAwayException(entity=top_level_item)
 
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
         move_entity_between_entities(self.item, self.item.being_in, self.executor, self.amount)
 
-        self.create_events(location, top_level_item)
+        self.create_events(top_level_item)
 
     def check_storage_lock(self):  # implement in #95
         pass
 
-    def create_events(self, location, top_level_item):
-        pass
+    def create_events(self, top_level_item):
+        item_location = top_level_item.being_in
+        executor_location = self.executor.get_location()
+
+        pyslatized_item = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
+        pyslatized_item_location = item_location.pyslatize()
+        pyslatized_executor_location = executor_location.pyslatize()
+        pyslatized_storage = top_level_item.pyslatize()
+
+        if item_location == executor_location and top_level_item == self.item:  # from ground
+            general.EventCreator.base(Events.TAKE_ITEM, rng=general.SameLocationRange(),
+                                      params={"groups": {
+                                          "item": pyslatized_item
+                                      }}, doer=self.executor)
+        elif item_location == executor_location and top_level_item != self.item:  # from storage
+            general.EventCreator.base(Events.TAKE_ITEM_FROM_STORAGE, rng=general.SameLocationRange(),
+                                      params={"groups": {
+                                          "item": pyslatized_item,
+                                          "storage": pyslatized_storage
+                                      }}, doer=self.executor)
+        elif item_location != executor_location and top_level_item == self.item:  # from adjacent loc
+            general.EventCreator.base(Events.TAKE_ITEM_FROM_LOCATION,
+                                      rng=general.SameLocationRange(),
+                                      params={"groups": {
+                                          "item": pyslatized_item,
+                                          "item_loc": pyslatized_item_location,
+                                      }}, doer=self.executor)
+
+            general.EventCreator.create(tag_observer=PartialEvents.TAKE_ITEM_FROM_OTHER_LOCATION_OBSERVER,
+                                        params={"groups": {
+                                            "item": pyslatized_item,
+                                            "doer": self.executor.pyslatize(),
+                                            "doer_loc": pyslatized_executor_location,
+                                        }},
+                                        locations=[item_location])
+        elif item_location != executor_location and top_level_item == self.item:  # from storage in adjacent loc
+            general.EventCreator.base(Events.TAKE_ITEM_FROM_STORAGE_IN_LOCATION,
+                                      rng=general.SameLocationRange(),
+                                      params={"groups": {
+                                          "item": pyslatized_item,
+                                          "item_loc": pyslatized_item_location,
+                                          "storage": pyslatized_storage,
+                                      }}, doer=self.executor)
+
+            general.EventCreator.create(tag_observer=PartialEvents.TAKE_ITEM_FROM_STORAGE_FROM_OTHER_LOCATION_OBSERVER,
+                                        params={"groups": {"item": pyslatized_item,
+                                                           "doer": self.executor.pyslatize(),
+                                                           "doer_loc": pyslatized_executor_location,
+                                                           "storage": pyslatized_storage,
+                                                           }},
+                                        locations=[item_location])

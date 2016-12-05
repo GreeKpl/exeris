@@ -611,7 +611,7 @@ class EventCreator:
                 main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)
 
     @classmethod
-    def get_observers(self, rng, doer, target, locations):
+    def get_observers(cls, rng, doer, target, locations):
         if rng:
             character_obs = set(rng.characters_near(doer))
             if target:

@@ -601,14 +601,13 @@ class CharacterActionsTest(TestCase):
         char = util.create_character("abda", rl, util.create_player("adqw"))
         building_type = LocationType("building", 1000)
         loc1 = Location(rl, building_type)
-        loc2 = Location(loc1, building_type)
         basket_type = ItemType("basket", 100)
         basket_type.properties.append(EntityTypeProperty(P.STORAGE))
         hammer_type = ItemType("hammer", 50)
 
         basket_in_rl = Item(basket_type, rl)
-        basket_in_loc2 = Item(basket_type, loc2)
-        db.session.add_all([rl, building_type, basket_type, hammer_type, loc1, loc2, basket_in_rl, basket_in_loc2])
+        basket_in_loc1 = Item(basket_type, loc1)
+        db.session.add_all([rl, building_type, basket_type, hammer_type, loc1, basket_in_rl, basket_in_loc1])
 
         # take hammer from the ground
         hammer = Item(hammer_type, rl)
@@ -623,13 +622,13 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(char, hammer.being_in)
 
         # take hammer from the neighbouring location
-        hammer.being_in = loc2
+        hammer.being_in = loc1
         take_from_storage_action = TakeItemAction(char, hammer)
         take_from_storage_action.perform()
         self.assertEqual(char, hammer.being_in)
 
         # take hammer from the storage in the neighbouring location
-        hammer.being_in = basket_in_loc2
+        hammer.being_in = basket_in_loc1
         take_from_storage_action = TakeItemAction(char, hammer)
         take_from_storage_action.perform()
         self.assertEqual(char, hammer.being_in)
