@@ -201,7 +201,7 @@ def create_database():
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         hut_type = models.LocationType("hut", 500)
-        # hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        hut_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         hut_recipe = models.EntityRecipe("building_hut", {}, {"input": {"group_stone": 5}, "permanence": True}, 3,
                                          build_menu_category,
                                          result=[["exeris.core.actions.CreateLocationAction",
@@ -313,6 +313,7 @@ def create_database():
         mare_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
         }))
+        mare_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         mare_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_mare_type.name,
             "type_resources": {
@@ -336,7 +337,6 @@ def create_database():
 
         impassable_to_animal = models.PassageType("impassable_to_animal", True)
         invisible_to_animal = models.PassageType("invisible_to_animal", True)
-        invisible_to_animal.properties.append(models.EntityTypeProperty(P.ENTERABLE))
         invisible_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
         impassable_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
 

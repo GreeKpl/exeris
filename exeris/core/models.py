@@ -2004,10 +2004,8 @@ def init_database_contents():
     if not PassageType.by_name(Types.DOOR):
         door_passage = PassageType(Types.DOOR, False)
         door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
-        door_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         db.session.add(door_passage)
         invisible_passage = PassageType(Types.INVISIBLE_PASSAGE, True)
-        invisible_passage.properties.append(EntityTypeProperty(P.ENTERABLE))
         invisible_passage.properties.append(EntityTypeProperty(P.INVISIBLE_PASSAGE))
         db.session.add(invisible_passage)
         alive_character = EntityType(Types.ALIVE_CHARACTER)
@@ -2048,8 +2046,11 @@ def init_database_contents():
     db.session.merge(EntityType(Types.BURIED_HOLE))
     db.session.merge(EntityType(Types.COMBAT))
 
-    db.session.merge(LocationType(Types.OUTSIDE, 0))
     db.session.merge(TerrainType(Types.SEA))
+    if not LocationType.by_name(Types.OUTSIDE):
+        outside_type = LocationType(Types.OUTSIDE, 0)
+        outside_type.properties.append(EntityTypeProperty(P.ENTERABLE))
+        db.session.add(outside_type)
 
     db.session.flush()
 
