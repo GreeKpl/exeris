@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    CANNOT_ENTER_LOCATION = "error_cannot_enter_location"
     NOT_CONTROLLING_MOVEMENT = "error_not_controlling_movement"
     VEHICLE_ALREADY_CONTROLLED = "error_vehicle_already_controlled"
     CANNOT_CONTROL_MOVEMENT = "error_cannot_control_movement"
@@ -432,3 +433,8 @@ class InvalidOptionForNotification(PlayerException, MalformedInputErrorMixin):
 class AnimalNotTamableException(GameException):
     def __init__(self, *, animal):
         super().__init__(Errors.ANIMAL_NOT_TAMABLE, animal=animal)
+
+
+class CannotEnterLocationException(GameException):
+    def __init__(self, *, location):
+        super().__init__(Errors.CANNOT_ENTER_LOCATION, location=location)

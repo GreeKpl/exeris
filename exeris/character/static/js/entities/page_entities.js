@@ -14,8 +14,12 @@ FRAGMENTS.entities = (function($, socket) {
 
     $.subscribe("entities:refresh_entity_info", function(entity_id) {
         socket.emit("refresh_entity_info", entity_id, function(entity_info) {
-            var old_entity_info = $("div[data-entity='" + entity_info.id + "']");
-            old_entity_info.replaceWith(entity_info.html);
+            var old_entity_info = $("div[data-entity='" + entity_id + "']");
+            if (entity_info) {
+                old_entity_info.replaceWith(entity_info.html);
+            } else {
+                old_entity_info.parent().remove();
+            }
         });
     });
 
@@ -84,16 +88,33 @@ FRAGMENTS.entities = (function($, socket) {
         });
     });
 
+    socket.on("before_take_item", function(item_id, max_amount) {
+        var amount = +prompt("amount to take", max_amount);
+        if (amount) {
+            socket.emit("character.take_item", item_id, amount);
+        }
+    });
+
+    socket.on("after_take_item", function(item_id) {
+        $.publish("entities:refresh_entity_info", item_id);
+    });
+
+    socket.on("before_drop_item", function(item_id, max_amount) {
+        var amount = +prompt("amount to drop", max_amount);
+        if (amount) {
+            socket.emit("inventory.drop_item", item_id, amount);
+        }
+    });
+
+    socket.on("after_drop_item", function(item_id) {
+        $.publish("entities:refresh_entity_info", item_id);
+    });
+
     socket.on("before_eat", function(entity_id, max_amount) {
-        console.log(entity_id, max_amount);
         var amount = +prompt("amount to eat", max_amount);
         if (amount) {
             socket.emit("eat", entity_id, amount);
         }
-    });
-
-    socket.on("after_eat", function(entity_id, amount) {
-        $.publish("show_success", "eaten " + amount + " of " + entity_id);
     });
 
     socket.on("after_move_to_location", function(loc_id) {

@@ -358,7 +358,10 @@ def refresh_entity_info(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
 
-    entity_info = _get_entity_info(entity)
+    if entity:
+        entity_info = _get_entity_info(entity)
+    else:
+        entity_info = None
     return entity_info,
 
 
@@ -375,9 +378,11 @@ def entities_get_sublist(entity_id, parent_parent_id):
 
 
 @socketio_character_event("move_to_location")
-def move_to_location(passage_id):
-    passage_id = app.decode(passage_id)
-    passage = models.Passage.by_id(passage_id)
+def move_to_location(location_id):
+    location_id = app.decode(location_id)
+    location = models.Location.by_id(location_id)
+
+    passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, location)).one()
 
     action = actions.MoveToLocationAction(g.character, passage)
     action.perform()
@@ -419,6 +424,36 @@ def add_item_to_activity(entity_to_add, amount, activity_id):
     action = actions.AddEntityToActivityAction(g.character, entity_to_add, activity, amount)
     action.perform()
 
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("character.take_item")
+def take_item(item_id, amount=None):
+    item = models.Item.by_id(app.decode(item_id))
+
+    if item.type.stackable and not amount:
+        client_socket.emit("before_take_item", (item_id, item.amount))
+    else:
+        take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
+        take_from_storage_action.perform()
+
+    client_socket.emit("after_take_item", item_id)
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("inventory.drop_item")
+def drop_item(item_id, amount=None):
+    item = models.Item.by_id(app.decode(item_id))
+
+    if item.type.stackable and not amount:
+        client_socket.emit("before_drop_item", (item_id, item.amount))
+    else:
+        drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
+        drop_item_action.perform()
+
+    client_socket.emit("after_drop_item", item_id)
     db.session.commit()
     return ()
 

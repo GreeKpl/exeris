@@ -38,4 +38,9 @@ ACTIONS_ON_GROUND = [
     ActionRecord("bury_body", "image", P.BURYABLE, "character.start_burying_entity",
                  lambda x: isinstance(x, models.Character)),
     ActionRecord("tame_animal", "image", P.TAMABLE, "character.start_taming_animal"),
+    ActionRecord("take", "image", P.ANY, "character.take_item",
+                 lambda x: isinstance(x, models.Item) and x.type.portable
+                           and not isinstance(x.being_in, models.Character)),
+    ActionRecord("drop", "image", P.ANY, "inventory.drop_item",
+                 lambda x: isinstance(x, models.Item) and isinstance(x.being_in, models.Character)),
 ]

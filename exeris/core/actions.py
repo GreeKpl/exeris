@@ -1636,6 +1636,9 @@ class MoveToLocationAction(ActionOnLocation):
         if not self.executor.has_access(self.passage, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.location)
 
+        if not self.location.has_property(P.ENTERABLE):
+            raise main.CannotEnterLocationException(location=self.location)
+
         from_loc = self.executor.being_in
         if not self.passage.between(from_loc, self.location):
             raise main.EntityTooFarAwayException(entity=self.location)  # TODO Better event?
