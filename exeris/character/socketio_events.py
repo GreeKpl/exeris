@@ -498,17 +498,19 @@ def _get_entity_info(entity):
                                  for action in accessible_actions.ACTIONS_ON_GROUND
                                  if has_needed_prop(other_side, action) and action.other_req(other_side)]
 
+        other_side_is_enterable_or_storage = other_side.has_property(P.STORAGE) or other_side.has_property(P.ENTERABLE)
         entities_on_other_side = models.Entity.query.filter(models.Entity.is_in(other_side)) \
             .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).count()
-        expandable = entities_on_other_side and can_see_the_other_side
+        expandable = other_side_is_enterable_or_storage and entities_on_other_side and can_see_the_other_side
 
         if can_see_the_other_side:
             activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
             if activity:
                 activities.append(activity)
     else:
-        expandable = models.Entity.query.filter(models.Entity.is_in(entity)) \
-                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+        expandable = (entity.has_property(P.STORAGE) or entity.has_property(P.ENTERABLE)) \
+                     and models.Entity.query.filter(models.Entity.is_in(entity)) \
+                             .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
 
     entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
                                   actions=possible_actions, activities=activities, expandable=expandable,

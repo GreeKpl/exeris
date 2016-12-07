@@ -481,8 +481,8 @@ def create_database():
                                                  result=milking_cow_result, activity_container="selected_machine")
 
         db.session.add_all(
-            [milk_type, cow_skull_type, beef_type, cow_type, milkable_group, rl, cow, milking_cow_recipe, grass_type,
-             herbivore_group, grass_area])
+            [milk_type, cow_skull_type, beef_type, dead_cow_type, cow_type, milkable_group, rl,
+             cow, milking_cow_recipe, grass_type, herbivore_group, grass_area])
 
         dead_aurochs_type = models.LocationType("dead_aurochs", 3000)
         female_aurochs_type = models.LocationType("female_aurochs", 3000)

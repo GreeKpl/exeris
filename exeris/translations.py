@@ -88,6 +88,12 @@ data = {
     "event_take_item_from_other_location_observer": {
         "en": "You see ${doer:entity_info} from ${doer_loc:location_info} take ${item:item_info}."
     },
+    "event_take_item_from_storage_doer": {
+        "en": "Your take ${item:item_info} from ${storage:entity_info}."
+    },
+    "event_take_item_from_storage_observer": {
+        "en": "You see ${doer:entity_info} take ${item:item_info} from ${storage:entity_info}."
+    },
     "entity_character#f": {
         "en": "unknown woman",
     },

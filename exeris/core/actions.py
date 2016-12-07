@@ -2047,7 +2047,7 @@ class TakeItemAction(ActionOnItem):
     def perform_action(self):
         top_level_item = self.item
 
-        while isinstance(top_level_item.being_in, models.Item):
+        while isinstance(top_level_item.being_in, models.Item) or top_level_item.being_in.has_property(P.STORAGE):
             top_level_item = top_level_item.being_in
             if not top_level_item.has_property(P.STORAGE):
                 raise ValueError("{} is not a storage".format(top_level_item))
