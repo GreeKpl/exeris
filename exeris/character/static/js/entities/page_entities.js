@@ -110,6 +110,23 @@ FRAGMENTS.entities = (function($, socket) {
         $.publish("entities:refresh_entity_info", item_id);
     });
 
+    socket.on("before_put_into_storage", function(put_into_storage_modal) {
+        $("#put_into_storage_modal").remove();
+        $(document.body).append(put_into_storage_modal);
+        $("#put_into_storage_modal").modal();
+    });
+
+    $(document).on("click", "#put_into_storage_confirm", function(event) {
+        socket.emit("character.put_into_storage",
+            $("#put_into_storage_modal").data("item_to_put"),
+            $("#selected_storage").val(), +$("#put_into_storage_amount").val());
+        $("#put_into_storage_modal").modal("hide");
+    });
+
+    socket.on("after_put_into_storage", function(item_id) {
+        $.publish("entities:refresh_entity_info", item_id);
+    });
+
     socket.on("before_eat", function(entity_id, max_amount) {
         var amount = +prompt("amount to eat", max_amount);
         if (amount) {

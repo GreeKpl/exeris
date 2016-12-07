@@ -43,4 +43,6 @@ ACTIONS_ON_GROUND = [
                            and not isinstance(x.being_in, models.Character)),
     ActionRecord("drop", "image", P.ANY, "inventory.drop_item",
                  lambda x: isinstance(x, models.Item) and isinstance(x.being_in, models.Character)),
+    ActionRecord("put_into_storage", "image", P.ANY, "character.put_into_storage",
+                 lambda x: isinstance(x, models.Item) and x.type.portable),
 ]

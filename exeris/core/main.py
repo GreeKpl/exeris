@@ -66,6 +66,7 @@ class Types:
 
 
 class Events:
+    PUT_ITEM_INTO_STORAGE = "event_put_item_into_storage"
     TAKE_ITEM_FROM_STORAGE_IN_LOCATION = "event_take_item_from_storage_in_location"
     TAKE_ITEM_FROM_LOCATION = "event_take_item_from_location"
     TAKE_ITEM_FROM_STORAGE = "event_take_item_from_storage"

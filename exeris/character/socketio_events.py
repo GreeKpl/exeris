@@ -302,7 +302,7 @@ def edit_readable(entity_id, text):
     return app.encode(entity_id),
 
 
-def _get_entities_in(parent_entity, excluded=None):
+def _get_entities_in(parent_entity, observer, excluded=None):
     excluded = excluded if excluded else []
 
     entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
@@ -320,7 +320,7 @@ def _get_entities_in(parent_entity, excluded=None):
 
     entity_entries = []
     for entity in entities:
-        entity_info = _get_entity_info(entity)
+        entity_info = _get_entity_info(entity, observer)
 
         entity_entries.append(entity_info)
     return entity_entries
@@ -349,7 +349,7 @@ def entities_refresh_list(view):
         displayed_locations.remove(location.get_root())
         displayed_locations = [location] + displayed_locations
 
-    locations = [_get_entity_info(loc_to_show) for loc_to_show in displayed_locations]
+    locations = [_get_entity_info(loc_to_show, g.character) for loc_to_show in displayed_locations]
     return locations,
 
 
@@ -359,7 +359,7 @@ def refresh_entity_info(entity_id):
     entity = models.Entity.by_id(entity_id)
 
     if entity:
-        entity_info = _get_entity_info(entity)
+        entity_info = _get_entity_info(entity, g.character)
     else:
         entity_info = None
     return entity_info,
@@ -372,7 +372,7 @@ def entities_get_sublist(entity_id, parent_parent_id):
     if not rng.is_near(g.character, parent_entity):
         raise main.EntityTooFarAwayException(entity=parent_entity)
     exclude = [models.Entity.by_id(app.decode(parent_parent_id))] if parent_parent_id else []
-    rendered = _get_entities_in(parent_entity, exclude)
+    rendered = _get_entities_in(parent_entity, g.character, exclude)
 
     return entity_id, rendered,
 
@@ -443,6 +443,29 @@ def take_item(item_id, amount=None):
     return ()
 
 
+@socketio_character_event("character.put_into_storage")
+def put_into_storage(item_id, storage_id=None, amount=None):
+    item = models.Item.by_id(app.decode(item_id))
+
+    if not storage_id and not amount:
+        storage_items = models.Item.query.filter(models.Item.is_in([g.character, g.character.being_in]),
+                                                 models.Item.has_property(P.STORAGE, can_store=True)).all()
+        storage_locations = [psg for psg in g.character.get_location().passages_to_neighbours
+                             if psg.other_side.has_property(P.STORAGE, can_store=True)]
+
+        accessible_storages = storage_items + storage_locations
+        rendered = render_template("entities/modal_put_into_storage.html", item=item, storages=accessible_storages)
+        client_socket.emit("before_put_into_storage", rendered)
+    else:
+        storage = models.Entity.by_id(app.decode(storage_id))
+        put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
+        put_into_storage_action.perform()
+        db.session.commit()
+        client_socket.emit("after_put_into_storage", item_id)
+
+    return ()
+
+
 @socketio_character_event("inventory.drop_item")
 def drop_item(item_id, amount=None):
     item = models.Item.by_id(app.decode(item_id))
@@ -458,7 +481,7 @@ def drop_item(item_id, amount=None):
     return ()
 
 
-def _get_entity_info(entity):
+def _get_entity_info(entity, observer):
     if isinstance(entity, models.Passage):
         entity = models.PassageToNeighbour(entity,
                                            models.PassageToNeighbour.get_other_side(entity, g.character.being_in))
@@ -508,7 +531,8 @@ def _get_entity_info(entity):
             if activity:
                 activities.append(activity)
     else:
-        expandable = (entity.has_property(P.STORAGE) or entity.has_property(P.ENTERABLE)) \
+        expandable = entity == observer or \
+                     (entity.has_property(P.STORAGE) or entity.has_property(P.ENTERABLE)) \
                      and models.Entity.query.filter(models.Entity.is_in(entity)) \
                              .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
 

@@ -13,7 +13,7 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
-    AnimalDeathAction, TakeItemAction
+    AnimalDeathAction, TakeItemAction, PutIntoStorageAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -633,6 +633,47 @@ class CharacterActionsTest(TestCase):
         take_from_storage_action.perform()
         self.assertEqual(char, hammer.being_in)
 
+    def test_put_into_storage_action(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 10)
+        char = util.create_character("abda", rl, util.create_player("adqw"))
+        building_type = LocationType("building", 1000)
+        loc_storage_type = LocationType("loc_storage", 400)
+        loc1 = Location(rl, building_type)
+        loc2_storage = Location(rl, loc_storage_type)
+        basket_type = ItemType("basket", 100)
+        basket_type.properties.append(EntityTypeProperty(P.STORAGE, {"can_store": True}))
+        hammer_type = ItemType("hammer", 50)
+
+        basket_in_rl = Item(basket_type, rl)
+        basket_in_inventory = Item(basket_type, char)
+        basket_in_loc1 = Item(basket_type, loc1)
+        hammer = Item(hammer_type, rl)
+        db.session.add_all([rl, building_type, basket_type, hammer_type, loc1, basket_in_rl, basket_in_loc1,
+                            loc_storage_type, loc2_storage, basket_in_inventory, hammer])
+
+        # put hammer from the ground to the storage on the ground
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_rl)
+        put_into_storage_action.perform()
+        self.assertEqual(hammer.being_in, basket_in_rl)
+
+        # put hammer from the inventory to the storage on the ground
+        hammer.being_in = char
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_rl)
+        put_into_storage_action.perform()
+        self.assertEqual(hammer.being_in, basket_in_rl)
+
+        # put hammer from the ground to the storage in the inventory
+        hammer.being_in = rl
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_inventory)
+        put_into_storage_action.perform()
+        self.assertEqual(hammer.being_in, basket_in_inventory)
+
+        # it's impossible to put hammer to the storage in the neighbouring location (event with an unlimited passage)
+        hammer.being_in = rl
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_loc1)
+        self.assertRaises(main.EntityTooFarAwayException, put_into_storage_action.perform)
+
     def test_say_aloud_action(self):
         util.initialize_date()
 
@@ -738,10 +779,11 @@ class CharacterActionsTest(TestCase):
         building_type = LocationType("building", 200)
         rl = RootLocation(Point(1, 1), 222)
         building = Location(rl, building_type, title="Small hut")
+        building_type.properties.append(EntityTypeProperty(P.ENTERABLE))
 
         char = util.create_character("John", rl, util.create_player("Eddy"))
 
-        db.session.add_all([rl, building])
+        db.session.add_all([rl, building_type, building])
 
         passage = Passage.query.filter(Passage.between(rl, building)).one()
         enter_loc_action = MoveToLocationAction(char, passage)

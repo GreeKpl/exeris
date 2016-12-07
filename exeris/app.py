@@ -251,7 +251,7 @@ def create_database():
              land_trav1, land_trav2, land_trav3, land_trav_road, world_visibility])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
-        tablet_type = models.ItemType("tablet", 100, portable=False)
+        tablet_type = models.ItemType("tablet", 100, portable=True)
         tablet_type.properties.append(models.EntityTypeProperty(P.READABLE,
                                                                 data={"max_length": 300, "allowed_formats": [
                                                                     models.TextContent.FORMAT_MD]}))
@@ -394,8 +394,6 @@ def create_database():
         dead_body_type = models.EntityType.by_name(Types.DEAD_CHARACTER)
         dead_body_type.properties.append(models.EntityTypeProperty(P.BURYABLE))
 
-    cow_type = models.EntityType.by_name("cow")
-    if not cow_type:
         milk_type = models.ItemType("milk", 20, stackable=True)
         cow_skull_type = models.ItemType("cow_skull", 50, stackable=True)
         beef_type = models.ItemType("beef", 40, stackable=True)
@@ -448,7 +446,14 @@ def create_database():
             },
         }))
 
+        grass_meadow = models.ItemType("grass_meadow", 0, portable=False)
         grass_area = models.ResourceArea(grass_type, Point(5, 5), 8, 20, 500)
+        cutting_grass_result = [["exeris.core.actions.CollectGatheredResourcesAction", {"resource_type": "grass"}]]
+        cutting_grass_recipe = models.EntityRecipe("cutting_grass", {},
+                                                   {"required_resources": ["grass"], "terrain_types": ["grassland"],
+                                                    "location_types": ["outside"]},
+                                                   6, gathering_build_menu_category,
+                                                   result=cutting_grass_result, activity_container="grass_meadow")
 
         herbivore_group = models.TypeGroup("herbivore")
         herbivore_group.add_to_group(cow_type)
@@ -482,7 +487,7 @@ def create_database():
 
         db.session.add_all(
             [milk_type, cow_skull_type, beef_type, dead_cow_type, cow_type, milkable_group, rl,
-             cow, milking_cow_recipe, grass_type, herbivore_group, grass_area])
+             cow, milking_cow_recipe, grass_type, herbivore_group, grass_area, grass_meadow, cutting_grass_recipe])
 
         dead_aurochs_type = models.LocationType("dead_aurochs", 3000)
         female_aurochs_type = models.LocationType("female_aurochs", 3000)
@@ -526,6 +531,13 @@ def create_database():
         }))
 
         db.session.add_all([dead_aurochs_type, female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
+
+        chest_type = models.ItemType("oak_chest", 300, portable=False)
+        chest_recipe = models.EntityRecipe("building_chest", {}, {"input": {"oak": 5}}, 2,
+                                           build_menu_category, result_entity=chest_type,
+                                           activity_container="fixed_item")
+        chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
+        db.session.add_all([chest_type, chest_recipe])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")

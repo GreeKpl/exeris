@@ -2031,12 +2031,36 @@ class TurnIntoDomesticatedSpecies(ActivityAction):
         animal.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
 
 
-class PutIntoStorageAction(ActionOnEntity):
-    def __init__(self, executor, entity):
-        super().__init__(executor, entity)
+class PutIntoStorageAction(ActionOnItem):
+    def __init__(self, executor, item, storage, amount=1):
+        super().__init__(executor, item)
+        self.storage = storage
+        self.amount = amount
 
     def perform_action(self):
-        raise NotImplementedError()
+        storage_items = models.Item.query.filter(models.Item.is_in([self.executor, self.executor.being_in]),
+                                                 models.Item.has_property(P.STORAGE, can_store=True)).all()
+        storage_locations = [psg for psg in self.executor.get_location().passages_to_neighbours
+                             if psg.other_side.has_property(P.STORAGE, can_store=True)]
+
+        accessible_storages = storage_items + storage_locations
+        if self.storage not in accessible_storages:
+            raise main.EntityTooFarAwayException(entity=self.storage)
+
+        if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
+            raise main.EntityTooFarAwayException(entity=self.item)
+
+        if self.amount < 0 or self.amount > self.item.amount:
+            raise main.InvalidAmountException(amount=self.amount)
+
+        move_entity_between_entities(self.item, self.item.being_in, self.storage, self.amount)
+        self.create_events()
+
+    def create_events(self):
+        general.EventCreator.base(Events.PUT_ITEM_INTO_STORAGE, rng=general.SameLocationRange(),
+                                  params={"groups": {
+                                      "item": self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
+                                  }}, doer=self.executor)
 
 
 class TakeItemAction(ActionOnItem):
@@ -2066,7 +2090,7 @@ class TakeItemAction(ActionOnItem):
         pass
 
     def create_events(self, top_level_item):
-        item_location = top_level_item.being_in
+        item_location = top_level_item.get_location()
         executor_location = self.executor.get_location()
 
         pyslatized_item = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
