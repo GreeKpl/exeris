@@ -61,6 +61,7 @@ class Types:
     OUTSIDE = "outside"
     ALIVE_CHARACTER = "alive_character"
     DEAD_CHARACTER = "dead_character"
+    DEAD_ANIMAL = "dead_animal"
     PORTABLE_ITEM_IN_CONSTRUCTION = "portable_item_in_constr"
     FIXED_ITEM_IN_CONSTRUCTION = "fixed_item_in_constr"
 

@@ -2031,6 +2031,20 @@ class TurnIntoDomesticatedSpecies(ActivityAction):
         animal.properties.append(models.EntityProperty(P.DOMESTICATED, {"trusted": {}}))
 
 
+class ButcherAnimalAction(ActivityAction):
+    def __init__(self, **injected_args):
+        self.activity = injected_args["activity"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        dead_animal = self.activity.being_in
+
+        # make contents accessible
+        dead_animal.properties.append(models.EntityProperty(P.STORAGE))
+
+        # prevent another butchering
+
+
 class PutIntoStorageAction(ActionOnItem):
     def __init__(self, executor, item, storage, amount=1):
         super().__init__(executor, item)

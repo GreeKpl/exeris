@@ -280,8 +280,11 @@ def create_database():
         if not models.EntityTypeProperty.query.filter_by(type=outside, name=P.DYNAMIC_NAMEABLE).count():
             outside.properties.append(models.EntityTypeProperty(P.DYNAMIC_NAMEABLE))
 
+        dead_animal_group = models.TypeGroup(Types.DEAD_ANIMAL)
+
         pork_type = models.ItemType("pork", 30, stackable=True)
         dead_pig_type = models.LocationType("dead_pig", 30000)
+        dead_animal_group.add_to_group(dead_pig_type)
         pig_type = models.LocationType("pig", 30000)
         pig_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
@@ -309,6 +312,7 @@ def create_database():
 
         horsemeat_type = models.ItemType("horse_meat", 30, stackable=True)
         dead_mare_type = models.LocationType("dead_mare", 200000)
+        dead_animal_group.add_to_group(dead_mare_type)
         mare_type = models.LocationType("mare", 200000)
         mare_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
@@ -343,7 +347,8 @@ def create_database():
         mare_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
         mare_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
-        db.session.add_all([pork_type, horsemeat_type, pig_type, mare_type, impassable_to_animal, invisible_to_animal])
+        db.session.add_all([pork_type, horsemeat_type, pig_type, mare_type,
+                            impassable_to_animal, invisible_to_animal, dead_animal_group])
 
         rl = models.RootLocation.query.filter_by(position=from_shape(Point(1, 1))).first()
         impassable_to_animal = models.PassageType.by_name("impassable_to_animal")
@@ -398,6 +403,7 @@ def create_database():
         cow_skull_type = models.ItemType("cow_skull", 50, stackable=True)
         beef_type = models.ItemType("beef", 40, stackable=True)
         dead_cow_type = models.LocationType("dead_cow", 3000)
+        dead_animal_group.add_to_group(dead_cow_type)
         cow_type = models.LocationType("cow", 3000)
         cow_type.properties.append(models.EntityTypeProperty(P.STATES, {
             main.States.HUNGER: {"initial": 0},
@@ -490,6 +496,7 @@ def create_database():
              cow, milking_cow_recipe, grass_type, herbivore_group, grass_area, grass_meadow, cutting_grass_recipe])
 
         dead_aurochs_type = models.LocationType("dead_aurochs", 3000)
+        dead_animal_group.add_to_group(dead_aurochs_type)
         female_aurochs_type = models.LocationType("female_aurochs", 3000)
         female_aurochs_type.properties.append(models.EntityTypeProperty(P.ANIMAL, {
             "dead_type": dead_aurochs_type.name,
@@ -538,6 +545,14 @@ def create_database():
                                            activity_container="fixed_item")
         chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
         db.session.add_all([chest_type, chest_recipe])
+
+        butchering_recipe = models.EntityRecipe("butchering_animal", {},
+                                                {"mandatory_machines": ["dead_animal"]}, 5,
+                                                build_menu_category,
+                                                result=[["exeris.core.actions.ButcherAnimalAction", {}
+                                                         ]],
+                                                activity_container="selected_machine")
+        db.session.add(butchering_recipe)
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
