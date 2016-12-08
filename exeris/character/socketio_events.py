@@ -435,6 +435,7 @@ def take_item(item_id, amount=None):
     if item.type.stackable and not amount:
         client_socket.emit("before_take_item", (item_id, item.amount))
     else:
+        amount = amount if amount else 1
         take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
         take_from_storage_action.perform()
 
@@ -457,6 +458,7 @@ def put_into_storage(item_id, storage_id=None, amount=None):
         rendered = render_template("entities/modal_put_into_storage.html", item=item, storages=accessible_storages)
         client_socket.emit("before_put_into_storage", rendered)
     else:
+        amount = amount if amount else 1
         storage = models.Entity.by_id(app.decode(storage_id))
         put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
         put_into_storage_action.perform()
@@ -473,6 +475,7 @@ def drop_item(item_id, amount=None):
     if item.type.stackable and not amount:
         client_socket.emit("before_drop_item", (item_id, item.amount))
     else:
+        amount = amount if amount else 1
         drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
         drop_item_action.perform()
 
