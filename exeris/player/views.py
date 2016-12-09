@@ -43,6 +43,9 @@ def discourse_sso_login():
     except DiscourseError as e:
         return str(e.args)
 
+    if g.player.confirmed_at is None:
+        return "The email address of the {} is not yet confirmed".format(g.player.id)
+
     base64_encoded_payload = urllib.parse.unquote(payload)
     payload = urllib.parse.parse_qs(base64.b64decode(base64_encoded_payload).decode("utf8"))
 
@@ -154,9 +157,9 @@ def authorize(*args, **kwargs):
     so user needs to be logged in, otherwise the login form is shown.
     :param args:
     :param kwargs:
-    :return: True always when the user is logged in
+    :return: True when the user is logged in and the email address is confirmed
     """
-    return True
+    return g.player.confirmed_at is not None
 
 
 @app.route('/oauth/token', methods=["GET", "POST"])
