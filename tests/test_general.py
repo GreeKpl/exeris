@@ -1,3 +1,4 @@
+import string
 from unittest.mock import patch
 
 from flask_testing import TestCase
@@ -6,9 +7,10 @@ from shapely.geometry import Point, Polygon
 from exeris.core import models, map_data
 from exeris.core.main import db, Types
 from exeris.core.general import GameDate, SameLocationRange, NeighbouringLocationsRange, VisibilityBasedRange, \
-    EventCreator, TraversabilityBasedRange, RangeSpec
+    EventCreator, TraversabilityBasedRange, RangeSpec, Identifiers
 from exeris.core.models import GameDateCheckpoint, RootLocation, Location, Item, ItemType, Passage, EntityProperty, \
-    EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea, TypeGroup
+    EventType, EventObserver, LocationType, PassageType, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
+    UniqueIdentifier
 from exeris.core.properties import P
 from tests import util
 
@@ -420,3 +422,19 @@ class EventCreatorTest(TestCase):
 
         observer_in_root_loc_count = EventObserver.query.filter_by(observer=observer_in_root_loc).count()
         self.assertEqual(0, observer_in_root_loc_count)
+
+
+class IdentifiersTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_unique_identifier_property(self):
+        identifiers = []
+        for letter in string.ascii_uppercase:
+            identifiers.append(UniqueIdentifier(letter, 0, "PLACEHOLDER"))
+        db.session.add_all(identifiers)
+
+        # all one letter identifiers are already used, so it needs to contain 2 letters
+        Identifiers.MIN_LENGTH = 1
+        unique_id = Identifiers.generate_unique_identifier()
+        self.assertEqual(2, len(unique_id))

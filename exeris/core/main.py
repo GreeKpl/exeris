@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    ENTITY_MISSING_PROPERTY = "error_entity_missing_property"
     CANNOT_ENTER_LOCATION = "error_cannot_enter_location"
     NOT_CONTROLLING_MOVEMENT = "error_not_controlling_movement"
     VEHICLE_ALREADY_CONTROLLED = "error_vehicle_already_controlled"
@@ -440,3 +441,8 @@ class AnimalNotTamableException(GameException):
 class CannotEnterLocationException(GameException):
     def __init__(self, *, location):
         super().__init__(Errors.CANNOT_ENTER_LOCATION, location=location)
+
+
+class EntityMissingPropertyException(GameException):
+    def __init__(self, *, entity, property):
+        super().__init__(Errors.ENTITY_MISSING_PROPERTY, entity=entity, property=property)

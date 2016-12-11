@@ -4,6 +4,7 @@ import math
 import statistics
 
 import markdown
+
 from exeris.core import models, main
 from exeris.core.main import db
 from exeris.core.properties_base import property_class, PropertyType, __registry, P

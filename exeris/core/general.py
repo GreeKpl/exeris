@@ -2,6 +2,8 @@ import collections
 import copy
 import logging
 import math
+import random
+import string
 import time
 
 import shapely
@@ -623,3 +625,36 @@ class EventCreator:
         else:
             raise ValueError("EventCreator requires either 'rng' or 'locations'")
         return character_obs
+
+
+class Identifiers:
+    MIN_LENGTH = 3
+
+    @classmethod
+    def generate_unique_identifier(cls):
+        """
+        Generates an (yet unused) unique identifier. It does so by generating 1000 candidates for a new id of length
+        MIN_LENGTH and checking whether all of these are already used.
+        If so, then it tries again with the length increased by 1.
+        :return: the first id that is not used
+        """
+        length = cls.MIN_LENGTH
+        generated_identifier = None
+        while generated_identifier is None:
+            generated_identifier = cls._try_to_generate_unique_identifier_for_length(length)
+            length += 1
+        return generated_identifier
+
+    @classmethod
+    def _try_to_generate_unique_identifier_for_length(cls, length):
+        generated_identifiers = [cls._generate_identifier(length) for _ in range(1000)]  # 1000 candidates for id
+        already_used_identifiers = db.session.query(models.UniqueIdentifier.value) \
+            .filter(models.UniqueIdentifier.value.in_(generated_identifiers)).all()
+        already_used_identifiers = {columns[0] for columns in already_used_identifiers}
+        for generated_identifier in generated_identifiers:
+            if generated_identifier not in already_used_identifiers:
+                return generated_identifier
+
+    @classmethod
+    def _generate_identifier(cls, length):
+        return ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(length))

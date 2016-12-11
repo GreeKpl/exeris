@@ -1557,6 +1557,17 @@ class Passage(Entity):
     }
 
 
+class UniqueIdentifier(db.Model):
+    def __init__(self, value, entity_id, property_name):
+        self.value = value
+        self.entity_id = entity_id
+        self.property_name = property_name
+
+    value = sql.Column(sql.String, primary_key=True)
+    entity_id = sql.Column(sql.Integer)
+    property_name = sql.Column(sql.String)
+
+
 class ObservedName(db.Model):
     __tablename__ = "observed_names"
 
