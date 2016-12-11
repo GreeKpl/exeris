@@ -1630,8 +1630,9 @@ class MoveToLocationAction(ActionOnLocation):
         self.passage = passage
 
     def perform_action(self):
-
-        # TODO check if passage is locked
+        optional_lockable_property = properties.OptionalLockableProperty(self.passage)
+        if not optional_lockable_property.can_pass(self.executor):
+            raise main.NoKeyToLockException(entity=self.passage, lock_id=optional_lockable_property.get_lock_id())
 
         if not self.executor.has_access(self.passage, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.location)

@@ -141,3 +141,26 @@ class ReadablePropertyType(PropertyType):
 
 
 logger.info("Methods of entity properties: %s", __registry.keys())
+
+
+class OptionalLockableProperty:
+    def __init__(self, entity):
+        self.entity = entity
+        self.property = self.entity.get_property(P.LOCKABLE)
+
+    def can_pass(self, executor):
+        return not self.lock_exists() or not self.is_locked() or self.has_key_to_lock(executor)
+
+    def has_key_to_lock(self, executor):
+        has_key = models.Item.query.filter(models.Item.is_in(executor)) \
+            .filter(models.Item.has_property(P.KEY_TO_LOCK, id=self.get_lock_id())).first()
+        return has_key is not None
+
+    def lock_exists(self):
+        return self.property is not None and self.property["lock_exists"]
+
+    def is_locked(self):
+        return self.property.get("locked", False)
+
+    def get_lock_id(self):
+        return self.property["lock_id"]

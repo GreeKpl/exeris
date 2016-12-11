@@ -30,6 +30,9 @@ class P:
     STATES = "States"
     BIRD_NEST = "BirdNest"
     STORAGE = "Storage"
+    LOCKABLE = "Lockable"
+    KEY_TO_LOCK = "KeyToLock"
+    LOCK_BREAKER = "LockBreaker"
 
 
 __registry = {}

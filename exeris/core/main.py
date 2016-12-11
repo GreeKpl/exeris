@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    NO_KEY_TO_LOCK = "error_no_key_to_lock"
     ENTITY_MISSING_PROPERTY = "error_entity_missing_property"
     CANNOT_ENTER_LOCATION = "error_cannot_enter_location"
     NOT_CONTROLLING_MOVEMENT = "error_not_controlling_movement"
@@ -446,3 +447,8 @@ class CannotEnterLocationException(GameException):
 class EntityMissingPropertyException(GameException):
     def __init__(self, *, entity, property):
         super().__init__(Errors.ENTITY_MISSING_PROPERTY, entity=entity, property=property)
+
+
+class NoKeyToLockException(GameException):
+    def __init__(self, *, entity, lock_id):
+        super().__init__(Errors.NO_KEY_TO_LOCK, entity=entity, lock_id=lock_id)
