@@ -1492,6 +1492,19 @@ class Passage(Entity):
         self.type = passage_type
         super().__init__()
 
+    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
+
+    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("passage_types.name"), index=True)
+    type = sql.orm.relationship(PassageType, uselist=False)
+
+    left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
+    right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
+
+    left_location = sql.orm.relationship(Location, primaryjoin=left_location_id == Location.id,
+                                         backref="left_passages", uselist=False)
+    right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
+                                          backref="right_passages", uselist=False)
+
     @hybrid_method
     def between(self, first_loc, second_loc):
         return (self.left_location == first_loc and self.right_location == second_loc) or \
@@ -1522,21 +1535,12 @@ class Passage(Entity):
     def is_open(self):
         return not self.has_property(P.CLOSEABLE, closed=True)
 
-    id = sql.Column(sql.Integer, sql.ForeignKey("entities.id"), primary_key=True)
-
-    type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey("passage_types.name"), index=True)
-    type = sql.orm.relationship(PassageType, uselist=False)
-
-    left_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
-    right_location_id = sql.Column(sql.Integer, sql.ForeignKey("locations.id"), index=True)
-
-    left_location = sql.orm.relationship(Location, primaryjoin=left_location_id == Location.id,
-                                         backref="left_passages", uselist=False)
-    right_location = sql.orm.relationship(Location, primaryjoin=right_location_id == Location.id,
-                                          backref="right_passages", uselist=False)
-
     def parent_locations(self):
         return [self.left_location, self.right_location]
+
+    @hybrid_property
+    def quality(self):
+        return 1.0
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_PASSAGE, passage_id=self.id, passage_name=self.type_name)

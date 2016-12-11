@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    LOCK_ALREADY_EXISTS = "error_lock_already_exists"
     NO_KEY_TO_LOCK = "error_no_key_to_lock"
     ENTITY_MISSING_PROPERTY = "error_entity_missing_property"
     CANNOT_ENTER_LOCATION = "error_cannot_enter_location"
@@ -50,6 +51,7 @@ class Errors:
 
 
 class Types:
+    KEY = "key"
     COMBAT = "combat"
     BURIED_HOLE = "buried_hole"
     LAND_TERRAIN = "group_land_terrain"
@@ -452,3 +454,8 @@ class EntityMissingPropertyException(GameException):
 class NoKeyToLockException(GameException):
     def __init__(self, *, entity, lock_id):
         super().__init__(Errors.NO_KEY_TO_LOCK, entity=entity, lock_id=lock_id)
+
+
+class LockAlreadyExistsException(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.LOCK_ALREADY_EXISTS, entity=entity)

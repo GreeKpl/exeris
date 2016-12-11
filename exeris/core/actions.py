@@ -163,11 +163,13 @@ class CreateItemAction(ActivityAction):
         self.visible_parts = visible_parts if visible_parts else []
 
     def perform_action(self):
-        result_loc = self.activity.being_in.being_in
+        result_loc_candidates = self.activity.being_in.parent_locations()
 
         # if initiator is in the same location then put into inventory
-        if self.item_type.portable and self.initiator.being_in == result_loc:
+        if self.item_type.portable and self.initiator.being_in in result_loc_candidates:
             result_loc = self.initiator
+        else:
+            result_loc = result_loc_candidates[0]
 
         if self.amount <= 0:
             raise ValueError("Amount: {} for CIA of activity {} should be positive", self.amount, self.activity)
@@ -841,6 +843,8 @@ class ActivityProgress:
         item_types = [entity_type.name for entity_type in allowed_types if isinstance(entity_type, models.ItemType)]
         location_types = [entity_type.name for entity_type in allowed_types if
                           isinstance(entity_type, models.LocationType)]
+        passage_types = [entity_type.name for entity_type in allowed_types if
+                         isinstance(entity_type, models.PassageType)]
         # todo wait for sqlalchemy support for in_ for relationships
 
         items = []
@@ -859,7 +863,21 @@ class ActivityProgress:
                                                              models.Location.id.in_([n.id for n in locs])) \
                 .all()
 
-        found_machines = items + machine_locations
+        machine_passages = []
+        if passage_types:
+            passages = []
+            if isinstance(parent_entity, models.Passage):  # only this passage, all the other are too far away
+                passages = [parent_entity]
+            else:
+                for loc in parent_entity.parent_locations():
+                    passages += [directed_passage.passage for directed_passage in loc.passages_to_neighbours
+                                 if directed_passage.passage.is_accessible(False)]
+
+            machine_passages = models.Passage.query.filter(models.Passage.type_name.in_(passage_types),
+                                                           models.Passage.id.in_([n.id for n in passages])) \
+                .all()
+
+        found_machines = items + machine_locations + machine_passages
         return found_machines
 
     @classmethod
@@ -2046,6 +2064,37 @@ class ButcherAnimalAction(ActivityAction):
         # prevent another butchering
 
 
+class CreateLockAndKeyAction(ActivityAction):
+    @convert(key_type=models.ItemType)
+    def __init__(self, *, key_type, key_visible_material=None, **injected_args):
+        self.key_type = key_type
+        self.visible_material_of_key = key_visible_material if key_visible_material else {}
+        self.activity = injected_args["activity"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        entity_to_lock = self.activity.being_in
+
+        if entity_to_lock.has_property(P.LOCKABLE, lock_exists=True):
+            raise main.LockAlreadyExistsException(entity=entity_to_lock)
+
+        unique_id = general.Identifiers.generate_unique_identifier()
+
+        entity_to_lock.properties.append(models.EntityProperty(P.LOCKABLE, {
+            "lock_exists": True,
+            "lock_id": unique_id,
+            "locked": False,
+        }))
+
+        unique_identifier = models.UniqueIdentifier(unique_id, entity_to_lock.id, P.LOCKABLE)
+        db.session.add(unique_identifier)
+
+        create_key_action = CreateItemAction(item_type=self.key_type, properties={
+            P.KEY_TO_LOCK: {"lock_id": unique_id}
+        }, used_materials="all", visible_material=self.visible_material_of_key, **self.injected_args)
+        create_key_action.perform()
+
+
 class PutIntoStorageAction(ActionOnItem):
     def __init__(self, executor, item, storage, amount=1):
         super().__init__(executor, item)
@@ -2155,3 +2204,4 @@ class TakeItemAction(ActionOnItem):
                                                            "storage": pyslatized_storage,
                                                            }},
                                         locations=[item_location])
+

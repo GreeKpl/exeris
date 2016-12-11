@@ -13,13 +13,13 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
-    AnimalDeathAction, TakeItemAction, PutIntoStorageAction
+    AnimalDeathAction, TakeItemAction, PutIntoStorageAction, CreateLockAndKeyAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
-    Intent, BuriedContent, ResourceArea
+    Intent, BuriedContent, ResourceArea, UniqueIdentifier
 from exeris.core.properties import P
 from tests import util
 
@@ -311,6 +311,36 @@ class FinishActivityActionsTest(TestCase):
 
         # added 2.5 from the first and 0.5 from the second, because only that is left
         self.assertEqual(4 + 3, pile_of_potatoes.amount)
+
+    def test_create_lock_and_key_action(self):
+        rl = RootLocation(Point(1, 1), 30)
+        initiator = util.create_character("test", rl, util.create_player("abc"))
+        building_type = LocationType("building", 300)
+
+        building = Location(rl, building_type, title="chatka")
+        key_type = ItemType("key", 20)
+
+        door_to_building = Passage.query.filter(Passage.between(rl, building)).one()
+        build_lock_activity = Activity(door_to_building, "building_lock", {}, {}, 1, initiator)
+
+        db.session.add_all([rl, building_type, building, key_type, build_lock_activity])
+
+        door_type = PassageType.by_name(Types.DOOR)
+        door_type.properties.append(EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
+
+        create_lock_and_key_action = CreateLockAndKeyAction(key_type=key_type,
+                                                            activity=build_lock_activity, initiator=initiator)
+        create_lock_and_key_action.perform()
+
+        unique_id = UniqueIdentifier.query.one()
+        self.assertEqual({
+            "lock_exists": True,
+            "lock_id": unique_id.value,
+            "locked": False,
+        }, door_to_building.get_property(P.LOCKABLE))
+
+        key = Item.query.filter_by(type=key_type).one()
+        self.assertEqual(initiator, key.being_in)
 
 
 class CharacterActionsTest(TestCase):

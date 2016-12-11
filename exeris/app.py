@@ -554,6 +554,20 @@ def create_database():
                                                 activity_container="selected_machine")
         db.session.add(butchering_recipe)
 
+        door_type = models.PassageType.by_name(Types.DOOR)
+        door_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
+        key_type = models.ItemType("key", 20)
+
+        building_lock_recipe = models.EntityRecipe("building_lock", {},
+                                                   {"mandatory_machines": [Types.DOOR]}, 5,
+                                                   build_menu_category,
+                                                   result=[["exeris.core.actions.CreateLockAndKeyAction",
+                                                            {"key_type": key_type.name,
+                                                             "visible_material_of_key": {}}
+                                                            ]],
+                                                   activity_container="selected_machine")
+        db.session.add_all([key_type, building_lock_recipe])
+
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)
