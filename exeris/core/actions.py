@@ -1762,7 +1762,9 @@ class ToggleCloseableAction(ActionOnEntity):
 
     def perform_action(self):
 
-        # TODO check if entity is locked
+        optional_lockable_property = properties.OptionalLockableProperty(self.entity)
+        if not optional_lockable_property.can_pass(self.executor):
+            raise main.NoKeyToLockException(entity=self.entity, lock_id=optional_lockable_property.get_lock_id())
 
         if not self.executor.has_access(self.entity, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.entity)
@@ -2083,7 +2085,6 @@ class CreateLockAndKeyAction(ActivityAction):
         entity_to_lock.properties.append(models.EntityProperty(P.LOCKABLE, {
             "lock_exists": True,
             "lock_id": unique_id,
-            "locked": False,
         }))
 
         unique_identifier = models.UniqueIdentifier(unique_id, entity_to_lock.id, P.LOCKABLE)
@@ -2204,4 +2205,3 @@ class TakeItemAction(ActionOnItem):
                                                            "storage": pyslatized_storage,
                                                            }},
                                         locations=[item_location])
-

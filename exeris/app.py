@@ -620,8 +620,6 @@ def character_preprocessor(endpoint, values):
 
 class SocketioUsers:
     def __init__(self):
-        # redis_db.delete("sid_by_player_id")
-        # redis_db.delete("sid_by_character_id")
         # redis_db.flushdb()
         pass
 

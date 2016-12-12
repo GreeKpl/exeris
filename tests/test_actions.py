@@ -336,7 +336,6 @@ class FinishActivityActionsTest(TestCase):
         self.assertEqual({
             "lock_exists": True,
             "lock_id": unique_id.value,
-            "locked": False,
         }, door_to_building.get_property(P.LOCKABLE))
 
         key = Item.query.filter_by(type=key_type).one()
