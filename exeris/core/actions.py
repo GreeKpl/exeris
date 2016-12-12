@@ -1550,7 +1550,7 @@ class LayEggsAction(Action):
 
                 preferred_goal = models.Item.query.filter(models.Item.has_property(P.BIRD_NEST)) \
                     .filter(models.Item.is_in(self.executor.being_in)).first()
-                # todo consider nest capacity after introducing storages in #94
+                # todo consider nest capacity after introducing storage capacity in #140
                 if not preferred_goal:  # if no nest then eggs are laid on ground
                     preferred_goal = self.executor.being_in
 
@@ -2115,6 +2115,10 @@ class PutIntoStorageAction(ActionOnItem):
         if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.item)
 
+        optional_lockable_property = properties.OptionalLockableProperty(self.storage)
+        if not optional_lockable_property.can_pass(self.executor):
+            raise main.NoKeyToLockException(entity=self.storage, lock_id=optional_lockable_property.get_lock_id())
+
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
@@ -2140,7 +2144,7 @@ class TakeItemAction(ActionOnItem):
             top_level_item = top_level_item.being_in
             if not top_level_item.has_property(P.STORAGE):
                 raise ValueError("{} is not a storage".format(top_level_item))
-            self.check_storage_lock()
+            self.check_storage_lock(top_level_item)
 
         if not self.executor.has_access(top_level_item, rng=general.AdjacentLocationsRange(False)):
             raise main.EntityTooFarAwayException(entity=top_level_item)
@@ -2151,8 +2155,10 @@ class TakeItemAction(ActionOnItem):
 
         self.create_events(top_level_item)
 
-    def check_storage_lock(self):  # implement in #95
-        pass
+    def check_storage_lock(self, storage):
+        optional_lockable_property = properties.OptionalLockableProperty(storage)
+        if not optional_lockable_property.can_pass(self.executor):
+            raise main.NoKeyToLockException(entity=storage, lock_id=optional_lockable_property.get_lock_id())
 
     def create_events(self, top_level_item):
         item_location = top_level_item.get_location()

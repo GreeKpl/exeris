@@ -195,6 +195,9 @@ data = {
     "terrain_grass": {
         "en": "grassland",
     },
+    "entity_oak_chest": {
+        "en": "oak chest",
+    },
     "terrain_forest": {
         "en": "forest",
     },

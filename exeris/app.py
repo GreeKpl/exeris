@@ -186,7 +186,8 @@ def create_database():
                                                    "location_types": ["outside"]},
                                                   6, gathering_build_menu_category,
                                                   result=chopping_result, activity_container="oak_tree")
-        db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe])
+        oak = models.Item(oak_type, new_root, amount=500)
+        db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe, oak])
 
         item_in_construction_type = models.ItemType("portable_item_in_constr", 1, portable=True)
         db.session.add(item_in_construction_type)
@@ -544,6 +545,7 @@ def create_database():
                                            build_menu_category, result_entity=chest_type,
                                            activity_container="fixed_item")
         chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
+        chest_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
         db.session.add_all([chest_type, chest_recipe])
 
         butchering_recipe = models.EntityRecipe("butchering_animal", {},
@@ -566,7 +568,16 @@ def create_database():
                                                              "visible_material_of_key": {}}
                                                             ]],
                                                    activity_container="selected_machine")
-        db.session.add_all([key_type, building_lock_recipe])
+        building_storage_lock_recipe = models.EntityRecipe("building_storage_lock", {},
+                                                           {"mandatory_machines": ["oak_chest"]}, 5,
+                                                           build_menu_category,
+                                                           result=[["exeris.core.actions.CreateLockAndKeyAction",
+                                                                    {"key_type": key_type.name,
+                                                                     "visible_material_of_key": {}}
+                                                                    ]],
+                                                           activity_container="selected_machine")
+        # the recipe above should become unnecessary after #129 so activity_container could be controlled by a property
+        db.session.add_all([key_type, building_lock_recipe, building_storage_lock_recipe])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
