@@ -874,6 +874,7 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(2, grass_area.amount)
 
         basket_type = ItemType("basket", 100)
+        basket_type.properties.append(EntityTypeProperty(P.STORAGE))
         basket = Item(basket_type, rl)
         grass_in_basket = Item(grass_type, basket, amount=20)
         db.session.add_all([basket_type, basket, grass_in_basket])

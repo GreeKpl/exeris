@@ -1472,11 +1472,11 @@ class AnimalEatingAction(Action):
     def try_to_eat_from_storages(self):
         logger.debug("Eat from the storages")
         storages = models.Item.query.filter(models.Item.is_in(self.executor.being_in)) \
-            .all()  # .filter(is an open storage)
+            .filter(models.Item.has_property(P.STORAGE)).all()
         for storage in storages:
             foods_in_storage = models.Item.query \
                 .filter(models.Item.is_in(storage)) \
-                .filter(models.ItemType.has_property(P.EDIBLE_BY_ANIMAL)) \
+                .filter(models.Item.has_property(P.EDIBLE_BY_ANIMAL)) \
                 .all()
 
             for food in foods_in_storage:
