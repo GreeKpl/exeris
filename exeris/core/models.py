@@ -910,6 +910,12 @@ class Item(Entity):
         domesticated_prop = self.get_property(P.DOMESTICATED)
         if domesticated_prop and "trusted" in domesticated_prop:
             pyslatized["trusted"] = domesticated_prop["trusted"]
+        key_to_lock_prop = self.get_property(P.KEY_TO_LOCK)
+        if key_to_lock_prop:
+            pyslatized["unique_id"] = key_to_lock_prop["lock_id"]
+        lock_prop = self.get_property(P.LOCKABLE)
+        if lock_prop and lock_prop.get("lock_exists", False):
+            pyslatized["unique_id"] = lock_prop["lock_id"]
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):
@@ -1550,6 +1556,9 @@ class Passage(Entity):
             pyslatized["invisible"] = True
         if self.has_property(P.DYNAMIC_NAMEABLE):
             pyslatized["dynamic_nameable"] = True
+        lock_prop = self.get_property(P.LOCKABLE)
+        if lock_prop and lock_prop.get("lock_exists", False):
+            pyslatized["unique_id"] = lock_prop["lock_id"]
         return dict(pyslatized, **overwrites)
 
     def __repr__(self):

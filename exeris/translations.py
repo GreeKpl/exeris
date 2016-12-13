@@ -131,7 +131,7 @@ data = {
         "en": "item",
     },
     "tp_detailed_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{dependent}%{item_name}%{title}%{states}%{parts}%{trust}",
+        "en": "%{amount}%{damage}%{main_material}%{dependent}%{item_name}%{title}%{post_info}%{parts}%{trust}",
     },
     "tp_item_parts": {
         "en": "with ${_parts}",
@@ -154,10 +154,10 @@ data = {
         "en": "${entity_%{dependent}}",
     },
     "tp_detailed_passage_info": {
-        "en": "%{states} %{passage_name}",
+        "en": "%{pre_info} %{passage_name} %{post_info}",
     },
     "tp_detailed_passage_other_side": {
-        "en": "%{states} %{passage_name} to ${other_side:entity_info}",
+        "en": "%{pre_info} %{passage_name} to ${other_side:entity_info} %{post_info}",
     },
     "domestication_most_trusted": {
         "en": "(trusting you most)",

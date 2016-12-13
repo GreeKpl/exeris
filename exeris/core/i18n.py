@@ -2,12 +2,29 @@ import html
 import json
 import os
 
+import collections
 from pyslate.pyslate import Pyslate
 
 from exeris.core import main, models, general
 
 
 def create_pyslate(language, backend=None, character=None, **kwargs):
+    # converters for custom info
+    pre_converters = collections.OrderedDict([
+        ("closed", lambda helper, value, form: helper.translation(
+            "passage_closed" if value else "passage_open", psg_form=form)),
+    ])
+    post_converters = collections.OrderedDict([
+        ("unique_id", lambda helper, value, form: "({})".format(value)),
+    ])
+
+    def all_converters_for_info(converters, helper, params, form):
+        info_text = ""
+        for key, converter in converters.items():
+            if key in params:
+                info_text += converter(helper, params[key], form) + " "
+        return info_text.strip()
+
     def htmlize(f):
         def g(helper, tag_name, params):
             result_text = f(helper, tag_name, params)
@@ -80,7 +97,6 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         material_text = ""
         damage_text = ""
         title_text = ""
-        states_text = ""
         trust_text = ""
 
         number = 1
@@ -132,14 +148,18 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
             elif str(observer_id) in trust_dict:
                 trust_text = " " + helper.translation("domestication_trusted")
 
+        post_info_text = all_converters_for_info(post_converters, helper, params, form)
+
         if detailed:
             return helper.translation("tp_detailed_item_info", damage=damage_text, main_material=material_text,
                                       dependent=dependent_text, amount=number_text, item_name=item_text,
                                       parts=parts_text, title=title_text,
-                                      states=states_text, trust=trust_text).strip()  # TODO such strip is weak
+                                      post_info=post_info_text, trust=trust_text) \
+                .strip()  # TODO such strip is weak
         else:
             return helper.translation("tp_item_info", dependent=dependent_text, main_material=material_text,
-                                      item_name=item_text, parts=parts_text).strip()  # TODO such strip is weak
+                                      item_name=item_text, parts=parts_text) \
+                .strip()  # TODO such strip is weak
 
     pyslate.register_function("item_info", func_item_info)
 
@@ -278,23 +298,21 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         if not detailed:
             return passage_name
 
-        states_text = ""
-        if "closed" in params:
-            if params["closed"]:
-                states_text += helper.translation("passage_closed", psg_form=form)
-            else:
-                states_text += helper.translation("passage_open", psg_form=form)
+        pre_info_text = all_converters_for_info(pre_converters, helper, params, form)
+        post_info_text = all_converters_for_info(post_converters, helper, params, form)
 
         if "other_side" in params:
             if params.get("invisible", False):
                 return helper.translation("entity_info", **params["other_side"])
             return helper.translation("tp_detailed_passage_other_side", passage_name=passage_text,
-                                      groups={"other_side": params["other_side"]}, states=states_text)
+                                      groups={"other_side": params["other_side"]},
+                                      pre_info=pre_info_text, post_info=post_info_text)
 
         if params.get("invisible", True):
             return ""
 
-        return helper.translation("tp_detailed_passage_info", passage_name=passage_text, states=states_text)
+        return helper.translation("tp_detailed_passage_info", passage_name=passage_text,
+                                  pre_info=pre_info_text, post_info=post_info_text)
 
     pyslate.register_function("passage_info", func_passage_info)
 

@@ -135,7 +135,7 @@ data = {
         "en": "closed",
     },
     "tp_detailed_item_info": {
-        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{states}%{parts}",
+        "en": "%{amount}%{damage}%{main_material}%{item_name}%{title}%{post_info}%{parts}",
     },
     "tp_item_info": {
         "en": "%{main_material}%{item_name}%{parts}",
@@ -173,7 +173,7 @@ data = {
         "pl": "%{most} i %{last}",
     },
     "tp_detailed_passage_other_side": {
-        "en": "%{states} %{passage_name} to ${other_side:entity_info}",
+        "en": "%{pre_info} %{passage_name} to ${other_side:entity_info}",
     },
     "tp_item_damaged": {
         "en": "damaged",
