@@ -3,14 +3,14 @@ from unittest.mock import patch, MagicMock
 from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
-from exeris.core import main, combat, deferred, models
-from exeris.core import properties
+from exeris.core import main, combat, deferred, models, properties
 from exeris.core.actions import FightInCombatAction, CombatProcess, AttackCharacterAction, JoinCombatAction, \
     ChangeCombatStanceAction
 from exeris.core.main import db
 from exeris.core.models import RootLocation, Combat, Intent, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
     ItemType, \
     Item, EntityTypeProperty, LocationType, Location
+from exeris.core.properties import OptionalPreferredEquipmentProperty
 from exeris.core.properties_base import P
 from tests import util
 
@@ -109,13 +109,15 @@ class CombatTest(TestCase):
             bow_for_gaul2 = Item(bow_type, gaul2)
             db.session.add_all([bow_type, bow_for_gaul1, bow_for_gaul2])
 
-            gaul1.set_preferred_equipment_part(bow_for_gaul1)
+            gaul1_optional_preferred_equipment_property = OptionalPreferredEquipmentProperty(gaul1)
+            gaul1_optional_preferred_equipment_property.set_preferred_equipment_part(bow_for_gaul1)
             foe_to_hit_action = combat.get_hit_target(roman1_combat_action, combat_potential_foes_actions)
             self.assertEqual(gaul2, foe_to_hit_action.executor)
 
             # gaul2 will also get a ranged weapon
             # now both traversibly accessible foes have ranged weapons, so both can be attacked
-            gaul2.set_preferred_equipment_part(bow_for_gaul2)
+            gaul2_optional_preferred_equipment_property = OptionalPreferredEquipmentProperty(gaul2)
+            gaul2_optional_preferred_equipment_property.set_preferred_equipment_part(bow_for_gaul2)
             foe_to_hit_action = combat.get_hit_target(roman1_combat_action, combat_potential_foes_actions)
             self.assertEqual(gaul1, foe_to_hit_action.executor)
 
@@ -128,7 +130,8 @@ class CombatTest(TestCase):
             bow_for_roman1 = Item(bow_type, roman1)
             db.session.add(bow_for_roman1)
 
-            roman1.set_preferred_equipment_part(bow_for_roman1)
+            roman1_optional_preferred_equipment_property = OptionalPreferredEquipmentProperty(roman1)
+            roman1_optional_preferred_equipment_property.set_preferred_equipment_part(bow_for_roman1)
 
             foe_to_hit_action = combat.get_hit_target(roman1_combat_action, [gaul_on_a_ship_combat_action])
             self.assertEqual(gaul_on_a_ship_combat_action, foe_to_hit_action)
@@ -305,7 +308,7 @@ class CombatTest(TestCase):
         db.session.add_all([rl, bow_type, bow])
 
         self.assertFalse(combat.has_ranged_weapon(char))
-
-        char.set_preferred_equipment_part(bow)
+        char_optional_preferred_equipment_property = OptionalPreferredEquipmentProperty(char)
+        char_optional_preferred_equipment_property.set_preferred_equipment_part(bow)
 
         self.assertTrue(combat.has_ranged_weapon(char))

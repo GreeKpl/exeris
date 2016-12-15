@@ -153,14 +153,17 @@ class CharacterPropertiesTest(TestCase):
 
         db.session.add_all([rl, coat_type, coat, two_handed_sword_type, two_handed_sword,
                             jacket_type, jacket, wooden_shield_type, wooden_shield])
+        char_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(char)
 
-        char.set_preferred_equipment_part(coat)
-        char.set_preferred_equipment_part(wooden_shield)
-        char.set_preferred_equipment_part(jacket)
+        char_optional_preferred_equipment_property.set_preferred_equipment_part(coat)
+        char_optional_preferred_equipment_property.set_preferred_equipment_part(wooden_shield)
+        char_optional_preferred_equipment_property.set_preferred_equipment_part(jacket)
 
-        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.SHIELD: wooden_shield}, char.get_equipment())
+        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.SHIELD: wooden_shield},
+                              char_optional_preferred_equipment_property.get_equipment())
 
-        char.set_preferred_equipment_part(two_handed_sword)
+        char_optional_preferred_equipment_property.set_preferred_equipment_part(two_handed_sword)
 
         # wooden shield is blocked by a two handed sword
-        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.WEAPON: two_handed_sword}, char.get_equipment())
+        self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.WEAPON: two_handed_sword},
+                              char_optional_preferred_equipment_property.get_equipment())

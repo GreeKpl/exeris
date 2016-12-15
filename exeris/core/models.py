@@ -737,41 +737,6 @@ class Character(Entity):
     def is_alive(self):
         return self.type_name == Types.ALIVE_CHARACTER
 
-    def get_equipment(self):
-        eq_property = self.get_property(P.PREFERRED_EQUIPMENT)
-        eq_property = eq_property if eq_property else {}
-        equipment = {k: Item.by_id(v) for k, v in eq_property.items()}
-
-        def in_range(item):
-            from exeris.core import general
-            return self.has_access(item, rng=general.InsideRange())
-
-        def eq_part_is_disallowed_by_other(eq_part, all_equipment):
-            for eq_item in all_equipment.values():
-                equippable_prop = eq_item.get_property(P.EQUIPPABLE)
-                if eq_part in equippable_prop.get("disallow_eq_parts", []):
-                    return True
-            return False
-
-        equipment = {eq_part: item for eq_part, item in equipment.items() if
-                     item is not None and in_range(item)}
-        return {eq_part: item for eq_part, item in equipment.items()
-                if not eq_part_is_disallowed_by_other(eq_part, equipment)}
-
-    def set_preferred_equipment_part(self, item):
-        if not item.has_property(P.EQUIPPABLE):
-            raise ValueError("Entity {} is not Equippable".format(item))
-
-        eq_part = item.get_property(P.EQUIPPABLE)["eq_part"]
-        eq_property = self.get_entity_property(P.PREFERRED_EQUIPMENT)
-        eq_property.data[eq_part] = item.id
-
-    def get_weapon(self):
-        weapon_used = self.get_equipment().get(main.EqParts.WEAPON, None)
-        if not weapon_used:
-            return self  # character is a weapon itself
-        return weapon_used
-
     FOOD_BASED_ATTR_INITIAL_VALUE = 0.1
 
     @sql.orm.validates("spawn_position")

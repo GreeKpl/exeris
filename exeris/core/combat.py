@@ -89,8 +89,9 @@ def get_hit_target(character_combat_action, foe_combat_actions):
     return _get_random(foe_combat_actions)
 
 
-def has_ranged_weapon(character):
-    weapon = character.get_weapon()
+def has_ranged_weapon(participant):
+    participant_combatable_property = properties.CombatableProperty(participant)
+    weapon = participant_combatable_property.get_weapon()
     return weapon.has_property(P.WEAPONIZABLE, ranged=True)
 
 

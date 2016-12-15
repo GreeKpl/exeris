@@ -145,6 +145,10 @@ class OptionalLockableProperty(OptionalPropertyBase):
 class CombatableProperty(PropertyBase):
     __property__ = P.COMBATABLE
 
+    def __init__(self, entity):
+        super().__init__(entity)
+        self.optional_preferred_equipment_property = OptionalPreferredEquipmentProperty(entity)
+
     @property
     def combat_action(self):
         combat_intent = models.Intent.query.filter_by(type=main.Intents.COMBAT, executor=self.entity).first()
@@ -158,3 +162,45 @@ class CombatableProperty(PropertyBase):
         if combat_intent:
             combat_intent.serialized_action = deferred.serialize(combat_action)
         raise ValueError("Can't update combat action, {} is not in combat".format(self.entity))
+
+    def get_weapon(self):
+        weapon_used = None
+        if self.optional_preferred_equipment_property.property_exists:
+            weapon_used = self.optional_preferred_equipment_property.get_equipment().get(main.EqParts.WEAPON, None)
+        if not weapon_used:
+            if not self.entity.has_property(P.WEAPONIZABLE):
+                raise ValueError("{} doesn't have a weapon and cannot be a weapon itself".format(self.entity))
+            return self.entity  # entity is a weapon itself
+        return weapon_used
+
+
+class OptionalPreferredEquipmentProperty(OptionalPropertyBase):
+    __property__ = P.PREFERRED_EQUIPMENT
+
+    def get_equipment(self):
+        eq_property = self.property_dict
+        eq_property = eq_property if eq_property else {}
+        equipment = {k: models.Item.by_id(v) for k, v in eq_property.items()}
+
+        def in_range(item):
+            from exeris.core import general
+            return self.entity.has_access(item, rng=general.InsideRange())
+
+        def eq_part_is_disallowed_by_other(eq_part, all_equipment):
+            for eq_item in all_equipment.values():
+                equippable_prop = eq_item.get_property(P.EQUIPPABLE)
+                if eq_part in equippable_prop.get("disallow_eq_parts", []):
+                    return True
+            return False
+
+        equipment = {eq_part: item for eq_part, item in equipment.items() if
+                     item is not None and in_range(item)}
+        return {eq_part: item for eq_part, item in equipment.items()
+                if not eq_part_is_disallowed_by_other(eq_part, equipment)}
+
+    def set_preferred_equipment_part(self, item):
+        if not item.has_property(P.EQUIPPABLE):
+            raise ValueError("Entity {} is not Equippable".format(item))
+
+        eq_part = item.get_property(P.EQUIPPABLE)["eq_part"]
+        self.entity_property.data[eq_part] = item.id

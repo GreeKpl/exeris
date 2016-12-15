@@ -270,7 +270,8 @@ def character_goto_location(target_character_id):
     action_worked_on = deferred.call(intent_worked_on.serialized_action) if intent_worked_on else None
     location = target_character.get_location()
     modifiers = target_character.modifiers
-    equipment = target_character.get_equipment()
+    target_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(target_character)
+    equipment = target_optional_preferred_equipment_property.get_equipment()
 
     participant_combatable_property = properties.CombatableProperty(target_character)
     combat_action = participant_combatable_property.combat_action
