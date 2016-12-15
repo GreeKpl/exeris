@@ -30,6 +30,7 @@ class P:
     LOCKABLE = "Lockable"
     KEY_TO_LOCK = "KeyToLock"
     LOCK_BREAKER = "LockBreaker"
+    COMBATABLE = "Combatable"
 
 
 class PropertyBase:

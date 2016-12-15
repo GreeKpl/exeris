@@ -737,22 +737,6 @@ class Character(Entity):
     def is_alive(self):
         return self.type_name == Types.ALIVE_CHARACTER
 
-    @hybrid_property
-    def combat_action(self):
-        combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
-        if combat_intent:
-            from exeris.core import deferred
-            return deferred.call(combat_intent.serialized_action)
-        return None
-
-    @combat_action.setter
-    def combat_action(self, combat_action):
-        combat_intent = Intent.query.filter_by(type=main.Intents.COMBAT, executor=self).first()
-        if combat_intent:
-            from exeris.core import deferred
-            combat_intent.serialized_action = deferred.serialize(combat_action)
-        raise ValueError("Can't update combat action, {} is not in combat".format(self))
-
     def get_equipment(self):
         eq_property = self.get_property(P.PREFERRED_EQUIPMENT)
         eq_property = eq_property if eq_property else {}
@@ -2041,6 +2025,7 @@ def init_database_contents():
         alive_character.properties.append(EntityTypeProperty(P.CONTROLLING_MOVEMENT))  # char can control own mobility
         alive_character.properties.append(EntityTypeProperty(P.WEAPONIZABLE, data={"attack": 5}))  # weaponless attack
         alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
+        alive_character.properties.append(EntityTypeProperty(P.COMBATABLE))
         db.session.add(alive_character)
 
         group_any_terrain = TypeGroup(Types.ANY_TERRAIN)

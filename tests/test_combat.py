@@ -4,12 +4,13 @@ from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, combat, deferred, models
+from exeris.core import properties
 from exeris.core.actions import FightInCombatAction, CombatProcess, AttackCharacterAction, JoinCombatAction, \
     ChangeCombatStanceAction
 from exeris.core.main import db
 from exeris.core.models import RootLocation, Combat, Intent, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
     ItemType, \
-    Item, EntityTypeProperty
+    Item, EntityTypeProperty, LocationType, Location
 from exeris.core.properties_base import P
 from tests import util
 
@@ -237,8 +238,9 @@ class CombatTest(TestCase):
         join_combat_action = JoinCombatAction(gaul2, combat_entity, combat.SIDE_DEFENDER)
         join_combat_action.perform()
 
-        self.assertIsNotNone(gaul2.combat_action)
-        self.assertEqual(combat.SIDE_DEFENDER, gaul2.combat_action.side)
+        gaul2_combatable_property = properties.CombatableProperty(gaul2)
+        self.assertIsNotNone(gaul2_combatable_property.combat_action)
+        self.assertEqual(combat.SIDE_DEFENDER, gaul2_combatable_property.combat_action.side)
         self.assertEqual(3, Intent.query.filter_by(target=combat_entity).count())
 
         # make it impossible to join the combat again
@@ -247,12 +249,12 @@ class CombatTest(TestCase):
 
         # change stance in combat
 
-        self.assertEqual(combat.STANCE_OFFENSIVE, gaul2.combat_action.stance)
+        self.assertEqual(combat.STANCE_OFFENSIVE, gaul2_combatable_property.combat_action.stance)
 
         change_stance_action = ChangeCombatStanceAction(gaul2, combat.STANCE_RETREAT)
         change_stance_action.perform()
 
-        self.assertEqual(combat.STANCE_RETREAT, gaul2.combat_action.stance)
+        self.assertEqual(combat.STANCE_RETREAT, gaul2_combatable_property.combat_action.stance)
 
     def test_raise_exception_on_invalid_argument_for_combat_actions(self):
         util.initialize_date()

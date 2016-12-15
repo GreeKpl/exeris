@@ -1,6 +1,6 @@
 import random
 
-from exeris.core import deferred, models, general, main
+from exeris.core import deferred, models, general, main, properties
 from exeris.core.properties_base import P
 
 SIDE_ATTACKER = 0
@@ -11,10 +11,11 @@ STANCE_DEFENSIVE = "stance_defensive"
 STANCE_RETREAT = "stance_retreat"
 
 
-def get_combat_actions_of_visible_foes_and_allies(character, combat_entity):
-    attackers, defenders = get_combat_actions_of_attackers_and_defenders(character, combat_entity)
+def get_combat_actions_of_visible_foes_and_allies(participant, combat_entity):
+    attackers, defenders = get_combat_actions_of_attackers_and_defenders(participant, combat_entity)
 
-    own_combat_action = character.combat_action
+    participant_combatable_property = properties.CombatableProperty(participant)
+    own_combat_action = participant_combatable_property.combat_action
     if own_combat_action.side == SIDE_ATTACKER:
         foes, allies = defenders, attackers
     else:

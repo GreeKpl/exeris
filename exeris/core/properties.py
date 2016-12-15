@@ -5,7 +5,7 @@ import statistics
 
 import markdown
 
-from exeris.core import models, main
+from exeris.core import models, main, deferred
 from exeris.core.main import db
 from exeris.core.properties_base import P, PropertyBase, OptionalPropertyBase
 
@@ -140,3 +140,21 @@ class OptionalLockableProperty(OptionalPropertyBase):
 
     def get_lock_id(self):
         return self.property_dict["lock_id"]
+
+
+class CombatableProperty(PropertyBase):
+    __property__ = P.COMBATABLE
+
+    @property
+    def combat_action(self):
+        combat_intent = models.Intent.query.filter_by(type=main.Intents.COMBAT, executor=self.entity).first()
+        if combat_intent:
+            return deferred.call(combat_intent.serialized_action)
+        return None
+
+    @combat_action.setter
+    def combat_action(self, combat_action):
+        combat_intent = models.Intent.query.filter_by(type=main.Intents.COMBAT, executor=self.entity).first()
+        if combat_intent:
+            combat_intent.serialized_action = deferred.serialize(combat_action)
+        raise ValueError("Can't update combat action, {} is not in combat".format(self.entity))

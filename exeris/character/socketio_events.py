@@ -133,7 +133,8 @@ def pull_events_initial():
 def people_short_refresh_list():
     visibility_range = general.VisibilityBasedRange(10)
     chars = visibility_range.characters_near(g.character)
-    rendered = render_template("events/people_short.html", chars=chars)
+    rendered = render_template("events/people_short.html", chars=chars,
+                               get_combat_action=lambda char: properties.CombatableProperty(char).combat_action)
 
     db.session.commit()
     return rendered,
@@ -270,7 +271,9 @@ def character_goto_location(target_character_id):
     location = target_character.get_location()
     modifiers = target_character.modifiers
     equipment = target_character.get_equipment()
-    combat_action = target_character.combat_action
+
+    participant_combatable_property = properties.CombatableProperty(target_character)
+    combat_action = participant_combatable_property.combat_action
     character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(html=True))
     stripped_character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
 
