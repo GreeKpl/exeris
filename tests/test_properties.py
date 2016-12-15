@@ -27,14 +27,16 @@ class EntityPropertiesTest(TestCase):
         db.session.add_all([rl, building_type, building])
 
         # use method taken from property
-        building.set_dynamic_name(doer, "Krakow")
+        dynamic_nameable_property = properties.DynamicNameableProperty(building)
+        dynamic_nameable_property.set_dynamic_name(doer, "Krakow")
 
         # check if name is really changed
         new_name = ObservedName.query.filter_by(observer=doer, target=building).one()
         self.assertEqual("Krakow", new_name.name)
 
         # change the existing name
-        building.set_dynamic_name(doer, "Wroclaw")
+        dynamic_nameable_property = properties.DynamicNameableProperty(building)
+        dynamic_nameable_property.set_dynamic_name(doer, "Wroclaw")
 
         new_name = ObservedName.query.filter_by(observer=doer, target=building).one()
         self.assertEqual("Wroclaw", new_name.name)
@@ -49,14 +51,16 @@ class EntityPropertiesTest(TestCase):
                             SkillType("frying", "cooking")])
         db.session.flush()
 
-        self.assertAlmostEqual(0.1, char.get_raw_skill("baking"))
+        char_skills = properties.SkillsProperty(char)
 
-        char.alter_skill_by("frying", 0.2)  # 0.1 changed by 0.2 means 0.3 frying
+        self.assertAlmostEqual(0.1, char_skills.get_raw_skill("baking"))
 
-        self.assertAlmostEqual(0.1, char.get_raw_skill("baking"))
-        self.assertAlmostEqual(0.3, char.get_raw_skill("frying"))
+        char_skills.alter_skill_by("frying", 0.2)  # 0.1 changed by 0.2 means 0.3 frying
 
-        self.assertAlmostEqual(0.2, char.get_skill_factor("frying"))  # mean value of 0.1 cooking and 0.3 frying = 0.2
+        self.assertAlmostEqual(0.1, char_skills.get_raw_skill("baking"))
+        self.assertAlmostEqual(0.3, char_skills.get_raw_skill("frying"))
+
+        self.assertAlmostEqual(0.2, char_skills.get_skill_factor("frying"))  # mean of 0.1 cooking and 0.3 frying = 0.2
 
 
 class ItemPropertiesTest(TestCase):
@@ -73,18 +77,19 @@ class ItemPropertiesTest(TestCase):
 
         # read for the first time
 
-        self.assertEqual("", book.read_title())
-        self.assertEqual("", book.read_contents())
+        book_readable_property = properties.ReadableProperty(book)
+        self.assertEqual("", book_readable_property.read_title())
+        self.assertEqual("", book_readable_property.read_contents())
 
-        book.alter_contents("NEW TITLE", "NEW TEXT", TextContent.FORMAT_MD)
+        book_readable_property.alter_contents("NEW TITLE", "NEW TEXT", TextContent.FORMAT_MD)
 
-        self.assertEqual("NEW TITLE", book.read_title())
-        self.assertEqual("<p>NEW TEXT</p>", book.read_contents())
-        self.assertEqual("NEW TEXT", book.read_raw_contents())
+        self.assertEqual("NEW TITLE", book_readable_property.read_title())
+        self.assertEqual("<p>NEW TEXT</p>", book_readable_property.read_contents())
+        self.assertEqual("NEW TEXT", book_readable_property.read_raw_contents())
 
-        book.alter_contents("NEW TITLE", "**abc** hehe", TextContent.FORMAT_MD)
-        self.assertEqual("<p><strong>abc</strong> hehe</p>", book.read_contents())
-        self.assertEqual("**abc** hehe", book.read_raw_contents())
+        book_readable_property.alter_contents("NEW TITLE", "**abc** hehe", TextContent.FORMAT_MD)
+        self.assertEqual("<p><strong>abc</strong> hehe</p>", book_readable_property.read_contents())
+        self.assertEqual("**abc** hehe", book_readable_property.read_raw_contents())
 
 
 class CharacterPropertiesTest(TestCase):
@@ -97,7 +102,8 @@ class CharacterPropertiesTest(TestCase):
 
         db.session.add_all([rl])
 
-        self.assertEqual(10, char.get_line_of_sight())
+        line_of_sight_property = properties.LineOfSightProperty(char)
+        self.assertEqual(10, line_of_sight_property.get_line_of_sight())
 
         spyglass_type = ItemType("spyglass", 300)
         spyglass_type.properties.append(EntityTypeProperty(P.AFFECT_LINE_OF_SIGHT, data={"multiplier": 3}))
@@ -105,7 +111,7 @@ class CharacterPropertiesTest(TestCase):
 
         db.session.add_all([spyglass_type, spyglass])
 
-        self.assertEqual(30, char.get_line_of_sight())
+        self.assertEqual(30, line_of_sight_property.get_line_of_sight())
 
     def test_mobile_property_to_affect_land_traversability_based_range(self):
         rl = RootLocation(Point(1, 1), 122)
@@ -117,9 +123,11 @@ class CharacterPropertiesTest(TestCase):
 
         db.session.add_all([rl, cart_type, cart])
 
-        self.assertEqual(10, char.get_max_speed())
+        char_mobile_property = properties.MobileProperty(char)
+        cart_mobile_property = properties.MobileProperty(cart)
 
-        self.assertEqual(20, cart.get_max_speed())
+        self.assertEqual(10, char_mobile_property.get_max_speed())
+        self.assertEqual(20, cart_mobile_property.get_max_speed())
 
     def test_preferred_equipment_to_wear(self):
         rl = RootLocation(Point(1, 1), 122)

@@ -539,7 +539,8 @@ class TravelInDirectionAction(Action):
         self.direction = direction
 
     def perform_action(self):
-        speed = self.executor.get_max_speed()
+        mobile_property = properties.MobileProperty(self.executor)
+        speed = mobile_property.get_max_speed()
 
         initial_pos = self.executor.get_position()
 
@@ -586,7 +587,8 @@ class TravelToEntityAction(ActionOnEntity):
         return self.come_closer_to_entity(initial_pos, speed_per_tick, target_entity_root)
 
     def get_speed_per_tick(self):
-        speed = self.executor.get_max_speed()
+        mobile_property = properties.MobileProperty(self.executor)
+        speed = mobile_property.get_max_speed()
         ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
         return speed_per_tick
@@ -935,7 +937,8 @@ class ActivityProgress:
     def check_skills(cls, worker, skills, worker_impact):
         for skill_name, min_skill_value in skills.items():
 
-            if worker.get_skill_factor(skill_name) < min_skill_value:
+            worker_skills_property = properties.SkillsProperty(worker)
+            if worker_skills_property.get_skill_factor(skill_name) < min_skill_value:
                 raise main.TooLowSkillException(skill_name=skill_name, required_level=min_skill_value)
 
     @classmethod
@@ -1009,7 +1012,7 @@ class EatingProcess(ProcessAction):
                 eating_queue[main.States.HUNGER] -= max(hunger_attr_points, EatingProcess.HUNGER_MAX_DECREASE)
 
             attributes_to_increase = {}
-            for attribute in properties.EdiblePropertyType.FOOD_BASED_ATTR:
+            for attribute in properties.EdibleProperty.FOOD_BASED_ATTR:
                 character.states[attribute] -= EatingProcess.FOOD_BASED_ATTR_DECAY
 
                 queue_attr_points = eating_queue.get(attribute, 0)
@@ -1401,19 +1404,20 @@ class EatAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
-        if not self.executor.has_access(self.item, rng=general.TraversabilityBasedRange(10, allowed_terrain_types=[
-            main.Types.LAND_TERRAIN])):
+        if not self.executor.has_access(self.item, rng=general.TraversabilityBasedRange(
+                10, allowed_terrain_types=[main.Types.LAND_TERRAIN])):
             raise main.EntityTooFarAwayException(entity=self.item)
 
         if self.item.amount < self.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        if self.item.get_max_edible(self.executor) < self.amount:
+        item_edible_property = properties.EdibleProperty(self.item)
+        if item_edible_property.get_max_edible(self.executor) < self.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
         self.item.amount -= self.amount
 
-        self.item.eat(self.executor, self.amount)
+        item_edible_property.eat(self.executor, self.amount)
 
         food_item_info = self.item.pyslatize(item_amount=self.amount, detailed=False)
         general.EventCreator.base(Events.EAT, self.rng, {"groups": {"food": food_item_info}}, doer=self.executor)

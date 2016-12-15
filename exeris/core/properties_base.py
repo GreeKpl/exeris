@@ -73,3 +73,30 @@ def emulate_property(method):
 
 class PropertyType:
     __property__ = None
+
+
+class PropertyBase:
+    __property__ = None
+
+    def __init__(self, entity):
+        self.entity = entity
+        self.entity_property = self.entity.get_entity_property(self.__property__)
+        if self.property_dict is None:
+            raise ValueError("{} is missing property {}".format(self.entity, self.__property__))
+
+    @property
+    def property_dict(self):
+        return self.entity.get_property(self.__property__)
+
+
+class OptionalPropertyBase:
+    __property__ = None
+
+    def __init__(self, entity):
+        self.entity = entity
+        self.entity_property = self.entity.get_entity_property(self.__property__)
+        self.property_exists = self.property_dict is not None
+
+    @property
+    def property_dict(self):
+        return self.entity.get_property(self.__property__)

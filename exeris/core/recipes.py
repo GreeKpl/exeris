@@ -1,6 +1,7 @@
 import copy
 
 from exeris.core import models, deferred, general, main
+from exeris.core import properties
 from exeris.core.main import db, Types
 from exeris.core.properties_base import P
 
@@ -216,7 +217,8 @@ class RecipeListProducer:
 
         skills = {}
         for (skill_name,) in db.session.query(models.SkillType.name).all():
-            skills[skill_name] = self.character.get_skill_factor(skill_name)
+            skills_property = properties.SkillsProperty(self.character)
+            skills[skill_name] = skills_property.get_skill_factor(skill_name)
 
         character_position = location.get_position()
 

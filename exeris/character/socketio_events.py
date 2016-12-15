@@ -4,6 +4,7 @@ import time
 import flask_socketio as client_socket
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
+from exeris.core import properties
 from exeris.core.main import db, app
 from exeris.core.properties_base import P
 from flask import g, render_template
@@ -16,7 +17,8 @@ def rename_entity(entity_id, new_name):
     entity_id = app.decode(entity_id)
     entity_to_rename = models.Entity.by_id(entity_id)
 
-    entity_to_rename.set_dynamic_name(g.character, new_name)
+    dynamic_nameable_property = properties.DynamicNameableProperty(entity_to_rename)
+    dynamic_nameable_property.set_dynamic_name(g.character, new_name)
 
     db.session.commit()
     return app.encode(entity_id),
@@ -190,7 +192,8 @@ def eat(entity_id, amount=None):
     entity = models.Item.by_id(entity_id)
 
     if not amount:
-        client_socket.emit("before_eat", (app.encode(entity_id), entity.get_max_edible(g.character)))
+        entity_edible_property = properties.EdibleProperty(entity)
+        client_socket.emit("before_eat", (app.encode(entity_id), entity_edible_property.get_max_edible(g.character)))
     else:
         eat_action = actions.EatAction(g.character, entity, amount)
         eat_action.perform()
@@ -283,9 +286,10 @@ def open_readable_contents(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
 
-    title = entity.read_title()
-    contents = entity.read_contents()
-    raw_contents = entity.read_raw_contents()
+    entity_readable_property = properties.ReadableProperty(entity)
+    title = entity_readable_property.read_title()
+    contents = entity_readable_property.read_contents()
+    raw_contents = entity_readable_property.read_raw_contents()
     modal = render_template("entities/modal_readable.html", title=title, contents=contents, entity_id=entity_id,
                             raw_contents=raw_contents)
     client_socket.emit("after_open_readable_contents", modal)
@@ -296,7 +300,8 @@ def edit_readable(entity_id, text):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
 
-    entity.alter_contents("title", text, models.TextContent.FORMAT_MD)
+    entity_readable_property = properties.ReadableProperty(entity)
+    entity_readable_property.alter_contents("title", text, models.TextContent.FORMAT_MD)
 
     db.session.commit()
     return app.encode(entity_id),
