@@ -1,18 +1,17 @@
 import sqlalchemy
+from flask_testing import TestCase
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+
 from exeris.core import actions, properties_base, main
-from exeris.core import recipes
 from exeris.core.general import GameDate
 from exeris.core.main import db, Types
 from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
 from exeris.core.models import RootLocation, Location, Item, EntityProperty, EntityTypeProperty, \
     ItemType, Passage, TypeGroup, TypeGroupElement, EntityRecipe, BuildMenuCategory, LocationType, Character, \
     Entity, Activity, SkillType, PassageType
-from exeris.core.properties_base import EntityPropertyException, P
+from exeris.core.properties_base import P
 from exeris.core.recipes import ActivityFactory, RecipeListProducer
-from exeris.extra import hooks
-from flask_testing import TestCase
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
 from tests import util
 
 
@@ -143,8 +142,7 @@ class EntityTest(TestCase):
     tearDown = util.tear_down_rollback
 
     def test_property_call_by_property(self):
-        @properties_base.property_class
-        class HappyPropertyType(properties_base.PropertyType):
+        class HappyProperty(properties_base.PropertyBase):
             __property__ = "Happy"
 
             def be_happy(self):
@@ -156,21 +154,23 @@ class EntityTest(TestCase):
         prop = EntityProperty("Happy", entity=item)
         db.session.add(prop)
 
-        item.be_happy()  # item has property enabling the method, so it should be possible to call it
+        happy_property = HappyProperty(item)
+        happy_property.be_happy()
 
         item2 = Item(item_type, None, weight=200)
         type_prop = EntityTypeProperty(name="Happy", type=item_type)
         db.session.add(type_prop)
+        db.session.flush()
 
-        item2.be_happy()  # item type has property enabling the method, so it should be possible to call it
+        happy_property = HappyProperty(item2)
+        happy_property.be_happy()
 
         db.session.delete(type_prop)
 
-        self.assertRaises(EntityPropertyException, item2.be_happy)
+        self.assertRaises(ValueError, lambda: HappyProperty(item2))
 
     def test_has_property(self):
-        @properties_base.property_class
-        class SadPropertyType(properties_base.PropertyType):
+        class SadProperty(properties_base.PropertyBase):
             __property__ = "Sad"
 
             def be_sad(self):

@@ -7,7 +7,7 @@ import markdown
 
 from exeris.core import models, main
 from exeris.core.main import db
-from exeris.core.properties_base import property_class, PropertyType, __registry, P, PropertyBase, OptionalPropertyBase
+from exeris.core.properties_base import P, PropertyBase, OptionalPropertyBase
 
 logger = logging.getLogger(__name__)
 
@@ -126,11 +126,7 @@ class ReadableProperty(PropertyBase):
         return text_content
 
 
-logger.info("Methods of entity properties: %s", __registry.keys())
-
-
 class OptionalLockableProperty(OptionalPropertyBase):
-
     def can_pass(self, executor):
         return not self.lock_exists() or self.has_key_to_lock(executor)
 

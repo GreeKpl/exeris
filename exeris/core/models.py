@@ -430,16 +430,6 @@ class Entity(db.Model):
         self.type = new_type
         self.add_type_specific_states()
 
-    def __getattr__(self, item):
-        try:
-            method = properties_base.get_method(item)
-            return types.MethodType(method, self)  # return method with updated 'self'
-        except KeyError:
-            try:
-                super().__getattr__(item)
-            except AttributeError:
-                raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__, item))
-
     def get_property(self, name):
         props = {}
         ok = False
