@@ -5,14 +5,13 @@ import math
 import random
 import string
 import time
-
-import shapely
-from shapely import affinity
 from collections import deque
 
-from geoalchemy2.shape import to_shape
-from shapely.geometry import LineString, MultiLineString, Point, Polygon
+import shapely
 import sqlalchemy as sql
+from geoalchemy2.shape import to_shape
+from shapely import affinity
+from shapely.geometry import LineString, MultiLineString, Point, Polygon
 
 from exeris.core import models, main, util, map_data
 from exeris.core.main import db
@@ -105,7 +104,7 @@ class RangeSpec:
         locs = []
         for loc in self._locationize(entity):
             locs += self.locations_near(loc)
-        return models.Character.query.filter(models.Character.is_in(locs)).all()
+        return models.Character.query.filter(models.Character.is_in(locs), models.Character.is_alive).all()
 
     def items_near(self, entity):
         locs = []
@@ -571,7 +570,7 @@ class EventCreator:
 
         base_params = replace_dict_values(params)
 
-        if tag_doer and doer:
+        if tag_doer and cls.can_receive_action(doer):
             doer_params = copy.deepcopy(base_params)
             if target:
                 doer_params.setdefault("groups", {})["target"] = target.pyslatize()
@@ -582,7 +581,7 @@ class EventCreator:
             db.session.add_all([event_for_doer, event_obs_doer])
             main.call_hook(main.Hooks.NEW_EVENT, event_observer=event_obs_doer)
 
-        if target and tag_target:
+        if tag_target and cls.can_receive_action(target):
             target_params = copy.deepcopy(base_params)
             if doer:
                 target_params.setdefault("groups", {})["doer"] = doer.pyslatize()
@@ -602,7 +601,7 @@ class EventCreator:
 
             event_for_observer = models.Event(tag_observer, obs_params)
             db.session.add(event_for_observer)
-            character_obs = EventCreator.get_observers(rng, doer, target, locations)
+            character_obs = cls.get_observers(rng, doer, target, locations)
 
             event_obs = [models.EventObserver(event_for_observer, char) for char in character_obs
                          if char not in (doer, target)]
@@ -611,6 +610,10 @@ class EventCreator:
 
             for obs in event_obs:
                 main.call_hook(main.Hooks.NEW_EVENT, event_observer=obs)
+
+    @classmethod
+    def can_receive_action(cls, entity):
+        return entity and isinstance(entity, models.Character) and models.Character.is_alive
 
     @classmethod
     def get_observers(cls, rng, doer, target, locations):

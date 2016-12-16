@@ -1139,7 +1139,7 @@ class CombatProcess(ProcessAction):
 
         fighter_intents = self.combat_entity.fighters_intents()
 
-        all_potential_targets = set()  # people who are or could have been a target of hit
+        all_potential_targets = set()  # participants who are or could have been a target of hit
         retreated_fighters_intents = set()
         for fighter_intent in fighter_intents:
             fighter_combat_action = self.deserialized_action(fighter_intent)
@@ -1165,7 +1165,7 @@ class CombatProcess(ProcessAction):
                                   and intent not in retreated_fighters_intents]  # fighters which will stay in combat
         fighter_intents_to_remove = [intent for intent in fighter_intents if intent not in active_fighter_intents]
 
-        for intent_to_remove in fighter_intents_to_remove:  # character not in range of any enemy
+        for intent_to_remove in fighter_intents_to_remove:  # participant not in range of any enemy
             self.withdraw_from_combat(intent_to_remove)
 
         fighters_able_to_fight = [intent for intent in active_fighter_intents if

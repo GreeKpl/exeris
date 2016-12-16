@@ -23,7 +23,7 @@ def get_combat_actions_of_visible_foes_and_allies(participant, combat_entity):
     return foes, allies
 
 
-def get_combat_actions_of_attackers_and_defenders(character, combat_entity):
+def get_combat_actions_of_attackers_and_defenders(participant, combat_entity):
     combatant_intents = models.Intent.query.filter_by(target=combat_entity).all()
 
     combat_actions_of_both_sides = [deferred.call(intent.serialized_action) for intent in combatant_intents]
@@ -34,49 +34,49 @@ def get_combat_actions_of_attackers_and_defenders(character, combat_entity):
                                action.side == SIDE_DEFENDER]
 
     combat_range = general.VisibilityBasedRange(10)
-    visible_combatants = combat_range.characters_near(character)
-    return (filter_visible_combatants(attacker_combat_actions, visible_combatants),
-            filter_visible_combatants(defender_combat_actions, visible_combatants))
+
+    return (filter_visible_combatants(attacker_combat_actions, participant, combat_range),
+            filter_visible_combatants(defender_combat_actions, participant, combat_range))
 
 
-def filter_visible_combatants(combat_actions, visible_combatants):
-    return [combat for combat in combat_actions if combat.executor in visible_combatants]
+def filter_visible_combatants(combat_actions, participant, combat_range):
+    return [combat for combat in combat_actions if combat_range.is_near(participant, combat.executor)]
 
 
-def get_combat_actions_of_visible_foes(character, combat_entity):
+def get_combat_actions_of_visible_foes(participant, combat_entity):
     """
-    Returns list of :class:`exeris.core.actions.FightInCombatAction` for characters
-    that can be potential target of an attack by `character` (A). For each other character (B) it means:
-     - Character B is range of mutual attack of A (weapon is irrelevant)
-     - Character B is in the same combat as A
+    Returns list of :class:`exeris.core.actions.FightInCombatAction` for fighters
+    that can be a potential target of an attack by the `participant` (A). For each other participant (B) it means:
+     - Participant B is range of mutual attack of A (weapon is irrelevant)
+     - Participant B is in the same combat as A
     It's just a preliminary list of potential combat targets. The list can be shortened (filtered), but NOT expanded.
-    It can be interpreted as: "Each of listed characters can be attacked in some specific circumstances".
-    :param character: character in proximity of whom combatants need to be
-    :param combat_entity: entity of combat in which `character` is
+    It can be interpreted as: "Each of listed participants can be attacked in some specific circumstances".
+    :param participant: participant in proximity of whom combatants need to be
+    :param combat_entity: entity of combat in which `participant` is
     :return: list of combat actions of all potential targets
     """
-    return get_combat_actions_of_visible_foes_and_allies(character, combat_entity)[0]
+    return get_combat_actions_of_visible_foes_and_allies(participant, combat_entity)[0]
 
 
-def get_hit_target(character_combat_action, foe_combat_actions):
+def get_hit_target(attacker_combat_action, foe_combat_actions):
     """
-    Returns character action for character which is selected as target for the hit.
+    Returns a combat action for a fighter which is selected as target for the hit.
     It takes into the consideration
-    :param character_combat_action: action of character who needs a target to hit
+    :param attacker_combat_action: action of a fighter who needs a target to hit
     :param foe_combat_actions: list of combat actions of all potential targets being in visibility range
     :return: hit target's combat action or None when nobody can be hit
     """
 
-    combat_entity = character_combat_action.combat_entity
+    combat_entity = attacker_combat_action.combat_entity
     foe_combat_actions = [action for action in foe_combat_actions if combat_entity.is_able_to_fight(action.executor)]
 
-    if not has_ranged_weapon(character_combat_action.executor):
-        character = character_combat_action.executor
+    if not has_ranged_weapon(attacker_combat_action.executor):
+        attacker = attacker_combat_action.executor
 
         # we can attack melee only traversably-accessible targets
         range_to_fight_melee = general.TraversabilityBasedRange(50, allowed_terrain_types=[main.Types.LAND_TERRAIN])
         foe_combat_actions = [foe_action for foe_action in foe_combat_actions if
-                              range_to_fight_melee.is_near(character, foe_action.executor)]
+                              range_to_fight_melee.is_near(attacker, foe_action.executor)]
 
         # we are melee, so we can hit only melee foes, unless only ranged foes are there
         melee_fighters = [foe_action for foe_action in foe_combat_actions if not has_ranged_weapon(foe_action.executor)]

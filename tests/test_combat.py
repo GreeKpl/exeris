@@ -211,6 +211,87 @@ class CombatTest(TestCase):
             self.assertEqual([], Intent.query.all())
             self.assertEqual(0, Combat.query.count())
 
+    def test_combat_process_for_animals(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 100)
+
+        class TaskMock:
+            pass
+
+        female_wolf_type = ItemType("female_wolf", 500, portable=False)
+        female_wolf_type.properties.append(EntityTypeProperty(P.COMBATABLE))
+        female_wolf_type.properties.append(EntityTypeProperty(P.WEAPONIZABLE, {"attack": 10}))
+        male_aurochs_type = LocationType("male_aurochs", 1000)
+        male_aurochs_type.properties.append(EntityTypeProperty(P.COMBATABLE))
+        male_aurochs_type.properties.append(EntityTypeProperty(P.WEAPONIZABLE, {"attack": 12}))
+
+        wolf1 = Item(female_wolf_type, rl)
+        wolf2 = Item(female_wolf_type, rl)
+        aurochs = Location(rl, male_aurochs_type)
+
+        combat_entity = Combat()
+        db.session.add_all([rl, female_wolf_type, wolf1, wolf2, male_aurochs_type, aurochs, combat_entity])
+        db.session.flush()
+
+        WOLF_SIDE = 1
+        wolf1_combat = Intent(wolf1, main.Intents.COMBAT, 1, combat_entity,
+                              deferred.serialize(FightInCombatAction(wolf1, combat_entity, WOLF_SIDE,
+                                                                     combat.STANCE_OFFENSIVE)))
+        wolf2_combat = Intent(wolf2, main.Intents.COMBAT, 1, combat_entity,
+                              deferred.serialize(FightInCombatAction(wolf2, combat_entity, WOLF_SIDE,
+                                                                     combat.STANCE_OFFENSIVE)))
+
+        AUROCHS_SIDE = 0
+        aurochs_combat = Intent(aurochs, main.Intents.COMBAT, 1, combat_entity,
+                                deferred.serialize(
+                                    FightInCombatAction(aurochs, combat_entity, AUROCHS_SIDE, combat.STANCE_DEFENSIVE)))
+
+        db.session.add_all([wolf1_combat, wolf2_combat, aurochs_combat])
+
+        # It's necessary to load the data from db, otherwise the test fails during the rollback (since SQLA 1.1)
+        wolf1_combat, wolf2_combat, aurochs_combat = None, None, None
+        wolf1_combat = Intent.query.filter_by(executor=wolf1, target=combat_entity).one()
+        wolf2_combat = Intent.query.filter_by(executor=wolf2, target=combat_entity).one()
+        aurochs_combat = Intent.query.filter_by(executor=aurochs, target=combat_entity).one()
+
+        with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.1):
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
+            combat_process.perform()
+
+            # test if aurochs is hit twice
+            self.assertAlmostEqual(0.2, aurochs.damage)
+
+            # test if one of wolves is hit
+            self.assertAlmostEqual(0.1, wolf1.damage + wolf2.damage)
+        CombatProcess.RETREAT_CHANCE = 1.0  # retreat is always successful
+        with patch("exeris.core.actions.FightInCombatAction.calculate_hit_damage", new=lambda x, y: 0.01):
+            with wolf1_combat as wolf_combat_action:
+                wolf_combat_action.stance = combat.STANCE_RETREAT
+
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
+            combat_process.perform()
+
+            task_mock.stop_repeating.assert_not_called()
+
+            self.assertCountEqual([wolf2_combat, aurochs_combat], Intent.query.all())
+
+            with aurochs_combat as aurochs_combat_action:
+                aurochs_combat_action.stance = combat.STANCE_RETREAT
+
+            task_mock = TaskMock()
+            task_mock.stop_repeating = MagicMock()
+            combat_process = CombatProcess(combat_entity, task_mock)
+            combat_process.perform()
+
+            task_mock.stop_repeating.assert_called_once_with()
+
+            self.assertEqual([], Intent.query.all())
+            self.assertEqual(0, Combat.query.count())
+
     def test_attack_character_and_join_combat_action(self):
         util.initialize_date()
         rl = RootLocation(Point(1, 1), 100)
