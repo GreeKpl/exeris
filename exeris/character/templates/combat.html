@@ -24,7 +24,7 @@
                 <ul>
                     {% for attacker_action in attackers %}
                         <li class="list-group-item" data-id="{{ encode(attacker_action.executor.id) }}">
-                            {{ t("character_info", html=True, **attacker_action.executor.pyslatize())|safe }}
+                            {{ t("entity_info", html=True, **attacker_action.executor.pyslatize())|safe }}
                             Damage: {{ attacker_action.executor.damage }}
                             ({{ combat_entity.get_recorded_damage(attacker_action.executor) }})
                         </li>
@@ -38,7 +38,7 @@
                 <ul>
                     {% for defender_action in defenders %}
                         <li class="list-group-item" data-id="{{ encode(defender_action.executor.id) }}">
-                            {{ t("character_info", html=True, **defender_action.executor.pyslatize())|safe }}
+                            {{ t("entity_info", html=True, **defender_action.executor.pyslatize())|safe }}
                             Damage: {{ defender_action.executor.damage }}
                             ({{ combat_entity.get_recorded_damage(defender_action.executor) }})
                         </li>
