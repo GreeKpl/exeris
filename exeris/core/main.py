@@ -80,7 +80,7 @@ class Events:
     START_CONTROLLING_MOVEMENT = "event_start_controlling_movement"
     CHARACTER_DEATH = "event_character_death"
     JOIN_COMBAT = "event_join_combat"
-    ATTACK_CHARACTER = "event_attack_character"
+    ATTACK_ENTITY = "event_attack_character"
     OPEN_ENTITY = "event_open_entity"
     CLOSE_ENTITY = "event_close_entity"
     MOVE = "event_move"
@@ -277,8 +277,8 @@ class AlreadyBeingInCombat(GameException):
 
 
 class TargetAlreadyInCombat(CharacterException):
-    def __init__(self, *, character):
-        super().__init__(Errors.TARGET_ALREADY_IN_COMBAT, **character.pyslatize())
+    def __init__(self, *, entity):
+        super().__init__(Errors.TARGET_ALREADY_IN_COMBAT, **entity.pyslatize())
 
 
 class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):

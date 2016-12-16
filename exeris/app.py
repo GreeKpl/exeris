@@ -515,6 +515,8 @@ def create_database():
         female_aurochs_type.properties.append(models.EntityTypeProperty(P.TAMABLE, {
             "domesticated_type": cow_type.name,
         }))
+        female_aurochs_type.properties.append(models.EntityTypeProperty(P.COMBATABLE))
+        female_aurochs_type.properties.append(models.EntityTypeProperty(P.WEAPONIZABLE, {"attack": 12}))
 
         female_aurochs1 = models.Location(rl, female_aurochs_type, passage_type=impassable_to_animal)
         female_aurochs1.properties.append(models.EntityProperty(P.ANIMAL, {

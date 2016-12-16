@@ -1682,21 +1682,21 @@ class MoveToLocationAction(ActionOnLocation):
         main.call_hook(main.Hooks.LOCATION_ENTERED, character=self.executor, from_loc=from_loc, to_loc=self.location)
 
 
-class AttackCharacterAction(ActionOnCharacter):
-    def __init__(self, executor, target_character):
-        super().__init__(executor, target_character, rng=general.VisibilityBasedRange(10))
+class AttackEntityAction(ActionOnEntity):
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity, rng=general.VisibilityBasedRange(10))
 
     def perform_action(self):
-        if self.executor == self.character:
+        if self.executor == self.entity:
             raise main.CannotAttackYourselfException()
-        if not self.executor.has_access(self.character,
+        if not self.executor.has_access(self.entity,
                                         rng=general.VisibilityBasedRange(30)):  # TODO THE SAME RANGE AS COMBAT
-            raise main.EntityTooFarAwayException(entity=self.character)
+            raise main.EntityTooFarAwayException(entity=self.entity)
 
         if models.Intent.query.filter_by(executor=self.executor, type=main.Intents.COMBAT).count():
             raise main.AlreadyBeingInCombat()
-        if models.Intent.query.filter_by(executor=self.character, type=main.Intents.COMBAT).count():
-            raise main.TargetAlreadyInCombat(character=self.character)
+        if models.Intent.query.filter_by(executor=self.entity, type=main.Intents.COMBAT).count():
+            raise main.TargetAlreadyInCombat(entity=self.entity)
 
         combat_entity = models.Combat()
         db.session.add(combat_entity)
@@ -1706,9 +1706,9 @@ class AttackCharacterAction(ActionOnCharacter):
                                               combat.SIDE_ATTACKER, combat.STANCE_OFFENSIVE)
         combat_intent = models.Intent(self.executor, main.Intents.COMBAT, 1, combat_entity,
                                       deferred.serialize(fighting_action))
-        foe_fighting_action = FightInCombatAction(self.character, combat_entity,
+        foe_fighting_action = FightInCombatAction(self.entity, combat_entity,
                                                   combat.SIDE_DEFENDER, combat.STANCE_OFFENSIVE)
-        foe_combat_intent = models.Intent(self.character, main.Intents.COMBAT, 1, combat_entity,
+        foe_combat_intent = models.Intent(self.entity, main.Intents.COMBAT, 1, combat_entity,
                                           deferred.serialize(foe_fighting_action))
 
         # create combat process
@@ -1718,7 +1718,7 @@ class AttackCharacterAction(ActionOnCharacter):
         task = models.ScheduledTask(combat_process, execution_timestamp, CombatProcess.SCHEDULER_RUNNING_INTERVAL)
         db.session.add_all([combat_intent, foe_combat_intent, task])
 
-        general.EventCreator.base(main.Events.ATTACK_CHARACTER, self.rng, doer=self.executor, target=self.character)
+        general.EventCreator.base(main.Events.ATTACK_ENTITY, self.rng, doer=self.executor, target=self.entity)
 
 
 class JoinCombatAction(ActionOnEntity):

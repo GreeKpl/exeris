@@ -159,7 +159,7 @@ FRAGMENTS.entities = (function($, socket) {
         $.publish("entities:refresh_entity_info", entity_id);
     });
 
-    socket.on("after_attack_character", function(entity_id) {
+    socket.on("after_attack_entity", function(entity_id) {
         $.publish("character:intent_state_changed");
     });
 })

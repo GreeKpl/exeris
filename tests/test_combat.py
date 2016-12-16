@@ -4,7 +4,7 @@ from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
 from exeris.core import main, combat, deferred, models, properties
-from exeris.core.actions import FightInCombatAction, CombatProcess, AttackCharacterAction, JoinCombatAction, \
+from exeris.core.actions import FightInCombatAction, CombatProcess, AttackEntityAction, JoinCombatAction, \
     ChangeCombatStanceAction
 from exeris.core.main import db
 from exeris.core.models import RootLocation, Combat, Intent, TerrainType, TerrainArea, PropertyArea, TypeGroup, \
@@ -302,7 +302,7 @@ class CombatTest(TestCase):
         db.session.add(rl)
         db.session.flush()
 
-        attack_action = AttackCharacterAction(roman1, gaul1)
+        attack_action = AttackEntityAction(roman1, gaul1)
         attack_action.perform()
 
         combat_entity = Combat.query.one()
@@ -351,19 +351,19 @@ class CombatTest(TestCase):
         db.session.add(rl)
         db.session.flush()
 
-        attack_yourself_action = AttackCharacterAction(roman1, roman1)
+        attack_yourself_action = AttackEntityAction(roman1, roman1)
         self.assertRaises(main.CannotAttackYourselfException, attack_yourself_action.perform)
 
         # set up existing combat
-        attack_gaul_action = AttackCharacterAction(roman1, gaul1)
+        attack_gaul_action = AttackEntityAction(roman1, gaul1)
         attack_gaul_action.perform()
 
         # try to attack sb when already being in combat
-        attack_germanic_action = AttackCharacterAction(gaul1, germanic1)
+        attack_germanic_action = AttackEntityAction(gaul1, germanic1)
         self.assertRaises(main.AlreadyBeingInCombat, attack_germanic_action.perform)
 
         # try to attack sb already in combat
-        attack_gaul_action = AttackCharacterAction(germanic1, gaul1)
+        attack_gaul_action = AttackEntityAction(germanic1, gaul1)
         self.assertRaises(main.TargetAlreadyInCombat, attack_gaul_action.perform)
 
         INCORRECT_STANCE_TYPE = 231

@@ -565,15 +565,15 @@ def toggle_closeable(entity_id):
     client_socket.emit("after_toggle_closeable", entity_id)
 
 
-@socketio_character_event("attack_character")
-def attack_character(entity_id):
-    character_to_attack = models.Character.by_id(app.decode(entity_id))
+@socketio_character_event("character.attack")
+def character_attack(entity_id):
+    entity_to_attack = models.Entity.by_id(app.decode(entity_id))
 
-    action = actions.AttackCharacterAction(g.character, character_to_attack)
+    action = actions.AttackEntityAction(g.character, entity_to_attack)
     action.perform()
 
     db.session.commit()
-    client_socket.emit("after_attack_character", entity_id)
+    client_socket.emit("after_attack_entity", entity_id)
 
 
 @socketio_character_event("update_actions_list")
