@@ -79,6 +79,9 @@ data = {
         "en": "You see the combat between ${list_of_entities} ends, "
               "because there are no active participants on one side."
     },
+    "event_retreat_from_combat_doer": {
+        "en": "You retreat from combat."
+    },
     "event_take_item_doer": {
         "en": "You take ${item:item_info}."
     },

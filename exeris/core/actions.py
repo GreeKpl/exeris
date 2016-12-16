@@ -1143,13 +1143,15 @@ class CombatProcess(ProcessAction):
         retreated_fighters_intents = set()
         for fighter_intent in fighter_intents:
             fighter_combat_action = self.deserialized_action(fighter_intent)
-
-            target_action, potential_targets_actions = fighter_combat_action.perform()
+            if self.combat_entity.is_able_to_fight(fighter_intent.executor):
+                target_action, potential_targets_actions = fighter_combat_action.perform()
+            else:
+                target_action, potential_targets_actions = None, []
 
             if target_action:
-                logger.info("Fighter %s try to hit %s", fighter_intent.executor, target_action.executor)
+                logger.info("Fighter %s had hit %s", fighter_intent.executor, target_action.executor)
             else:
-                logger.info("Fighter %s has no target to attack", fighter_intent.executor)
+                logger.info("Fighter %s had no target to attack", fighter_intent.executor)
             all_potential_targets = all_potential_targets.union(
                 [action.executor for action in potential_targets_actions])
 
@@ -1162,6 +1164,7 @@ class CombatProcess(ProcessAction):
         logger.debug("All potential targets are: %s", all_potential_targets)
         active_fighter_intents = [intent for intent in fighter_intents
                                   if intent.executor in all_potential_targets
+                                  and self.combat_entity.is_able_to_fight(intent.executor)
                                   and intent not in retreated_fighters_intents]  # fighters which will stay in combat
         fighter_intents_to_remove = [intent for intent in fighter_intents if intent not in active_fighter_intents]
 

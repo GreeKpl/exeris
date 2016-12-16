@@ -662,8 +662,7 @@ class LocationType(EntityType):
 def create_death_listener(self):
     def listen_for_death(states):
         if states[main.States.DAMAGE] >= 1.0:
-            if isinstance(self, Character):
-                main.call_hook(main.Hooks.DAMAGE_EXCEEDED, entity=self)
+            main.call_hook(main.Hooks.DAMAGE_EXCEEDED, entity=self)
 
     return listen_for_death
 
@@ -944,23 +943,24 @@ class Combat(Entity):
     type_name = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name), index=True)
     type = sql.orm.relationship(EntityType, uselist=False)
 
-    def get_recorded_damage(self, character):
-        if isinstance(character, Entity):
-            character = character.id
-        if isinstance(character, int):
-            character = str(character)
-        return self.recorded_violence.get(character, 0.0)
+    def get_recorded_damage(self, fighter):
+        if isinstance(fighter, Entity):
+            fighter = fighter.id
+        if isinstance(fighter, int):
+            fighter = str(fighter)
+        return self.recorded_violence.get(fighter, 0.0)
 
-    def set_recorded_damage(self, character, value):
-        if isinstance(character, Entity):
-            character = character.id
-        if isinstance(character, int):
-            character = str(character)
-        self.recorded_violence[character] = value
+    def set_recorded_damage(self, fighter, value):
+        if isinstance(fighter, Entity):
+            fighter = fighter.id
+        if isinstance(fighter, int):
+            fighter = str(fighter)
+        self.recorded_violence[fighter] = value
 
-    def is_able_to_fight(self, character):
+    def is_able_to_fight(self, fighter):
         from exeris.core import actions
-        return character.damage < 1.0 and self.get_recorded_damage(character) <= actions.CombatProcess.DAMAGE_TO_DEFEAT
+        return fighter.has_property(P.COMBATABLE) and fighter.damage < 1.0 \
+               and self.get_recorded_damage(fighter) <= actions.CombatProcess.DAMAGE_TO_DEFEAT
 
     def fighters_intents(self):
         return Intent.query.filter_by(type=main.Intents.COMBAT, target=self).all()
