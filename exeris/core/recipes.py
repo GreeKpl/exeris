@@ -27,9 +27,10 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
-        if recipe.activity_container[0] != "selected_machine":
-            activity_container = self.get_container_for_activity(being_in, recipe)
-            being_in = activity_container  # it should become parent of activity
+        if self.is_creating_activity_container(recipe):
+            being_in = self.create_container_for_activity(being_in, recipe)  # it should become parent of activity
+        else:
+            self.check_correctness_of_selected_activity_container(being_in, recipe)
 
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed,
                                    initiator)
@@ -40,34 +41,36 @@ class ActivityFactory:
 
         activity.result_actions += all_actions
 
-        if recipe.activity_container[0] != "selected_machine":
+        if self.is_creating_activity_container(recipe):
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
 
         db.session.add(activity)
 
         return activity
 
-    def get_container_for_activity(self, being_in, recipe):
-        generic_container_name = self.get_generic_activity_container(recipe)
-        if generic_container_name:
-            container_type = models.ItemType.by_name(generic_container_name)
-        elif recipe.activity_container[0] == "new_entity":  # TODO
-            container_type = models.ItemType.by_name(recipe.activity_container[1])
-        else:
-            raise ValueError("something has broken")
+    def create_container_for_activity(self, being_in, recipe):
+        container_type = self.get_activity_container_type(recipe)
 
         activity_container = models.Item(container_type, being_in, weight=0)
         db.session.add(activity_container)
 
-        if generic_container_name:
-            if recipe.result_entity:
-                activity_container.properties.append(
-                    models.EntityProperty(P.HAS_DEPENDENT, data={"name": recipe.result_entity.name}))
-            else:
-                entity_type_name = self.get_first_entity_creation_action(recipe)
-                activity_container.properties.append(
-                    models.EntityProperty(P.HAS_DEPENDENT, data={"name": entity_type_name}))
+        entity_type_name = self.get_result_entity_type(recipe)
+        activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT, data={"name": entity_type_name}))
         return activity_container
+
+    def get_activity_container_type(self, recipe):
+        generic_container_name = self.get_generic_activity_container(recipe)
+        if generic_container_name:
+            return models.ItemType.by_name(generic_container_name)
+        elif recipe.activity_container[0] == "new_entity":
+            return models.ItemType.by_name(recipe.activity_container[1])
+        else:
+            raise ValueError("something has broken")
+
+    def get_result_entity_type(self, recipe):
+        if recipe.result_entity:
+            return recipe.result_entity.name
+        return self.get_first_entity_creation_action(recipe)
 
     def get_first_entity_creation_action(self, recipe):
         first_action = recipe.result[0] if recipe.result else ["", {}]
@@ -79,19 +82,34 @@ class ActivityFactory:
         return entity_type_name
 
     def get_generic_activity_container(self, recipe):
-        if recipe.activity_container[0] == "portable_item":
+        activity_container = recipe.activity_container[0]
+        if activity_container == "entity_specific_item":
+            activity_container = self.get_concrete_entity_specific_container(recipe)
+        if activity_container == "portable_item":
             return main.Types.PORTABLE_ITEM_IN_CONSTRUCTION
-        elif recipe.activity_container[0] == "fixed_item":
+        elif activity_container == "fixed_item":
             return main.Types.FIXED_ITEM_IN_CONSTRUCTION
-        elif recipe.activity_container[0] == "entity_specific_item":
-            if isinstance(recipe.result_entity, models.LocationType):
-                return main.Types.FIXED_ITEM_IN_CONSTRUCTION
-            elif recipe.result_entity and recipe.result_entity.portable:
-                return main.Types.PORTABLE_ITEM_IN_CONSTRUCTION
-            elif recipe.result_entity:
-                return main.Types.FIXED_ITEM_IN_CONSTRUCTION
-            else:
-                raise ValueError("don't know what entity is going to be created by {}".format(recipe))
+        else:
+            raise ValueError("{} is an invalid activity container".format(recipe.activity_container))
+
+    @classmethod
+    def get_concrete_entity_specific_container(cls, recipe):
+        if isinstance(recipe.result_entity, models.LocationType):
+            return "fixed_item"
+        elif recipe.result_entity and recipe.result_entity.portable:
+            return "portable_item"
+        elif recipe.result_entity:
+            return "fixed_item"
+        else:
+            raise ValueError("don't know what entity is going to be created by {}".format(recipe))
+
+    @classmethod
+    def is_creating_activity_container(cls, recipe):
+        return recipe.activity_container[0] != "selected_entity"
+
+    @classmethod
+    def check_correctness_of_selected_activity_container(cls, being_in, recipe):
+        pass
 
     @classmethod
     def _enhance_actions(cls, result, user_input):
@@ -152,7 +170,7 @@ class ActivityFactory:
     @classmethod
     def get_selectable_machines(cls, recipe, character):
         mandatory_machines = recipe.requirements.get("mandatory_machines", [])
-        if recipe.activity_container[0] != "selected_machine" or not mandatory_machines:
+        if cls.is_creating_activity_container(recipe) or not mandatory_machines:
             return []
 
         selectable_machine_type = mandatory_machines[0]  # first mandatory machine is the one to hold the activity
