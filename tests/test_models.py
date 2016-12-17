@@ -590,6 +590,9 @@ class GroupTest(TestCase):
         db.session.add_all([rl, hammer_type, stone_type, tools_category])
         db.session.flush()
 
+        portable_item_in_constr = ItemType("portable_item_in_constr", 1, portable=True)
+        db.session.add(portable_item_in_constr)
+
         recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"}, {"input": {stone_type.name: 20.0}}, 11,
                               tools_category, result_entity=hammer_type)
         db.session.add(recipe)
@@ -602,16 +605,14 @@ class GroupTest(TestCase):
         self.assertCountEqual({"input": {stone_type.name: 60.0}}, activity.requirements)
         self.assertEqual(33, activity.ticks_left)
 
-        portable_item_in_constr = ItemType("portable_item_in_constr", 1, portable=True)
-        db.session.add(portable_item_in_constr)
-        recipe.activity_container = "entity_specific_item"
+        recipe.activity_container = ["entity_specific_item"]
         activity = factory.create_from_recipe(recipe, rl, initiator, user_input={"amount": 3})
         self.assertEqual(ItemType.by_name(Types.PORTABLE_ITEM_IN_CONSTRUCTION), activity.being_in.type)
 
         anvil_type = ItemType("anvil", 100, portable=False)
         anvil = Item(anvil_type, rl)
         db.session.add_all([anvil_type, anvil])
-        recipe.activity_container = "selected_machine"
+        recipe.activity_container = ["selected_machine"]
 
         activity = factory.create_from_recipe(recipe, anvil, initiator, user_input={"amount": 3})
         self.assertEqual(anvil, activity.being_in)
@@ -633,7 +634,7 @@ class GroupTest(TestCase):
         build_menu_category = BuildMenuCategory("domestication")
         milking_result = ["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction", {"resource_type": "milk"}]
         recipe = EntityRecipe("milking_animal", {"milk": "yes"}, {"mandatory_machines": ["mare"]}, 10,
-                              build_menu_category, result=[milking_result], activity_container="selected_machine")
+                              build_menu_category, result=[milking_result], activity_container=["selected_machine"])
         db.session.add_all([mare_type, rl, invisible_passage, mare, recipe, milk_type])
 
         factory = ActivityFactory()
@@ -656,7 +657,7 @@ class GroupTest(TestCase):
 
         build_menu_category = BuildMenuCategory("locks")
         recipe = EntityRecipe("building_lock", {"abc": 1}, {"mandatory_machines": [Types.DOOR]}, 10,
-                              build_menu_category, result=[], activity_container="selected_machine")
+                              build_menu_category, result=[], activity_container=["selected_machine"])
         db.session.add_all([building_type, rl, building, build_menu_category, recipe])
 
         factory = ActivityFactory()
@@ -678,7 +679,7 @@ class GroupTest(TestCase):
 
         recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
                               {"input": {stone_type.name: 20.0}, "mandatory_machines": ["anvil"]}, 11,
-                              tools_category, result_entity=hammer_type, activity_container="selected_machine")
+                              tools_category, result_entity=hammer_type, activity_container=["selected_machine"])
         db.session.add(recipe)
 
         initiator = util.create_character("John", rl, util.create_player("AAA"))
@@ -714,11 +715,11 @@ class GroupTest(TestCase):
         unavailable_recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
                                           {"input": {stone_type.name: 20.0}, "mandatory_machines": ["anvil"]}, 11,
                                           tools_category, result_entity=hammer_type,
-                                          activity_container="selected_machine")
+                                          activity_container=["selected_machine"])
         available_recipe = EntityRecipe("project_manufacturing", {"item_name": "hammer"},
                                         {"input": {stone_type.name: 20.0}, "optional_machines": {"anvil": 1}}, 11,
                                         tools_category, result_entity=hammer_type,
-                                        activity_container="selected_machine")
+                                        activity_container=["selected_machine"])
         db.session.add_all([unavailable_recipe, available_recipe])
 
         recipe_list_producer = RecipeListProducer(initiator)

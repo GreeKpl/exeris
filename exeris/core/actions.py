@@ -264,7 +264,7 @@ class CollectGatheredResourcesAction(ActivityAction):
 
 @form_on_setup(animal_resource_info=recipes.AnimalResourceLevel)
 class CollectResourcesFromDomesticatedAnimalAction(ActivityAction):
-    @convert(resource=models.ItemType)
+    @convert(resource_type=models.ItemType)
     def __init__(self, *, resource_type, **injected_args):
         self.resource_type = resource_type
         self.activity = injected_args["activity"]

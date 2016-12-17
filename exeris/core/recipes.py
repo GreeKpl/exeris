@@ -27,7 +27,7 @@ class ActivityFactory:
 
         all_ticks_needed = recipe.ticks_needed * amount
 
-        if recipe.activity_container and recipe.activity_container != "selected_machine":
+        if recipe.activity_container[0] != "selected_machine":
             activity_container = self.get_container_for_activity(being_in, recipe)
             being_in = activity_container  # it should become parent of activity
 
@@ -40,7 +40,7 @@ class ActivityFactory:
 
         activity.result_actions += all_actions
 
-        if recipe.activity_container and recipe.activity_container != "selected_machine":
+        if recipe.activity_container[0] != "selected_machine":
             activity.result_actions += [["exeris.core.actions.RemoveActivityContainerAction", {}]]
 
         db.session.add(activity)
@@ -48,25 +48,25 @@ class ActivityFactory:
         return activity
 
     def get_container_for_activity(self, being_in, recipe):
-
         generic_container_name = self.get_generic_activity_container(recipe)
         if generic_container_name:
             container_type = models.ItemType.by_name(generic_container_name)
+        elif recipe.activity_container[0] == "new_entity":  # TODO
+            container_type = models.ItemType.by_name(recipe.activity_container[1])
         else:
-            container_type = models.ItemType.by_name(recipe.activity_container)
+            raise ValueError("something has broken")
 
         activity_container = models.Item(container_type, being_in, weight=0)
         db.session.add(activity_container)
 
         if generic_container_name:
             if recipe.result_entity:
-                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
-                                                                           data={
-                                                                               "name": recipe.result_entity.name}))
+                activity_container.properties.append(
+                    models.EntityProperty(P.HAS_DEPENDENT, data={"name": recipe.result_entity.name}))
             else:
                 entity_type_name = self.get_first_entity_creation_action(recipe)
-                activity_container.properties.append(models.EntityProperty(P.HAS_DEPENDENT,
-                                                                           data={"name": entity_type_name}))
+                activity_container.properties.append(
+                    models.EntityProperty(P.HAS_DEPENDENT, data={"name": entity_type_name}))
         return activity_container
 
     def get_first_entity_creation_action(self, recipe):
@@ -79,11 +79,11 @@ class ActivityFactory:
         return entity_type_name
 
     def get_generic_activity_container(self, recipe):
-        if recipe.activity_container == "portable_item":
+        if recipe.activity_container[0] == "portable_item":
             return main.Types.PORTABLE_ITEM_IN_CONSTRUCTION
-        elif recipe.activity_container == "fixed_item":
+        elif recipe.activity_container[0] == "fixed_item":
             return main.Types.FIXED_ITEM_IN_CONSTRUCTION
-        elif recipe.activity_container == "entity_specific_item":
+        elif recipe.activity_container[0] == "entity_specific_item":
             if isinstance(recipe.result_entity, models.LocationType):
                 return main.Types.FIXED_ITEM_IN_CONSTRUCTION
             elif recipe.result_entity and recipe.result_entity.portable:
@@ -152,7 +152,7 @@ class ActivityFactory:
     @classmethod
     def get_selectable_machines(cls, recipe, character):
         mandatory_machines = recipe.requirements.get("mandatory_machines", [])
-        if recipe.activity_container != "selected_machine" or not mandatory_machines:
+        if recipe.activity_container[0] != "selected_machine" or not mandatory_machines:
             return []
 
         selectable_machine_type = mandatory_machines[0]  # first mandatory machine is the one to hold the activity

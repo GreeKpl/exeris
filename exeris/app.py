@@ -185,7 +185,7 @@ def create_database():
                                                   {"required_resources": ["oak"], "terrain_types": ["forest"],
                                                    "location_types": ["outside"]},
                                                   6, gathering_build_menu_category,
-                                                  result=chopping_result, activity_container="oak_tree")
+                                                  result=chopping_result, activity_container=["new_entity", "oak_tree"])
         oak = models.Item(oak_type, new_root, amount=500)
         db.session.add_all([gathering_build_menu_category, oak_type, oak_tree_type, oak_area, chopping_oak_recipe, oak])
 
@@ -210,7 +210,7 @@ def create_database():
                                                    "used_materials": "all",
                                                    "visible_material": {"main": "group_stone"}}],
                                                  ["exeris.core.actions.AddNameToEntityAction", {}]],
-                                         activity_container="fixed_item")
+                                         activity_container=["fixed_item"])
         db.session.add_all([hut_type, hut_recipe])
 
         grass_terrain = models.TerrainType("grassland")
@@ -263,17 +263,17 @@ def create_database():
                                       "used_materials": "all"}]]
         tablet_recipe = models.EntityRecipe("carving_tablet", {}, {}, 2,
                                             build_menu_category, result=tablet_production_result,
-                                            activity_container="portable_item")
+                                            activity_container=["portable_item"])
 
         anvil_type = models.ItemType("anvil", 100, portable=False)
         anvil_recipe = models.EntityRecipe("making_anvil", {}, {"permanence": True}, 2,
                                            build_menu_category, result_entity=anvil_type,
-                                           activity_container="entity_specific_item")
+                                           activity_container=["entity_specific_item"])
 
         longsword_type = models.ItemType("longsword", 100, portable=True)
         longsword_recipe = models.EntityRecipe("forging_longsword", {}, {"mandatory_machines": ["anvil"]}, 2,
                                                build_menu_category, result_entity=longsword_type,
-                                               activity_container="selected_machine")
+                                               activity_container=["selected_machine"])
 
         db.session.add_all([tablet_type, tablet_recipe, anvil_type, anvil_recipe, longsword_type, longsword_recipe])
 
@@ -460,7 +460,8 @@ def create_database():
                                                    {"required_resources": ["grass"], "terrain_types": ["grassland"],
                                                     "location_types": ["outside"]},
                                                    6, gathering_build_menu_category,
-                                                   result=cutting_grass_result, activity_container="grass_meadow")
+                                                   result=cutting_grass_result,
+                                                   activity_container=["new_entity", "grass_meadow"])
 
         herbivore_group = models.TypeGroup("herbivore")
         herbivore_group.add_to_group(cow_type)
@@ -486,11 +487,11 @@ def create_database():
 
         domestication_build_menu_category = models.BuildMenuCategory("domestication")
         milking_cow_result = [["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
-                               {"state_name": "milk"}]]
+                               {"resource_type": "milk"}]]
         milking_cow_recipe = models.EntityRecipe("milking_animal", {},
                                                  {"mandatory_machines": ["milkable_animal"]},
                                                  10, domestication_build_menu_category,
-                                                 result=milking_cow_result, activity_container="selected_machine")
+                                                 result=milking_cow_result, activity_container=["selected_machine"])
 
         db.session.add_all(
             [milk_type, cow_skull_type, beef_type, dead_cow_type, cow_type, milkable_group, rl,
@@ -545,7 +546,7 @@ def create_database():
         chest_type = models.ItemType("oak_chest", 300, portable=False)
         chest_recipe = models.EntityRecipe("building_chest", {}, {"input": {"oak": 5}}, 2,
                                            build_menu_category, result_entity=chest_type,
-                                           activity_container="fixed_item")
+                                           activity_container=["fixed_item"])
         chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
         chest_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
         db.session.add_all([chest_type, chest_recipe])
@@ -555,7 +556,7 @@ def create_database():
                                                 build_menu_category,
                                                 result=[["exeris.core.actions.ButcherAnimalAction", {}
                                                          ]],
-                                                activity_container="selected_machine")
+                                                activity_container=["selected_machine"])
         db.session.add(butchering_recipe)
 
         door_type = models.PassageType.by_name(Types.DOOR)
@@ -569,7 +570,7 @@ def create_database():
                                                             {"key_type": key_type.name,
                                                              "visible_material_of_key": {}}
                                                             ]],
-                                                   activity_container="selected_machine")
+                                                   activity_container=["selected_machine"])
         building_storage_lock_recipe = models.EntityRecipe("building_storage_lock", {},
                                                            {"mandatory_machines": ["oak_chest"]}, 5,
                                                            build_menu_category,
@@ -577,7 +578,7 @@ def create_database():
                                                                     {"key_type": key_type.name,
                                                                      "visible_material_of_key": {}}
                                                                     ]],
-                                                           activity_container="selected_machine")
+                                                           activity_container=["selected_machine"])
         # the recipe above should become unnecessary after #129 so activity_container could be controlled by a property
         db.session.add_all([key_type, building_lock_recipe, building_storage_lock_recipe])
 

@@ -1684,7 +1684,8 @@ class EntityRecipe(db.Model):
     result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
-    activity_container = sql.Column(psql.JSON, default="entity_specific_item")  # It cannot use mutable JSON types
+    activity_container = sql.Column(sqlalchemy_json_mutable.JsonList,
+                                    default=lambda x: ["entity_specific_item"])
 
     build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), index=True)
     build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)

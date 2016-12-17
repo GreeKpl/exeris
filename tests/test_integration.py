@@ -33,7 +33,7 @@ class ProductionIntegrationTest(TestCase):
         # setup recipe
         recipe = EntityRecipe("Producing an axe", {}, {}, 1, tools_category, result_entity=axe_type,
                               result=[add_name_action],
-                              activity_container="selected_machine")
+                              activity_container=["selected_machine"])
         db.session.add(recipe)
 
         factory = ActivityFactory()
