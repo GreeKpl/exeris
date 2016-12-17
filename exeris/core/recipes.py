@@ -314,6 +314,13 @@ class AmountInput(InputField):
         return int(value)
 
 
+class WorkDaysInput(InputField):
+    __name__ = "WorkDaysInput"
+
+    def convert(self, value):
+        return float(value)
+
+
 class AnimalResourceLevel(InputField):
     __name__ = "AnimalResourceLevel"
 

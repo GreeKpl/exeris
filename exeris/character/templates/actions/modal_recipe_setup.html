@@ -28,6 +28,12 @@
                             {{ form_field }}:
                             <input class="recipe_input" name="{{ form_field }}" type="number">
                         </label>
+                    {% elif field.__name__ == "WorkDaysInput" %}
+                        <label>
+                            Days to work:
+                            <input class="recipe_input" name="{{ form_field }}" type="text">
+                        </label>
+
                     {% elif field.__name__ == "AnimalResourceLevel" %}
                         {{ field.action_args["resource_type"] }}
                     {% endif %}

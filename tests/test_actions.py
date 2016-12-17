@@ -312,6 +312,14 @@ class FinishActivityActionsTest(TestCase):
         # added 2.5 from the first and 0.5 from the second, because only that is left
         self.assertEqual(4 + 3, pile_of_potatoes.amount)
 
+        collect_resources_action = CollectGatheredResourcesAction(resource_type=potato_type, amount=0.5,
+                                                                  activity=activity, initiator=initiator)
+        collect_resources_action.perform()
+
+        # added half of 2.5 from the first because amount is a time-based multiplier; 0 from the second
+        # then 1.25 is floored to 1
+        self.assertEqual(4 + 3 + 1, pile_of_potatoes.amount)
+
     def test_create_lock_and_key_action(self):
         rl = RootLocation(Point(1, 1), 30)
         initiator = util.create_character("test", rl, util.create_player("abc"))

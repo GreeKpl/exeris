@@ -229,10 +229,12 @@ class CreateItemAction(ActivityAction):
                 move_entity_between_entities(item, item.used_for, new_item, amount, to_be_used_for=True)
 
 
+@form_on_setup(amount=recipes.WorkDaysInput)
 class CollectGatheredResourcesAction(ActivityAction):
     @convert(resource_type=models.ItemType)
-    def __init__(self, *, resource_type, **injected_args):
+    def __init__(self, *, resource_type, amount=1, **injected_args):
         self.resource_type = resource_type
+        self.amount = amount
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
         self.injected_args = injected_args
@@ -246,7 +248,8 @@ class CollectGatheredResourcesAction(ActivityAction):
         number_of_resource_areas = len(resources_in_proximity)
         amount_of_resource = 0
         for resource in resources_in_proximity:
-            amount_from_this_area = min(resource.efficiency / number_of_resource_areas, resource.amount)
+            can_gather_from_area = resource.efficiency * self.amount
+            amount_from_this_area = min(can_gather_from_area / number_of_resource_areas, resource.amount)
             resource.amount -= amount_from_this_area
             amount_of_resource += amount_from_this_area
 
