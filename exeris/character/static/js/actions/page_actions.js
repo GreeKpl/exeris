@@ -30,12 +30,12 @@ FRAGMENTS.actions = (function() {
             user_input[$(this).prop("name")] = $(this).val();
         });
 
-        var selected_machine_id = null;
-        if ($(".selected_machine")) {
-            selected_machine_id = $(".selected_machine").val();
+        var selected_entity_id = null;
+        if ($(".selected_entity")) {
+            selected_entity_id = $(".selected_entity").val();
         }
 
-        socket.emit("create_activity_from_recipe", recipe_id, user_input, selected_machine_id, function() {
+        socket.emit("create_activity_from_recipe", recipe_id, user_input, selected_entity_id, function() {
             $("#recipe_setup_modal").modal("hide");
         });
     });

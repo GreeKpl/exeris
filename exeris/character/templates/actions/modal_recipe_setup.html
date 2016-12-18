@@ -7,12 +7,12 @@
                 <h4 class="modal-title">{{ title }}</h4>
             </div>
             <div class="modal-body">
-                {% if selectable_machines %}
+                {% if selectable_entities %}
                     <label>
-                        Selected machine:
-                        <select class="selected_machine" name="selected_machine">
-                            {% for machine in selectable_machines %}
-                                <option value="{{ encode(machine.id) }}">{{ machine }}</option>
+                        Entity to work on:
+                        <select class="selected_entity" name="selected_entity">
+                            {% for entity in selectable_entities %}
+                                <option value="{{ encode(entity.id) }}">{{ entity }}</option>
                             {% endfor %}
                         </select>
                     </label>

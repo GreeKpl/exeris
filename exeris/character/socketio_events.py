@@ -598,30 +598,30 @@ def activity_from_recipe_setup(recipe_id):
     errors = recipes.ActivityFactory.get_list_of_errors(recipe, g.character)
     error_messages = [g.pyslate.t(error.error_tag, **error.error_kwargs) for error in errors]
 
-    selectable_machines = recipes.ActivityFactory.get_selectable_machines(recipe, g.character)
+    selectable_entities = recipes.ActivityFactory.get_selectable_entities(recipe, g.character)
 
     rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
-                                     recipe_id=recipe_id, selectable_machines=selectable_machines,
+                                     recipe_id=recipe_id, selectable_entities=selectable_entities,
                                      error_messages=error_messages)
     return rendered_modal,
 
 
 @socketio_character_event("create_activity_from_recipe")
-def create_activity_from_recipe(recipe_id, user_input, selected_machine_id):
+def create_activity_from_recipe(recipe_id, user_input, selected_entity_id):
     recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
     activitys_being_in = g.character.get_location()
-    if selected_machine_id:
-        selected_machine_id = app.decode(selected_machine_id)
-        selected_machine = models.Entity.by_id(selected_machine_id)
-        rng = actions.most_strict_range_spec_for_entity(selected_machine)
-        if not rng.is_near(g.character, selected_machine):
-            raise main.EntityTooFarAwayException(entity=selected_machine)
-        if selected_machine.has_activity():
-            raise main.ActivityAlreadyExistsOnEntity(entity=selected_machine)
+    if selected_entity_id:
+        selected_entity_id = app.decode(selected_entity_id)
+        selected_entity = models.Entity.by_id(selected_entity_id)
+        rng = actions.most_strict_range_spec_for_entity(selected_entity)
+        if not rng.is_near(g.character, selected_entity):
+            raise main.EntityTooFarAwayException(entity=selected_entity)
+        if selected_entity.has_activity():
+            raise main.ActivityAlreadyExistsOnEntity(entity=selected_entity)
 
-        activitys_being_in = selected_machine
+        activitys_being_in = selected_entity
 
     activity_factory = recipes.ActivityFactory()
     form_input_by_name = recipes.ActivityFactory.get_user_inputs_for_recipe(recipe)

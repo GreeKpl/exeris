@@ -1673,7 +1673,7 @@ class EntityRecipe(db.Model):
         self.build_menu_category = build_menu_category
         self.result = result if result else []
         self.result_entity = result_entity
-        self.activity_container = activity_container
+        self.activity_container = activity_container if activity_container else ["entity_specific_item"]
 
     name_tag = sql.Column(sql.String)
     name_params = sql.Column(sqlalchemy_json_mutable.JsonDict)
@@ -1684,8 +1684,7 @@ class EntityRecipe(db.Model):
     result_entity_id = sql.Column(sql.String(TYPE_NAME_MAXLEN), sql.ForeignKey(EntityType.name),
                                   nullable=True)  # EntityType being default result of the project
     result_entity = sql.orm.relationship(EntityType, uselist=False)
-    activity_container = sql.Column(sqlalchemy_json_mutable.JsonList,
-                                    default=lambda x: ["entity_specific_item"])
+    activity_container = sql.Column(sqlalchemy_json_mutable.JsonList)
 
     build_menu_category_id = sql.Column(sql.Integer, sql.ForeignKey("build_menu_categories.id"), index=True)
     build_menu_category = sql.orm.relationship("BuildMenuCategory", uselist=False)
@@ -1990,7 +1989,7 @@ def init_database_contents():
             }))
         alive_character.properties.append(EntityTypeProperty(P.CONTROLLING_MOVEMENT))  # char can control own mobility
         alive_character.properties.append(EntityTypeProperty(P.WEAPONIZABLE, data={"attack": 5}))  # weaponless attack
-        alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # quipment settings
+        alive_character.properties.append(EntityTypeProperty(P.PREFERRED_EQUIPMENT, data={}))  # equipment settings
         alive_character.properties.append(EntityTypeProperty(P.COMBATABLE))
         db.session.add(alive_character)
 

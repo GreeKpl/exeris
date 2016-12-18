@@ -832,7 +832,6 @@ class ActivityProgress:
             group = models.EntityType.by_name(machine_name)
             type_eff_pairs = group.get_descending_types()
             allowed_types = [pair[0] for pair in type_eff_pairs]
-
             found_machines = cls.get_all_machines_around_entity(allowed_types, entity_having_activity)
             if not found_machines:
                 raise main.NoMachineForActivityException(machine_name=group.name)
@@ -845,45 +844,13 @@ class ActivityProgress:
 
     @classmethod
     def get_all_machines_around_entity(cls, allowed_types, parent_entity):
-        item_types = [entity_type.name for entity_type in allowed_types if isinstance(entity_type, models.ItemType)]
-        location_types = [entity_type.name for entity_type in allowed_types if
-                          isinstance(entity_type, models.LocationType)]
-        passage_types = [entity_type.name for entity_type in allowed_types if
-                         isinstance(entity_type, models.PassageType)]
-        # todo wait for sqlalchemy support for in_ for relationships
+        # parent entity is considered a primary machine regardless of its relative quality
+        if parent_entity.type in allowed_types:
+            return [parent_entity]
 
-        items = []
-        if item_types:
-            items = models.Item.query.filter(models.Item.type_name.in_(item_types),
-                                             models.Item.is_in(parent_entity.parent_locations())).all()
-
-        machine_locations = []
-        if location_types:
-            locs = [parent_entity]  # it will be ignored if it's not a location
-            for loc in parent_entity.parent_locations():
-                locs += [directed_passage.other_side for directed_passage in loc.passages_to_neighbours
-                         if directed_passage.passage.is_accessible(False)]
-
-            machine_locations = models.Location.query.filter(models.Location.type_name.in_(location_types),
-                                                             models.Location.id.in_([n.id for n in locs])) \
-                .all()
-
-        machine_passages = []
-        if passage_types:
-            passages = []
-            if isinstance(parent_entity, models.Passage):  # only this passage, all the other are too far away
-                passages = [parent_entity]
-            else:
-                for loc in parent_entity.parent_locations():
-                    passages += [directed_passage.passage for directed_passage in loc.passages_to_neighbours
-                                 if directed_passage.passage.is_accessible(False)]
-
-            machine_passages = models.Passage.query.filter(models.Passage.type_name.in_(passage_types),
-                                                           models.Passage.id.in_([n.id for n in passages])) \
-                .all()
-
-        found_machines = items + machine_locations + machine_passages
-        return found_machines
+        item_types = [entity_type.name for entity_type in allowed_types]
+        return models.Item.query.filter(models.Item.type_name.in_(item_types),
+                                        models.Item.is_in(parent_entity.parent_locations())).all()
 
     @classmethod
     def check_optional_machines(cls, machine_progress_bonus, location, activity_params):

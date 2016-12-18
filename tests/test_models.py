@@ -584,10 +584,11 @@ class GroupTest(TestCase):
     def test_create_activity_from_recipe(self):
         stone_type = ItemType("stone", 50, stackable=True)
         hammer_type = ItemType("hammer", 100)
+        frying_pan_type = ItemType("frying_pan", 200)
 
         tools_category = BuildMenuCategory("tools")
         rl = RootLocation(Point(1, 1), 32)
-        db.session.add_all([rl, hammer_type, stone_type, tools_category])
+        db.session.add_all([rl, hammer_type, stone_type, frying_pan_type, tools_category])
         db.session.flush()
 
         portable_item_in_constr = ItemType("portable_item_in_constr", 1, portable=True)
@@ -611,8 +612,12 @@ class GroupTest(TestCase):
 
         anvil_type = ItemType("anvil", 100, portable=False)
         anvil = Item(anvil_type, rl)
-        db.session.add_all([anvil_type, anvil])
+        frying_pan = Item(frying_pan_type, rl)
+        db.session.add_all([anvil_type, anvil, frying_pan])
         recipe.activity_container = ["selected_entity", {"types": ["anvil"]}]
+
+        self.assertRaises(main.InvalidActivityContainerException,
+                          lambda: factory.create_from_recipe(recipe, frying_pan, initiator, user_input={"amount": 3}))
 
         activity = factory.create_from_recipe(recipe, anvil, initiator, user_input={"amount": 3})
         self.assertEqual(anvil, activity.being_in)
@@ -699,8 +704,8 @@ class GroupTest(TestCase):
         anvil2 = Item(anvil_type, rl)
         db.session.add_all([anvil_type, anvil1, anvil2])
 
-        selectable_machines = factory.get_selectable_machines(recipe, initiator)
-        self.assertCountEqual([anvil1, anvil2], selectable_machines)
+        selectable_entities = factory.get_selectable_entities(recipe, initiator)
+        self.assertCountEqual([anvil1, anvil2], selectable_entities)
 
     def test_get_recipes_list(self):
         rl = RootLocation(Point(1, 1), 32)

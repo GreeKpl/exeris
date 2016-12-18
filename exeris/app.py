@@ -197,7 +197,8 @@ def create_database():
 
         build_menu_category = models.BuildMenuCategory("structures")
         signpost_recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
-                                              build_menu_category, result_entity=models.ItemType.by_name("signpost"))
+                                              build_menu_category, result_entity=models.ItemType.by_name("signpost"),
+                                              result=[["exeris.core.actions.actions.AddNameToEntityAction", {}]])
         db.session.add_all([build_menu_category, signpost_recipe])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
@@ -273,7 +274,7 @@ def create_database():
         longsword_type = models.ItemType("longsword", 100, portable=True)
         longsword_recipe = models.EntityRecipe("forging_longsword", {}, {"mandatory_machines": ["anvil"]}, 2,
                                                build_menu_category, result_entity=longsword_type,
-                                               activity_container=["selected_machine"])
+                                               activity_container=["selected_entity", {"types": ["anvil"]}])
 
         db.session.add_all([tablet_type, tablet_recipe, anvil_type, anvil_recipe, longsword_type, longsword_recipe])
 
@@ -488,10 +489,10 @@ def create_database():
         domestication_build_menu_category = models.BuildMenuCategory("domestication")
         milking_cow_result = [["exeris.core.actions.CollectResourcesFromDomesticatedAnimalAction",
                                {"resource_type": "milk"}]]
-        milking_cow_recipe = models.EntityRecipe("milking_animal", {},
-                                                 {"mandatory_machines": ["milkable_animal"]},
+        milking_cow_recipe = models.EntityRecipe("milking_animal", {}, {},
                                                  10, domestication_build_menu_category,
-                                                 result=milking_cow_result, activity_container=["selected_machine"])
+                                                 result=milking_cow_result,
+                                                 activity_container=["selected_entity", {"types": ["milkable_animal"]}])
 
         db.session.add_all(
             [milk_type, cow_skull_type, beef_type, dead_cow_type, cow_type, milkable_group, rl,
@@ -544,43 +545,28 @@ def create_database():
         db.session.add_all([dead_aurochs_type, female_aurochs_type, female_aurochs1, female_aurochs2, female_aurochs3])
 
         chest_type = models.ItemType("oak_chest", 300, portable=False)
-        chest_recipe = models.EntityRecipe("building_chest", {}, {"input": {"oak": 5}}, 2,
-                                           build_menu_category, result_entity=chest_type,
-                                           activity_container=["fixed_item"])
+        chest_recipe = models.EntityRecipe("building_chest", {}, {"input": {"oak": 5}}, 2, build_menu_category,
+                                           result_entity=chest_type, activity_container=["fixed_item"])
         chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
         chest_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
         db.session.add_all([chest_type, chest_recipe])
 
-        butchering_recipe = models.EntityRecipe("butchering_animal", {},
-                                                {"mandatory_machines": ["dead_animal"]}, 5,
-                                                build_menu_category,
-                                                result=[["exeris.core.actions.ButcherAnimalAction", {}
-                                                         ]],
-                                                activity_container=["selected_machine"])
+        butchering_recipe = models.EntityRecipe("butchering_animal", {}, {}, 5, build_menu_category,
+                                                result=[["exeris.core.actions.ButcherAnimalAction", {}]],
+                                                activity_container=["selected_entity", {"types": ["dead_animal"]}])
         db.session.add(butchering_recipe)
 
         door_type = models.PassageType.by_name(Types.DOOR)
         door_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
         key_type = models.ItemType("key", 20)
 
-        building_lock_recipe = models.EntityRecipe("building_lock", {},
-                                                   {"mandatory_machines": [Types.DOOR]}, 5,
-                                                   build_menu_category,
+        entities_being_locked_specification = ["selected_entity", {"properties": {P.LOCKABLE: {"lock_exists": False}}}]
+        building_lock_recipe = models.EntityRecipe("building_lock", {}, {}, 5, build_menu_category,
                                                    result=[["exeris.core.actions.CreateLockAndKeyAction",
-                                                            {"key_type": key_type.name,
-                                                             "visible_material_of_key": {}}
+                                                            {"key_type": key_type.name, "visible_material_of_key": {}}
                                                             ]],
-                                                   activity_container=["selected_machine"])
-        building_storage_lock_recipe = models.EntityRecipe("building_storage_lock", {},
-                                                           {"mandatory_machines": ["oak_chest"]}, 5,
-                                                           build_menu_category,
-                                                           result=[["exeris.core.actions.CreateLockAndKeyAction",
-                                                                    {"key_type": key_type.name,
-                                                                     "visible_material_of_key": {}}
-                                                                    ]],
-                                                           activity_container=["selected_machine"])
-        # the recipe above should become unnecessary after #129 so activity_container could be controlled by a property
-        db.session.add_all([key_type, building_lock_recipe, building_storage_lock_recipe])
+                                                   activity_container=entities_being_locked_specification)
+        db.session.add_all([key_type, building_lock_recipe])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")

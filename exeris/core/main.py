@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    INVALID_ACTIVITY_CONTAINER = "error_invalid_activity_container"
     LOCK_ALREADY_EXISTS = "error_lock_already_exists"
     NO_KEY_TO_LOCK = "error_no_key_to_lock"
     ENTITY_MISSING_PROPERTY = "error_entity_missing_property"
@@ -459,3 +460,9 @@ class NoKeyToLockException(GameException):
 class LockAlreadyExistsException(GameException):
     def __init__(self, *, entity):
         super().__init__(Errors.LOCK_ALREADY_EXISTS, entity=entity)
+
+
+class InvalidActivityContainerException(GameException):
+    def __init__(self, *, recipe_name_tag, recipe_name_params, activity_container):
+        super().__init__(Errors.INVALID_ACTIVITY_CONTAINER, recipe_name_tag=recipe_name_tag,
+                         recipe_name_params=recipe_name_params, activity_container=activity_container)

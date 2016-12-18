@@ -451,6 +451,14 @@ class SchedulerActivityTest(TestCase):
 
         ActivityProgress.check_mandatory_machines(["group_spindles", "bucket"], passage_with_activity, activity_params)
 
+        # entity storing activity should be a priority to fulfill the machine, ignoring all the others
+        poor_spindle = Item(wooden_spindle_type, rl, quality=0.1)
+        db.session.add(poor_spindle)
+        db.session.flush()
+        activity_params = {}
+        ActivityProgress.check_mandatory_machines(["group_spindles"], poor_spindle, activity_params)
+        self.assertCountEqual([0.2], activity_params["machine_based_quality"])
+
     def test_check_existence_of_resource(self):
         rl = RootLocation(Point(1, 1), 123)
         worker = util.create_character("John", rl, util.create_player("ABC"))

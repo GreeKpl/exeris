@@ -28,9 +28,9 @@ class ActivityFactory:
         all_ticks_needed = recipe.ticks_needed * amount
 
         if self.is_creating_activity_container(recipe):
-            being_in = self.create_container_for_activity(being_in, recipe)  # it should become parent of activity
+            being_in = self.create_container_for_activity(being_in, recipe)  # it should become a parent of activity
         else:
-            self.check_correctness_of_selected_activity_container(being_in, recipe)
+            self.check_correctness_of_selected_activity_container(being_in, recipe.activity_container, recipe)
 
         activity = models.Activity(being_in, recipe.name_tag, recipe.name_params, all_requirements, all_ticks_needed,
                                    initiator)
@@ -90,7 +90,7 @@ class ActivityFactory:
         elif activity_container == "fixed_item":
             return main.Types.FIXED_ITEM_IN_CONSTRUCTION
         else:
-            raise ValueError("{} is an invalid activity container".format(recipe.activity_container))
+            return None
 
     @classmethod
     def get_concrete_entity_specific_container(cls, recipe):
@@ -108,8 +108,30 @@ class ActivityFactory:
         return recipe.activity_container[0] != "selected_entity"
 
     @classmethod
-    def check_correctness_of_selected_activity_container(cls, being_in, recipe):
-        pass
+    def check_correctness_of_selected_activity_container(cls, entity_containing_activity,
+                                                         activity_container_spec, recipe):
+        if activity_container_spec[0] != "selected_entity":
+            raise ValueError("recipe activity container definition '{}' is not 'selected_entity'"
+                             .format(activity_container_spec))
+        activity_container_params = activity_container_spec[1]
+        if "types" in activity_container_params:
+            if not any([models.EntityType.by_name(type_name).contains(entity_containing_activity.type)
+                        for type_name in activity_container_params["types"]]):
+                cls.raise_activity_container_exception(recipe, entity_containing_activity)
+        if "properties" in activity_container_params:
+            for property_name, property_dict in activity_container_params["properties"].items():
+                if not entity_containing_activity.has_property(property_name, **property_dict):
+                    cls.raise_activity_container_exception(recipe, entity_containing_activity)
+        if "no_properties" in activity_container_params:
+            for property_name, property_dict in activity_container_params["no_properties"].items():
+                if entity_containing_activity.has_property(property_name, **property_dict):
+                    cls.raise_activity_container_exception(recipe, entity_containing_activity)
+
+    @classmethod
+    def raise_activity_container_exception(cls, recipe, activity_container):
+        raise main.InvalidActivityContainerException(recipe_name_tag=recipe.name_tag,
+                                                     recipe_name_params=recipe.name_params,
+                                                     activity_container=activity_container)
 
     @classmethod
     def _enhance_actions(cls, result, user_input):
@@ -168,18 +190,61 @@ class ActivityFactory:
         return field_class(deferred.get_qualified_class_name(action_and_args[0]), action_and_args[1])
 
     @classmethod
-    def get_selectable_machines(cls, recipe, character):
-        mandatory_machines = recipe.requirements.get("mandatory_machines", [])
-        if cls.is_creating_activity_container(recipe) or not mandatory_machines:
+    def get_selectable_entities(cls, recipe, character):
+        activity_container_spec = recipe.activity_container
+        if activity_container_spec[0] != "selected_entity":
             return []
 
-        selectable_machine_type = mandatory_machines[0]  # first mandatory machine is the one to hold the activity
-        selectable_machine_type = models.EntityType.by_name(selectable_machine_type)
-        type_eff_pairs = selectable_machine_type.get_descending_types()
-        allowed_types = [pair[0] for pair in type_eff_pairs]
+        allowed_types = []
+        for type_name in activity_container_spec[1].get("types", []):
+            descending_types = models.EntityType.by_name(type_name).get_descending_types()
+            allowed_types += [subtype.name for subtype, eff in descending_types]
 
-        from exeris.core import actions
-        return actions.ActivityProgress.get_all_machines_around_entity(allowed_types, character)
+        # items
+        item_query_parts = cls.property_related_query_parts(activity_container_spec, models.Item)
+        if allowed_types:
+            item_query_parts += [models.Item.type_name.in_(allowed_types)]
+        items = models.Item.query.filter(models.Item.is_in(character.parent_locations()),
+                                         *item_query_parts).all()
+
+        # locations
+        location_ids = [l.id for l in character.parent_locations()]
+        for loc in character.parent_locations():
+            location_ids += [directed_passage.other_side.id for directed_passage in loc.passages_to_neighbours
+                             if directed_passage.passage.is_accessible(False)]
+
+        loc_query_parts = cls.property_related_query_parts(activity_container_spec, models.Location)
+        if allowed_types:
+            loc_query_parts += [models.Location.type_name.in_(allowed_types)]
+
+        locations = models.Location.query.filter(models.Location.id.in_(location_ids),
+                                                 *loc_query_parts).all()
+
+        # passages
+        passage_ids = []
+        for loc in character.parent_locations():
+            passage_ids += [directed_passage.passage.id for directed_passage in loc.passages_to_neighbours
+                            if directed_passage.passage.is_accessible(False)]
+
+        passage_query_parts = cls.property_related_query_parts(activity_container_spec, models.Passage)
+        if allowed_types:
+            passage_query_parts += [models.Passage.type_name.in_(allowed_types)]
+
+        passages = []
+        if passage_ids:
+            passages = models.Passage.query.filter(models.Passage.id.in_(passage_ids),
+                                                   *passage_query_parts).all()
+
+        return items + locations + passages
+
+    @classmethod
+    def property_related_query_parts(cls, activity_container_spec, entity_class):
+        property_query_parts = []
+        for property_name, property_dict in activity_container_spec[1].get("properties", {}).items():
+            property_query_parts += [entity_class.has_property(property_name, **property_dict)]
+        for property_name, property_dict in activity_container_spec[1].get("no_properties", {}).items():
+            property_query_parts += [~entity_class.has_property(property_name, **property_dict)]
+        return property_query_parts
 
     @classmethod
     def get_list_of_errors(cls, recipe, character):
