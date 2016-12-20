@@ -323,6 +323,33 @@ class EntityTest(TestCase):
         test_char.states["tiredness"] -= 0.5
         self.assertEqual(0.5, test_char.states["tiredness"])
 
+    def test_contents_weight(self):
+        rl = RootLocation(Point(1, 1), 10)
+        initiator = util.create_character("test", rl, util.create_player("plr1"))
+        basket_type = ItemType("basket", 500)
+        stone_type = ItemType("stone", 10, stackable=True)
+        hammer_type = ItemType("hammer", 365)
+
+        basket = Item(basket_type, rl)
+        stone = Item(stone_type, basket, amount=17)
+
+        db.session.add_all([rl, basket_type, stone_type, hammer_type, basket, stone])
+
+        self.assertEqual(0, stone.contents_weight())  # nothing
+        self.assertEqual(10 * 17, basket.contents_weight())  # 17 stones
+        self.assertEqual(1000 + 500 + 10 * 17, rl.contents_weight())  # a character + basket + 17 stones
+
+        hammer = Item(hammer_type, basket)
+        activity = Activity(hammer, "test", {}, {}, 10, initiator)
+        used_stone = Item(stone_type, activity, amount=7, role_being_in=False)
+        db.session.add_all([hammer, activity, used_stone])
+
+        self.assertEqual(70, activity.contents_weight())  # 7 stones used
+        self.assertEqual(70, hammer.contents_weight())  # an activity with 7 used stones
+
+        # a basket with (a hammer with an activity with 7 used stones) and 17 stones
+        self.assertEqual(70 + 365 + 10 * 17, basket.contents_weight())
+
 
 class RootLocationTest(TestCase):
     create_app = util.set_up_app_with_database

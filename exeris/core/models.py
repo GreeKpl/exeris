@@ -33,6 +33,7 @@ ENTITY_BURIED_CONTENT = "buried_content"
 TYPE_NAME_MAXLEN = 32
 TAG_NAME_MAXLEN = 32
 PLAYER_ID_MAXLEN = 24
+ALIVE_CHARACTER_WEIGHT = 1000
 
 logger = logging.getLogger(__name__)
 
@@ -692,6 +693,7 @@ class Character(Entity):
         self.spawn_date = spawn_date
 
         self.type = EntityType.by_name(Types.ALIVE_CHARACTER)
+        self.weight = ALIVE_CHARACTER_WEIGHT
         super().__init__()
         self.properties.append(EntityProperty(P.PREFERRED_EQUIPMENT))
 
@@ -745,6 +747,10 @@ class Character(Entity):
     @sql.orm.validates("spawn_date")
     def validate_spawn_date(self, key, spawn_date):
         return spawn_date.game_timestamp
+
+    def contents_weight(self):
+        entities = Entity.query.filter(Entity.is_in(self)).all()
+        return sum([entity.weight + entity.contents_weight() for entity in entities])
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_CHARACTER, character_id=self.id, character_gen=self.sex,
@@ -830,6 +836,10 @@ class Item(Entity):
 
         super(Item, self).remove()
 
+    def contents_weight(self):
+        entities = Entity.query.filter(Entity.is_in(self)).all()
+        return sum([entity.weight + entity.contents_weight() for entity in entities])
+
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ITEM, item_id=self.id, item_name=self.type_name,
                           item_damage=self.damage)
@@ -892,6 +902,7 @@ class Activity(Entity):
         self.quality_sum = 0
 
         self.type = EntityType.by_name(Types.ACTIVITY)
+        self.weight = 0
         super().__init__()
 
     name_tag = sql.Column(sql.String(TAG_NAME_MAXLEN))
@@ -911,6 +922,10 @@ class Activity(Entity):
     quality_ticks = sql.Column(sql.Integer)
     ticks_needed = sql.Column(sql.Float)
     ticks_left = sql.Column(sql.Float)
+
+    def contents_weight(self):
+        entities = Entity.query.filter(Entity.is_used_for(self)).all()
+        return sum([entity.weight + entity.contents_weight() for entity in entities])
 
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_ACTIVITY, activity_id=self.id,
@@ -1219,6 +1234,10 @@ class Location(Entity):
         # or decide that all dependent locations will be destroyed
         # self.being_in = None
 
+    def contents_weight(self):
+        entities = Entity.query.filter(Entity.is_in(self)).all()
+        return sum([entity.weight + entity.contents_weight() for entity in entities])
+
     def pyslatize(self, **overwrites):
         pyslatized = dict(entity_type=ENTITY_LOCATION, location_id=self.id,
                           location_name=self.type_name)
@@ -1253,7 +1272,7 @@ class RootLocation(Location):
     direction = sql.Column(sql.Integer)
 
     def __init__(self, position, direction):
-        super().__init__(None, LocationType.by_name(Types.OUTSIDE), 0)
+        super().__init__(None, LocationType.by_name(Types.OUTSIDE), weight=0)
         self.position = position
         self.direction = direction
 
