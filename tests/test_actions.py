@@ -101,7 +101,10 @@ class FinishActivityActionsTest(TestCase):
 
         initiator = util.create_character("ABC", rl, util.create_player("janko"))
 
-        hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": "potatoes"}, 100, initiator)
+        hammer_activity = Activity(container, "dummy_activity_name", {}, {"input": {"potatoes": {
+            "needed": 10,
+            "left": 0}
+        }}, 100, initiator)
         db.session.add(hammer_activity)
 
         invalid_amount_action = CreateItemAction(item_type=hammer_type, properties={}, amount=0,
@@ -224,6 +227,30 @@ class FinishActivityActionsTest(TestCase):
 
         visible_material_prop = EntityProperty.query.filter_by(entity=new_key, name=P.VISIBLE_MATERIAL).one()
         self.assertEqual({"main": steel_type.name}, visible_material_prop.data)  # steel is visible
+
+    def test_create_item_action_when_activity_in_location(self):
+        hammer_type = ItemType("hammer", 200)
+        building_type = LocationType("building", 1000)
+        rl = RootLocation(Point(1, 2), 123)
+        db.session.add_all([hammer_type, building_type, rl])
+
+        building = Location(rl, building_type)
+        db.session.add(building)
+
+        initiator = util.create_character("ABC", rl, util.create_player("janko"))
+
+        hammer_activity = Activity(building, "dummy_activity_name", {}, {"input": {"potatoes": 100}}, 100, initiator)
+        db.session.add(hammer_activity)
+
+        create_item_action = CreateItemAction(item_type=hammer_type, properties={}, amount=1,
+                                              activity=hammer_activity, initiator=initiator, used_materials="all")
+
+        self.assertEqual([rl, building], create_item_action.get_result_loc_candidates())
+
+        create_item_action.perform()
+
+        new_hammer = Item.query.filter_by(type=hammer_type).one()
+        self.assertEqual(initiator, new_hammer.being_in)
 
     def test_create_location_action(self):
         rl = RootLocation(Point(1, 1), 33)

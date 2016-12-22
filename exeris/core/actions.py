@@ -218,7 +218,7 @@ class CreateItemAction(ActivityAction):
         if self.amount <= 0:
             raise ValueError("Amount: {} for CIA of activity {} should be positive", self.amount, self.activity)
 
-        result_loc_candidates = self.activity.being_in.parent_locations()
+        result_loc_candidates = self.get_result_loc_candidates()
 
         # if initiator is in the same location and has enough free space then put into inventory
         if self.is_enough_space_in_inventory_for_portable_item() and self.initiator.being_in in result_loc_candidates:
@@ -234,6 +234,33 @@ class CreateItemAction(ActivityAction):
             for _ in range(self.amount):
                 new_items += [self.create_nonstackable_item(result_loc, self.item_type.unit_weight)]
         return new_items
+
+    def get_result_loc_candidates(self):
+        """
+        Returns a list of locations which are considered the only candidates for a place where an item should be created
+        List is sorted starting from the best candidate, usually it's a location with the initiator
+        :return:
+        """
+        activity_parent = self.activity.being_in
+        loc_candidates = activity_parent.parent_locations()
+        if isinstance(activity_parent, models.Location):
+            rng = general.AdjacentLocationsRange(False)
+            locs_near = rng.locations_near(activity_parent)
+            loc_candidates = self.move_to_end(locs_near, activity_parent)  # move activity parent to the end of the list
+
+        if self.initiator.being_in in loc_candidates:
+            return self.move_to_start(loc_candidates, self.initiator.being_in)
+        return loc_candidates
+
+    @staticmethod
+    def move_to_end(lst, element):
+        lst.remove(element)
+        return lst + [element]
+
+    @staticmethod
+    def move_to_start(lst, element):
+        lst.remove(element)
+        return [element] + lst
 
     def is_enough_space_in_inventory_for_portable_item(self):
         predicted_item_weight = self.amount * self.item_type.unit_weight
