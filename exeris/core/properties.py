@@ -212,3 +212,10 @@ class OptionalPreferredEquipmentProperty(OptionalPropertyBase):
 
         eq_part = item.get_property(P.EQUIPPABLE)["eq_part"]
         self.entity_property.data[eq_part] = item.id
+
+
+class OptionalCloseableProperty(OptionalPropertyBase):
+    __property__ = P.CLOSEABLE
+
+    def is_open(self):
+        return not self.property_exists or not self.property_dict.get("closed", False)

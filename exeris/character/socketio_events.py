@@ -545,8 +545,9 @@ def _get_entity_info(entity, observer):
     else:
         expandable = entity == observer or \
                      (entity.has_property(P.STORAGE) or entity.has_property(P.ENTERABLE)) \
-                     and models.Entity.query.filter(models.Entity.is_in(entity)) \
-                             .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+                     and not entity.has_property(P.CLOSEABLE, closed=True) and \
+                     models.Entity.query.filter(models.Entity.is_in(entity)) \
+                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
 
     entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
                                   actions=possible_actions, activities=activities, expandable=expandable,

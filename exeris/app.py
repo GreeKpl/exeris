@@ -549,6 +549,7 @@ def create_database():
                                            result_entity=chest_type, activity_container=["fixed_item"])
         chest_type.properties.append(models.EntityTypeProperty(P.STORAGE, {"can_store": True}))
         chest_type.properties.append(models.EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
+        chest_type.properties.append(models.EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
         db.session.add_all([chest_type, chest_recipe])
 
         butchering_recipe = models.EntityRecipe("butchering_animal", {}, {}, 5, build_menu_category,

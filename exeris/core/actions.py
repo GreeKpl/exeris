@@ -2190,8 +2190,9 @@ class PutIntoStorageAction(ActionOnItem):
         if not self.executor.has_access(self.item, rng=general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.item)
 
+        optional_closeable_property = properties.OptionalCloseableProperty(self.storage)
         optional_lockable_property = properties.OptionalLockableProperty(self.storage)
-        if not optional_lockable_property.can_pass(self.executor):
+        if not optional_closeable_property.is_open() and not optional_lockable_property.can_pass(self.executor):
             raise main.NoKeyToLockException(entity=self.storage, lock_id=optional_lockable_property.get_lock_id())
 
         if self.amount < 0 or self.amount > self.item.amount:
@@ -2224,6 +2225,8 @@ class TakeItemAction(ActionOnItem):
             top_level_item = top_level_item.being_in
             if not top_level_item.has_property(P.STORAGE):
                 raise ValueError("{} is not a storage".format(top_level_item))
+            if top_level_item.has_property(P.CLOSEABLE, closed=True):
+                raise main.EntityTooFarAwayException(entity=top_level_item)
             self.check_storage_lock(top_level_item)
 
         if not self.executor.has_access(top_level_item, rng=general.AdjacentLocationsRange(False)):

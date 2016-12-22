@@ -759,10 +759,35 @@ class CharacterActionsTest(TestCase):
         put_into_storage_action.perform()
         self.assertEqual(hammer.being_in, basket_in_inventory)
 
-        # it's impossible to put hammer to the storage in the neighbouring location (event with an unlimited passage)
+        # it's impossible to put hammer to the storage in the neighbouring location (even with an unlimited passage)
         hammer.being_in = rl
         put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_loc1)
         self.assertRaises(main.EntityTooFarAwayException, put_into_storage_action.perform)
+
+        # locking and closing
+        basket_type.properties.append(EntityTypeProperty(P.LOCKABLE, {"lock_exists": False}))
+        basket_in_rl.properties.append(EntityProperty(P.LOCKABLE, {"lock_exists": True, "lock_id": "ABC"}))
+        basket_type.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
+        basket_in_rl.properties.append(EntityProperty(P.CLOSEABLE, {"closed": False}))
+
+        # the storage is open so we can put an item even without a key
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_rl)
+        put_into_storage_action.perform()
+        self.assertEqual(hammer.being_in, basket_in_rl)
+
+        hammer.being_in = rl
+        # the storage is closed and we don't have a key => impossible
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_rl)
+        self.assertRaises(main.EntityTooFarAwayException, put_into_storage_action.perform())
+
+        key_type = ItemType("key", 10)
+        key = Item(key_type, char)
+        key.properties.append(EntityProperty(P.KEY_TO_LOCK, {"lock_id": "ABC"}))
+        db.session.add_all([key_type, key])
+        # the storage is closed but we have a key => possible
+        put_into_storage_action = PutIntoStorageAction(char, hammer, basket_in_rl)
+        put_into_storage_action.perform()
+        self.assertEqual(hammer.being_in, basket_in_rl)
 
     def test_say_aloud_action(self):
         util.initialize_date()
