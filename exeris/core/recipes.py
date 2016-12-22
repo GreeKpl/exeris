@@ -92,13 +92,13 @@ class ActivityFactory:
         else:
             return None
 
-    @classmethod
-    def get_concrete_entity_specific_container(cls, recipe):
-        if isinstance(recipe.result_entity, models.LocationType):
+    def get_concrete_entity_specific_container(self, recipe):
+        result_entity_type = models.EntityType.by_name(self.get_result_entity_type(recipe))
+        if isinstance(result_entity_type, models.LocationType):
             return "fixed_item"
-        elif recipe.result_entity and recipe.result_entity.portable:
+        elif result_entity_type and result_entity_type.portable:
             return "portable_item"
-        elif recipe.result_entity:
+        elif result_entity_type:
             return "fixed_item"
         else:
             raise ValueError("don't know what entity is going to be created by {}".format(recipe))

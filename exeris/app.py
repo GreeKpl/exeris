@@ -198,7 +198,7 @@ def create_database():
         build_menu_category = models.BuildMenuCategory("structures")
         signpost_recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
                                               build_menu_category, result_entity=models.ItemType.by_name("signpost"),
-                                              result=[["exeris.core.actions.actions.AddNameToEntityAction", {}]])
+                                              result=[["exeris.core.actions.actions.AddTitleToEntityAction", {}]])
         db.session.add_all([build_menu_category, signpost_recipe])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
@@ -210,7 +210,7 @@ def create_database():
                                                   {"location_type": hut_type.name, "properties": {},
                                                    "used_materials": "all",
                                                    "visible_material": {"main": "group_stone"}}],
-                                                 ["exeris.core.actions.AddNameToEntityAction", {}]],
+                                                 ["exeris.core.actions.AddTitleToEntityAction", {}]],
                                          activity_container=["fixed_item"])
         db.session.add_all([hut_type, hut_recipe])
 
@@ -568,6 +568,31 @@ def create_database():
                                                             ]],
                                                    activity_container=entities_being_locked_specification)
         db.session.add_all([key_type, building_lock_recipe])
+
+        coin_press_type = models.ItemType("coin_press", 300, portable=False)
+        coin_type = models.ItemType("coin", 2, stackable=True)
+        db.session.add_all([coin_press_type, coin_type, rl])
+
+        # recipes for coin press and coins
+        create_press_action = ["exeris.core.actions.CreateItemAction",
+                               {"item_type": coin_press_type.name,
+                                "amount": 1, "properties": {},
+                                "used_materials": "all"}]
+        add_title_to_press = ["exeris.core.actions.AddTitleToEntityAction", {}]
+        generate_signature_action = ["exeris.core.actions.GenerateUniqueSignatureAction", {}]
+        press_recipe = models.EntityRecipe("build_coin_press", {}, {"permanence": True},
+                                           1, build_menu_category,
+                                           result=[create_press_action, add_title_to_press, generate_signature_action],
+                                           activity_container=["entity_specific_item"])
+
+        create_item_with_title_and_signature_action = ["exeris.core.actions.CreateItemWithTitleAndSignatureFromParent",
+                                                       {"item_type": coin_type.name, "properties": {},
+                                                        "used_materials": "all"}]
+
+        coin_recipe = models.EntityRecipe("producing_coin", {}, {}, 1, build_menu_category,
+                                          result=[create_item_with_title_and_signature_action],
+                                          activity_container=["selected_entity", {"types": ["coin_press"]}])
+        db.session.add_all([press_recipe, coin_recipe])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")

@@ -203,7 +203,7 @@ def most_strict_range_spec_for_entity(entity):
 class CreateItemAction(ActivityAction):
     @convert(item_type=models.ItemType)
     def __init__(self, *, item_type, properties, used_materials, amount=1,
-                 visible_material=None, visible_parts=None, **injected_args):
+                 visible_material=None, visible_parts=None, title=None, **injected_args):
         self.item_type = item_type
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
@@ -213,6 +213,7 @@ class CreateItemAction(ActivityAction):
         self.properties = properties
         self.visible_material = visible_material if visible_material else {}
         self.visible_parts = visible_parts if visible_parts else []
+        self.title = title
 
     def perform_action(self):
         if self.amount <= 0:
@@ -272,8 +273,11 @@ class CreateItemAction(ActivityAction):
         return inventory_weight + predicted_item_weight <= get_max_allowed_weight(self.initiator)
 
     def create_or_update_stackable_item(self, result_loc, item_weight):
-        existing_pile = models.Item.query.filter_by(type=self.item_type). \
-            filter(models.Item.is_in(result_loc)).filter_by(visible_parts=self.visible_parts).first()
+        existing_pile = models.Item.query \
+            .filter_by(type=self.item_type) \
+            .filter(models.Item.is_in(result_loc)) \
+            .filter_by(visible_parts=self.visible_parts, title=self.title) \
+            .first()
 
         if existing_pile:
             existing_pile.weight += item_weight
@@ -281,6 +285,7 @@ class CreateItemAction(ActivityAction):
         else:
             new_pile = models.Item(self.item_type, result_loc, weight=item_weight)
             new_pile.visible_parts = self.visible_parts
+            new_pile.title = self.title
             db.session.add(new_pile)
             return new_pile
 
@@ -293,6 +298,7 @@ class CreateItemAction(ActivityAction):
         self.add_info_about_used_materials(new_item)
         if self.visible_material:
             set_visible_material(self.activity, self.visible_material, new_item)
+        new_item.title = self.title
         return new_item
 
     def add_info_about_used_materials(self, new_item):
@@ -422,7 +428,7 @@ class CreateLocationAction(ActivityAction):
 
 
 @form_on_setup(entity_name=recipes.NameInput)
-class AddNameToEntityAction(ActivityAction):
+class AddTitleToEntityAction(ActivityAction):
     def __init__(self, *, entity_name, results_index=-1, **injected_args):
         self.entity_name = entity_name
         self.entities = injected_args["resulting_entities"][results_index]
@@ -430,6 +436,35 @@ class AddNameToEntityAction(ActivityAction):
     def perform_action(self):
         for entity in self.entities:
             entity.title = self.entity_name
+        return self.entities
+
+
+@form_on_setup(amount=recipes.AmountInput)
+class CreateItemWithTitleAndSignatureFromParent(ActivityAction):
+    @convert(item_type=models.ItemType)
+    def __init__(self, *, item_type, properties, used_materials, amount=1,
+                 visible_material=None, visible_parts=None, **injected_args):
+        self.item_type = item_type
+        self.activity = injected_args["activity"]
+        self.initiator = injected_args["initiator"]
+        self.amount = amount
+        self.used_materials = used_materials
+        self.injected_args = injected_args
+        self.properties = properties
+        self.visible_material = visible_material if visible_material else {}
+        self.visible_parts = visible_parts if visible_parts else []
+
+    def perform_action(self):
+        activity_parent = self.activity.being_in
+        parent_title = activity_parent.title if activity_parent.title else ""
+        signature_prop = activity_parent.get_property(P.SIGNATURE)
+        if signature_prop is not None:
+            parent_title += " ({})".format(signature_prop["value"])
+        create_item_action = CreateItemAction(item_type=self.item_type, properties=self.properties, amount=self.amount,
+                                              used_materials=self.used_materials,
+                                              visible_material=self.visible_material, visible_parts=self.visible_parts,
+                                              title=parent_title, **self.injected_args)
+        return create_item_action.perform()
 
 
 class BuryEntityAction(ActivityAction):
@@ -2172,6 +2207,19 @@ class CreateLockAndKeyAction(ActivityAction):
             P.KEY_TO_LOCK: {"lock_id": unique_id}
         }, used_materials="all", visible_material=self.visible_material_of_key, **self.injected_args)
         create_key_action.perform()
+
+
+class GenerateUniqueSignatureAction(ActivityAction):
+    def __init__(self, *, results_index=-1, **injected_args):
+        self.entities = injected_args["resulting_entities"][results_index]
+
+    def perform_action(self):
+        unique_id = general.Identifiers.generate_unique_identifier()
+        unique_identifier = models.UniqueIdentifier(unique_id, self.entities[0].id, P.SIGNATURE)
+        db.session.add(unique_identifier)
+
+        for entity in self.entities:
+            entity.properties.append(models.EntityProperty(P.SIGNATURE, {"value": unique_id}))
 
 
 class PutIntoStorageAction(ActionOnItem):

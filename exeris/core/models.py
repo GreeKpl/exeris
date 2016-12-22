@@ -861,6 +861,9 @@ class Item(Entity):
         key_to_lock_prop = self.get_property(P.KEY_TO_LOCK)
         if key_to_lock_prop:
             pyslatized["unique_id"] = key_to_lock_prop["lock_id"]
+        signature_prop = self.get_property(P.SIGNATURE)
+        if signature_prop:
+            pyslatized["unique_id"] = signature_prop["value"]
         lock_prop = self.get_property(P.LOCKABLE)
         if lock_prop and lock_prop.get("lock_exists", False):
             pyslatized["unique_id"] = lock_prop["lock_id"]

@@ -34,6 +34,7 @@ class P:
     LIMITED_SPACE = "LimitedSpace"
     INCREASE_SPACE = "IncreaseSpace"
     INCREASE_SPACE_WHEN_EQUIPPED = "IncreaseSpaceWhenEquipped"
+    SIGNATURE = "Signature"
 
 class PropertyBase:
     __property__ = None

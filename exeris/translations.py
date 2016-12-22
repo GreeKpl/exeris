@@ -234,6 +234,15 @@ data = {
     "entity_anvil": {
         "en": "anvil",
     },
+    "entity_coin_press": {
+        "en": "coin press",
+    },
+    "entity_coin": {
+        "en": "coin",
+    },
+    "entity_coin#p": {
+        "en": "coins",
+    },
     "entity_longsword": {
         "en": "longsword",
     },
