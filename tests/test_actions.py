@@ -1596,3 +1596,36 @@ class UtilFunctionsTest(TestCase):
 
         # there is enough space for a hammer
         check_space_limitation(test_char)
+
+    def test_move_coins_between_entities(self):
+        rl = RootLocation(Point(1, 1), 10)
+        char = util.create_character("test_char", rl, util.create_player("test_plr"))
+        coin_type = ItemType("coin", 2, stackable=True)
+
+        coin_in_rl = Item(coin_type, rl, amount=10)
+        coin_in_rl.title = "Florin"
+
+        coin_in_inventory = Item(coin_type, char, amount=20)
+        coin_in_inventory.title = "Florin"
+
+        other_coin_in_rl = Item(coin_type, rl, amount=5)
+        other_coin_in_rl.title = "Imperial"
+
+        db.session.add_all([rl, coin_type, coin_in_inventory, coin_in_rl, other_coin_in_rl])
+
+        # drop 4 Florin coins
+        actions.move_entity_between_entities(coin_in_inventory, char, rl, amount=4)
+        self.assertEqual(14, coin_in_rl.amount)
+        self.assertEqual(16, coin_in_inventory.amount)
+
+        # take 2 Imperial coins
+        actions.move_entity_between_entities(other_coin_in_rl, rl, char, amount=2)
+        self.assertEqual(3, other_coin_in_rl.amount)
+        imperial_coin_in_inventory = Item.query.filter_by(type=coin_type,
+                                                          title="Imperial").filter(Item.is_in(char)).one()
+        self.assertEqual(2, imperial_coin_in_inventory.amount)
+
+        # drop 16 Florin coins
+        actions.move_entity_between_entities(coin_in_inventory, char, rl, amount=16)
+        self.assertEqual(30, coin_in_rl.amount)
+        self.assertIsNone(coin_in_inventory.parent_entity)

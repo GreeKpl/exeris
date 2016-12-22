@@ -1317,21 +1317,23 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
         raise main.InvalidInitialLocationException(entity=entity)
 
 
-def add_stackable_items(item_type, goal, weight, visible_parts=None, to_be_used_for=False):
+def add_stackable_items(item_type, goal, weight, title, visible_parts=None, to_be_used_for=False):
     visible_parts = visible_parts if visible_parts else []
     if weight <= 0:
         return
 
     if to_be_used_for:
         existing_pile = models.Item.query.filter_by(type=item_type) \
-            .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=visible_parts).first()
+            .filter(models.Item.is_used_for(goal)).filter_by(visible_parts=visible_parts, title=title).first()
     else:
         existing_pile = models.Item.query.filter_by(type=item_type). \
-            filter(models.Item.is_in(goal)).filter_by(visible_parts=visible_parts).first()
+            filter(models.Item.is_in(goal)).filter_by(visible_parts=visible_parts, title=title).first()
+
     if existing_pile:
         existing_pile.weight += weight
     else:
         new_pile = models.Item(item_type, goal, weight=weight, role_being_in=not to_be_used_for)
+        new_pile.title = title
         new_pile.visible_parts = visible_parts
         db.session.add(new_pile)
 
@@ -1345,7 +1347,8 @@ def move_stackable_item(item, source, goal, weight, to_be_used_for=False):
     else:
         item.weight -= weight
 
-    add_stackable_items(item.type, goal, weight, visible_parts=item.visible_parts, to_be_used_for=to_be_used_for)
+    add_stackable_items(item.type, goal, weight, title=item.title, visible_parts=item.visible_parts,
+                        to_be_used_for=to_be_used_for)
 
 
 def overwrite_item_amount(item, amount):
@@ -1625,7 +1628,7 @@ class LayEggsAction(Action):
                     preferred_goal = self.executor.being_in
 
                 animal_entity_prop.data["resources"][egg_type_name] -= amount_of_eggs
-                add_stackable_items(egg_type, preferred_goal, egg_type.unit_weight * amount_of_eggs)
+                add_stackable_items(egg_type, preferred_goal, egg_type.unit_weight * amount_of_eggs, title=None)
 
 
 class AnimalsProcess(ProcessAction):
