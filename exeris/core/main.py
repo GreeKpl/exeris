@@ -43,6 +43,8 @@ class Errors:
     NO_MACHINE_FOR_ACTIVITY = "error_no_machine_for_activity"
     NO_TOOL_FOR_ACTIVITY = "error_no_tool_for_activity"
     OWN_INVENTORY_CAPACITY_EXCEEDED = "error_own_inventory_capacity_exceeded"
+    TARGET_INVENTORY_CAPACITY_EXCEEDED = "error_target_inventory_capacity_exceeded"
+    ENTITY_CAPACITY_EXCEEDED = "error_entity_capacity_exceeded"
     INVALID_AMOUNT = "error_invalid_amount"
     TARGET_ALREADY_IN_COMBAT = "error_target_already_in_combat"
     ALREADY_BEING_IN_COMBAT = "error_already_being_in_combat"
@@ -262,9 +264,19 @@ class InvalidAmountException(ItemException):
         super().__init__(Errors.INVALID_AMOUNT, amount=amount)
 
 
-class OwnInventoryExceededException(GameException):
+class OwnInventoryCapacityExceededException(GameException):
     def __init__(self):
         super().__init__(Errors.OWN_INVENTORY_CAPACITY_EXCEEDED)
+
+
+class TargetInventoryCapacityExceededException(GameException):
+    def __init__(self, target):
+        super().__init__(Errors.TARGET_INVENTORY_CAPACITY_EXCEEDED, target=target)
+
+
+class EntityCapacityExceeded(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_CAPACITY_EXCEEDED, entity=entity)
 
 
 class CannotAttackYourselfException(GameException):

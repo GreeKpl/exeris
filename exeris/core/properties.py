@@ -198,6 +198,14 @@ class OptionalPreferredEquipmentProperty(OptionalPropertyBase):
         return {eq_part: item for eq_part, item in equipment.items()
                 if not eq_part_is_disallowed_by_other(eq_part, equipment)}
 
+    def get_preferred_equipment(self, return_ids=False):
+        if not self.property_exists:
+            return []
+        equipment_ids = self.property_dict.values()
+        if return_ids:
+            return equipment_ids
+        return models.Item.query.filter(models.Item.id.in_(equipment_ids)).all()
+
     def set_preferred_equipment_part(self, item):
         if not item.has_property(P.EQUIPPABLE):
             raise ValueError("Entity {} is not Equippable".format(item))

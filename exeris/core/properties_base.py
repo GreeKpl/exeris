@@ -31,7 +31,9 @@ class P:
     KEY_TO_LOCK = "KeyToLock"
     LOCK_BREAKER = "LockBreaker"
     COMBATABLE = "Combatable"
-
+    LIMITED_SPACE = "LimitedSpace"
+    INCREASE_SPACE = "IncreaseSpace"
+    INCREASE_SPACE_WHEN_EQUIPPED = "IncreaseSpaceWhenEquipped"
 
 class PropertyBase:
     __property__ = None

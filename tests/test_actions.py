@@ -4,8 +4,10 @@ import sqlalchemy as sql
 from flask_testing import TestCase
 from shapely.geometry import Point, Polygon
 
+from exeris.core import actions
 from exeris.core import deferred
 from exeris.core import main, models
+from exeris.core import properties
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
@@ -13,13 +15,13 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
-    AnimalDeathAction, TakeItemAction, PutIntoStorageAction, CreateLockAndKeyAction
+    AnimalDeathAction, TakeItemAction, PutIntoStorageAction, CreateLockAndKeyAction, check_space_limitation
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
 from exeris.core.models import ItemType, Activity, Item, RootLocation, EntityProperty, TypeGroup, Event, Location, \
     LocationType, Passage, EntityTypeProperty, PassageType, Character, TerrainType, PropertyArea, TerrainArea, \
-    Intent, BuriedContent, ResourceArea, UniqueIdentifier
+    Intent, BuriedContent, ResourceArea, UniqueIdentifier, EntityType
 from exeris.core.properties import P
 from tests import util
 
@@ -670,6 +672,30 @@ class CharacterActionsTest(TestCase):
         take_from_storage_action.perform()
         self.assertEqual(char, hammer.being_in)
 
+    def test_take_item_unsuccessful_when_limited_space_exceeded(self):
+        util.initialize_date()
+        rl = RootLocation(Point(1, 1), 10)
+        building_type = LocationType("building", 2000)
+        building_type.properties.append(EntityTypeProperty(P.LIMITED_SPACE, {
+            "max_weight": models.ALIVE_CHARACTER_WEIGHT + 10
+        }))
+        building = Location(rl, building_type)
+        char = util.create_character("abda", rl, util.create_player("adqw"))
+        hammer_type = ItemType("hammer", 50)
+        hammer = Item(hammer_type, rl)
+        db.session.add_all([rl, hammer_type, hammer])
+
+        char_limited_space_prop = EntityTypeProperty(P.LIMITED_SPACE, {"max_weight": 10})
+        EntityType.by_name(Types.ALIVE_CHARACTER).properties.append(char_limited_space_prop)
+        take_item_action = TakeItemAction(char, hammer)
+        self.assertRaises(main.OwnInventoryCapacityExceededException, take_item_action.perform)
+
+        hammer.being_in = rl
+        char.being_in = building
+        char_limited_space_prop.data["max_weight"] = 100
+
+        self.assertRaises(main.EntityCapacityExceeded, take_item_action.perform)
+
     def test_put_into_storage_action(self):
         util.initialize_date()
         rl = RootLocation(Point(1, 1), 10)
@@ -1233,6 +1259,29 @@ class CharacterActionsTest(TestCase):
         give_action = GiveItemAction(giver, potatoes, receiver, amount=8)
         self.assertRaises(main.InvalidAmountException, give_action.perform)
 
+    def test_give_stackable_exceeding_limited_space(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+
+        plr = util.create_player("ala123")
+        giver = util.create_character("postac", rl, plr)
+        receiver = util.create_character("druga_postac", rl, plr)
+        potatoes_type = ItemType("potatoes", 5, stackable=True)
+        potatoes = Item(potatoes_type, giver, amount=10)
+        EntityType.by_name(Types.ALIVE_CHARACTER).properties \
+            .append(EntityTypeProperty(P.LIMITED_SPACE, {"max_weight": 10}))
+        db.session.add_all([rl, potatoes_type, potatoes])
+
+        give_item_action = GiveItemAction(giver, potatoes, receiver, amount=10)
+        self.assertRaises(main.TargetInventoryCapacityExceededException, give_item_action.perform)
+
+        potatoes = Item.query.filter_by(type=potatoes_type).filter(Item.is_in(receiver)).one()
+        potatoes.being_in = giver
+        # successful
+        give_item_action = GiveItemAction(giver, potatoes, receiver, amount=2)
+        give_item_action.perform()
+
     def test_join_activity_action_try_join_too_far_away_and_then_success(self):
         util.initialize_date()
 
@@ -1417,3 +1466,81 @@ class PlayerActionsTest(TestCase):
         char1 = Character.query.filter_by(sex=Character.SEX_MALE).one()
         char2 = Character.query.filter_by(sex=Character.SEX_FEMALE).one()
         self.assertCountEqual([char1, char2], plr.alive_characters)
+
+
+class UtilFunctionsTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_check_space_limitation_simple(self):
+        rl = RootLocation(Point(1, 1), 11)
+        building_type = LocationType("building", 400)
+        building_type.properties.append(EntityTypeProperty(P.LIMITED_SPACE, {"max_weight": 100}))
+        building = Location(rl, building_type)
+
+        hammer_type = ItemType("hammer", 100)
+        hammer = Item(hammer_type, building)
+        db.session.add_all([rl, building_type, building, hammer_type, hammer])
+
+        check_space_limitation(building)  # nothing happens
+
+        hammer2 = Item(hammer_type, building)
+        db.session.add(hammer2)
+
+        self.assertRaises(actions.EntitySpaceLimitExceeded, lambda: check_space_limitation(building))
+
+        # works recursively for all the parents between the entity and the location
+        self.assertRaises(actions.EntitySpaceLimitExceeded, lambda: check_space_limitation(hammer))
+
+    def test_check_space_limitation_with_increased_space(self):
+        rl = RootLocation(Point(1, 1), 11)
+        building_type = LocationType("building", 400)
+        building_type.properties.append(EntityTypeProperty(P.LIMITED_SPACE, {"max_weight": 100,
+                                                                             "can_be_modified": True}))
+        building = Location(rl, building_type)
+
+        hammer_type = ItemType("hammer", 200)
+        hammer = Item(hammer_type, building)
+        db.session.add_all([rl, building_type, building, hammer_type, hammer])
+
+        # not enough space
+        self.assertRaises(actions.EntitySpaceLimitExceeded, lambda: check_space_limitation(building))
+
+        magic_portal_type = ItemType("magic_portal", 100)
+        # 100 net gain of free space
+        magic_portal_type.properties.append(EntityTypeProperty(P.INCREASE_SPACE, {"increase_value": 200}))
+        magic_portal = Item(magic_portal_type, building)
+        db.session.add_all([magic_portal_type, magic_portal])
+
+        # there is enough space for a hammer
+        check_space_limitation(building)
+
+    def test_check_space_limitation_with_increased_space_by_equipment(self):
+        rl = RootLocation(Point(1, 1), 11)
+        alive_character = EntityType.by_name(Types.ALIVE_CHARACTER)
+        alive_character.properties.append(EntityTypeProperty(P.LIMITED_SPACE, {"max_weight": 100,
+                                                                               "can_be_modified_by_equipment": True}))
+        test_char = util.create_character("dobromir", rl, util.create_player("random1"))
+
+        hammer_type = ItemType("hammer", 200)
+        hammer = Item(hammer_type, test_char)
+        db.session.add_all([rl, alive_character, hammer_type, hammer])
+
+        # not enough space
+        self.assertRaises(actions.EntitySpaceLimitExceeded, lambda: check_space_limitation(test_char))
+
+        backpack_type = ItemType("backpack", 100)
+        # 100 net gain of free space
+        backpack_type.properties.append(EntityTypeProperty(P.INCREASE_SPACE_WHEN_EQUIPPED, {"increase_value": 200}))
+        backpack_type.properties.append(EntityTypeProperty(P.EQUIPPABLE, {"eq_part": "back"}))
+        backpack = Item(backpack_type, test_char)
+        db.session.add_all([backpack_type, backpack])
+
+        # backpack doesn't work, because it's not equipped
+        self.assertRaises(actions.EntitySpaceLimitExceeded, lambda: check_space_limitation(test_char))
+
+        optional_pref_eq_property = properties.OptionalPreferredEquipmentProperty(test_char)
+        optional_pref_eq_property.set_preferred_equipment_part(backpack)
+
+        # there is enough space for a hammer
+        check_space_limitation(test_char)

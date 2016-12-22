@@ -129,6 +129,58 @@ def form_on_setup(**kwargs):  # adds a field "_form_input" to a class so it can 
     return f
 
 
+class EntitySpaceLimitExceeded(Exception):
+    def __init__(self, entity):
+        self.entity = entity
+
+
+def get_max_allowed_weight(entity):
+    limited_space_prop = entity.get_property(P.LIMITED_SPACE)
+    max_weight_allowed = float("inf")  # TODO math.inf since python 3.5
+    if limited_space_prop and "max_weight" in limited_space_prop:
+        max_weight_allowed = limited_space_prop["max_weight"]
+        if limited_space_prop.get("can_be_modified", False):
+            max_weight_allowed += max_weight_modifier(entity)
+        if limited_space_prop.get("can_be_modified_by_equipment", False):
+            max_weight_allowed += max_weight_modifier_by_preferred_equipment(entity)
+    return max_weight_allowed
+
+
+def check_space_limitation(entity):
+    already_processed_location = False
+    while not already_processed_location:
+        max_weight_allowed = get_max_allowed_weight(entity)
+        if entity.contents_weight() > max_weight_allowed:
+            raise EntitySpaceLimitExceeded(entity)
+        if isinstance(entity, models.Location):  # if processed a location, then there's no definite parent to check
+            already_processed_location = True
+        entity = entity.being_in
+
+
+def max_weight_modifier(entity):
+    boosters = models.Item.query.filter(models.Item.is_in(entity),
+                                        models.Item.has_property(P.INCREASE_SPACE)).all()
+    weight_modifier = 0
+    for booster in boosters:
+        inc_space_prop = booster.get_property(P.INCREASE_SPACE)
+        weight_modifier += inc_space_prop["increase_value"]
+    return weight_modifier
+
+
+def max_weight_modifier_by_preferred_equipment(entity):
+    preferred_eq_property = properties.OptionalPreferredEquipmentProperty(entity)
+    boosters = models.Item.query.filter(models.Item.is_in(entity),
+                                        models.Item.has_property(P.INCREASE_SPACE_WHEN_EQUIPPED),
+                                        models.Item.id.in_(preferred_eq_property
+                                                           .get_preferred_equipment(return_ids=True))
+                                        ).all()
+    weight_modifier = 0
+    for booster in boosters:
+        inc_space_prop = booster.get_property(P.INCREASE_SPACE_WHEN_EQUIPPED)
+        weight_modifier += inc_space_prop["increase_value"]
+    return weight_modifier
+
+
 def set_visible_material(activity, visible_material, entity):
     visible_material_property = {}
     for place_to_show in visible_material:
@@ -163,16 +215,16 @@ class CreateItemAction(ActivityAction):
         self.visible_parts = visible_parts if visible_parts else []
 
     def perform_action(self):
+        if self.amount <= 0:
+            raise ValueError("Amount: {} for CIA of activity {} should be positive", self.amount, self.activity)
+
         result_loc_candidates = self.activity.being_in.parent_locations()
 
-        # if initiator is in the same location then put into inventory
-        if self.item_type.portable and self.initiator.being_in in result_loc_candidates:
+        # if initiator is in the same location and has enough free space then put into inventory
+        if self.is_enough_space_in_inventory_for_portable_item() and self.initiator.being_in in result_loc_candidates:
             result_loc = self.initiator
         else:
             result_loc = result_loc_candidates[0]
-
-        if self.amount <= 0:
-            raise ValueError("Amount: {} for CIA of activity {} should be positive", self.amount, self.activity)
 
         if self.item_type.stackable:  # create one item of specified 'amount'
             weight = self.amount * self.item_type.unit_weight
@@ -182,6 +234,15 @@ class CreateItemAction(ActivityAction):
             for _ in range(self.amount):
                 new_items += [self.create_nonstackable_item(result_loc, self.item_type.unit_weight)]
         return new_items
+
+    def is_enough_space_in_inventory_for_portable_item(self):
+        predicted_item_weight = self.amount * self.item_type.unit_weight
+        if not self.item_type.portable:
+            return False
+        inventory_weight = db.session.query(func.sum(models.Entity.weight)) \
+            .filter(models.Entity.is_in(self.initiator)).scalar()
+        inventory_weight = inventory_weight if inventory_weight else 0
+        return inventory_weight + predicted_item_weight <= get_max_allowed_weight(self.initiator)
 
     def create_or_update_stackable_item(self, result_loc, item_weight):
         existing_pile = models.Item.query.filter_by(type=self.item_type). \
@@ -1297,10 +1358,15 @@ class GiveItemAction(ActionOnItemAndCharacter):
         if self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
 
-        if not self.character:  # has not enough space in inventory
-            raise main.OwnInventoryExceededException()
-
         move_entity_between_entities(self.item, self.executor, self.character, self.amount)
+
+        try:
+            check_space_limitation(self.character)
+        except EntitySpaceLimitExceeded as e:
+            if e.entity.type_name == main.Types.ALIVE_CHARACTER:
+                raise main.TargetInventoryCapacityExceededException(target=self.character)
+            else:
+                raise main.EntityCapacityExceeded(entity=e.entity)
 
         event_args = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
         general.EventCreator.base(Events.GIVE_ITEM, self.rng, event_args,
@@ -1644,6 +1710,10 @@ class MoveToLocationAction(ActionOnLocation):
                                   doer=self.executor)
 
         self.executor.being_in = self.location
+        try:
+            check_space_limitation(self.location)
+        except EntitySpaceLimitExceeded:
+            raise main.EntityCapacityExceeded(entity=self.location)
 
         models.Intent.query.filter_by(executor=self.executor, type=main.Intents.WORK).delete()
 
@@ -2101,6 +2171,11 @@ class PutIntoStorageAction(ActionOnItem):
             raise main.InvalidAmountException(amount=self.amount)
 
         move_entity_between_entities(self.item, self.item.being_in, self.storage, self.amount)
+
+        try:
+            check_space_limitation(self.storage)  # enough space in storage or its location
+        except EntitySpaceLimitExceeded:
+            raise main.EntityCapacityExceeded(entity=self.storage)
         self.create_events()
 
     def create_events(self):
@@ -2130,6 +2205,14 @@ class TakeItemAction(ActionOnItem):
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
         move_entity_between_entities(self.item, self.item.being_in, self.executor, self.amount)
+
+        try:
+            check_space_limitation(self.executor)  # enough space in executor's inventory and location
+        except EntitySpaceLimitExceeded as e:
+            if e.entity.type_name == main.Types.ALIVE_CHARACTER:
+                raise main.OwnInventoryCapacityExceededException()
+            else:
+                raise main.EntityCapacityExceeded(entity=e.entity)
 
         self.create_events(top_level_item)
 
