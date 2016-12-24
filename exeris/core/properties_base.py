@@ -35,6 +35,9 @@ class P:
     INCREASE_SPACE = "IncreaseSpace"
     INCREASE_SPACE_WHEN_EQUIPPED = "IncreaseSpaceWhenEquipped"
     SIGNATURE = "Signature"
+    MEMBER_OF_UNION = "MemberOfUnion"
+    BEING_MOVED = "BeingMoved"
+
 
 class PropertyBase:
     __property__ = None
@@ -55,9 +58,15 @@ class OptionalPropertyBase:
 
     def __init__(self, entity):
         self.entity = entity
-        self.entity_property = self.entity.get_entity_property(self.__property__)
-        self.property_exists = self.property_dict is not None
 
     @property
     def property_dict(self):
         return self.entity.get_property(self.__property__)
+
+    @property
+    def property_exists(self):
+        return self.property_dict is not None
+
+    @property
+    def entity_property(self):
+        return self.entity.get_entity_property(self.__property__)

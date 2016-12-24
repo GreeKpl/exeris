@@ -1264,6 +1264,12 @@ class Location(Entity):
     }
 
 
+class Sequences(db.Model):
+    __tablename__ = "sequences"
+    entity_union_sequence = sql.Sequence("entity_union_sequence")
+    serial_id = sql.Column(sql.Integer, entity_union_sequence, primary_key=True)
+
+
 class RootLocation(Location):
     __tablename__ = "root_locations"
 

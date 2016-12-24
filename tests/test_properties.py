@@ -1,3 +1,4 @@
+import math
 from flask_testing import TestCase
 from shapely.geometry import Point
 
@@ -167,3 +168,96 @@ class CharacterPropertiesTest(TestCase):
         # wooden shield is blocked by a two handed sword
         self.assertCountEqual({main.EqParts.BODY: jacket, main.EqParts.WEAPON: two_handed_sword},
                               char_optional_preferred_equipment_property.get_equipment())
+
+
+class LocationPropertyTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_entity_union_creation(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type)
+        cog2 = Location(rl, cog_type)
+        cog3 = Location(rl, cog_type)
+        cog4 = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog1, cog2, cog3, cog4])
+
+        cog1_member_of_union_property = properties.OptionalMemberOfUnionProperty(cog1)
+        cog1_member_of_union_property.union(cog2)
+
+        cog1_and_2_properties = cog1_member_of_union_property.get_entity_properties_of_own_union()
+        cog1_entity_property = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION, entity=cog1).one()
+        cog2_entity_property = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION, entity=cog2).one()
+        self.assertCountEqual([cog1_entity_property, cog2_entity_property], cog1_and_2_properties)
+        self.assertEqual(1, cog1_entity_property.data["priority"])
+
+        cog1_member_of_union_property.union(cog3, other_priority=0)
+        cog3_entity_property = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION, entity=cog3).one()
+        self.assertEqual(0, cog3_entity_property.data["priority"])
+
+    def test_entity_union_disband(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type)
+        cog2 = Location(rl, cog_type)
+        cog3 = Location(rl, cog_type)
+        cog4 = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog1, cog2, cog3, cog4])
+
+        cog1_member_of_union_property = properties.OptionalMemberOfUnionProperty(cog1)
+        cog1_member_of_union_property.union(cog2)
+        cog1_member_of_union_property.union(cog3)
+
+        cog1_member_of_union_property.disband_union()
+
+        number_of_union_members = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION).count()
+        self.assertEqual(0, number_of_union_members)
+
+    def test_entity_union_leave(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type)
+        cog2 = Location(rl, cog_type)
+        cog3 = Location(rl, cog_type)
+        cog4 = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog1, cog2, cog3, cog4])
+
+        cog1_member_of_union_property = properties.OptionalMemberOfUnionProperty(cog1)
+        cog1_member_of_union_property.union(cog2)
+        cog1_member_of_union_property.union(cog3)
+
+        cog1_member_of_union_property.leave_union()
+
+        cog2_entity_property = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION, entity=cog2).one()
+        cog3_entity_property = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION, entity=cog3).one()
+        # cog2 and cog3 still members of the same union
+        self.assertEqual(cog2_entity_property.data["union_id"], cog3_entity_property.data["union_id"])
+
+    def test_being_moved_property(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog1])
+
+        cog1_being_moved_property = properties.OptionalBeingMovedProperty(cog1)
+        cog1_being_moved_property.set_movement(1, math.pi)
+
+        cog1_entity_property = EntityProperty.query.filter_by(name=P.BEING_MOVED).one()
+        self.assertEqual([1, math.pi], cog1_entity_property.data["movement"])
+        self.assertNotIn("inertia", cog1_entity_property.data)
+
+        cog1_being_moved_property.set_movement(0)
+
+        self.assertIn(cog1_entity_property, db.session.deleted)
+
+        cog1_being_moved_property.set_movement(1, 1.5 * math.pi)
+        cog1_being_moved_property.set_inertia(3, 0.7 * math.pi)
+        cog1_being_moved_property.set_inertia(0)
+
+        cog1_entity_property = EntityProperty.query.filter_by(name=P.BEING_MOVED).one()
+        self.assertEqual({"movement": [1, 1.5 * math.pi]}, cog1_entity_property.data)
