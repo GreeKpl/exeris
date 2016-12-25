@@ -1333,16 +1333,13 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
     if entity.parent_entity == source:
         assert isinstance(entity, models.Entity), "Moved object is not an entity"
 
+        entity_union_member_property = properties.OptionalMemberOfUnionProperty(entity)
+        if isinstance(entity, models.Location) or entity_union_member_property.property_exists:
+            # is a location or a location-like entity
+            move_location_between_entities(entity, source, destination, to_be_used_for)
         if isinstance(entity, models.Item) and entity.type.stackable:
             weight = amount * entity.type.unit_weight
             move_stackable_item(entity, source, destination, weight, to_be_used_for)
-        elif isinstance(entity, models.Location):  # currently only leaves can be moved
-            for passage_view in entity.passages_to_neighbours:
-                if passage_view.other_side == source:
-                    passage_view.other_side = destination
-                else:
-                    raise ValueError("Currently only moving single-passage locations is supported")  # TODO till #100
-            entity.being_in = destination
         elif to_be_used_for:
             entity.used_for = destination
         else:
@@ -1384,6 +1381,48 @@ def move_stackable_item(item, source, goal, weight, to_be_used_for=False):
 
     add_stackable_items(item.type, goal, weight, title=item.title, visible_parts=item.visible_parts,
                         to_be_used_for=to_be_used_for)
+
+
+def move_location_between_entities(entity, source, destination, to_be_used_for=False):
+    """
+    Move entity (treated like a location) or the whole union containing the entity from source to destination.
+    It is required that all 'outgoing' passages of the union must go to 'source'.
+    As an implication, it means none of entities in union is an intermediate point
+    for any other entity and the root location.
+    :param entity: entity being moved
+    :param source: entity (usually a location) which is the only neighbour of members of the union
+    :param destination: entity (usually a location) to which
+    :param to_be_used_for: should be true, because it's not possible to use a location on an activity
+    """
+    if to_be_used_for:
+        raise ValueError("Location or location-like entities cannot be set as to_be_used_for")
+
+    entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
+    if entity_member_of_union_property.property_exists:
+        entity_properties = entity_member_of_union_property.get_entity_properties_of_own_union()
+        entities_in_union = [entity_property.entity for entity_property in entity_properties]
+    else:
+        entities_in_union = [entity]
+    for entity in entities_in_union:
+        if isinstance(entity, models.Location):
+            for psg_view in entity.passages_to_neighbours:  # all passages must be with other union members or a source
+                if psg_view.other_side == source:
+                    psg_view.other_side = destination
+                    if psg_view.own_side.being_in == source:  # if the neighbour is a parent entity then update being_in
+                        psg_view.own_side.being_in = destination
+                elif psg_view.other_side in entities_in_union:
+                    pass  # passages between members of union should be preserved
+                else:
+                    raise ValueError("Union members can only be connected with themselves and the `source`")
+        elif isinstance(entity, models.Passage) or (isinstance(entity, models.Item) and entity.type.stackable):
+            raise ValueError("{} is a passage or a stackable item, so it can't be treated as a location".format(entity))
+        else:
+            if entity.being_in == source:
+                entity.being_in = destination
+            elif entity.being_in in entities_in_union:
+                pass  # being in a member of union is allowed and preserved
+            else:
+                raise ValueError("being_in of entity treated as location must be `source`")
 
 
 def overwrite_item_amount(item, amount):

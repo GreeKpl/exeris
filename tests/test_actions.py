@@ -1629,3 +1629,103 @@ class UtilFunctionsTest(TestCase):
         actions.move_entity_between_entities(coin_in_inventory, char, rl, amount=16)
         self.assertEqual(30, coin_in_rl.amount)
         self.assertIsNone(coin_in_inventory.parent_entity)
+
+    def test_moving_single_location_between_entities(self):
+        rl_source = RootLocation(Point(1, 2), 10)
+        rl_destination = RootLocation(Point(5, 5), 0)
+
+        building_type = LocationType("building", 100)
+        building = Location(rl_source, building_type)
+        room = Location(building, building_type)
+
+        db.session.add_all([rl_source, rl_destination, building_type, building, room])
+
+        db.session.begin_nested()
+        # raise, because building is not a leaf - has a passage to location other than `rl_source`
+        self.assertRaises(ValueError, lambda: actions.move_entity_between_entities(building, rl_source, rl_destination))
+        db.session.rollback()
+
+        db.session.begin_nested()
+        # raise, because of the invalid source location
+        self.assertRaises(main.InvalidInitialLocationException,
+                          lambda: actions.move_entity_between_entities(room, rl_source, rl_destination))
+        db.session.rollback()
+
+        actions.move_entity_between_entities(room, building, rl_destination)
+        self.assertEqual(rl_destination, room.being_in)
+        Passage.query.filter(Passage.between(room, rl_destination)).one()
+
+        self.assertEqual([rl_source], building.neighbours)
+
+        actions.move_entity_between_entities(building, rl_source, rl_destination)
+        self.assertCountEqual([building, room], rl_destination.neighbours)
+
+    def test_moving_union_of_locations_between_entities(self):
+        rl_source = RootLocation(Point(1, 2), 10)
+        rl_destination = RootLocation(Point(5, 5), 0)
+
+        horse_type = LocationType("horse", 100)
+        cart_type = LocationType("cart", 400)
+
+        horse = Location(rl_source, horse_type)
+        cart = Location(rl_source, cart_type)
+        horse2 = Location(rl_source, horse_type)
+
+        horse_union_member_property = properties.OptionalMemberOfUnionProperty(horse)
+        horse_union_member_property.union(cart, own_priority=1, other_priority=0)
+
+        db.session.add_all([rl_source, rl_destination, horse_type, cart_type, horse, horse2, cart])
+
+        # go there and back again
+        actions.move_entity_between_entities(horse, rl_source, rl_destination)
+        self.assertEqual(rl_destination, horse.being_in)
+        self.assertEqual(rl_destination, cart.being_in)
+        actions.move_entity_between_entities(horse, rl_destination, rl_source)
+
+        db.session.add(Passage(horse, cart))
+        db.session.add(Passage(horse2, cart))
+
+        db.session.begin_nested()
+        # raise, because an union member (cart) is connected
+        # with a location (horse2) which is neither a source or union member
+        self.assertRaises(ValueError,
+                          lambda: actions.move_entity_between_entities(horse, rl_source, rl_destination))
+        db.session.rollback()
+
+        horse_union_member_property.union(horse2)
+        actions.move_entity_between_entities(horse, rl_source, rl_destination)
+
+        self.assertCountEqual([rl_destination, cart], horse.neighbours)
+        self.assertCountEqual([rl_destination, cart], horse2.neighbours)
+        self.assertCountEqual([rl_destination, horse, horse2], cart.neighbours)
+
+    def test_moving_union_of_character_and_cart(self):
+        rl_source = RootLocation(Point(1, 2), 10)
+        rl_destination = RootLocation(Point(5, 5), 0)
+
+        labourer = util.create_character("cart_puller", rl_source, util.create_player("kotek"))
+        cart_type = LocationType("cart", 400)
+
+        cart = Location(rl_source, cart_type)
+        db.session.add_all([rl_source, rl_destination, cart_type, cart])
+
+        labourer_union_member_property = properties.OptionalMemberOfUnionProperty(labourer)
+        labourer_union_member_property.union(cart, own_priority=1, other_priority=0)
+
+        actions.move_entity_between_entities(labourer, rl_source, rl_destination)
+        self.assertEqual(rl_destination, labourer.being_in)
+        self.assertEqual([rl_destination], cart.neighbours)
+        self.assertEqual(rl_destination, cart.being_in)
+
+        labourer.being_in = rl_source
+
+        # they are in different locations
+        db.session.begin_nested()
+        self.assertRaises(ValueError,
+                          lambda: actions.move_entity_between_entities(labourer, rl_source, rl_destination))
+        db.session.rollback()
+
+        db.session.begin_nested()
+        self.assertRaises(ValueError,
+                          lambda: actions.move_entity_between_entities(cart, rl_destination, rl_source))
+        db.session.rollback()

@@ -1505,6 +1505,11 @@ class Passage(Entity):
             return self.type.unlimited
         return self.type.unlimited or self.is_open()
 
+    def remove(self):
+        self.left_location = None
+        self.right_location = None
+        db.session.delete(self)
+
     def is_open(self):
         return not self.has_property(P.CLOSEABLE, closed=True)
 
