@@ -551,6 +551,7 @@ class Entity(db.Model):
         :return: True if this entity stores any entity inside or has any neighbour
         """
         excluding = [obj.id for obj in (excluding if excluding else [])]
+        excluding.append(-1)  # to avoid empty IN() contradiction
         if isinstance(self, RootLocation):
             if Passage.query.filter(Passage.incident(self)).count():
                 return False
@@ -1341,7 +1342,6 @@ class RootLocation(Location):
     def remove(self):
         if not self.is_empty():
             raise ValueError("trying to remove RootLocation (id: {}) which is not empty".format(self.id))
-
         db.session.delete(self)  # remove itself from the database
 
     def pyslatize(self, **overwrites):

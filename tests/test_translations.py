@@ -513,12 +513,12 @@ class CharacterAndLocationTranslationTest(TestCase):
         db.session.flush()
 
         activity = Activity(sword, "manufacturing", {"groups": {"result": sword.pyslatize()}}, {}, 1, initiator)
+        db.session.add(activity)
 
         backend = json_backend.JsonBackend(json_data=data)
         pyslate_en = create_pyslate("en", backend=backend)
         self.assertEqual("manufacturing a sword", pyslate_en.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("manufacturing a sword", pyslate_en.t("activity_info", **activity.pyslatize()))
-
         pyslate_pl = create_pyslate("pl", backend=backend)
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_" + activity.name_tag, **activity.name_params))
         self.assertEqual("produkcja miecza", pyslate_pl.t("activity_info", **activity.pyslatize()))

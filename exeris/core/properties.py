@@ -315,7 +315,7 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
 
     def _update_value(self, key_name, radius, direction):
         entity_property = self.entity_property
-        if radius == 0 and key_name in entity_property.data:
+        if radius == 0 and entity_property and key_name in entity_property.data:
             del entity_property.data[key_name]
         elif radius > 0:
             if not self.property_exists:
@@ -323,5 +323,24 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
                 self.entity.properties.append(entity_property)
             entity_property.data[key_name] = [radius, direction]
 
-        if not entity_property.data:
+        if entity_property and not entity_property.data:
             db.session.delete(entity_property)
+
+    def set_target(self, location):
+        entity_property = self.entity_property
+        if not location and entity_property and "target" in entity_property.data:
+            del entity_property.data["target"]
+        elif location:
+            if not self.property_exists:
+                entity_property = models.EntityProperty(self.__property__)
+                self.entity.properties.append(entity_property)
+            entity_property.data["target"] = location.id
+
+        if entity_property and not entity_property.data:
+            db.session.delete(entity_property)
+
+    def get_target(self):
+        target_id = self.entity_property.data.get("target", None)
+        if not target_id:
+            return None
+        return models.Location.by_id(target_id)
