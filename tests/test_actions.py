@@ -1465,7 +1465,7 @@ class IntentTest(TestCase):
         action = controlling_movement_intent.serialized_action
 
         self.assertEqual("exeris.core.actions.ControlMovementAction", action[0])
-        self.assertEqual(30, action[1]["travel_action"][1]["direction"])
+        self.assertEqual(30, action[1]["travel_action"][1]["direction_deg"])
 
         lazy_char = util.create_character("postac2", steering_room, util.create_player("ala1234"))
 
@@ -1495,7 +1495,7 @@ class IntentTest(TestCase):
 
         control_movement_intent = Intent.query.one()
         control_movement_action = control_movement_intent.serialized_action
-        self.assertEqual(30, control_movement_action[1]["travel_action"][1]["direction"])
+        self.assertEqual(30, control_movement_action[1]["travel_action"][1]["direction_deg"])
 
 
 class PlayerActionsTest(TestCase):
@@ -1664,6 +1664,10 @@ class UtilFunctionsTest(TestCase):
         rl_source = RootLocation(Point(1, 2), 10)
         rl_destination = RootLocation(Point(5, 5), 0)
 
+        placeholder_type = ItemType("placeholder", 10)
+        source_placeholder = Item(placeholder_type, rl_source)
+        destination_placeholder = Item(placeholder_type, rl_destination)
+
         horse_type = LocationType("horse", 100)
         cart_type = LocationType("cart", 400)
 
@@ -1674,7 +1678,8 @@ class UtilFunctionsTest(TestCase):
         horse_union_member_property = properties.OptionalMemberOfUnionProperty(horse)
         horse_union_member_property.union(cart, own_priority=1, other_priority=0)
 
-        db.session.add_all([rl_source, rl_destination, horse_type, cart_type, horse, horse2, cart])
+        db.session.add_all([rl_source, rl_destination, horse_type, cart_type, horse, horse2, cart,
+                            placeholder_type, source_placeholder, destination_placeholder])
 
         # go there and back again
         actions.move_entity_between_entities(horse, rl_source, rl_destination)
@@ -1703,11 +1708,16 @@ class UtilFunctionsTest(TestCase):
         rl_source = RootLocation(Point(1, 2), 10)
         rl_destination = RootLocation(Point(5, 5), 0)
 
+        placeholder_type = ItemType("placeholder", 10)
+        source_placeholder = Item(placeholder_type, rl_source)
+        destination_placeholder = Item(placeholder_type, rl_destination)
+
         labourer = util.create_character("cart_puller", rl_source, util.create_player("kotek"))
         cart_type = LocationType("cart", 400)
 
         cart = Location(rl_source, cart_type)
-        db.session.add_all([rl_source, rl_destination, cart_type, cart])
+        db.session.add_all([rl_source, rl_destination, cart_type, cart,
+                            placeholder_type, source_placeholder, destination_placeholder])
 
         labourer_union_member_property = properties.OptionalMemberOfUnionProperty(labourer)
         labourer_union_member_property.union(cart, own_priority=1, other_priority=0)
@@ -1718,7 +1728,6 @@ class UtilFunctionsTest(TestCase):
         self.assertEqual(rl_destination, cart.being_in)
 
         labourer.being_in = rl_source
-
         # they are in different locations
         db.session.begin_nested()
         self.assertRaises(ValueError,

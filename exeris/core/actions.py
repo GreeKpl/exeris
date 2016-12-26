@@ -4,6 +4,8 @@ from statistics import mean
 
 import random
 import sqlalchemy as sql
+from shapely.geometry import Point, LineString
+
 from exeris.core import deferred, main, util, combat, models, general, properties, recipes
 from exeris.core.deferred import convert
 from exeris.core.main import db, Events, PartialEvents
@@ -541,6 +543,7 @@ class WorkProcess(ProcessAction):
                 raise
 
         self.process_activities_progress(activities_to_progress)
+        self.process_travel_movement()
 
     def process_activities_progress(self, activities_to_progress):
         for activity, workers in activities_to_progress.items():
@@ -574,6 +577,107 @@ class WorkProcess(ProcessAction):
             failure_notification.add_close_option()
         main.call_hook(main.Hooks.NEW_CHARACTER_NOTIFICATION, character=worker, notification=failure_notification)
 
+    def process_travel_movement(self):
+        entities_being_moved = db.session.query(models.Entity, models.EntityProperty) \
+            .filter(models.EntityProperty.name == P.BEING_MOVED) \
+            .filter(models.EntityProperty.entity_id == models.Entity.id).all()
+        if entities_being_moved:
+            entities, _ = zip(*entities_being_moved)
+        else:
+            entities = []
+
+        # caching
+        # entity_ids = [entity.id for entity in entities]
+        # cached_union_members = models.EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION) \
+        #     .filter(models.EntityProperty.entity_id.in_(entity_ids)).all()
+
+        union_representatives = {}
+        distance_sum_by_entity = {}
+        distance_addend_count_by_entity = {}
+        for entity in entities:
+            entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
+            union_id = entity_member_of_union_property.get_union_id()
+            if union_id not in union_representatives:
+                distance_sum_by_entity[entity] = Point(0, 0)
+                distance_addend_count_by_entity[entity] = 0
+                if union_id is not None:
+                    union_representatives[union_id] = entity
+
+        travel_targets = []
+        for entity in entities:
+            mobile_prop = entity.get_property(P.MOBILE)
+            if mobile_prop:
+                entity_being_moved_property = properties.OptionalBeingMovedProperty(entity)
+                vector_x, vector_y = self.calculate_movement_contribution_of_entity(mobile_prop,
+                                                                                    entity_being_moved_property)
+
+                if entity_being_moved_property.get_target():  # random of two targets is selected
+                    travel_targets.append(entity_being_moved_property.get_target())
+
+                rho, phi = util.cart_to_pol(Point(vector_x, vector_y))
+                entity_being_moved_property.set_inertia(rho, phi)
+                entity_being_moved_property.set_movement(0)
+                entity_being_moved_property.set_target(None)
+
+                entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
+                union_id = entity_member_of_union_property.get_union_id()
+                representative = self.get_representative(entity, union_id, union_representatives)
+                orig_point = distance_sum_by_entity[representative]
+                distance_sum_by_entity[representative] = Point(orig_point.x + vector_x, orig_point.y + vector_y)
+                distance_addend_count_by_entity[representative] += 1
+
+        if len(travel_targets) > 1:  # it more than one travel target, then ignore them all
+            travel_targets = []
+
+        for entity in distance_sum_by_entity.keys():
+            travel_distance_sum = distance_sum_by_entity[entity]
+            travel_distance_addend_count = distance_addend_count_by_entity[entity]
+
+            max_travel_distance, direction = util.cart_to_pol(
+                Point(travel_distance_sum.x / travel_distance_addend_count,
+                      travel_distance_sum.y / travel_distance_addend_count))
+            max_potential_distance = max_travel_distance * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+            rng = general.TraversabilityBasedRange(max_travel_distance)
+            initial_pos = entity.get_position()
+
+            travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, math.degrees(direction),
+                                                                           max_travel_distance, max_potential_distance)
+            destination_pos = util.pos_for_distance_in_direction(initial_pos, math.degrees(direction),
+                                                                 travel_distance_per_tick)
+
+            if len(travel_targets):
+                if self.move_to_destination_if_close_enough(destination_pos, entity, initial_pos, travel_targets):
+                    return
+
+            move_entity_to_position(entity, direction, destination_pos)
+
+    def move_to_destination_if_close_enough(self, destination_pos, entity, initial_pos, travel_targets):
+        travel_goal = travel_targets[0]
+        goal_point = travel_goal.get_position()
+        BUFFER_SIZE = 0.1
+        line_to_point = LineString([initial_pos, destination_pos])
+        buffer_around_line_to_point = line_to_point.buffer(BUFFER_SIZE)
+        # TODO remember about wrapping around map edges
+        if buffer_around_line_to_point.contains(goal_point):
+            move_entity_between_entities(entity, entity.being_in, travel_goal)
+            return True
+        return False
+
+    def calculate_movement_contribution_of_entity(self, mobile_prop, entity_being_moved_property):
+        inertiality = mobile_prop.get("inertiality", 0)
+        movement_direction, movement_speed = entity_being_moved_property.get_movement()
+        inertia_direction, inertia_speed = entity_being_moved_property.get_inertia()
+        movement_vector = util.pol_to_cart(movement_direction, movement_speed)
+        inertia_vector = util.pol_to_cart(inertia_direction, inertia_speed)
+        vector_x = movement_vector.x * (1 - inertiality) + inertia_vector.x * inertiality
+        vector_y = movement_vector.y * (1 - inertiality) + inertia_vector.y * inertiality
+        return vector_x, vector_y
+
+    def get_representative(self, entity, union_id, union_representatives):
+        if union_id in union_representatives:
+            return union_representatives[union_id]
+        return entity  # entity is its own representative
+
 
 def move_entity_to_position(entity, direction, target_position):
     if isinstance(entity, models.RootLocation):
@@ -581,10 +685,12 @@ def move_entity_to_position(entity, direction, target_position):
     entity_root = entity.get_root()
 
     if entity_root.position != target_position:
-        new_root_location = models.RootLocation(target_position, direction)
-        db.session.add(new_root_location)
+        root_location = models.RootLocation.query.filter_by(position=target_position.wkt).first()
+        if not root_location:
+            root_location = models.RootLocation(target_position, direction)
+            db.session.add(root_location)
 
-        move_entity_between_entities(entity, entity_root, new_root_location)
+        move_entity_between_entities(entity, entity_root, root_location)
         logger.debug("Moving entity %s to position %s", entity.id, target_position)
     else:
         logger.debug("Not moving entity %s to position %s, because target position was the same", entity.id,
@@ -660,9 +766,9 @@ class WorkOnActivityAction(Action):
 
 class TravelInDirectionAction(Action):
     @convert(executor=models.Entity)
-    def __init__(self, executor, direction):
+    def __init__(self, executor, direction_deg):
         super().__init__(executor)
-        self.direction = direction
+        self.direction_deg = direction_deg
 
     def perform_action(self):
         mobile_property = properties.MobileProperty(self.executor)
@@ -673,22 +779,14 @@ class TravelInDirectionAction(Action):
         ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
         speed_per_tick = speed / ticks_per_day
 
-        max_potential_distance = speed_per_tick * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+        entity_being_moved = properties.OptionalBeingMovedProperty(self.executor)
+        entity_being_moved.set_movement(speed_per_tick, math.radians(self.direction_deg))
 
-        rng = general.TraversabilityBasedRange(speed_per_tick)
-        travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, self.direction, speed_per_tick,
-                                                                       max_potential_distance)
-
-        destination_pos = util.pos_for_distance_in_direction(initial_pos, self.direction, travel_distance_per_tick)
-
-        logger.info("Travel of %s from %s to %s [speed: %s]", self.executor, initial_pos, destination_pos,
+        logger.info("Travel of %s from %s to %s [speed: %s]", self.executor, initial_pos, self.direction_deg,
                     speed_per_tick)
 
-        move_entity_to_position(self.executor, self.direction, destination_pos)
-        return False
-
     def pyslatize(self):
-        return {"action_tag": "action_travel_in_direction", "direction": self.direction}
+        return {"action_tag": "action_travel_in_direction", "direction": self.direction_deg}
 
 
 class TravelToEntityAction(ActionOnEntity):
@@ -720,57 +818,13 @@ class TravelToEntityAction(ActionOnEntity):
         return speed_per_tick
 
     def come_closer_to_entity(self, initial_position, speed_per_tick, target_entity_root):
-        traversability = general.TraversabilityBasedRange(speed_per_tick,
-                                                          allowed_terrain_types=[main.Types.LAND_TERRAIN])
-        if traversability.is_near(self.executor, self.entity):  # move to the same root location
-            move_entity_between_entities(self.executor, self.executor.being_in, target_entity_root)
-            return True
-        else:
-            direction_to_destination = util.direction_degrees(initial_position, target_entity_root.position)
-            max_potential_range = speed_per_tick * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
-            distance_traversed = traversability.get_maximum_range_from_estimate(initial_position,
-                                                                                direction_to_destination,
-                                                                                speed_per_tick,
-                                                                                max_potential_range)
+        direction_to_destination = util.direction_degrees(initial_position, target_entity_root.position)
 
-            target_position = util.pos_for_distance_in_direction(initial_position, direction_to_destination,
-                                                                 distance_traversed)
-
-            move_entity_to_position(self.executor, direction_to_destination, target_position)
-            return False
-
-
-# class TravelToEntityAndPerformAction(Action):
-#     @convert(executor=models.Character, entity=models.Entity, action=Action)
-#     def __init__(self, executor, entity, action):
-#         super().__init__(executor)
-#         self.entity = entity
-#         self.action = action
-#
-#     def perform_action(self):
-#
-#         travel_to_entity_action = TravelToEntityAction(self.executor, self.entity)
-#         travel_to_entity_action.perform()
-#
-#         return self.try_to_perform_action()
-#
-#     def try_to_perform_action(self):
-#         try:
-#             db.session.begin_nested()
-#             self.action.perform()
-#             db.session.commit()  # commit savepoint
-#             return True
-#         except main.TurningIntoIntentExceptionMixin:  # these exceptions result in rollback, not removal of intent
-#             db.session.rollback()  # rollback to savepoint
-#             return False
-#
-#     def pyslatize(self):
-#         return {"action_tag": "action_travel_to_entity_and_perform_action",
-#                 "groups": {
-#                     "entity": self.entity.pyslatize(),
-#                     "action": self.action.pyslatize(),
-#                     "location": self.entity.get_location().pyslatize(),
-#                 }}
+        entity_being_moved = properties.OptionalBeingMovedProperty(self.executor)
+        entity_being_moved.set_movement(speed_per_tick, math.radians(direction_to_destination))
+        entity_being_moved.set_target(self.entity.get_root())
+        logger.info("Travel of %s from %s to go in dir %s to go to %s", self.executor, initial_position,
+                    direction_to_destination, target_entity_root.position)
 
 
 class ActivityProgressProcess(AbstractAction):
@@ -1344,6 +1398,7 @@ def move_entity_between_entities(entity, source, destination, amount=1, to_be_us
             entity.used_for = destination
         else:
             entity.being_in = destination
+
         main.call_hook(main.Hooks.ENTITY_CONTENTS_COUNT_DECREASED, entity=source)
     else:
         raise main.InvalidInitialLocationException(entity=entity)

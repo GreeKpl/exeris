@@ -4,6 +4,7 @@ from unittest.mock import patch
 import copy
 import sqlalchemy as sql
 from exeris.core import main, deferred, models
+from exeris.core import properties
 from exeris.core.actions import ActivityProgressProcess, EatingProcess, DecayProcess, \
     WorkProcess, EatAction, WorkOnActivityAction, TravelInDirectionAction, \
     CreateItemAction, ActivityProgress, StartControllingMovementAction, TravelToEntityAction, ControlMovementAction, \
@@ -89,14 +90,22 @@ class SchedulerTravelTest(TestCase):
         db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
                             potato_loc, potato_type, potatoes])
 
+        work_process = WorkProcess(None)
         for i in range(2):  # come closer
             go_to_entity_and_eat_action.perform()
+            work_process.process_travel_movement()
 
         self.assertEqual(0, traveler.states["satiation"])
         self.assertAlmostEqual(2.89820927, traveler.get_root().position.x)
         self.assertAlmostEqual(2.89820927, traveler.get_root().position.y)
 
+        go_to_entity_and_eat_action.perform()
+        # after this travel action it should be close enough, but the movement is committed
+        # during `WorkProcess.process_travel_movement` so potatoes will be eaten in the next tick
+        work_process.process_travel_movement()
+
         go_to_entity_and_eat_action.perform()  # eat half of potatoes
+
         # food is eaten
         self.assertEqual(0.5, traveler.states["satiation"])
 
@@ -159,8 +168,11 @@ class SchedulerTravelTest(TestCase):
         travel_process = WorkProcess(None)
 
         # come closer, not eat the potatoes
-        for _ in range(2):
+        for _ in range(3):
             travel_process.perform()
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
+
         self.assertEqual(0, traveler.states["satiation"])
         self.assertEqual(10, potatoes.amount)
 
@@ -168,14 +180,13 @@ class SchedulerTravelTest(TestCase):
 
         self.assertEqual(0.5, traveler.states["satiation"])
         self.assertEqual(5, potatoes.amount)
+        self.assertAlmostEqual(2.99641854, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.99641854, traveler.get_root().position.y)
 
         # intent's action is completed and thus removed
         control_movement_action = Intent.query.one().serialized_action
         self.assertIsNone(control_movement_action[1]["travel_action"])
         self.assertIsNone(control_movement_action[1]["target_action"])
-
-        self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
-        self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
 
         eat_too_far_away_action = EatAction(traveler, potatoes_away, 3)
         deferred.perform_or_turn_into_intent(traveler, eat_too_far_away_action)
@@ -186,8 +197,8 @@ class SchedulerTravelTest(TestCase):
         # (but LoS can be hard to define!!!!)
 
         # intent executor is still located on the same position
-        self.assertAlmostEqual(2.94731391, traveler.get_root().position.x)
-        self.assertAlmostEqual(2.94731391, traveler.get_root().position.y)
+        self.assertAlmostEqual(2.99641854, traveler.get_root().position.x)
+        self.assertAlmostEqual(2.99641854, traveler.get_root().position.y)
 
         # the intent is still there, because action was stopped by subclass of TurningIntoIntentExceptionMixin
         # so the error preventing going there is potentially only temporary
@@ -223,7 +234,7 @@ class SchedulerTravelTest(TestCase):
         travel_process = WorkProcess(None)
         travel_process.perform()
 
-        self.assertTrue(sql.inspect(rl).deleted)  # root location was empty so is deleted
+        self.assertIn(rl, db.session.deleted)  # root location was empty so is deleted
         self.assertEqual(1.02, rl.position.x)  # but it never changed its position
         self.assertEqual(1.972222222222221, rl.position.y)
 
@@ -241,6 +252,54 @@ class SchedulerTravelTest(TestCase):
         # make sure it has really moved
         self.assertAlmostEqual(1.0801406530405860, traveler.get_position().x, places=15)
         self.assertAlmostEqual(1.9552777777777777, traveler.get_position().y, places=15)
+
+    def test_move_entities_which_are_being_moved(self):
+        work_process = WorkProcess(None)
+
+        rl = RootLocation(Point(5, 5), 10)
+        cog_type = LocationType("cog", 1000)
+
+        union1_cog1 = Location(rl, cog_type)
+        union1_cog2 = Location(rl, cog_type)
+
+        cog3 = Location(rl, cog_type)
+
+        cog_type.properties.append(EntityTypeProperty(P.MOBILE, {"inertiality": 0.5, "speed": 40}))
+
+        poly_grass = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        grass_terrain = TerrainType("grassland")
+        land_terrain.add_to_group(grass_terrain)
+        grass = models.TerrainArea(poly_grass, grass_terrain)
+        land_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
+
+        db.session.add_all([rl, cog_type, union1_cog1, union1_cog2, cog3,
+                            grass_terrain, land_terrain, grass, land_traversability])
+
+        union1_cog1_union_member_property = properties.OptionalMemberOfUnionProperty(union1_cog1)
+        union1_cog1_union_member_property.union(union1_cog2)
+
+        cog1_being_moved_property = properties.OptionalBeingMovedProperty(union1_cog1)
+        cog1_being_moved_property.set_movement(10, math.radians(90))
+        cog2_being_moved_property = properties.OptionalBeingMovedProperty(union1_cog2)
+        cog2_being_moved_property.set_movement(10, math.radians(0))
+
+        cog3_being_moved_property = properties.OptionalBeingMovedProperty(cog3)
+        cog3_being_moved_property.set_movement(2, math.radians(300))
+        work_process.process_travel_movement()
+
+        resultant_movement_coord = 10 / 2 / 2
+        self.assertAlmostEqual(5 + resultant_movement_coord, union1_cog1.get_position().x)
+        self.assertAlmostEqual(5 + resultant_movement_coord, union1_cog1.get_position().y)
+
+        # affected by inertia
+        self.assertAlmostEqual(5 + 1 / 2, cog3.get_position().x)  # affected by inertia
+        self.assertAlmostEqual(5 - math.sqrt(3) / 2, cog3.get_position().y)
+
+        cog3_being_moved_property.set_inertia(2, math.radians(300))
+
+        work_process.process_travel_movement()
+
 
 
 class SchedulerActivityTest(TestCase):
