@@ -90,3 +90,15 @@ class Sql:
         elif isinstance(value, float):
             field = field.cast(sql.Float)
         return field
+
+
+def cart_to_pol(certesian_point):
+    rho = math.sqrt(certesian_point.x ** 2 + certesian_point.y ** 2)
+    phi = math.atan2(certesian_point.y, certesian_point.x)
+    return rho, phi
+
+
+def pol_to_cart(rho, phi):
+    x = rho * math.cos(phi)
+    y = rho * math.sin(phi)
+    return Point(x, y)
