@@ -2024,9 +2024,6 @@ class CharacterDeathAction(Action):
 
 
 class AnimalDeathAction(Action):
-    def __init__(self, executor):
-        super().__init__(executor)
-
     def perform_action(self):
         animal = self.executor
 
@@ -2048,6 +2045,89 @@ class AnimalDeathAction(Action):
             resource_type = models.ItemType.by_name(res_name)
             resource = models.Item(resource_type, self.executor, amount=int(round(res_amount)))
             db.session.add(resource)
+
+
+class BindToVehicleAction(ActionOnEntity):
+    def __init__(self, executor, entity, entity_to_bind_to):
+        super().__init__(executor, entity, rng=general.VisibilityBasedRange(5))
+        self.entity_to_bind_to = entity_to_bind_to
+
+    def perform_action(self):
+        bindable_property = properties.BindableProperty(self.entity)
+
+        allowed_range = general.AdjacentLocationsRange(False)
+        if not allowed_range.is_near(self.executor, self.entity):
+            raise main.EntityTooFarAwayException(entity=self.entity)
+        if not allowed_range.is_near(self.executor, self.entity_to_bind_to):
+            raise main.EntityTooFarAwayException(entity=self.entity_to_bind_to)
+
+        # binding entity to someone else
+        if self.entity_to_bind_to.type.name == main.Types.ALIVE_CHARACTER and self.entity_to_bind_to != self.executor:
+            raise ValueError("Cannot bind entity to other character")
+
+        types_to_bind_to = bindable_property.get_allowed_types()
+        if not any([type_to_bind.contains(self.entity_to_bind_to.type) for type_to_bind in types_to_bind_to]):
+            raise main.EntityNotBindableException(entity=self.entity)
+
+        entity_member_of_union = properties.OptionalMemberOfUnionProperty(self.entity)
+        if entity_member_of_union.is_in_nontrivial_union():
+            raise main.EntityAlreadyBound(entity=self.entity)
+
+        entity_member_of_union.union(self.entity_to_bind_to, own_priority=0)
+
+        if isinstance(self.entity, models.Location) and isinstance(self.entity_to_bind_to, models.Location):
+            inivisible_passage_type = models.PassageType.by_name(main.Types.INVISIBLE_PASSAGE)
+            passage_between_union_members = models.Passage(self.entity, self.entity_to_bind_to,
+                                                           passage_type=inivisible_passage_type)
+            db.session.add(passage_between_union_members)
+
+        general.EventCreator.base(Events.BIND_ENTITY_TO_VEHICLE, self.rng, params={"groups": {
+            "entity": self.entity.pyslatize(),
+            "entity_to_bind_to": self.entity_to_bind_to,
+        }}, doer=self.executor)
+
+
+class UnbindFromVehicleAction(ActionOnEntity):
+    def __init__(self, executor, entity):
+        super().__init__(executor, entity, rng=general.VisibilityBasedRange(5))
+
+    def perform_action(self):
+        allowed_range = general.AdjacentLocationsRange(False)
+        if not allowed_range.is_near(self.executor, self.entity):
+            raise main.EntityTooFarAwayException(entity=self.entity)
+
+        if not self.entity.has_property(P.BINDABLE):
+            raise main.EntityNotBindableException(entity=self.entity)
+
+        entity_member_of_union = properties.OptionalMemberOfUnionProperty(self.entity)
+        if not entity_member_of_union.is_in_nontrivial_union():
+            raise main.EntityNotBoundException(entity=self.entity)
+
+        union_members_properties = entity_member_of_union.get_entity_properties_of_own_union()
+
+        if isinstance(self.entity, models.Location):
+            passages_to_neighbours = []
+            for union_member_entity_property in union_members_properties:
+                entity_in_union = union_member_entity_property.entity
+                if isinstance(entity_in_union, models.Location):
+                    passage_to_neighbour = models.Passage.query.filter(
+                        models.Passage.between(self.entity, entity_in_union)).first()
+                    if passage_to_neighbour:
+                        passages_to_neighbours += [passage_to_neighbour]
+            if len(passages_to_neighbours) > 1:
+                raise main.CannotUnbindNotLeaf(entity=self.entity)
+
+            for psg in passages_to_neighbours:
+                psg.remove()
+
+        if len(union_members_properties) > 2:
+            entity_member_of_union.leave_union()
+        else:
+            entity_member_of_union.disband_union()
+
+        general.EventCreator.base(Events.UNBIND_ENTITY_FROM_VEHICLE, self.rng, params={"groups": {
+            "entity": self.entity.pyslatize(),
+        }}, doer=self.executor)
 
 
 class ControlMovementAction(Action):

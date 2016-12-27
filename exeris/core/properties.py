@@ -233,11 +233,13 @@ class OptionalMemberOfUnionProperty(OptionalPropertyBase):
             entities_properties_in_union = self.get_entity_properties_of_own_union()
             for entity_property in entities_properties_in_union:
                 entity_property.data["union_id"] = other_entitys_union_prop["union_id"]
+            self.entity_property.data["priority"] = own_priority
         elif self.property_exists and other_entitys_union_prop is None:
             other_location.properties.append(models.EntityProperty(self.__property__, {
                 "union_id": self.entity_property.data["union_id"],
                 "priority": other_priority,
             }))
+            self.entity_property.data["priority"] = own_priority
         elif not self.property_exists and other_entitys_union_prop is not None:
             self.entity.properties.append(models.EntityProperty(self.__property__, {
                 "union_id": other_entitys_union_prop["union_id"],
@@ -269,9 +271,14 @@ class OptionalMemberOfUnionProperty(OptionalPropertyBase):
 
     def get_entity_properties_of_own_union(self):
         own_property = self.entity_property
+        if not own_property:
+            return []
         return models.EntityProperty.query \
             .filter_by(name=P.MEMBER_OF_UNION) \
             .filter(self.json_to_int(models.EntityProperty.data["union_id"]) == own_property.data["union_id"]).all()
+
+    def is_in_nontrivial_union(self):
+        return len(self.get_entity_properties_of_own_union()) > 1
 
     @staticmethod
     def create_new_union_id():
@@ -344,3 +351,12 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
         if not target_id:
             return None
         return models.Location.by_id(target_id)
+
+
+class BindableProperty(PropertyBase):
+    __property__ = P.BINDABLE
+
+    def get_allowed_types(self):
+        prop_dict = self.property_dict
+        allowed_types = prop_dict["to_types"]
+        return [models.EntityType.by_name(type_name) for type_name in allowed_types]

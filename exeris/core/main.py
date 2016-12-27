@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    CANNOT_UNBIND_NOT_LEAF = "error_cannot_unbind_not_leaf"
+    ENTITY_NOT_BINDABLE = "error_entity_not_bindable"
+    ENTITY_NOT_BOUND = "error_entity_not_bound"
+    ENTITY_ALREADY_BOUND = "error_entity_already_bound"
     INVALID_ACTIVITY_CONTAINER = "error_invalid_activity_container"
     LOCK_ALREADY_EXISTS = "error_lock_already_exists"
     NO_KEY_TO_LOCK = "error_no_key_to_lock"
@@ -74,6 +78,8 @@ class Types:
 
 
 class Events:
+    UNBIND_ENTITY_FROM_VEHICLE = "event_unbind_entity_from_vehicle"
+    BIND_ENTITY_TO_VEHICLE = "event_bind_entity_to_vehicle"
     PUT_ITEM_INTO_STORAGE = "event_put_item_into_storage"
     TAKE_ITEM_FROM_STORAGE_IN_LOCATION = "event_take_item_from_storage_in_location"
     TAKE_ITEM_FROM_LOCATION = "event_take_item_from_location"
@@ -478,3 +484,23 @@ class InvalidActivityContainerException(GameException):
     def __init__(self, *, recipe_name_tag, recipe_name_params, activity_container):
         super().__init__(Errors.INVALID_ACTIVITY_CONTAINER, recipe_name_tag=recipe_name_tag,
                          recipe_name_params=recipe_name_params, activity_container=activity_container)
+
+
+class EntityAlreadyBound(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_ALREADY_BOUND, entity=entity)
+
+
+class EntityNotBoundException(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_NOT_BOUND, entity=entity)
+
+
+class EntityNotBindableException(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.ENTITY_NOT_BINDABLE, entity=entity)
+
+
+class CannotUnbindNotLeaf(GameException):
+    def __init__(self, *, entity):
+        super().__init__(Errors.CANNOT_UNBIND_NOT_LEAF, entity=entity)

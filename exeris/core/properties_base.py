@@ -37,6 +37,7 @@ class P:
     SIGNATURE = "Signature"
     MEMBER_OF_UNION = "MemberOfUnion"
     BEING_MOVED = "BeingMoved"
+    BINDABLE = "Bindable"
 
 
 class PropertyBase:
