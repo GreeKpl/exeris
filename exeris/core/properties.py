@@ -56,6 +56,8 @@ class MobileProperty(PropertyBase):
     def get_max_speed(self):
         return self.property_dict["speed"]
 
+    def get_inertiality(self):
+        return self.property_dict.get("inertiality", 0)
 
 class LineOfSightProperty(PropertyBase):
     __property__ = P.LINE_OF_SIGHT

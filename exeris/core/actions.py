@@ -605,10 +605,11 @@ class WorkProcess(ProcessAction):
 
         travel_targets = []
         for entity in entities:
-            mobile_prop = entity.get_property(P.MOBILE)
-            if mobile_prop:
+            has_mobile_prop = entity.has_property(P.MOBILE)
+            if has_mobile_prop:
+                entity_mobile_property = properties.MobileProperty(entity)
                 entity_being_moved_property = properties.OptionalBeingMovedProperty(entity)
-                vector_x, vector_y = self.calculate_movement_contribution_of_entity(mobile_prop,
+                vector_x, vector_y = self.calculate_movement_contribution_of_entity(entity_mobile_property,
                                                                                     entity_being_moved_property)
 
                 if entity_being_moved_property.get_target():  # random of two targets is selected
@@ -663,8 +664,8 @@ class WorkProcess(ProcessAction):
             return True
         return False
 
-    def calculate_movement_contribution_of_entity(self, mobile_prop, entity_being_moved_property):
-        inertiality = mobile_prop.get("inertiality", 0)
+    def calculate_movement_contribution_of_entity(self, entity_mobile_property, entity_being_moved_property):
+        inertiality = entity_mobile_property.get_inertiality()
         movement_direction, movement_speed = entity_being_moved_property.get_movement()
         inertia_direction, inertia_speed = entity_being_moved_property.get_inertia()
         movement_vector = util.pol_to_cart(movement_direction, movement_speed)
