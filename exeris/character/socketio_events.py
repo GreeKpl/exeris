@@ -237,6 +237,64 @@ def get_moving_entity_info():
         return "",
 
 
+@socketio_character_event("get_entities_to_bind_to")
+def get_entities_to_bind_to(entity_id):
+    entity_id = app.decode(entity_id)
+    entity = models.Entity.by_id(entity_id)
+    rng = general.AdjacentLocationsRange(False)
+    if not rng.is_near(g.character, entity):
+        raise main.EntityTooFarAwayException(entity=entity)
+
+    if not isinstance(entity, (models.Location, models.Character)):
+        raise ValueError("Only locations and characters are allowed")
+
+    entity_bindable_property = properties.BindableProperty(entity)
+    allowed_concrete_types = set()
+    for allowed_type in entity_bindable_property.get_allowed_types():
+        allowed_concrete_types.update([concrete_type.name for concrete_type, _ in allowed_type.get_descending_types()])
+
+    char_loc = g.character.get_location()
+    entities = models.Location.query.filter(models.Location.type_name.in_(allowed_concrete_types)) \
+                   .filter(models.Location.id.in_([n.id for n in char_loc.neighbours])).all() \
+               + models.Character.query.filter(models.Character.type_name.in_(allowed_concrete_types)) \
+                   .filter(models.Character.is_in(char_loc)).all()
+
+    rendered_entities_to_bind_to = render_template("entities/modal_entities_to_bind_to.html", binding_entity=entity,
+                                                   entities_to_bind_to=entities)
+    client_socket.emit("before_bind_to_vehicle", rendered_entities_to_bind_to)
+    return ()
+
+
+@socketio_character_event("bind_to_vehicle")
+def bind_to_vehicle(entity_id, entity_to_bind_to_id):
+    entity_id = app.decode(entity_id)
+    entity = models.Entity.by_id(entity_id)
+    entity_to_bind_to_id = app.decode(entity_to_bind_to_id)
+    entity_to_bind_to = models.Entity.by_id(entity_to_bind_to_id)
+
+    bind_to_vehicle_action = actions.BindToVehicleAction(g.character, entity, entity_to_bind_to)
+    bind_to_vehicle_action.perform()
+
+    db.session.commit()
+    return ()
+
+
+@socketio_character_event("unbind_from_vehicle")
+def unbind_from_vehicle(entity_id):
+    entity_id = app.decode(entity_id)
+    entity = models.Entity.by_id(entity_id)
+
+    entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
+    members_of_union = [ep.entity.id for ep in entity_member_of_union_property.get_entity_properties_of_own_union()]
+
+    unbind_from_vehicle_action = actions.UnbindFromVehicleAction(g.character, entity)
+    unbind_from_vehicle_action.perform()
+
+    db.session.commit()
+    client_socket.emit("after_unbind_from_vehicle", [app.encode(union_member) for union_member in members_of_union])
+    return ()
+
+
 @socketio_character_event("character.go_to_location")
 def character_goto_location(entity_id):
     entity_id = app.decode(entity_id)

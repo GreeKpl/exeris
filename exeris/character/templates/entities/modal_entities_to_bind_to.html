@@ -1,0 +1,22 @@
+<div class="modal fade" id="entity_to_bind_to" data-binding_entity="{{ encode(binding_entity.id) }}">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Bind entity</h4>
+            </div>
+            <div class="modal-body">
+                <label for="selected_entity">Select entity: </label><select id="selected_entity">
+                {% for entity in entities_to_bind_to %}
+                    <option value="{{ encode(entity.id) }}">{{ t("entity_info", **entity.pyslatize()) }}</option>
+                {% endfor %}
+            </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="binding_entity_confirm">Add all</button>
+            </div>
+        </div>
+    </div>
+</div>

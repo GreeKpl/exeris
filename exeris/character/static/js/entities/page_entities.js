@@ -13,6 +13,13 @@ FRAGMENTS.entities = (function($, socket) {
     });
 
     $.subscribe("entities:refresh_entity_info", function(entity_id) {
+        var old_entity_info = $("div[data-entity='" + entity_id + "']");
+        if (old_entity_info.length == 0) {
+            var location_info = $("div[data-other-side='" + entity_id + "']");
+            if (location_info) { // replace location id with enclosing passage's id
+                entity_id = location_info.data("entity");
+            }
+        }
         socket.emit("refresh_entity_info", entity_id, function(entity_info) {
             var old_entity_info = $("div[data-entity='" + entity_id + "']");
             if (entity_info) {
@@ -103,6 +110,31 @@ FRAGMENTS.entities = (function($, socket) {
         var amount = +prompt("amount to drop", max_amount);
         if (amount) {
             socket.emit("inventory.drop_item", item_id, amount);
+        }
+    });
+
+    socket.on("before_bind_to_vehicle", function(modal_dialog) {
+        $("#entity_to_bind_to").remove();
+        $(document.body).append(modal_dialog);
+        $("#entity_to_bind_to").modal();
+    });
+
+    $(document).on("click", "#binding_entity_confirm", function(event) {
+        var binding_entity_id = $("#entity_to_bind_to").data("binding_entity");
+        socket.emit("bind_to_vehicle",
+            binding_entity_id,
+            $("#selected_entity").val(),
+            function(entities) {
+                $("#entity_to_bind_to").modal("hide");
+                for (var i = 0; i < entities.length; i++) {
+                    $.publish("entities:refresh_entity_info", entities[i]);
+                }
+            });
+    });
+
+    socket.on("after_unbind_from_vehicle", function(entities) {
+        for (var i = 0; i < entities.length; i++) {
+            $.publish("entities:refresh_entity_info", entities[i]);
         }
     });
 

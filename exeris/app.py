@@ -594,6 +594,16 @@ def create_database():
                                           activity_container=["selected_entity", {"types": ["coin_press"]}])
         db.session.add_all([press_recipe, coin_recipe])
 
+        cart_type = models.LocationType("cart", 100)
+        cart_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        cart_type.properties.append(models.EntityTypeProperty(P.BINDABLE, {
+            "to_types": [Types.ALIVE_CHARACTER, "mare"]
+        }))
+        invisible_passage_type = models.PassageType.by_name(Types.INVISIBLE_PASSAGE)
+        cart = models.Location(rl, cart_type, passage_type=invisible_passage_type)
+
+        db.session.add_all([cart_type, cart])
+
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
         db.session.add(new_plr)

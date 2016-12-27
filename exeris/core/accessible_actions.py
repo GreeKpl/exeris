@@ -44,4 +44,8 @@ ACTIONS_ON_GROUND = [
                  lambda x: isinstance(x, models.Item) and isinstance(x.being_in, models.Character)),
     ActionRecord("put_into_storage", "image", P.ANY, "character.put_into_storage",
                  lambda x: isinstance(x, models.Item) and x.type.portable),
+    ActionRecord("get_entities_to_bind_to", "image", P.BINDABLE, "get_entities_to_bind_to"),
+    ActionRecord("unbind_from_vehicle", "image", P.BINDABLE, "unbind_from_vehicle",
+                 lambda x: x.has_property(P.MEMBER_OF_UNION)),
+
 ]
