@@ -1,4 +1,5 @@
 import logging
+import string
 import time
 
 import flask_socketio as client_socket
@@ -275,8 +276,13 @@ def bind_to_vehicle(entity_id, entity_to_bind_to_id):
     bind_to_vehicle_action = actions.BindToVehicleAction(g.character, entity, entity_to_bind_to)
     bind_to_vehicle_action.perform()
 
+    entity_union_member_property = properties.OptionalMemberOfUnionProperty(entity)
+    entities_in_union = [entity_property.entity.id for entity_property
+                         in entity_union_member_property.get_entity_properties_of_own_union()]
+
     db.session.commit()
-    return ()
+
+    return [app.encode(entity_id) for entity_id in entities_in_union],
 
 
 @socketio_character_event("unbind_from_vehicle")
@@ -552,6 +558,13 @@ def drop_item(item_id, amount=None):
     return ()
 
 
+def get_identifier_for_union(union_id):
+    if not union_id:
+        return None
+    identifier_index = union_id % len(string.ascii_uppercase)
+    return string.ascii_uppercase[identifier_index]
+
+
 def _get_entity_info(entity, observer):
     if isinstance(entity, models.Passage):
         entity = models.PassageToNeighbour(entity,
@@ -585,31 +598,40 @@ def _get_entity_info(entity, observer):
     possible_actions = [accessible_actions.EntityActionRecord(entity, action)
                         for action in accessible_actions.ACTIONS_ON_GROUND
                         if has_needed_prop(entity, action) and action.other_req(entity)]
+
     if isinstance(entity, models.Passage):
         possible_actions += [accessible_actions.EntityActionRecord(other_side, action)
                              for action in accessible_actions.ACTIONS_ON_GROUND
                              if has_needed_prop(other_side, action) and action.other_req(other_side)]
 
         other_side_is_enterable_or_storage = other_side.has_property(P.STORAGE) or other_side.has_property(P.ENTERABLE)
-        entities_on_other_side = models.Entity.query.filter(models.Entity.is_in(other_side)) \
-            .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).count()
+        are_entities_on_other_side = models.Entity.query.filter(models.Entity.is_in(other_side)) \
+                                         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).count() > 0
+        if not are_entities_on_other_side:
+            are_entities_on_other_side = models.Passage.query.filter(models.Passage.incident(other_side)).count() > 1
 
         can_see_the_other_side = general.VisibilityBasedRange(distance=30).is_near(g.character, other_side)
-        expandable = other_side_is_enterable_or_storage and entities_on_other_side and can_see_the_other_side
+        expandable = other_side_is_enterable_or_storage and are_entities_on_other_side and can_see_the_other_side
 
         activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
         if activity:
             activities.append(activity)
+
+        other_side_member_of_union = properties.OptionalMemberOfUnionProperty(other_side)
+        union_membership = get_identifier_for_union(other_side_member_of_union.get_union_id())
     else:
         expandable = entity == observer or \
                      (entity.has_property(P.STORAGE) or entity.has_property(P.ENTERABLE)) \
                      and not entity.has_property(P.CLOSEABLE, closed=True) and \
-                     models.Entity.query.filter(models.Entity.is_in(entity)) \
+                     models.Entity.query.filter(models.Entity.parent_entity == entity) \
                          .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
+
+        entity_member_of_union = properties.OptionalMemberOfUnionProperty(entity)
+        union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
     entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
                                   actions=possible_actions, activities=activities, expandable=expandable,
-                                  other_side=other_side)
+                                  other_side=other_side, union_membership=union_membership)
     return {"html": entity_html, "id": app.encode(entity.id)}
 
 

@@ -1,6 +1,6 @@
 <div class="entity_info" data-entity="{{ encode(entity_id) }}" {% if other_side %}
      data-other-side="{{ encode(other_side.id) }}"{% endif %}>
-    {{ full_name|safe }}
+    {{ full_name|safe }} {% if union_membership %}(group {{ union_membership }}){% endif %}
     {% for action in actions %}
         <button class="entity_action btn btn-default" data-entity="{{ encode(action.entity.id) }}"
                 data-action="{{ action.endpoint }}">{{ action.tag_name }}</button>
