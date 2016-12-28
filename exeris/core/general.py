@@ -260,17 +260,17 @@ def visit_subgraph(node, only_through_unlimited=False):
 
 
 class AreaRangeSpec(RangeSpec):
-    def __init__(self, distance, only_through_unlimited=False, allowed_terrain_types=None):
+    def __init__(self, travel_credits, only_through_unlimited=False, allowed_terrain_types=None):
         """
         Abstract class for creating all area-based range specifications (Visbibility, Traversability)
         which is based on distance on map between RootLocations. It also visits all the locations in every RootLocation
-        :param distance: max distance cost to RootLocation from center that should be accepted
+        :param travel_credits: max allowed travel credits cost from from the center
         :param only_through_unlimited: true when only "unlimited" passages between Locations should be passed (not door)
         :param allowed_terrain_types: list of terrain type names (or group names) which should be passable.
             Defaults to any terrain type.
         :return: object of specific subclass
         """
-        self.distance = distance
+        self.distance = travel_credits
         self.only_through_unlimited = only_through_unlimited
         if allowed_terrain_types:
             self.allowed_terrain_types = [models.EntityType.by_name(terrain_type) for terrain_type in
@@ -322,40 +322,40 @@ class AreaRangeSpec(RangeSpec):
         cloned_points = util.get_all_projected_points(root.position)
         return [models.RootLocation.position.ST_DWithin(point.wkt, max_estimated_distance) for point in cloned_points]
 
-    def get_maximum_range_from_estimate(self, center_pos, direction, distance_cost, max_possible_radius):
+    def get_maximum_range_from_estimate(self, center_pos, direction, travel_credits, max_possible_radius):
         """
-        Real maximum distance taken from center (based on toughness/cost of passing certain property area)
-        that can be passed when going into certain direction. To do it, all PropertyAreas of the specific kind
+        Real maximum distance taken from the center (based on toughness/cost of passing a certain property area)
+        that can be passed when going into a certain direction. To do it, all PropertyAreas of the specific kind
         intersecting with the line are taken from the database. Then it's calculated how much can be passed considering
         the "toughness" of the intersection with the highest priority on the interval.
         Example:
-        Line from center (0, 0) to (0, 10); distance cost = 5
-            (we know it's not possible to pass more than 10 units with 5 distance cost points)
+        A line from center (0, 0) to (0, 10); travel_credits = 5
+            (we know it's not possible to pass more than 10 units with 5 travel credits)
 
-        The lines taken from intersecting areas are:
+        The lines taken from the intersecting areas are:
          1. (0, 0) to (0, 5) having traversability value = 1, priority = 1
          2. (0, 5) to (0, 10) having traversability value = 0.5, priority = 1
          3. (0, 1) to (0, 4) having traversability value = 2, priority = 2
          4. (0, 2) to (0, 3) having traversability value = 1, priority = 3
 
-        So we start with distance_left = distance = 5
-        For (0,0) to (0,1) take 1. (value = 1);
-                it consumed 1 (len / value) point so distance_left = 4
-        For (0, 1) to (0, 2) we take 3. (value = 2) because it has higher priority than 1.;
-                it consumed 0.5 (len / value) so distance_left = 3.5
-        For (0, 2) to (0, 3) we take 4. (value = 1) because it has higher priority than 3.;
-                it consumed 1 (len / value) so distance_left = 2.5
+        So we start with credits_left = travel_credits = 5
+        For (0,0) to (0,1) take 1 credit. (value = 1);
+                it consumed 1 (len / value) credit so credits_left = 4
+        For (0, 1) to (0, 2) we take 3. (value = 2) because it has a higher priority than 1.;
+                it consumed 0.5 (len / value) so credits_left = 3.5
+        For (0, 2) to (0, 3) we take 4. (value = 1) because it has a higher priority than 3.;
+                it consumed 1 (len / value) so credits_left = 2.5
         For (0, 3) to (0, 4) we take 3. (value = 2), because it has the best priority on this range;
-                it consumed 0.5 (len / value) so distance_left = 2
+                it consumed 0.5 (len / value) so credits_left = 2
         For (0, 4) to (0, 5) we take 1. (value = 1) because it's the only interval on this range;
-                it consumed 1 (len / value) so distance_left = 1
+                it consumed 1 (len / value) so credits_left = 1
         For (0, 5) to (0, 6) we take 2. (value = 1) because it's the only interval on this range;
-                it consumed 1 (len / value) so distance_left = 0
-        distance_left = 0, so it's over. It means the real point is (0, 6).
+                it consumed 1 (len / value) so credits_left = 0
+        credits_left = 0, so it's over. It means the real destination is (0, 6).
         :param max_possible_radius: estimated value (upper bound) which is never lower than potential function result.
-        :param distance_cost: number of "passability" points that can be consumed to "move forward"
+        :param travel_credits: number of visibility/traversability points that can be consumed to "move forward"
         :param direction: angle (from beginning of coord system) in which the line starting in center should go
-        :param center_pos: point where the line should be started
+        :param center_pos: a point where the line should be started
         """
         x = center_pos.x + math.cos(math.radians(direction)) * max_possible_radius
         y = center_pos.y + math.sin(math.radians(direction)) * max_possible_radius
@@ -396,27 +396,27 @@ class AreaRangeSpec(RangeSpec):
         logger.debug("intervals are: %s", changes)
 
         current_intervals = []
-        distance_left = distance_cost
+        credits_left = travel_credits
         real_length = 0
         last_checkpoint_distance = 0
         for change in sorted(changes):
             logger.debug("### change %s", change)
             current_intervals.sort()
-            if distance_left and current_intervals:
+            if credits_left and current_intervals:
                 interval_length = change[DISTANCE] - last_checkpoint_distance
                 logger.debug("interval length: %s", interval_length)
                 value_with_top_prio = current_intervals[-1][1]
                 logger.debug("value with top prio: %s", value_with_top_prio)
-                interval_cost = interval_length / value_with_top_prio
-                logger.debug("interval cost: %s", interval_cost)
-                logger.debug("distance left: %s", distance_left)
-                if distance_left >= interval_cost:
-                    logger.debug("decrease distance_left by %s", interval_cost)
-                    distance_left -= interval_cost
+                interval_credits_cost = interval_length / value_with_top_prio
+                logger.debug("interval credits cost: %s", interval_credits_cost)
+                logger.debug("distance left: %s", credits_left)
+                if credits_left >= interval_credits_cost:
+                    logger.debug("decrease credits_left by %s", interval_credits_cost)
+                    credits_left -= interval_credits_cost
                     real_length = change[DISTANCE]
                 else:
-                    real_length = last_checkpoint_distance + distance_left * value_with_top_prio
-                    distance_left = 0
+                    real_length = last_checkpoint_distance + credits_left * value_with_top_prio
+                    credits_left = 0
                 last_checkpoint_distance = change[DISTANCE]
 
             if change[TYPE] == BEGIN:

@@ -592,14 +592,14 @@ class WorkProcess(ProcessAction):
         #     .filter(models.EntityProperty.entity_id.in_(entity_ids)).all()
 
         union_representatives = {}
-        distance_sum_by_entity = {}
-        distance_addend_count_by_entity = {}
+        travel_credits_sum_by_entity = {}
+        number_of_mobile_entities = {}
         for entity in entities:
             entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
             union_id = entity_member_of_union_property.get_union_id()
             if union_id not in union_representatives:
-                distance_sum_by_entity[entity] = Point(0, 0)
-                distance_addend_count_by_entity[entity] = 0
+                travel_credits_sum_by_entity[entity] = Point(0, 0)
+                number_of_mobile_entities[entity] = 0
                 if union_id is not None:
                     union_representatives[union_id] = entity
 
@@ -623,26 +623,26 @@ class WorkProcess(ProcessAction):
                 entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
                 union_id = entity_member_of_union_property.get_union_id()
                 representative = self.get_representative(entity, union_id, union_representatives)
-                orig_point = distance_sum_by_entity[representative]
-                distance_sum_by_entity[representative] = Point(orig_point.x + vector_x, orig_point.y + vector_y)
-                distance_addend_count_by_entity[representative] += 1
+                orig_point = travel_credits_sum_by_entity[representative]
+                travel_credits_sum_by_entity[representative] = Point(orig_point.x + vector_x, orig_point.y + vector_y)
+                number_of_mobile_entities[representative] += 1
 
         if len(travel_targets) > 1:  # it more than one travel target, then ignore them all
             travel_targets = []
 
-        for entity in distance_sum_by_entity.keys():
-            travel_distance_sum = distance_sum_by_entity[entity]
-            travel_distance_addend_count = distance_addend_count_by_entity[entity]
+        for entity in travel_credits_sum_by_entity.keys():
+            travel_credits_sum = travel_credits_sum_by_entity[entity]
+            number_of_mobile_entities = number_of_mobile_entities[entity]
 
-            max_travel_distance, direction = util.cart_to_pol(
-                Point(travel_distance_sum.x / travel_distance_addend_count,
-                      travel_distance_sum.y / travel_distance_addend_count))
-            max_potential_distance = max_travel_distance * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
-            rng = general.TraversabilityBasedRange(max_travel_distance)
+            travel_credits, direction = util.cart_to_pol(
+                Point(travel_credits_sum.x / number_of_mobile_entities,
+                      travel_credits_sum.y / number_of_mobile_entities))
+            max_potential_distance = travel_credits * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+            rng = general.TraversabilityBasedRange(travel_credits)
             initial_pos = entity.get_position()
 
             travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, math.degrees(direction),
-                                                                           max_travel_distance, max_potential_distance)
+                                                                           travel_credits, max_potential_distance)
             destination_pos = util.pos_for_distance_in_direction(initial_pos, math.degrees(direction),
                                                                  travel_distance_per_tick)
 
@@ -658,7 +658,7 @@ class WorkProcess(ProcessAction):
         BUFFER_SIZE = 0.1
         line_to_point = LineString([initial_pos, destination_pos])
         buffer_around_line_to_point = line_to_point.buffer(BUFFER_SIZE)
-        # TODO remember about wrapping around map edges
+        # TODO remember about wrapping around map edges, but not very important, since the buffer is very small
         if buffer_around_line_to_point.contains(goal_point):
             move_entity_between_entities(entity, entity.being_in, travel_goal)
             return True
@@ -778,13 +778,13 @@ class TravelInDirectionAction(Action):
         initial_pos = self.executor.get_position()
 
         ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
-        speed_per_tick = speed / ticks_per_day
+        travel_credits_per_tick = speed / ticks_per_day
 
         entity_being_moved = properties.OptionalBeingMovedProperty(self.executor)
-        entity_being_moved.set_movement(speed_per_tick, math.radians(self.direction_deg))
+        entity_being_moved.set_movement(travel_credits_per_tick, math.radians(self.direction_deg))
 
         logger.info("Travel of %s from %s to %s [speed: %s]", self.executor, initial_pos, self.direction_deg,
-                    speed_per_tick)
+                    travel_credits_per_tick)
 
     def pyslatize(self):
         return {"action_tag": "action_travel_in_direction", "direction": self.direction_deg}
@@ -807,9 +807,9 @@ class TravelToEntityAction(ActionOnEntity):
         initial_pos = self.executor.get_root().position
         target_entity_root = self.entity.get_root()
 
-        speed_per_tick = self.get_speed_per_tick()
+        travel_credits_per_tick = self.get_speed_per_tick()
 
-        return self.come_closer_to_entity(initial_pos, speed_per_tick, target_entity_root)
+        return self.come_closer_to_entity(initial_pos, travel_credits_per_tick, target_entity_root)
 
     def get_speed_per_tick(self):
         mobile_property = properties.MobileProperty(self.executor)
@@ -818,11 +818,11 @@ class TravelToEntityAction(ActionOnEntity):
         speed_per_tick = speed / ticks_per_day
         return speed_per_tick
 
-    def come_closer_to_entity(self, initial_position, speed_per_tick, target_entity_root):
+    def come_closer_to_entity(self, initial_position, travel_credits_per_tick, target_entity_root):
         direction_to_destination = util.direction_degrees(initial_position, target_entity_root.position)
 
         entity_being_moved = properties.OptionalBeingMovedProperty(self.executor)
-        entity_being_moved.set_movement(speed_per_tick, math.radians(direction_to_destination))
+        entity_being_moved.set_movement(travel_credits_per_tick, math.radians(direction_to_destination))
         entity_being_moved.set_target(self.entity.get_root())
         logger.info("Travel of %s from %s to go in dir %s to go to %s", self.executor, initial_position,
                     direction_to_destination, target_entity_root.position)
