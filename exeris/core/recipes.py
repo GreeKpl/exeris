@@ -345,8 +345,8 @@ class RecipeListProducer:
             if "mandatory_machines" in req:
                 for machine_name in req["mandatory_machines"]:
                     group = models.EntityType.by_name(machine_name)
-                    type_eff_pairs = group.get_descending_types()
-                    allowed_types = [pair[0] for pair in type_eff_pairs]
+                    allowed_types = models.get_concrete_types_for_groups([group])
+
                     from exeris.core import actions
                     machines = actions.ActivityProgress.get_all_machines_around_entity(allowed_types,
                                                                                        self.character)
@@ -356,8 +356,7 @@ class RecipeListProducer:
             if "mandatory_tools" in req:
                 for tool_type_name in req["mandatory_tools"]:
                     group = models.EntityType.by_name(tool_type_name)
-                    type_eff_pairs = group.get_descending_types()
-                    allowed_types = [pair[0] for pair in type_eff_pairs]
+                    allowed_types = models.get_concrete_types_for_groups([group])
 
                     tools = general.ItemQueryHelper.query_all_types_in(allowed_types, self.character).first()
                     if not tools:

@@ -250,9 +250,9 @@ def get_entities_to_bind_to(entity_id):
         raise ValueError("Only locations and characters are allowed")
 
     entity_bindable_property = properties.BindableProperty(entity)
-    allowed_concrete_types = set()
-    for allowed_type in entity_bindable_property.get_allowed_types():
-        allowed_concrete_types.update([concrete_type.name for concrete_type, _ in allowed_type.get_descending_types()])
+
+    allowed_groups = entity_bindable_property.get_allowed_types()
+    allowed_concrete_types = [t.name for t in models.get_concrete_types_for_groups(allowed_groups)]
 
     char_loc = g.character.get_location()
     entities = models.Location.query.filter(models.Location.type_name.in_(allowed_concrete_types)) \

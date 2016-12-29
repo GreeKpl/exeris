@@ -321,6 +321,14 @@ class TypeGroup(EntityType):
         return "{TypeGroup, name: " + self.name + "}"
 
 
+def get_concrete_types_for_groups(groups):
+    """Returns a set of concrete entity types which are contained by any of the specified groups"""
+    concrete_types = set()
+    for group in groups:
+        concrete_types.update([entity_type for entity_type, efficiency in group.get_descending_types()])
+    return concrete_types
+
+
 def clamp_to_0_1(states):
     for state, value in states.items():
         if state in main.NORMALIZED_STATES:
