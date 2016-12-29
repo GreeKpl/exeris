@@ -28,7 +28,7 @@ class CombatTest(TestCase):
         db.session.add_all([rl_roman, rl_gaul1, rl_gaul2, rl_gaul3, rl_gaul_on_a_ship])
 
         grass_type = TerrainType("grassland")
-        shallow_water_type = TerrainType("shallow_water", travel_type=TerrainType.TRAVEL_WATER)
+        shallow_water_type = TerrainType("shallow_water")
         TypeGroup.by_name(main.Types.LAND_TERRAIN).add_to_group(grass_type)
         TypeGroup.by_name(main.Types.WATER_TERRAIN).add_to_group(shallow_water_type)
 

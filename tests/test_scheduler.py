@@ -213,7 +213,7 @@ class SchedulerTravelTest(TestCase):
         grass_terrain = TerrainType("grassland")
         land_terrain.add_to_group(grass_terrain)
         water_terrain = TypeGroup.by_name(Types.WATER_TERRAIN)
-        deep_water_terrain = TerrainType("deep_water", travel_type=TerrainType.TRAVEL_WATER)
+        deep_water_terrain = TerrainType("deep_water")
         water_terrain.add_to_group(deep_water_terrain)
 
         poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])

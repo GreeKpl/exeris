@@ -346,7 +346,10 @@ def create_database():
         invisible_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
         impassable_to_animal.properties.append(models.EntityTypeProperty(P.INVISIBLE_PASSAGE))
 
-        mare_type.properties.append(models.EntityTypeProperty(P.MOBILE, {"speed": 20}))
+        mare_type.properties.append(models.EntityTypeProperty(P.MOBILE,
+                                                              {"speed": 20, "traversable_terrains": [
+                                                                  main.Types.LAND_TERRAIN]
+                                                               }))
         mare_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
         db.session.add_all([pork_type, horsemeat_type, pig_type, mare_type,
