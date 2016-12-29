@@ -592,17 +592,37 @@ class WorkProcess(ProcessAction):
         #     .filter(models.EntityProperty.entity_id.in_(entity_ids)).all()
 
         union_representatives = {}
-        travel_credits_sum_by_entity = {}
+        travel_credits_in_union_by_entity = {}
         number_of_mobile_entities = {}
+
+        # when in union then one entity becomes union's representative, otherwise it's its own representative
+        self.select_representatives_for_entities(entities, number_of_mobile_entities, travel_credits_in_union_by_entity,
+                                                 union_representatives)
+
+        travel_targets = self.calculate_movement_contribution_from_entities(entities, number_of_mobile_entities,
+                                                                            travel_credits_in_union_by_entity,
+                                                                            union_representatives)
+
+        if len(travel_targets) > 1:  # if there is more than one travel target, then ignore them all
+            travel_targets = []
+
+        for entity in travel_credits_in_union_by_entity.keys():
+            self.move_entity_based_on_movement_contributions(entity, number_of_mobile_entities,
+                                                             travel_credits_in_union_by_entity, travel_targets)
+
+    def select_representatives_for_entities(self, entities, number_of_mobile_entities,
+                                            travel_credits_in_union_by_entity, union_representatives):
         for entity in entities:
             entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
             union_id = entity_member_of_union_property.get_union_id()
             if union_id not in union_representatives:
-                travel_credits_sum_by_entity[entity] = Point(0, 0)
+                travel_credits_in_union_by_entity[entity] = Point(0, 0)
                 number_of_mobile_entities[entity] = 0
                 if union_id is not None:
                     union_representatives[union_id] = entity
 
+    def calculate_movement_contribution_from_entities(self, entities, number_of_mobile_entities,
+                                                      travel_credits_in_union_by_entity, union_representatives):
         travel_targets = []
         for entity in entities:
             has_mobile_prop = entity.has_property(P.MOBILE)
@@ -623,33 +643,30 @@ class WorkProcess(ProcessAction):
                 entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
                 union_id = entity_member_of_union_property.get_union_id()
                 representative = self.get_representative(entity, union_id, union_representatives)
-                orig_point = travel_credits_sum_by_entity[representative]
-                travel_credits_sum_by_entity[representative] = Point(orig_point.x + vector_x, orig_point.y + vector_y)
+                orig_point = travel_credits_in_union_by_entity[representative]
+                travel_credits_in_union_by_entity[representative] = Point(orig_point.x + vector_x,
+                                                                          orig_point.y + vector_y)
                 number_of_mobile_entities[representative] += 1
+        return travel_targets
 
-        if len(travel_targets) > 1:  # it more than one travel target, then ignore them all
-            travel_targets = []
-
-        for entity in travel_credits_sum_by_entity.keys():
-            travel_credits_sum = travel_credits_sum_by_entity[entity]
-            number_of_mobile_entities = number_of_mobile_entities[entity]
-
-            travel_credits, direction = util.cart_to_pol(
-                Point(travel_credits_sum.x / number_of_mobile_entities,
-                      travel_credits_sum.y / number_of_mobile_entities))
-            max_potential_distance = travel_credits * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
-            rng = general.TraversabilityBasedRange(travel_credits)
-            initial_pos = entity.get_position()
-
-            travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, math.degrees(direction),
-                                                                           travel_credits, max_potential_distance)
-            destination_pos = util.pos_for_distance_in_direction(initial_pos, math.degrees(direction),
-                                                                 travel_distance_per_tick)
-
-            if len(travel_targets):
-                if self.move_to_destination_if_close_enough(destination_pos, entity, initial_pos, travel_targets):
-                    return
-
+    def move_entity_based_on_movement_contributions(self, entity, number_of_mobile_entities,
+                                                    travel_credits_in_union_by_entity, travel_targets):
+        travel_credits_in_union = travel_credits_in_union_by_entity[entity]
+        number_of_entities_in_union = number_of_mobile_entities[entity]
+        travel_credits, direction = util.cart_to_pol(
+            Point(travel_credits_in_union.x / number_of_entities_in_union,
+                  travel_credits_in_union.y / number_of_entities_in_union))
+        max_potential_distance = travel_credits * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
+        rng = general.TraversabilityBasedRange(travel_credits)
+        initial_pos = entity.get_position()
+        travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, math.degrees(direction),
+                                                                       travel_credits, max_potential_distance)
+        destination_pos = util.pos_for_distance_in_direction(initial_pos, math.degrees(direction),
+                                                             travel_distance_per_tick)
+        if len(travel_targets) \
+                and self.move_to_destination_if_close_enough(destination_pos, entity, initial_pos, travel_targets):
+            return
+        else:
             move_entity_to_position(entity, direction, destination_pos)
 
     def move_to_destination_if_close_enough(self, destination_pos, entity, initial_pos, travel_targets):
