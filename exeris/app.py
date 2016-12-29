@@ -233,11 +233,13 @@ def create_database():
         poly_forest = Polygon([(5, 2), (7, 3), (8, 5), (7, 7), (5, 8), (3, 7), (2, 5), (3, 3)])
 
         grass = models.TerrainArea(poly_grass, grass_terrain)
-        water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
+        deep_water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
         grass2 = models.TerrainArea(poly_grass2, grass_terrain)
         road = models.TerrainArea(poly_road, road_terrain, priority=3)
         forest = models.TerrainArea(poly_forest, forest_terrain, priority=2)
 
+        poly_water = poly_water.difference(poly_grass.union(poly_grass2).union(poly_forest))
+        deep_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 0, poly_water, deep_water)
         land_trav1 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
         land_trav2 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
         land_trav3 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_forest, forest)
@@ -246,11 +248,11 @@ def create_database():
         land_trav_road = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
 
         visibility_poly = Polygon([(0, 0), (0, 50), (50, 50), (50, 0)])
-        world_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, water)
+        world_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, deep_water)
 
         db.session.add_all(
-            [grass_terrain, deep_water_terrain, road_terrain, grass, water, grass2, road, forest,
-             land_trav1, land_trav2, land_trav3, land_trav_road, world_visibility])
+            [grass_terrain, deep_water_terrain, road_terrain, grass, deep_water, grass2, road, forest,
+             deep_water_traversability, land_trav1, land_trav2, land_trav3, land_trav_road, world_visibility])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=True)
@@ -623,10 +625,11 @@ def create_database():
 
         initial_town_rl = models.RootLocation.query.filter(models.RootLocation.position == Point(1, 1).wkt).one()
         small_boat_rl = models.RootLocation.query.filter(models.RootLocation.position == Point(7, 1).wkt).one()
+        small_boat = models.Location.query.filter_by(type_name="small_boat").one()
         test_character = models.Character("test", models.Character.SEX_MALE, new_plr, "en",
                                           general.GameDate(0), initial_town_rl.position, initial_town_rl)
         test_sailor = models.Character("sailor", models.Character.SEX_MALE, new_plr, "en",
-                                       general.GameDate(0), small_boat_rl.position, small_boat_rl)
+                                       general.GameDate(0), small_boat_rl.position, small_boat)
         db.session.add_all([new_plr, test_character, test_sailor])
 
     from exeris.translations import data
