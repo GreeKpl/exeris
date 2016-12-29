@@ -1878,6 +1878,11 @@ class MoveToLocationAction(ActionOnLocation):
         if not self.passage.between(from_loc, self.location):
             raise main.EntityTooFarAwayException(entity=self.location)  # TODO Better event?
 
+        if self.location.type.name == main.Types.OUTSIDE:  # going outside
+            land_travel_ability = general.TraversabilityBasedRange(1, allowed_terrain_types=[main.Types.LAND_TERRAIN])
+            if not land_travel_ability.is_passable(self.location.get_position()):
+                raise main.NotTraversableTerrainException()
+
         general.EventCreator.base(Events.MOVE, self.rng, {"groups": {"from": from_loc.pyslatize(),
                                                                      "destination": self.location.pyslatize()}},
                                   doer=self.executor)

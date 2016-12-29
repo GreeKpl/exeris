@@ -893,12 +893,19 @@ class CharacterActionsTest(TestCase):
 
         building_type = LocationType("building", 200)
         rl = RootLocation(Point(1, 1), 222)
+        grassland_type = TerrainType("grassland")
+        area_poly = Polygon([(0, 0), (0, 5), (5, 5), (5, 0)])
+        grassland = TerrainArea(area_poly, grassland_type)
+        land_terrain_group = EntityType.by_name(Types.LAND_TERRAIN)
+        land_terrain_group.add_to_group(grassland_type)
+        traversability_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, area_poly, terrain_area=grassland)
+
         building = Location(rl, building_type, title="Small hut")
         building_type.properties.append(EntityTypeProperty(P.ENTERABLE))
 
         char = util.create_character("John", rl, util.create_player("Eddy"))
 
-        db.session.add_all([rl, building_type, building])
+        db.session.add_all([rl, building_type, building, grassland_type, grassland, traversability_area])
 
         passage = Passage.query.filter(Passage.between(rl, building)).one()
         enter_loc_action = MoveToLocationAction(char, passage)

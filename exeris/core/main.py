@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    NOT_TRAVERSABLE_TERRAIN = "error_not_traversable_terrain"
     CANNOT_UNBIND_NOT_LEAF = "error_cannot_unbind_not_leaf"
     ENTITY_NOT_BINDABLE = "error_entity_not_bindable"
     ENTITY_NOT_BOUND = "error_entity_not_bound"
@@ -504,3 +505,8 @@ class EntityNotBindableException(GameException):
 class CannotUnbindNotLeaf(GameException):
     def __init__(self, *, entity):
         super().__init__(Errors.CANNOT_UNBIND_NOT_LEAF, entity=entity)
+
+
+class NotTraversableTerrainException(GameException):
+    def __init__(self):
+        super().__init__(Errors.NOT_TRAVERSABLE_TERRAIN)

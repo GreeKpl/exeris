@@ -262,7 +262,7 @@ def visit_subgraph(node, only_through_unlimited=False):
 class AreaRangeSpec(RangeSpec):
     def __init__(self, travel_credits, only_through_unlimited=False, allowed_terrain_types=None):
         """
-        Abstract class for creating all area-based range specifications (Visbibility, Traversability)
+        Abstract class for creating all area-based range specifications (Visibility, Traversability)
         which is based on distance on map between RootLocations. It also visits all the locations in every RootLocation
         :param travel_credits: max allowed travel credits cost from from the center
         :param only_through_unlimited: true when only "unlimited" passages between Locations should be passed (not door)
@@ -273,8 +273,9 @@ class AreaRangeSpec(RangeSpec):
         self.distance = travel_credits
         self.only_through_unlimited = only_through_unlimited
         if allowed_terrain_types:
-            self.allowed_terrain_types = [models.EntityType.by_name(terrain_type) for terrain_type in
-                                          allowed_terrain_types]
+            self.allowed_terrain_types = [models.EntityType.by_name(terrain_type)
+                                          if isinstance(terrain_type, str) else terrain_type
+                                          for terrain_type in allowed_terrain_types]
         else:
             self.allowed_terrain_types = [models.EntityType.by_name(main.Types.ANY_TERRAIN)]
 
@@ -372,6 +373,7 @@ class AreaRangeSpec(RangeSpec):
         BEGIN = 1
         END = 2
 
+        concrete_allowed_terrain_types = models.get_concrete_types_for_groups(self.allowed_terrain_types)
         changes = []
         for intersection_wkb, area in intersecting_areas:
             intersection = to_shape(intersection_wkb)
@@ -380,7 +382,7 @@ class AreaRangeSpec(RangeSpec):
             logger.debug("intersection: %s %s", intersection, area)
 
             # the intersection must be of an acceptable terrain type
-            if not any([terrain_type.contains(area.terrain_area.type) for terrain_type in self.allowed_terrain_types]):
+            if area.terrain_area.type not in concrete_allowed_terrain_types:
                 continue
 
             def distance_for_intersection(index):
@@ -459,6 +461,19 @@ class AreaRangeSpec(RangeSpec):
                     line_parts += [LineString([(x_es[0], y_es[0]), (x_es[1], y_es[1])])]
 
         return MultiLineString(line_parts)
+
+    def is_passable(self, position):
+        """
+        :return: True if it's possible to find direction
+            for which `AreaRangeSpec.get_maximum_range_from_estimate` is greater than zero
+        """
+        intersecting_areas = db.session.query(models.PropertyArea) \
+            .filter(models.PropertyArea.area.ST_Intersects(position.wkt)) \
+            .filter(models.PropertyArea.kind == self.AREA_KIND) \
+            .all()
+
+        allowed_concrete_terrain_types = models.get_concrete_types_for_groups(self.allowed_terrain_types)
+        return any([area.terrain_area.type in allowed_concrete_terrain_types for area in intersecting_areas])
 
 
 class VisibilityBasedRange(AreaRangeSpec):
