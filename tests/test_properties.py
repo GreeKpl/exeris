@@ -251,7 +251,7 @@ class LocationPropertyTest(TestCase):
         self.assertEqual([1, math.pi], cog1_entity_property.data["movement"])
         self.assertNotIn("inertia", cog1_entity_property.data)
 
-        cog1_being_moved_property.set_movement(0)
+        cog1_being_moved_property.remove()
 
         self.assertIn(cog1_entity_property, db.session.deleted)
 
@@ -260,4 +260,4 @@ class LocationPropertyTest(TestCase):
         cog1_being_moved_property.set_inertia(0)
 
         cog1_entity_property = EntityProperty.query.filter_by(name=P.BEING_MOVED).one()
-        self.assertEqual({"movement": [1, 1.5 * math.pi]}, cog1_entity_property.data)
+        self.assertEqual({"movement": [1, 1.5 * math.pi], "inertia": [0, 0]}, cog1_entity_property.data)

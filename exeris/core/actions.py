@@ -636,9 +636,8 @@ class WorkProcess(ProcessAction):
                     travel_targets.append(entity_being_moved_property.get_target())
 
                 rho, phi = util.cart_to_pol(Point(vector_x, vector_y))
+                entity_being_moved_property.remove()
                 entity_being_moved_property.set_inertia(rho, phi)
-                entity_being_moved_property.set_movement(0)
-                entity_being_moved_property.set_target(None)
 
                 entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
                 union_id = entity_member_of_union_property.get_union_id()

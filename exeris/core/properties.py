@@ -59,6 +59,7 @@ class MobileProperty(PropertyBase):
     def get_inertiality(self):
         return self.property_dict.get("inertiality", 0)
 
+
 class LineOfSightProperty(PropertyBase):
     __property__ = P.LINE_OF_SIGHT
 
@@ -300,7 +301,7 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
         :param radius: in travel cost
         :param direction: in radians
         """
-        self._update_value("movement", radius, direction)
+        self._update_value("movement", [radius, direction])
 
     def get_movement(self):
         """
@@ -314,7 +315,7 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
         :param radius: in travel cost
         :param direction: in radians
         """
-        self._update_value("inertia", radius, direction)
+        self._update_value("inertia", [radius, direction])
 
     def get_inertia(self):
         """
@@ -322,37 +323,34 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
         """
         return tuple(self.entity_property.data.get("inertia", [0, 0]))
 
-    def _update_value(self, key_name, radius, direction):
-        entity_property = self.entity_property
-        if radius == 0 and entity_property and key_name in entity_property.data:
-            del entity_property.data[key_name]
-        elif radius > 0:
-            if not self.property_exists:
-                entity_property = models.EntityProperty(self.__property__)
-                self.entity.properties.append(entity_property)
-            entity_property.data[key_name] = [radius, direction]
-
-        if entity_property and not entity_property.data:
-            db.session.delete(entity_property)
-
     def set_target(self, location):
-        entity_property = self.entity_property
-        if not location and entity_property and "target" in entity_property.data:
-            del entity_property.data["target"]
-        elif location:
-            if not self.property_exists:
-                entity_property = models.EntityProperty(self.__property__)
-                self.entity.properties.append(entity_property)
-            entity_property.data["target"] = location.id
-
-        if entity_property and not entity_property.data:
-            db.session.delete(entity_property)
+        self._update_value("target", location.id)
 
     def get_target(self):
         target_id = self.entity_property.data.get("target", None)
         if not target_id:
             return None
         return models.Location.by_id(target_id)
+
+    def set_terrain_types(self, terrain_types):
+        self._update_value("terrain_types", [t.name for t in terrain_types])
+
+    def get_terrain_types(self):
+        terrain_types = self.entity_property.data.get("terrain_types", [])
+        return [models.EntityType.by_name(t) for t in terrain_types]
+
+    def remove(self):
+        entity_property = self.entity_property
+        if entity_property:
+            entity_property.data = {}
+            db.session.delete(entity_property)
+
+    def _update_value(self, key_name, value):
+        entity_property = self.entity_property
+        if not self.property_exists:
+            entity_property = models.EntityProperty(self.__property__)
+            self.entity.properties.append(entity_property)
+        entity_property.data[key_name] = value
 
 
 class BindableProperty(PropertyBase):
