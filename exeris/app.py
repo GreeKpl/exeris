@@ -227,7 +227,7 @@ def create_database():
         water_terrain_type.add_to_group(deep_water_terrain)
 
         poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])
-        poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0), (0, 0)])
+        poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0)])
         poly_grass2 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
         poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
         poly_forest = Polygon([(5, 2), (7, 3), (8, 5), (7, 7), (5, 8), (3, 7), (2, 5), (3, 3)])
@@ -348,7 +348,7 @@ def create_database():
 
         mare_type.properties.append(models.EntityTypeProperty(P.MOBILE,
                                                               {"speed": 20, "traversable_terrains": [
-                                                                  main.Types.LAND_TERRAIN]
+                                                                  Types.LAND_TERRAIN]
                                                                }))
         mare_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
 
@@ -607,13 +607,27 @@ def create_database():
 
         db.session.add_all([cart_type, cart])
 
+        rl_on_sea = models.RootLocation(Point(7, 1), 90)
+        small_boat_type = models.LocationType("small_boat", 200)
+        small_boat_type.properties.append(models.EntityTypeProperty(P.MOBILE, {
+            "speed": 40,
+            "traversable_terrains": [Types.WATER_TERRAIN],
+        }))
+        small_boat_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
+        small_boat_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        small_boat = models.Location(rl_on_sea, small_boat_type, passage_type=invisible_passage_type, title="Destroyer")
+        db.session.add_all([rl_on_sea, small_boat_type, small_boat])
+
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
-        db.session.add(new_plr)
 
-        character = models.Character("test", models.Character.SEX_MALE, models.Player.query.get("jan"), "en",
-                                     general.GameDate(0), Point(1, 1), models.RootLocation.query.one())
-        db.session.add(character)
+        initial_town_rl = models.RootLocation.query.filter(models.RootLocation.position == Point(1, 1).wkt).one()
+        small_boat_rl = models.RootLocation.query.filter(models.RootLocation.position == Point(7, 1).wkt).one()
+        test_character = models.Character("test", models.Character.SEX_MALE, new_plr, "en",
+                                          general.GameDate(0), initial_town_rl.position, initial_town_rl)
+        test_sailor = models.Character("sailor", models.Character.SEX_MALE, new_plr, "en",
+                                       general.GameDate(0), small_boat_rl.position, small_boat_rl)
+        db.session.add_all([new_plr, test_character, test_sailor])
 
     from exeris.translations import data
     for tag_key in data:

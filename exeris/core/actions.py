@@ -595,20 +595,24 @@ class WorkProcess(ProcessAction):
         travel_credits_by_representative = {}
         mobile_entities_count_by_representative = {}
         targets_by_representative = {}
+        allowed_terrains_by_representative = {}
 
         # when in union then one entity becomes union's representative, otherwise it's its own representative
         self.select_representatives_for_entities(entities, mobile_entities_count_by_representative,
                                                  travel_credits_by_representative, union_representatives)
 
-        self.calculate_movement_contribution_from_entities(entities, mobile_entities_count_by_representative,
-                                                           travel_credits_by_representative, union_representatives,
-                                                           targets_by_representative)
+        for entity in entities:
+            self.calculate_movement_contribution_from_entities(entity, mobile_entities_count_by_representative,
+                                                               travel_credits_by_representative, union_representatives,
+                                                               targets_by_representative,
+                                                               allowed_terrains_by_representative)
 
         for representative in travel_credits_by_representative.keys():
             self.move_entity_based_on_movement_contributions(representative,
                                                              mobile_entities_count_by_representative[representative],
                                                              travel_credits_by_representative[representative],
-                                                             targets_by_representative[representative])
+                                                             targets_by_representative[representative],
+                                                             allowed_terrains_by_representative[representative])
 
     def select_representatives_for_entities(self, entities, number_of_mobile_entities,
                                             travel_credits_in_union_by_entity, union_representatives):
@@ -621,40 +625,47 @@ class WorkProcess(ProcessAction):
                 if union_id is not None:
                     union_representatives[union_id] = entity
 
-    def calculate_movement_contribution_from_entities(self, entities, mobile_entities_count_by_representative,
+    def calculate_movement_contribution_from_entities(self, entity, mobile_entities_count_by_representative,
                                                       travel_credits_by_representative, union_representatives,
-                                                      targets_by_representative):
-        for entity in entities:
-            has_mobile_prop = entity.has_property(P.MOBILE)
-            if has_mobile_prop:
-                entity_mobile_property = properties.MobileProperty(entity)
-                entity_being_moved_property = properties.OptionalBeingMovedProperty(entity)
-                vector_x, vector_y = self.calculate_movement_contribution_of_entity(entity_mobile_property,
-                                                                                    entity_being_moved_property)
+                                                      targets_by_representative, allowed_terrains_by_representative):
+        has_mobile_prop = entity.has_property(P.MOBILE)
+        if has_mobile_prop:
+            entity_mobile_property = properties.MobileProperty(entity)
+            entity_being_moved_property = properties.OptionalBeingMovedProperty(entity)
+            vector_x, vector_y = self.calculate_movement_contribution_of_entity(entity_mobile_property,
+                                                                                entity_being_moved_property)
 
-                entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
-                union_id = entity_member_of_union_property.get_union_id()
-                representative = self.get_representative(entity, union_id, union_representatives)
-                orig_point = travel_credits_by_representative[representative]
-                travel_credits_by_representative[representative] = Point(orig_point.x + vector_x,
-                                                                         orig_point.y + vector_y)
-                if representative not in targets_by_representative:
-                    targets_by_representative[representative] = []
-                if entity_being_moved_property.get_target():  # random of two targets is selected
-                    targets_by_representative[representative] += [entity_being_moved_property.get_target()]
-                mobile_entities_count_by_representative[representative] += 1
+            entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
+            union_id = entity_member_of_union_property.get_union_id()
+            representative = self.get_representative(entity, union_id, union_representatives)
+            orig_point = travel_credits_by_representative[representative]
+            travel_credits_by_representative[representative] = Point(orig_point.x + vector_x,
+                                                                     orig_point.y + vector_y)
+            if representative not in targets_by_representative:
+                targets_by_representative[representative] = []
+            if entity_being_moved_property.get_target():  # random of two targets is selected
+                targets_by_representative[representative] += [entity_being_moved_property.get_target()]
+            if representative not in allowed_terrains_by_representative:
+                any_terrain_group = models.EntityType.by_name(main.Types.ANY_TERRAIN)
+                allowed_terrains_by_representative[representative] = models.get_concrete_types_for_groups(
+                    [any_terrain_group])
+            if entity_being_moved_property.get_terrain_types():
+                allowed_terrains_by_representative[representative] = self.get_intersection_of_concrete_types(
+                    allowed_terrains_by_representative[representative],
+                    models.get_concrete_types_for_groups(entity_being_moved_property.get_terrain_types()))
+            mobile_entities_count_by_representative[representative] += 1
 
-                rho, phi = util.cart_to_pol(Point(vector_x, vector_y))
-                entity_being_moved_property.remove()
-                entity_being_moved_property.set_inertia(rho, phi)
+            rho, phi = util.cart_to_pol(Point(vector_x, vector_y))
+            entity_being_moved_property.remove()
+            entity_being_moved_property.set_inertia(rho, phi)
 
     def move_entity_based_on_movement_contributions(self, representative, mobile_entities_in_union_count,
-                                                    travel_credits_in_union, travel_targets):
+                                                    travel_credits_in_union, travel_targets, allowed_terrains):
         travel_credits, direction = util.cart_to_pol(
             Point(travel_credits_in_union.x / mobile_entities_in_union_count,
                   travel_credits_in_union.y / mobile_entities_in_union_count))
         max_potential_distance = travel_credits * general.TraversabilityBasedRange.MAX_RANGE_MULTIPLIER
-        rng = general.TraversabilityBasedRange(travel_credits)
+        rng = general.TraversabilityBasedRange(travel_credits, allowed_terrain_types=allowed_terrains)
         initial_pos = representative.get_position()
         travel_distance_per_tick = rng.get_maximum_range_from_estimate(initial_pos, math.degrees(direction),
                                                                        travel_credits, max_potential_distance)
@@ -691,6 +702,10 @@ class WorkProcess(ProcessAction):
         if union_id in union_representatives:
             return union_representatives[union_id]
         return entity  # entity is its own representative
+
+    @staticmethod
+    def get_intersection_of_concrete_types(first_set, second_set):
+        return set(element for element in first_set if element in second_set)
 
 
 def move_entity_to_position(entity, direction, target_position):
@@ -795,6 +810,7 @@ class TravelInDirectionAction(Action):
 
         entity_being_moved = properties.OptionalBeingMovedProperty(self.executor)
         entity_being_moved.set_movement(travel_credits_per_tick, math.radians(self.direction_deg))
+        entity_being_moved.set_terrain_types(mobile_property.get_traversable_terrains())
 
         logger.info("Travel of %s from %s to %s [speed: %s]", self.executor, initial_pos, self.direction_deg,
                     travel_credits_per_tick)

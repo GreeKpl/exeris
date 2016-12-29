@@ -59,6 +59,9 @@ class MobileProperty(PropertyBase):
     def get_inertiality(self):
         return self.property_dict.get("inertiality", 0)
 
+    def get_traversable_terrains(self):
+        return self.property_dict["traversable_terrains"]
+
 
 class LineOfSightProperty(PropertyBase):
     __property__ = P.LINE_OF_SIGHT
@@ -333,7 +336,12 @@ class OptionalBeingMovedProperty(OptionalPropertyBase):
         return models.Location.by_id(target_id)
 
     def set_terrain_types(self, terrain_types):
-        self._update_value("terrain_types", [t.name for t in terrain_types])
+        self._update_value("terrain_types", [self._extract_name(t) for t in terrain_types])
+
+    def _extract_name(self, entity_type):
+        if isinstance(entity_type, str):
+            return entity_type
+        return entity_type.name
 
     def get_terrain_types(self):
         terrain_types = self.entity_property.data.get("terrain_types", [])
