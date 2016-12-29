@@ -385,14 +385,16 @@ class AreaRangeSpec(RangeSpec):
             if area.terrain_area.type not in concrete_allowed_terrain_types:
                 continue
 
-            def distance_for_intersection(index):
-                return util.distance(center_pos, Point(intersection.coords[index]))
+            line_strings = self.extract_line_strings(intersection)
+            for line_string in line_strings:
+                def distance_for_intersection(index):
+                    return util.distance(center_pos, Point(line_string.coords[index]))
 
-            begin_distance = min(distance_for_intersection(0), distance_for_intersection(1))
-            end_distance = max(distance_for_intersection(0), distance_for_intersection(1))
+                begin_distance = min(distance_for_intersection(0), distance_for_intersection(1))
+                end_distance = max(distance_for_intersection(0), distance_for_intersection(1))
 
-            changes.append((begin_distance, area.priority, BEGIN, area.value))
-            changes.append((end_distance, area.priority, END, area.value))
+                changes.append((begin_distance, area.priority, BEGIN, area.value))
+                changes.append((end_distance, area.priority, END, area.value))
 
         DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
         logger.debug("intervals are: %s", changes)
@@ -427,6 +429,13 @@ class AreaRangeSpec(RangeSpec):
                 current_intervals.remove((change[PRIORITY], change[VALUE]))
 
         return real_length
+
+    def extract_line_strings(self, intersection):
+        if intersection.geom_type == "MultiLineString":  # happens by the edge of the map
+            lines_to_process = intersection[:]
+        else:
+            lines_to_process = [intersection]
+        return lines_to_process
 
     @staticmethod
     def create_multi_line_string_for_wrapped_edges(from_point, to_point):
