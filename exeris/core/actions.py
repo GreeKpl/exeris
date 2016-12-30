@@ -900,9 +900,9 @@ class ActivityProgressProcess(AbstractAction):
             logger.info("checking location type")
             ActivityProgress.check_location_types(req["location_types"], self.entity_worked_on.get_location())
 
-        if "terrain_type" in req:
+        if "terrain_types" in req:
             logger.info("checking location type")
-            ActivityProgress.check_terrain_types(req["terrain_type"], self.entity_worked_on.get_location())
+            ActivityProgress.check_terrain_types(req["terrain_types"], self.entity_worked_on.get_location())
 
         if "excluded_by_entities" in req:
             logger.info("checking exclusion of entities")

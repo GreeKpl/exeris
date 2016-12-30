@@ -272,7 +272,7 @@ class ActivityFactory:
         make_error_check_if_required("location_types", lambda req_value:
         actions.ActivityProgress.check_location_types(req_value, character.get_location()))
 
-        make_error_check_if_required("terrain_type", lambda req_value:
+        make_error_check_if_required("terrain_types", lambda req_value:
         actions.ActivityProgress.check_terrain_types(req_value, character.get_location()))
 
         make_error_check_if_required("excluded_by_entities", lambda req_value:
