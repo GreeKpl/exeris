@@ -215,35 +215,49 @@ def create_database():
         db.session.add_all([hut_type, hut_recipe])
 
         grass_terrain = models.TerrainType("grassland")
+        grass_coast_terrain = models.TerrainType("grassland_coast")
         forest_terrain = models.TerrainType("forest")
         deep_water_terrain = models.TerrainType("deep_water")
+        shallow_water_terrain = models.TerrainType("shallow_water")
         road_terrain = models.TerrainType("road")
-        db.session.add_all([grass_terrain, deep_water_terrain])
+        db.session.add_all([grass_terrain, grass_coast_terrain, deep_water_terrain])
         land_terrain_type = models.TypeGroup.by_name(Types.LAND_TERRAIN)
         land_terrain_type.add_to_group(grass_terrain)
+        land_terrain_type.add_to_group(grass_coast_terrain)
         land_terrain_type.add_to_group(forest_terrain)
         land_terrain_type.add_to_group(road_terrain)
         water_terrain_type = models.TypeGroup.by_name(Types.WATER_TERRAIN)
         water_terrain_type.add_to_group(deep_water_terrain)
+        water_terrain_type.add_to_group(shallow_water_terrain)
+        water_terrain_type.add_to_group(grass_coast_terrain)
 
-        poly_grass = Polygon([(0.1, 0.1), (0.1, 2), (1, 2), (3, 1)])
-        poly_water = Polygon([(0, 0), (0, 100), (100, 100), (100, 0)])
+        poly_grass = Polygon([(0.8, 0.8), (0.8, 2), (1, 2), (3, 0.8)])
+        poly_grass_coast = Polygon([(0.3, 0.3), (0.3, 2), (0.8, 2), (0.8, 0.8), (3, 0.8), (3, 0.3)])
+        poly_water = Polygon([(0, 0), (0, 10), (10, 10), (10, 0)])
         poly_grass2 = Polygon([(1, 1), (5, 1), (5, 3), (3, 5), (1, 1)])
         poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
         poly_forest = Polygon([(5, 2), (7, 3), (8, 5), (7, 7), (5, 8), (3, 7), (2, 5), (3, 3)])
 
-        poly_water_not_intersecting = poly_water.difference(poly_grass.union(poly_grass2).union(poly_forest))
+        poly_all_terrains = poly_grass.union(poly_forest).union(poly_grass_coast).union(poly_grass2)
+        poly_shallow_water = poly_all_terrains.buffer(0.5, resolution=2).difference(poly_all_terrains)
+        poly_water_except_land = poly_water.difference(poly_all_terrains.union(poly_shallow_water))
+
         grass = models.TerrainArea(poly_grass, grass_terrain)
-        deep_water = models.TerrainArea(poly_water_not_intersecting, deep_water_terrain, priority=0)
+        grass_coast = models.TerrainArea(poly_grass_coast, grass_coast_terrain)
+        shallow_water = models.TerrainArea(poly_shallow_water, shallow_water_terrain, priority=0)
+        deep_water = models.TerrainArea(poly_water_except_land, deep_water_terrain, priority=0)
         grass2 = models.TerrainArea(poly_grass2, grass_terrain)
         road = models.TerrainArea(poly_road, road_terrain, priority=3)
         forest = models.TerrainArea(poly_forest, forest_terrain, priority=2)
 
-        deep_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 0,
-                                                        poly_water_not_intersecting, deep_water)
+        shallow_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+                                                           poly_shallow_water, shallow_water)
+        deep_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+                                                        poly_water_except_land, deep_water)
         land_trav1 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
         land_trav2 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
         land_trav3 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_forest, forest)
+        land_trav4 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass_coast, grass_coast)
 
         poly_road_trav = Polygon([(1.2, 0.8), (0.7, 1.3), (3.7, 4.3), (4.2, 3.8)])
         land_trav_road = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 2, poly_road_trav, road)
@@ -252,8 +266,10 @@ def create_database():
         world_visibility = models.PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, visibility_poly, deep_water)
 
         db.session.add_all(
-            [grass_terrain, deep_water_terrain, road_terrain, grass, deep_water, grass2, road, forest,
-             deep_water_traversability, land_trav1, land_trav2, land_trav3, land_trav_road, world_visibility])
+            [grass_terrain, deep_water_terrain, road_terrain, grass, deep_water, grass2, road, forest, shallow_water,
+             shallow_water_terrain, grass_coast_terrain,
+             shallow_water_traversability, deep_water_traversability, land_trav1, land_trav2, land_trav3, land_trav4,
+             land_trav_road, world_visibility, grass_coast])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
         tablet_type = models.ItemType("tablet", 100, portable=True)
@@ -642,7 +658,7 @@ def create_database():
         small_boat_recipe = models.EntityRecipe("building_small_boat", {}, {
             "input": {oak_type.name: 10},
             "location_types": [Types.OUTSIDE],
-            "terrain_types": ["deep_water"],
+            "terrain_types": ["deep_water", "shallow_water", "grassland_coast"],
         }, 1, build_menu_category, result=[
             ["exeris.core.actions.CreateLocationAction",
              {"location_type": small_boat_type.name,

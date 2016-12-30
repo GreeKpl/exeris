@@ -9,7 +9,10 @@ MAP_PER_PX = 50
 
 VIEW_SIZE = 500
 
-COLORS = {"grassland": "green", "deep_water": "blue", "shallow_water": "blue", "road": "brown", "forest": "darkgreen"}
+COLORS = {"grassland": "green", "grassland_coast": "#4CBB17",
+          "deep_water": "#1F75cE", "shallow_water": "#40a3cF",
+          "road": "brown", "forest": "darkgreen",
+          }
 
 
 def transpose(y):
