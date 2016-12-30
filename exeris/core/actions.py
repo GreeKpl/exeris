@@ -659,7 +659,8 @@ class WorkProcess(ProcessAction):
 
             rho, phi = util.cart_to_pol(Point(vector_x, vector_y))
             entity_being_moved_property.remove()
-            entity_being_moved_property.set_inertia(rho, phi)
+            if rho >= 0.01:
+                entity_being_moved_property.set_inertia(rho, phi)
 
     def move_entity_based_on_movement_contributions(self, representative, mobile_entities_in_union_count,
                                                     travel_credits_in_union, travel_targets, allowed_terrains):
