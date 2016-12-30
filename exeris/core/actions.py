@@ -399,10 +399,12 @@ class RemoveActivityContainerAction(ActivityAction):
 
 
 class CreateLocationAction(ActivityAction):
-    @convert(location_type=models.LocationType)
-    def __init__(self, *, location_type, used_materials, properties, visible_material=None, **injected_args):
+    @convert(location_type=models.LocationType, passage_type=models.PassageType)
+    def __init__(self, *, location_type, used_materials, properties, visible_material=None,
+                 passage_type=None, **injected_args):
         self.location_type = location_type
         self.used_materials = used_materials
+        self.passage_type = passage_type
         self.activity = injected_args["activity"]
         self.initiator = injected_args["initiator"]
         self.injected_args = injected_args
@@ -412,7 +414,7 @@ class CreateLocationAction(ActivityAction):
     def perform_action(self):
         result_loc = self.activity.being_in.being_in
 
-        new_location = models.Location(result_loc, self.location_type)
+        new_location = models.Location(result_loc, self.location_type, passage_type=self.passage_type)
         for prop_name, prop_value in self.properties.items():
             new_location.properties.append(models.EntityProperty(prop_name, prop_value))
 
