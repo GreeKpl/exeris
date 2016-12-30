@@ -303,6 +303,15 @@ data = {
     "entity_impassable_to_animal": {
         "en": ""
     },
+    "entity_gangway": {
+        "en": "gangway",
+    },
+    "entity_small_boat": {
+        "en": "small boat",
+    },
+    "entity_cart": {
+        "en": "cart",
+    },
     "error_character_dead": {
         "en": "Your character %{name} is dead.",
     },

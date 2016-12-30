@@ -232,14 +232,15 @@ def create_database():
         poly_road = Polygon([(1, 1), (0.9, 1.1), (3.9, 4.1), (4, 4), (1, 1)])
         poly_forest = Polygon([(5, 2), (7, 3), (8, 5), (7, 7), (5, 8), (3, 7), (2, 5), (3, 3)])
 
+        poly_water_not_intersecting = poly_water.difference(poly_grass.union(poly_grass2).union(poly_forest))
         grass = models.TerrainArea(poly_grass, grass_terrain)
-        deep_water = models.TerrainArea(poly_water, deep_water_terrain, priority=0)
+        deep_water = models.TerrainArea(poly_water_not_intersecting, deep_water_terrain, priority=0)
         grass2 = models.TerrainArea(poly_grass2, grass_terrain)
         road = models.TerrainArea(poly_road, road_terrain, priority=3)
         forest = models.TerrainArea(poly_forest, forest_terrain, priority=2)
 
-        poly_water = poly_water.difference(poly_grass.union(poly_grass2).union(poly_forest))
-        deep_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 0, poly_water, deep_water)
+        deep_water_traversability = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 0,
+                                                        poly_water_not_intersecting, deep_water)
         land_trav1 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass, grass)
         land_trav2 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_grass2, grass2)
         land_trav3 = models.PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, poly_forest, forest)
@@ -604,21 +605,56 @@ def create_database():
         cart_type.properties.append(models.EntityTypeProperty(P.BINDABLE, {
             "to_types": [Types.ALIVE_CHARACTER, "mare"]
         }))
+        cart_type.properties.append(models.EntityTypeProperty(P.MOBILE, {
+            "speed": 0,
+            "traversable_terrains": [],
+        }))
         invisible_passage_type = models.PassageType.by_name(Types.INVISIBLE_PASSAGE)
         cart = models.Location(rl, cart_type, passage_type=invisible_passage_type)
 
-        db.session.add_all([cart_type, cart])
+        cart_recipe = models.EntityRecipe("building_cart", {}, {
+            "input": {oak_type.name: 5},
+            "location_types": [Types.OUTSIDE],
+        }, 1, build_menu_category, result=[
+            ["exeris.core.actions.CreateLocationAction",
+             {"location_type": cart_type.name,
+              "properties": {},
+              "passage_type": invisible_passage_type.name,
+              "used_materials": "all",
+              }],
+            ["exeris.core.actions.AddTitleToEntityAction", {}]
+        ], activity_container=["entity_specific_item"])
 
+        db.session.add_all([cart_type, cart, cart_recipe])
+
+        gangway_type = models.PassageType("gangway", True)
         rl_on_sea = models.RootLocation(Point(7, 1), 90)
         small_boat_type = models.LocationType("small_boat", 200)
         small_boat_type.properties.append(models.EntityTypeProperty(P.MOBILE, {
             "speed": 40,
+            "inertiality": 0.8,
             "traversable_terrains": [Types.WATER_TERRAIN],
         }))
         small_boat_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
         small_boat_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
-        small_boat = models.Location(rl_on_sea, small_boat_type, passage_type=invisible_passage_type, title="Destroyer")
-        db.session.add_all([rl_on_sea, small_boat_type, small_boat])
+        small_boat = models.Location(rl_on_sea, small_boat_type, passage_type=gangway_type, title="Destroyer")
+
+        small_boat_recipe = models.EntityRecipe("building_small_boat", {}, {
+            "input": {oak_type.name: 10},
+            "location_types": [Types.OUTSIDE],
+            "terrain_types": ["deep_water"],
+        }, 1, build_menu_category, result=[
+            ["exeris.core.actions.CreateLocationAction",
+             {"location_type": small_boat_type.name,
+              "properties": {},
+              "passage_type": gangway_type.name,
+              "used_materials": "all",
+              }],
+            ["exeris.core.actions.AddTitleToEntityAction", {}],
+        ], activity_container=["entity_specific_item"])
+
+        db.session.add_all([gangway_type, rl_on_sea])
+        db.session.add_all([small_boat_type, small_boat, small_boat_recipe])
 
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
