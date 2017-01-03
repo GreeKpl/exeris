@@ -237,6 +237,35 @@ class LocationPropertyTest(TestCase):
         # cog2 and cog3 still members of the same union
         self.assertEqual(cog2_entity_property.data["union_id"], cog3_entity_property.data["union_id"])
 
+    def test_union_split(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type, title="cog1")
+        cog2 = Location(cog1, cog_type, title="cog2")
+        cog3 = Location(cog1, cog_type, title="cog3")
+        cog4 = Location(cog2, cog_type, title="cog4")
+        cog5 = Location(cog1, cog_type, title="cog5")
+
+        cog1_member_of_union_property = properties.OptionalMemberOfUnionProperty(cog1)
+        cog1_member_of_union_property.union(cog2)
+        cog1_member_of_union_property.union(cog3)
+        cog1_member_of_union_property.union(cog4)
+        cog1_member_of_union_property.union(cog5)
+        db.session.add_all([rl, cog_type, cog1, cog2, cog3, cog4, cog5])
+
+        cog1_member_of_union_property.split_union(cog2)
+
+        cog1_union_id = cog1_member_of_union_property.get_union_id()
+        self.assertEqual(self._get_union_id(cog3), cog1_union_id)
+        self.assertEqual(self._get_union_id(cog5), cog1_union_id)
+
+        self.assertEqual(self._get_union_id(cog2), self._get_union_id(cog4))
+
+    def _get_union_id(self, entity):
+        entity_property = EntityProperty.query.filter_by(entity=entity, name=P.MEMBER_OF_UNION).one()
+        return entity_property.data["union_id"]
+
     def test_being_moved_property(self):
         rl = RootLocation(Point(1, 1), 10)
         cog_type = LocationType("cog", 1000)

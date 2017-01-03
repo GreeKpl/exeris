@@ -294,6 +294,30 @@ class OptionalMemberOfUnionProperty(OptionalPropertyBase):
     def json_to_int(what):
         return what.astext.cast(sql.Integer)
 
+    def split_union(self, neighbouring_location):
+        """Split union into two unions. It is split across the passage between `self.entity` and `neighbouring_location`
+        It is required that there is no other path from `self.entity` and `neighbouring_location`
+        except the single direct passage"""
+        entities_in_former_union = [prop.entity for prop in self.get_entity_properties_of_own_union()]
+
+        new_union_id = self.create_new_union_id()
+        self._update_union_id(self.entity, new_union_id)
+
+        passages_to_visit = self.entity.passages_to_neighbours
+        visited_locations = []
+        while len(passages_to_visit):
+            passage = passages_to_visit.pop()
+            loc_on_other_side = passage.other_side
+            if loc_on_other_side != neighbouring_location and loc_on_other_side in entities_in_former_union:
+                self._update_union_id(loc_on_other_side, new_union_id)
+                visited_locations.append(loc_on_other_side)
+                passages_to_visit += [psg for psg in loc_on_other_side.passages_to_neighbours if
+                                      psg.other_side not in visited_locations]
+
+    def _update_union_id(self, location, new_union_id):
+        entity_prop = location.get_entity_property(P.MEMBER_OF_UNION)
+        entity_prop.data["union_id"] = new_union_id
+
 
 class OptionalBeingMovedProperty(OptionalPropertyBase):
     __property__ = P.BEING_MOVED
