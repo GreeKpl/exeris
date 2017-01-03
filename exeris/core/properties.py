@@ -392,3 +392,47 @@ class BindableProperty(PropertyBase):
         prop_dict = self.property_dict
         allowed_types = prop_dict["to_types"]
         return [models.EntityType.by_name(type_name) for type_name in allowed_types]
+
+
+class BoardableProperty(PropertyBase):
+    __property__ = P.BOARDABLE
+
+    def get_concrete_types_to_board_to(self):
+        allowed_ship_types = self.property_dict.get("allowed_ship_types", [])
+        allowed_ship_types = [models.EntityType.by_name(ship_type) for ship_type in allowed_ship_types]
+        return models.get_concrete_types_for_groups(allowed_ship_types)
+
+
+class OptionalInBoardingProperty(OptionalPropertyBase):
+    __property__ = P.IN_BOARDING
+
+    def get_ids_of_ships_in_boarding(self):
+        entity_property = self.entity_property
+        if not entity_property:
+            return []
+        return entity_property.data.get("ships_in_boarding", [])
+
+    def append_ship_in_boarding(self, other_ship):
+        other_ship_in_boarding_property = OptionalInBoardingProperty(other_ship)
+        other_ship_in_boarding_property._add_entry_about_ship_in_boarding(self.entity)
+        self._add_entry_about_ship_in_boarding(other_ship)
+
+    def _add_entry_about_ship_in_boarding(self, neighbour_to_add):
+        entity_property = self.entity_property
+        if not entity_property:
+            entity_property = models.EntityProperty(self.__property__, entity=self.entity)
+            db.session.add(entity_property)
+            entity_property.data["ships_in_boarding"] = [neighbour_to_add.id]
+        else:
+            entity_property.data["ships_in_boarding"].append(neighbour_to_add.id)
+
+    def remove_ship_from_boarding(self, other_ship):
+        other_ship_in_boarding_property = OptionalInBoardingProperty(other_ship)
+        other_ship_in_boarding_property._remove_entry_about_ship_in_boarding(self.entity)
+        self._remove_entry_about_ship_in_boarding(other_ship)
+
+    def _remove_entry_about_ship_in_boarding(self, neighbour_to_remove):
+        entity_property = self.entity_property
+        entity_property.data["ships_in_boarding"].remove(neighbour_to_remove.id)
+        if not len(entity_property.data["ships_in_boarding"]):
+            db.session.delete(entity_property)

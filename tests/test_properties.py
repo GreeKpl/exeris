@@ -5,7 +5,7 @@ from shapely.geometry import Point
 from exeris.core.main import db
 from exeris.core.models import RootLocation, LocationType, Location, EntityTypeProperty, ObservedName, SkillType, \
     EntityProperty, \
-    ItemType, Item, TextContent
+    ItemType, Item, TextContent, TypeGroup
 # noinspection PyUnresolvedReferences
 from exeris.core import properties, main
 from exeris.core.properties_base import P
@@ -290,3 +290,40 @@ class LocationPropertyTest(TestCase):
 
         cog1_entity_property = EntityProperty.query.filter_by(name=P.BEING_MOVED).one()
         self.assertEqual({"movement": [1, 1.5 * math.pi], "inertia": [0, 0]}, cog1_entity_property.data)
+
+    def test_boardable_property(self):
+        rl = RootLocation(Point(1, 1), 10)
+        ships_group = TypeGroup("ships")
+        cog_type = LocationType("cog", 1000)
+        ships_group.add_to_group(cog_type)
+
+        cog = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog])
+
+        cog_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["cog"]}))
+
+        cog_boardable_property = properties.BoardableProperty(cog)
+        self.assertEqual({cog_type}, cog_boardable_property.get_concrete_types_to_board_to())
+
+    def test_in_boarding_property(self):
+        rl = RootLocation(Point(1, 1), 10)
+        cog_type = LocationType("cog", 1000)
+
+        cog1 = Location(rl, cog_type)
+        cog2 = Location(rl, cog_type)
+        db.session.add_all([rl, cog_type, cog1, cog2])
+
+        self.assertEqual(0, EntityProperty.query.filter_by(name=P.IN_BOARDING).count())
+
+        cog1_in_boarding_property = properties.OptionalInBoardingProperty(cog1)
+        cog2_in_boarding_property = properties.OptionalInBoardingProperty(cog2)
+
+        cog1_in_boarding_property.append_ship_in_boarding(cog2)
+
+        # check whether the relation is stored on both sides
+        self.assertEqual({"ships_in_boarding": [cog2.id]}, cog1_in_boarding_property.entity_property.data)
+        self.assertEqual({"ships_in_boarding": [cog1.id]}, cog2_in_boarding_property.entity_property.data)
+
+        cog2_in_boarding_property.remove_ship_from_boarding(cog1)
+
+        self.assertEqual(0, EntityProperty.query.filter_by(name=P.IN_BOARDING).count())

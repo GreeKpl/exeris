@@ -1,5 +1,7 @@
 # property
 class P:
+    BOARDABLE = "Boardable"
+    IN_BOARDING = "InBoarding"
     ANY = "Any"  # special property which exists for every entity
     ANIMAL = "Animal"
     DOMESTICATED = "Domesticated"
@@ -40,6 +42,10 @@ class P:
     BINDABLE = "Bindable"
 
 
+class MissingPropertyException(ValueError):
+    pass
+
+
 class PropertyBase:
     __property__ = None
 
@@ -47,7 +53,7 @@ class PropertyBase:
         self.entity = entity
         self.entity_property = self.entity.get_entity_property(self.__property__)
         if self.property_dict is None:
-            raise ValueError("{} is missing property {}".format(self.entity, self.__property__))
+            raise MissingPropertyException("{} is missing property {}".format(self.entity, self.__property__))
 
     @property
     def property_dict(self):
