@@ -283,6 +283,9 @@ class OptionalMemberOfUnionProperty(OptionalPropertyBase):
             .filter_by(name=P.MEMBER_OF_UNION) \
             .filter(self.json_to_int(models.EntityProperty.data["union_id"]) == own_property.data["union_id"]).all()
 
+    def is_in_same_union_as(self, other_entity):
+        return other_entity in [ep.entity for ep in self.get_entity_properties_of_own_union()]
+
     def is_in_nontrivial_union(self):
         return len(self.get_entity_properties_of_own_union()) > 1
 

@@ -2296,6 +2296,159 @@ class StopMovementAction(Action):
         }}, doer=self.executor)
 
 
+class BoardingAction(AbstractAction):
+    @convert(ship=models.Location, boarded_ship=models.Location)
+    def __init__(self, ship, boarded_ship):
+        self.ship = ship
+        self.boarded_ship = boarded_ship
+        self.rng = general.NeighbouringLocationsRange(True)
+
+    def perform_action(self):
+        mobile_property = properties.MobileProperty(self.ship)
+        speed = mobile_property.get_max_speed()
+
+        ticks_per_day = general.GameDate.SEC_IN_DAY / WorkProcess.SCHEDULER_RUNNING_INTERVAL
+        travel_credits_per_tick = speed / ticks_per_day
+        range_to_board = general.TraversabilityBasedRange(travel_credits_per_tick, True,
+                                                          allowed_terrain_types=[main.Types.WATER_TERRAIN])
+        if not range_to_board.is_near(self.ship, self.boarded_ship):
+            raise main.EntityTooFarAwayException(entity=self.boarded_ship)
+
+        ship_in_boarding_property = properties.OptionalInBoardingProperty(self.ship)
+        ship_union_member_property = properties.OptionalMemberOfUnionProperty(self.ship)
+        if self.boarded_ship.id in ship_in_boarding_property.get_ids_of_ships_in_boarding() \
+                or ship_union_member_property.is_in_same_union_as(self.boarded_ship):
+            raise main.AlreadyBoardedException(ship=self.ship, boarded_ship=self.boarded_ship)
+
+        moving_entity_boardable_property = properties.BoardableProperty(self.ship)
+        if self.boarded_ship.type not in moving_entity_boardable_property.get_concrete_types_to_board_to():
+            raise ValueError("not allowed to board this type of ship")
+
+        move_entity_between_entities(self.ship, self.ship.get_root(), self.boarded_ship.get_root())
+
+        ship_union_member_property.union(self.boarded_ship)
+        ship_in_boarding_property.append_ship_in_boarding(self.boarded_ship)
+
+        # stop all ships
+        for ship_entity_property in ship_union_member_property.get_entity_properties_of_own_union():
+            ship_in_union = ship_entity_property.entity
+            ship_in_union_entity_property = ship_in_union.get_entity_property(P.BEING_MOVED)
+            if ship_in_union_entity_property:
+                db.session.delete(ship_in_union_entity_property)
+
+        gangway_between_ships = models.Passage(self.ship, self.boarded_ship,
+                                               passage_type=models.PassageType.by_name(main.Types.GANGWAY))
+        db.session.add(gangway_between_ships)
+
+        general.EventCreator.create(tag_observer=PartialEvents.BOARDING_SHIP_OBSERVER,
+                                    params={"groups": {
+                                        "ship": self.ship.pyslatize(),
+                                        "boarded_ship": self.boarded_ship.pyslatize(),
+                                    }}, locations=[self.ship, self.boarded_ship])
+
+
+class StartBoardingAction(ActionOnLocation):
+    def __init__(self, executor, boarded_ship):
+        super().__init__(executor, boarded_ship, rng=general.VisibilityBasedRange(5, True))
+
+    def perform_action(self):
+        models.Intent.query.filter_by(executor=self.executor,
+                                      type=main.Intents.WORK).delete()  # no multiple intents in queue till #72
+
+        moving_entity = get_moving_entity(self.executor)
+        moving_entity_boardable_property = properties.BoardableProperty(moving_entity)
+
+        if moving_entity == self.location:
+            raise main.CannotBoardOwnShipException()
+
+        if self.location.type not in moving_entity_boardable_property.get_concrete_types_to_board_to():
+            raise main.InvalidShipTypeForBoardingException(own_ship=moving_entity,
+                                                           boarded_type_name=self.location.type.name)
+
+        moving_entity_in_boarding_property = properties.OptionalInBoardingProperty(moving_entity)
+        ship_union_member_property = properties.OptionalMemberOfUnionProperty(moving_entity)
+        if self.location.id in moving_entity_in_boarding_property.get_ids_of_ships_in_boarding() \
+                or ship_union_member_property.is_in_same_union_as(self.location):
+            raise main.AlreadyBoardedException(ship=moving_entity, boarded_ship=self.location)
+
+        start_controlling_movement_action = StartControllingMovementAction(self.executor)
+        controlling_movement_intent = start_controlling_movement_action.perform()
+
+        with controlling_movement_intent as controlling_movement_action:
+            controlling_movement_action.travel_action = TravelToEntityAction(moving_entity, self.location)
+            controlling_movement_action.target_action = BoardingAction(moving_entity, self.location)
+
+        general.EventCreator.base(Events.START_BOARDING_SHIP, rng=self.rng, params={"groups": {
+            "ship": moving_entity.pyslatize(),
+            "target_ship": self.entity.pyslatize(),
+        }}, doer=self.executor)
+
+
+class UnboardingAction(ActivityAction):
+    @convert(ship=models.Location, ship_to_unboard=models.Location)
+    def __init__(self, *, ship, ship_to_unboard, **injected_args):
+        self.ship = ship
+        self.ship_to_unboard = ship_to_unboard
+        self.activity = injected_args["activity"]
+        self.injected_args = injected_args
+
+    def perform_action(self):
+        ship_union_member_property = properties.OptionalMemberOfUnionProperty(self.ship)
+        ship_in_boarding_property = properties.OptionalInBoardingProperty(self.ship)
+
+        if not ship_union_member_property.is_in_same_union_as(self.ship_to_unboard) \
+                or self.ship_to_unboard.id not in ship_in_boarding_property.get_ids_of_ships_in_boarding():
+            raise main.ShipNotBoardedException(ship=self.ship, ship_to_unboard=self.ship_to_unboard)
+
+        ship_union_member_property.split_union(self.ship_to_unboard)
+        ship_in_boarding_property.remove_ship_from_boarding(self.ship_to_unboard)
+
+        general.EventCreator.create(tag_observer=PartialEvents.UNBOARDING_SHIP_OBSERVER,
+                                    params={"groups": {
+                                        "ship": self.ship.pyslatize(),
+                                        "ship_to_unboard": self.ship_to_unboard.pyslatize(),
+                                    }}, locations=[self.ship, self.ship_to_unboard])
+
+
+class StartUnboardingAction(ActionOnLocation):
+    def __init__(self, executor, location):
+        super().__init__(executor, location, rng=general.VisibilityBasedRange(5, True))
+
+    def perform_action(self):
+        models.Intent.query.filter_by(executor=self.executor,
+                                      type=main.Intents.WORK).delete()  # no multiple intents in queue till #72
+
+        executor_location = self.executor.being_in
+        if not self.location.has_property(P.BOARDABLE) or not executor_location.has_property(P.BOARDABLE):
+            raise ValueError("Not boardable")
+
+        if executor_location == self.location:
+            raise main.CannotUnboardFromOwnShipException()
+        gangway_between_ships = models.Passage.query.filter(
+            models.Passage.between(executor_location, self.location)).one()
+        if not self.executor.has_access(gangway_between_ships, general.SameLocationRange()):
+            raise main.EntityTooFarAwayException(entity=self.location)
+        if gangway_between_ships.has_activity():
+            raise main.ActivityAlreadyExistsOnEntity(entity=gangway_between_ships)
+
+        moving_entity_in_boarding_property = properties.OptionalInBoardingProperty(executor_location)
+        if self.location.id not in moving_entity_in_boarding_property.get_ids_of_ships_in_boarding():
+            raise ValueError("Not in boarding with this ship")
+
+        unboarding_activity = models.Activity(gangway_between_ships, "unboarding_ship", {}, {}, 1, self.executor)
+        unboarding_activity.result_actions = [
+            ["exeris.core.actions.UnboardingAction", {
+                "ship": executor_location.id, "ship_to_unboard": self.location.id}],
+            ["exeris.core.actions.RemoveActivityContainerAction", {}],
+        ]
+        db.session.add(unboarding_activity)
+
+        general.EventCreator.base(Events.START_UNBOARDING_SHIP, rng=self.rng, params={"groups": {
+            "ship": executor_location.pyslatize(),
+            "target_ship": self.location.pyslatize(),
+        }}, doer=self.executor)
+
+
 class StartBuryingEntityAction(ActionOnEntity):
     def __init__(self, executor, entity):
         super().__init__(executor, entity)

@@ -8,6 +8,7 @@ from exeris.core import actions
 from exeris.core import deferred
 from exeris.core import main, models
 from exeris.core import properties
+from exeris.core import properties_base
 from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemAction, AddEntityToActivityAction, \
     SayAloudAction, MoveToLocationAction, CreateLocationAction, EatAction, ToggleCloseableAction, CreateCharacterAction, \
     GiveItemAction, JoinActivityAction, SpeakToSomebodyAction, WhisperToSomebodyAction, \
@@ -15,7 +16,8 @@ from exeris.core.actions import CreateItemAction, RemoveItemAction, DropItemActi
     ChangeMovementDirectionAction, \
     CollectGatheredResourcesAction, BuryEntityAction, AnimalEatingAction, AnimalStateProgressAction, \
     CollectResourcesFromDomesticatedAnimalAction, LayEggsAction, StartTamingAnimalAction, ActivityProgress, \
-    AnimalDeathAction, TakeItemAction, PutIntoStorageAction, CreateLockAndKeyAction, check_space_limitation
+    AnimalDeathAction, TakeItemAction, PutIntoStorageAction, CreateLockAndKeyAction, check_space_limitation, \
+    StartBoardingAction, TravelToEntityAction, BoardingAction, WorkProcess, StartUnboardingAction, UnboardingAction
 from exeris.core.deferred import convert
 from exeris.core.general import GameDate
 from exeris.core.main import db, Events, Types, States
@@ -1394,6 +1396,185 @@ class CharacterActionsTest(TestCase):
         self.assertEqual(buried_content, coffin.being_in)
 
 
+class SailingTest(TestCase):
+    create_app = util.set_up_app_with_database
+    tearDown = util.tear_down_rollback
+
+    def test_start_boarding_ship_action(self):
+        self._set_up_sailing_ships_for_boarding_test()
+
+        sailor = Character.query.one()
+        ship_type = LocationType.query.filter_by(name="ship").one()
+        attacker_ship = Location.query.filter_by(title="attacker").one()
+        defender_ship = Location.query.filter_by(title="defender").one()
+
+        start_boarding_action = StartBoardingAction(sailor, defender_ship)
+        self.assertRaises(properties_base.MissingPropertyException, start_boarding_action.perform)
+
+        ship_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["ship"]}))
+
+        start_boarding_action = StartBoardingAction(sailor, attacker_ship)
+        self.assertRaises(main.CannotBoardOwnShipException, start_boarding_action.perform)
+
+        start_boarding_action = StartBoardingAction(sailor, defender_ship)
+        start_boarding_action.perform()
+        # boarding should happen
+
+        control_movement_to_board_intent = Intent.query.one()
+        with control_movement_to_board_intent as control_movement_action:
+            travel_action = control_movement_action.travel_action
+            self.assertEqual(TravelToEntityAction, type(travel_action))
+            self.assertEqual(attacker_ship, travel_action.executor)
+            self.assertEqual(defender_ship, travel_action.entity)
+
+            target_action = control_movement_action.target_action
+            self.assertEqual(BoardingAction, type(target_action))
+            self.assertEqual(attacker_ship, target_action.ship)
+            self.assertEqual(defender_ship, target_action.boarded_ship)
+
+        attacker_union_member_property = properties.OptionalMemberOfUnionProperty(attacker_ship)
+        attacker_union_member_property.union(defender_ship)
+
+        self.assertRaises(main.AlreadyBoardedException, start_boarding_action.perform)
+
+    def test_boarding_ships(self):
+        self._set_up_sailing_ships_for_boarding_test()
+
+        ship_type = LocationType.query.filter_by(name="ship").one()
+        attacker_ship = Location.query.filter_by(title="attacker").one()
+        defender_ship = Location.query.filter_by(title="defender").one()
+
+        ship_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["ship"]}))
+
+        boarding_action = BoardingAction(attacker_ship, defender_ship)
+        boarding_action.perform()
+
+        passage_between_ships = Passage.query.filter(Passage.between(defender_ship, attacker_ship)).one()
+        self.assertEqual(PassageType.by_name(Types.GANGWAY), passage_between_ships.type)
+
+        union_entities_properties = EntityProperty.query.filter_by(name=P.MEMBER_OF_UNION).all()
+
+        # all union ids are the same
+        self.assertEqual(2, len(union_entities_properties))
+        self.assertEqual(1, len(set([entity_prop.data["union_id"] for entity_prop in union_entities_properties])))
+
+        attacker_ship_property = EntityProperty.query.filter_by(name=P.IN_BOARDING, entity=attacker_ship).one()
+        defender_ship_property = EntityProperty.query.filter_by(name=P.IN_BOARDING, entity=defender_ship).one()
+        self.assertEqual([defender_ship.id], attacker_ship_property.data["ships_in_boarding"])
+        self.assertEqual([attacker_ship.id], defender_ship_property.data["ships_in_boarding"])
+
+    def test_boarding_ships_from_distance(self):
+        self._set_up_sailing_ships_for_boarding_test()
+
+        ship_type = LocationType.query.filter_by(name="ship").one()
+        attacker_ship = Location.query.filter_by(title="attacker").one()
+        defender_ship = Location.query.filter_by(title="defender").one()
+
+        rl_of_attacker = RootLocation.query.one()
+        rl_of_defender = RootLocation(Point(1, 2), 100)
+        db.session.add(rl_of_defender)
+
+        water_poly = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
+        water_terrain_type = TypeGroup.by_name(Types.WATER_TERRAIN)
+        deep_water_terrain_type = TerrainType("deep_water")
+        water_terrain_type.add_to_group(deep_water_terrain_type)
+        water_terrain = TerrainArea(water_poly, deep_water_terrain_type)
+        water_traversability = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 2, 1, water_poly, water_terrain)
+        db.session.add_all([deep_water_terrain_type, water_terrain, water_traversability])
+
+        passage_to_defender = Passage.query.filter(Passage.between(rl_of_attacker, defender_ship)).one()
+        passage_to_defender.replace_location(rl_of_attacker, rl_of_defender)
+
+        ship_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["ship"]}))
+
+        credits_per_tick = 10 / WorkProcess.SCHEDULER_RUNNING_INTERVAL
+        rl_of_defender.position = Point(1, 1 + credits_per_tick + 0.15)  # farther than allowed boarding distance
+        boarding_action = BoardingAction(attacker_ship, defender_ship)
+        self.assertRaises(main.EntityTooFarAwayException, boarding_action.perform)
+
+        rl_of_defender.position = Point(1, 1 + credits_per_tick - 0.01)  # in proximity
+        boarding_action.perform()
+
+        self.assertEqual(rl_of_defender, attacker_ship.get_root())
+
+    def test_start_unboarding_action(self):
+        self._set_up_sailing_ships_for_boarding_test()
+
+        ship_type = LocationType.query.filter_by(name="ship").one()
+        attacker_ship = Location.query.filter_by(title="attacker").one()
+        defender_ship = Location.query.filter_by(title="defender").one()
+        sailor = Character.query.one()
+
+        ship_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["ship"]}))
+
+        # create a passage, a union and in boarding property
+        gangway = Passage(attacker_ship, defender_ship, PassageType.by_name(Types.GANGWAY))
+        db.session.add_all([gangway])
+
+        attacker_in_boarding_property = properties.OptionalInBoardingProperty(attacker_ship)
+        attacker_in_boarding_property.append_ship_in_boarding(defender_ship)
+        attacker_union_member_property = properties.OptionalMemberOfUnionProperty(attacker_ship)
+        attacker_union_member_property.union(defender_ship)
+
+        sailor.being_in = defender_ship  # move to defender, which is going to be unboarded from
+        start_unboarding_action = StartUnboardingAction(sailor, defender_ship)
+        self.assertRaises(main.CannotUnboardFromOwnShipException, start_unboarding_action.perform)
+
+        sailor.being_in = attacker_ship  # move back to attacker ship
+        start_unboarding_action.perform()
+
+        unboarding_activity = Activity.query.one()
+        self.assertEqual("unboarding_ship", unboarding_activity.name_tag)
+
+    def test_unboarding_action(self):
+        self._set_up_sailing_ships_for_boarding_test()
+
+        ship_type = LocationType.query.filter_by(name="ship").one()
+        attacker_ship = Location.query.filter_by(title="attacker").one()
+        defender_ship = Location.query.filter_by(title="defender").one()
+        sailor = Character.query.one()
+
+        ship_type.properties.append(EntityTypeProperty(P.BOARDABLE, {"allowed_ship_types": ["ship"]}))
+
+        # create a passage, a union and in boarding property
+        gangway = Passage(attacker_ship, defender_ship, PassageType.by_name(Types.GANGWAY))
+        unboard_activity = Activity(gangway, "unboarding_ship", {}, {}, 1, sailor)
+        db.session.add_all([gangway, unboard_activity])
+
+        attacker_union_member_property = properties.OptionalMemberOfUnionProperty(attacker_ship)
+        attacker_union_member_property.union(defender_ship)
+
+        unboarding_action = UnboardingAction(ship=attacker_ship, ship_to_unboard=defender_ship,
+                                             activity=unboard_activity)
+        self.assertRaises(main.ShipNotBoardedException, unboarding_action.perform)
+
+        attacker_in_boarding_property = properties.OptionalInBoardingProperty(attacker_ship)
+        attacker_in_boarding_property.append_ship_in_boarding(defender_ship)
+
+        unboarding_action.perform()
+
+        # passage removed
+        self.assertIsNone(Passage.query.filter(Passage.between(attacker_ship, defender_ship)).first())
+
+    def _set_up_sailing_ships_for_boarding_test(self):
+        util.initialize_date()
+
+        rl = RootLocation(Point(1, 1), 11)
+
+        ship_type = LocationType("ship", 10)
+        ship_type.properties.append(EntityTypeProperty(P.MOBILE, {
+            "speed": 10,
+            "allowed_terrain_types": [Types.ANY_TERRAIN],
+        }))
+        ship_type.properties.append(EntityTypeProperty(P.CONTROLLING_MOVEMENT))
+
+        attacker_ship = Location(rl, ship_type, passage_type=PassageType.by_name(Types.GANGWAY), title="attacker")
+        defender_ship = Location(rl, ship_type, passage_type=PassageType.by_name(Types.GANGWAY), title="defender")
+        util.create_character("sailor", attacker_ship, util.create_player("iksde"))
+
+        db.session.add_all([rl, ship_type, attacker_ship, defender_ship])
+
+
 class IntentTest(TestCase):
     create_app = util.set_up_app_with_database
     tearDown = util.tear_down_rollback
@@ -1698,7 +1879,7 @@ class UtilFunctionsTest(TestCase):
         db.session.add(Passage(horse2, cart))
 
         db.session.begin_nested()
-        # raise, because an union member (cart) is connected
+        # raise, because a union member (cart) is connected
         # with a location (horse2) which is neither a source or union member
         self.assertRaises(ValueError,
                           lambda: actions.move_entity_between_entities(horse, rl_source, rl_destination))

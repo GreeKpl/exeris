@@ -1504,6 +1504,22 @@ class Passage(Entity):
     def incident(self, loc):
         return sql.or_((self.left_location == loc), (self.right_location == loc))
 
+    def replace_location(self, location_to_replace, new_location):
+        if self.left_location == location_to_replace:
+            self.left_location = new_location
+            if self.right_location.being_in == location_to_replace:
+                self.right_location.being_in = new_location
+            if location_to_replace.being_in == self.right_location:
+                raise ValueError("Unable to update being_in for location {}".format(location_to_replace))
+        elif self.right_location == location_to_replace:
+            self.right_location = new_location
+            if self.left_location.being_in == location_to_replace:
+                self.left_location.being_in = new_location
+            if location_to_replace.being_in == self.left_location:
+                raise ValueError("Unable to update being_in for location {}".format(location_to_replace))
+        else:
+            ValueError("{} is not on either side of passage {}".format(location_to_replace, self))
+
     def is_accessible(self, only_through_unlimited=False):
         """
         Checks if the other side of the passage is accessible for any character.
@@ -2002,10 +2018,10 @@ def init_database_contents():
     if not PassageType.by_name(Types.DOOR):
         door_passage = PassageType(Types.DOOR, False)
         door_passage.properties.append(EntityTypeProperty(P.CLOSEABLE, {"closed": False}))
-        db.session.add(door_passage)
         invisible_passage = PassageType(Types.INVISIBLE_PASSAGE, True)
         invisible_passage.properties.append(EntityTypeProperty(P.INVISIBLE_PASSAGE))
-        db.session.add(invisible_passage)
+        gangway_passage = PassageType(Types.GANGWAY, True)
+        db.session.add_all([door_passage, invisible_passage, gangway_passage])
         alive_character = EntityType(Types.ALIVE_CHARACTER)
         alive_character.properties.append(EntityTypeProperty(P.LINE_OF_SIGHT, data={"base_range": 10}))
         alive_character.properties.append(EntityTypeProperty(P.STATES, data={

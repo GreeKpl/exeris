@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    INVALID_SHIP_TYPE_FOR_BOARDING = "error_invalid_ship_type_for_boarding"
+    SHIP_NOT_BOARDED = "error_ship_not_boarded"
+    CANNOT_UNBOARD_FROM_OWN_SHIP = "error_cannot_unboard_from_own_ship"
+    ALREADY_BOARDED = "error_already_boarded"
+    CANNOT_BOARD_OWN_SHIP = "error_cannot_board_own_ship"
     NOT_TRAVERSABLE_TERRAIN = "error_not_traversable_terrain"
     CANNOT_UNBIND_NOT_LEAF = "error_cannot_unbind_not_leaf"
     ENTITY_NOT_BINDABLE = "error_entity_not_bindable"
@@ -59,6 +64,7 @@ class Errors:
 
 
 class Types:
+    GANGWAY = "gangway"
     KEY = "key"
     COMBAT = "combat"
     BURIED_HOLE = "buried_hole"
@@ -79,6 +85,8 @@ class Types:
 
 
 class Events:
+    START_UNBOARDING_SHIP = "event_start_unboarding_ship"
+    START_BOARDING_SHIP = "event_start_boarding_ship"
     UNBIND_ENTITY_FROM_VEHICLE = "event_unbind_entity_from_vehicle"
     BIND_ENTITY_TO_VEHICLE = "event_bind_entity_to_vehicle"
     PUT_ITEM_INTO_STORAGE = "event_put_item_into_storage"
@@ -112,8 +120,10 @@ class PartialEvents:
     """
     List of exact event types which aren't used in standard doer-observer way.
     """
+    UNBOARDING_SHIP_OBSERVER = "event_unboarding_ship_observer"
     TAKE_ITEM_FROM_OTHER_LOCATION_OBSERVER = "event_take_item_from_other_location_observer"
     TAKE_ITEM_FROM_STORAGE_FROM_OTHER_LOCATION_OBSERVER = "event_take_item_from_storage_from_other_location_observer"
+    BOARDING_SHIP_OBSERVER = "event_boarding_ship_observer"
 
 
 class Hooks:
@@ -510,3 +520,29 @@ class CannotUnbindNotLeaf(GameException):
 class NotTraversableTerrainException(GameException):
     def __init__(self):
         super().__init__(Errors.NOT_TRAVERSABLE_TERRAIN)
+
+
+class CannotBoardOwnShipException(GameException):
+    def __init__(self):
+        super().__init__(Errors.CANNOT_BOARD_OWN_SHIP)
+
+
+class AlreadyBoardedException(GameException):
+    def __init__(self, *, ship, boarded_ship):
+        super().__init__(Errors.ALREADY_BOARDED, ship=ship.pyslatize(), boarded_ship=boarded_ship.pyslatize())
+
+
+class CannotUnboardFromOwnShipException(GameException):
+    def __init__(self):
+        super().__init__(Errors.CANNOT_UNBOARD_FROM_OWN_SHIP)
+
+
+class ShipNotBoardedException(GameException):
+    def __init__(self, *, ship, ship_to_unboard):
+        super().__init__(Errors.SHIP_NOT_BOARDED, ship=ship.pyslatize(), ship_to_unboard=ship_to_unboard.pyslatize())
+
+
+class InvalidShipTypeForBoardingException(GameException):
+    def __init__(self, *, own_ship, boarded_type_name):
+        super().__init__(Errors.INVALID_SHIP_TYPE_FOR_BOARDING, own_ship=own_ship.pyslatize(),
+                         boarded_type=boarded_type_name)
