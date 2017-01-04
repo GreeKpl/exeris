@@ -592,8 +592,7 @@ def get_identifier_for_union(union_id):
 
 def _get_entity_info(entity, observer):
     if isinstance(entity, models.Passage):
-        entity = models.PassageToNeighbour(entity,
-                                           models.PassageToNeighbour.get_other_side(entity, g.character.being_in))
+        entity = _get_directed_passage_in_correct_direction(g.character.being_in, entity)
 
     other_side = None
     if isinstance(entity, models.PassageToNeighbour):
@@ -658,6 +657,19 @@ def _get_entity_info(entity, observer):
                                   actions=possible_actions, activities=activities, expandable=expandable,
                                   other_side=other_side, union_membership=union_membership)
     return {"html": entity_html, "id": app.encode(entity.id)}
+
+
+def _get_directed_passage_in_correct_direction(char_location, entity):
+    if entity.left_location == char_location:  # we are directly on the left side of the passage
+        entity = models.PassageToNeighbour(entity, entity.right_location)
+    else:  # we need to get the full location path to the passage
+        path_to_left_loc = general.RangeSpec.get_path_between_locations(char_location, entity.left_location)
+        # check which side of the passage is closer to us
+        if path_to_left_loc[-2] == entity.right_location:
+            entity = models.PassageToNeighbour(entity, entity.left_location)
+        else:
+            entity = models.PassageToNeighbour(entity, entity.right_location)
+    return entity
 
 
 @socketio_character_event("toggle_closeable")
