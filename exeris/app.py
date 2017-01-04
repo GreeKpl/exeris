@@ -148,6 +148,8 @@ from exeris.character import character_bp, character_static
 def create_database():
     db.create_all()
 
+    redis_db.flushdb()  # clear pub/sub queue for events
+
     models.init_database_contents()
 
     if not models.GameDateCheckpoint.query.count():
