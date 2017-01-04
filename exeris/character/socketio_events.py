@@ -301,6 +301,31 @@ def unbind_from_vehicle(entity_id):
     return ()
 
 
+@socketio_character_event("start_boarding_ship")
+def start_boarding_ship(entity_id):
+    entity_id = app.decode(entity_id)
+    entity = models.Entity.by_id(entity_id)
+
+    start_boarding_action = actions.StartBoardingAction(g.character, entity)
+    start_boarding_action.perform()
+    db.session.commit()
+    client_socket.emit("after_start_boarding_ship", app.encode(entity_id))
+    return ()
+
+
+@socketio_character_event("start_unboarding_from_ship")
+def get_ship_to_unboard_from(other_ship_id):
+    other_ship_id = app.decode(other_ship_id)
+    other_ship = models.Entity.by_id(other_ship_id)
+
+    start_unboarding_action = actions.StartUnboardingAction(g.character, other_ship)
+    start_unboarding_action.perform()
+
+    db.session.commit()
+    client_socket.emit("after_start_unboarding_from_ship", app.encode(other_ship_id))
+    return ()
+
+
 @socketio_character_event("character.go_to_location")
 def character_goto_location(entity_id):
     entity_id = app.decode(entity_id)
@@ -416,7 +441,7 @@ def entities_refresh_list(view):
         displayed_locations = [g.character]
     else:
         location = g.character.being_in
-        rng = general.VisibilityBasedRange(distance=30, only_through_unlimited=False)
+        rng = general.VisibilityBasedRange(distance=10, only_through_unlimited=False)
 
         displayed_locations = rng.root_locations_near(location)
         if location.get_root() in displayed_locations:

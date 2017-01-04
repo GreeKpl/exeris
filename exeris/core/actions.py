@@ -2403,6 +2403,12 @@ class UnboardingAction(ActivityAction):
         ship_union_member_property.split_union(self.ship_to_unboard)
         ship_in_boarding_property.remove_ship_from_boarding(self.ship_to_unboard)
 
+        passage_between_ships = models.Passage.query.filter(
+            models.Passage.between(self.ship, self.ship_to_unboard)).one()
+
+        self.activity.remove()
+        passage_between_ships.remove()
+
         general.EventCreator.create(tag_observer=PartialEvents.UNBOARDING_SHIP_OBSERVER,
                                     params={"groups": {
                                         "ship": self.ship.pyslatize(),
@@ -2419,8 +2425,6 @@ class StartUnboardingAction(ActionOnLocation):
                                       type=main.Intents.WORK).delete()  # no multiple intents in queue till #72
 
         executor_location = self.executor.being_in
-        if not self.location.has_property(P.BOARDABLE) or not executor_location.has_property(P.BOARDABLE):
-            raise ValueError("Not boardable")
 
         if executor_location == self.location:
             raise main.CannotUnboardFromOwnShipException()
@@ -2428,18 +2432,20 @@ class StartUnboardingAction(ActionOnLocation):
             models.Passage.between(executor_location, self.location)).one()
         if not self.executor.has_access(gangway_between_ships, general.SameLocationRange()):
             raise main.EntityTooFarAwayException(entity=self.location)
+        if not self.location.has_property(P.BOARDABLE) or not executor_location.has_property(P.BOARDABLE):
+            raise main.InvalidShipTypeForBoardingException(own_ship=g.character.being_in,
+                                                           boarded_type_name=self.location.type.name)
         if gangway_between_ships.has_activity():
             raise main.ActivityAlreadyExistsOnEntity(entity=gangway_between_ships)
 
         moving_entity_in_boarding_property = properties.OptionalInBoardingProperty(executor_location)
         if self.location.id not in moving_entity_in_boarding_property.get_ids_of_ships_in_boarding():
-            raise ValueError("Not in boarding with this ship")
+            raise main.ShipNotBoardedException(ship=executor_location, ship_to_unboard=self.location)
 
         unboarding_activity = models.Activity(gangway_between_ships, "unboarding_ship", {}, {}, 1, self.executor)
         unboarding_activity.result_actions = [
             ["exeris.core.actions.UnboardingAction", {
                 "ship": executor_location.id, "ship_to_unboard": self.location.id}],
-            ["exeris.core.actions.RemoveActivityContainerAction", {}],
         ]
         db.session.add(unboarding_activity)
 

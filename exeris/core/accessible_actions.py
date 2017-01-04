@@ -47,5 +47,7 @@ ACTIONS_ON_GROUND = [
     ActionRecord("get_entities_to_bind_to", "image", P.BINDABLE, "get_entities_to_bind_to"),
     ActionRecord("unbind_from_vehicle", "image", P.BINDABLE, "unbind_from_vehicle",
                  lambda x: x.has_property(P.MEMBER_OF_UNION)),
-
+    ActionRecord("start_boarding_ship", "image", P.BOARDABLE,
+                 "start_boarding_ship"),  # should have access to executor's loc
+    ActionRecord("unboard_ship", "image", P.IN_BOARDING, "start_unboarding_from_ship"),
 ]

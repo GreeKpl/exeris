@@ -138,6 +138,14 @@ FRAGMENTS.entities = (function($, socket) {
         }
     });
 
+    socket.on("after_start_boarding_ship", function(entity_id) {
+        $.publish("entities:refresh_entity_info", entity_id);
+    });
+
+    socket.on("after_start_unboarding_from_ship", function(entity_id) {
+        $.publish("entities:refresh_entity_info", entity_id);
+    });
+
     socket.on("after_drop_item", function(item_id) {
         $.publish("entities:refresh_entity_info", item_id);
     });

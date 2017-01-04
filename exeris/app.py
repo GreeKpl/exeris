@@ -643,7 +643,7 @@ def create_database():
 
         db.session.add_all([cart_type, cart, cart_recipe])
 
-        gangway_type = models.PassageType("gangway", True)
+        gangway_type = models.PassageType.by_name("gangway")
         rl_on_sea = models.RootLocation(Point(7, 1), 90)
         small_boat_type = models.LocationType("small_boat", 200)
         small_boat_type.properties.append(models.EntityTypeProperty(P.MOBILE, {
@@ -653,6 +653,9 @@ def create_database():
         }))
         small_boat_type.properties.append(models.EntityTypeProperty(P.CONTROLLING_MOVEMENT))
         small_boat_type.properties.append(models.EntityTypeProperty(P.ENTERABLE))
+        small_boat_type.properties.append(models.EntityTypeProperty(P.BOARDABLE, {
+            "allowed_ship_types": [small_boat_type.name],
+        }))
         small_boat = models.Location(rl_on_sea, small_boat_type, passage_type=gangway_type, title="Destroyer")
 
         small_boat_recipe = models.EntityRecipe("building_small_boat", {}, {
