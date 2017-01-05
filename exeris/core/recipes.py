@@ -208,7 +208,7 @@ class ActivityFactory:
                                          *item_query_parts).all()
 
         # locations
-        location_ids = [l.id for l in character.parent_locations()]
+        location_ids = models.ids(character.parent_locations())
         for loc in character.parent_locations():
             location_ids += [directed_passage.other_side.id for directed_passage in loc.passages_to_neighbours
                              if directed_passage.passage.is_accessible(False)]

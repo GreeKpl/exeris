@@ -3,12 +3,13 @@ import string
 import time
 
 import flask_socketio as client_socket
+from flask import g, render_template
+
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
 from exeris.core import properties
 from exeris.core.main import db, app
 from exeris.core.properties_base import P
-from flask import g, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +257,7 @@ def get_entities_to_bind_to(entity_id):
 
     char_loc = g.character.get_location()
     entities = models.Location.query.filter(models.Location.type_name.in_(allowed_concrete_types)) \
-                   .filter(models.Location.id.in_([n.id for n in char_loc.neighbours])).all() \
+                   .filter(models.Location.id.in_(models.ids(char_loc.neighbours))).all() \
                + models.Character.query.filter(models.Character.type_name.in_(allowed_concrete_types)) \
                    .filter(models.Character.is_in(char_loc)).all()
 
@@ -404,7 +405,7 @@ def _get_entities_in(parent_entity, observer, excluded=None):
     excluded = excluded if excluded else []
 
     entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
-        .filter(~models.Entity.id.in_([e.id for e in excluded])) \
+        .filter(~models.Entity.id.in_(models.ids(excluded))) \
         .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY) \
         .all()
 

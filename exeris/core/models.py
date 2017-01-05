@@ -1,21 +1,21 @@
 import collections
 import datetime
 import logging
-import types
 
 import geoalchemy2 as gis
 import sqlalchemy as sql
-import sqlalchemy.orm
 import sqlalchemy.dialects.postgresql as psql
-import sqlalchemy_json_mutable
-from exeris.core import main, properties_base, util
-from exeris.core.main import db, Types, Events, PartialEvents
-from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
-from exeris.core.properties_base import P
+import sqlalchemy.orm
 from flask_security import UserMixin, RoleMixin
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+
+import sqlalchemy_json_mutable
+from exeris.core import main, util
+from exeris.core.main import db, Types, Events, PartialEvents
+from exeris.core.map_data import MAP_HEIGHT, MAP_WIDTH
+from exeris.core.properties_base import P
 
 # subclasses hierarchy for Entity
 ENTITY_BASE = "base"
@@ -36,6 +36,11 @@ PLAYER_ID_MAXLEN = 24
 ALIVE_CHARACTER_WEIGHT = 1000
 
 logger = logging.getLogger(__name__)
+
+
+def ids(entities):
+    return [entity.id for entity in entities]
+
 
 roles_users = db.Table('player_roles',
                        db.Column('player_id', db.String(PLAYER_ID_MAXLEN), db.ForeignKey('players.id')),
@@ -412,17 +417,19 @@ class Entity(db.Model):
     def is_in(self, parents):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
-        db.session.flush()  # todo might require more
+        if any([e_id is None for e_id in ids(parents)]):  # any id is missing
+            db.session.flush()
         return (self.role == Entity.ROLE_BEING_IN) & (
-            self.parent_entity_id.in_([p.id for p in parents]) & ~self.discriminator_type.in_([ENTITY_LOCATION,
-                                                                                               ENTITY_ROOT_LOCATION]))
+            self.parent_entity_id.in_(ids(parents)) & ~self.discriminator_type.in_([ENTITY_LOCATION,
+                                                                                    ENTITY_ROOT_LOCATION]))
 
     @hybrid_method
     def is_used_for(self, parents):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
-        db.session.flush()  # todo might require more
-        return (self.parent_entity_id.in_([p.id for p in parents])) & (self.role == Entity.ROLE_USED_FOR)
+        if any([e_id is None for e_id in ids(parents)]):  # any id is missing
+            db.session.flush()
+        return (self.parent_entity_id.in_(ids(parents))) & (self.role == Entity.ROLE_USED_FOR)
 
     @hybrid_property
     def used_for(self):
@@ -558,7 +565,7 @@ class Entity(db.Model):
         :param excluding: list of entities which are not taken into account
         :return: True if this entity stores any entity inside or has any neighbour
         """
-        excluding = [obj.id for obj in (excluding if excluding else [])]
+        excluding = ids(excluding if excluding else [])
         excluding.append(-1)  # to avoid empty IN() contradiction
         if isinstance(self, RootLocation):
             if Passage.query.filter(Passage.incident(self)) \
