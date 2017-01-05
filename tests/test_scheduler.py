@@ -234,10 +234,7 @@ class SchedulerTravelTest(TestCase):
         travel_process = WorkProcess(None)
         travel_process.perform()
 
-        self.assertIn(rl, db.session.deleted)  # root location was empty so is deleted
-        self.assertEqual(1.02, rl.position.x)  # but it never changed its position
-        self.assertEqual(1.972222222222221, rl.position.y)
-
+        self.assertEqual(rl, traveler.being_in)
         self.assertAlmostEqual(1.02, traveler.get_position().x, places=15)
         self.assertAlmostEqual(1.99, traveler.get_position().y, places=15)
 
@@ -299,7 +296,6 @@ class SchedulerTravelTest(TestCase):
         cog3_being_moved_property.set_inertia(2, math.radians(300))
 
         work_process.process_travel_movement()
-
 
 
 class SchedulerActivityTest(TestCase):

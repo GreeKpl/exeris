@@ -561,7 +561,10 @@ class Entity(db.Model):
         excluding = [obj.id for obj in (excluding if excluding else [])]
         excluding.append(-1)  # to avoid empty IN() contradiction
         if isinstance(self, RootLocation):
-            if Passage.query.filter(Passage.incident(self)).count():
+            if Passage.query.filter(Passage.incident(self)) \
+                    .filter(~Passage.left_location_id.in_(excluding)) \
+                    .filter(~Passage.right_location_id.in_(excluding)) \
+                    .count():
                 return False
         return not Entity.query.filter(Entity.is_in(self)).filter(~Entity.id.in_(excluding)).count()
 

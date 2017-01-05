@@ -711,18 +711,34 @@ class WorkProcess(ProcessAction):
         return set(element for element in first_set if element in second_set)
 
 
+def _get_union_members_or_itself(entity):
+    entity_union_member_property = properties.OptionalMemberOfUnionProperty(entity)
+    if entity_union_member_property.property_exists:
+        return [ep.entity for ep in entity_union_member_property.get_entity_properties_of_own_union()]
+    else:
+        return [entity]
+
+
 def move_entity_to_position(entity, direction, target_position):
     if isinstance(entity, models.RootLocation):
-        raise ValueError("RootLocation {} should always be immobile".format(entity))
-    entity_root = entity.get_root()
+        raise ValueError("One shall not move a sole RootLocation {}".format(entity))
+    old_root = entity.get_root()
 
-    if entity_root.position != target_position:
+    if old_root.position != target_position:
         root_location = models.RootLocation.query.filter_by(position=target_position.wkt).first()
         if not root_location:
-            root_location = models.RootLocation(target_position, direction)
-            db.session.add(root_location)
+            union_members = _get_union_members_or_itself(entity)
+            if old_root.is_empty(excluding=union_members):
+                # there's nothing else, so we can move this RootLocation
+                old_root.position = target_position
+                old_root.direction = direction
 
-        move_entity_between_entities(entity, entity_root, root_location)
+                # remove to avoid situations like moving a city with observed name
+                models.ObservedName.query.filter_by(target=old_root).delete()
+            else:
+                root_location = models.RootLocation(target_position, direction)
+                db.session.add(root_location)
+                move_entity_between_entities(entity, old_root, root_location)
         logger.debug("Moving entity %s to position %s", entity.id, target_position)
     else:
         logger.debug("Not moving entity %s to position %s, because target position was the same", entity.id,
@@ -1485,12 +1501,7 @@ def move_location_between_entities(entity, source, destination, to_be_used_for=F
     if to_be_used_for:
         raise ValueError("Location or location-like entities cannot be set as to_be_used_for")
 
-    entity_member_of_union_property = properties.OptionalMemberOfUnionProperty(entity)
-    if entity_member_of_union_property.property_exists:
-        entity_properties = entity_member_of_union_property.get_entity_properties_of_own_union()
-        entities_in_union = [entity_property.entity for entity_property in entity_properties]
-    else:
-        entities_in_union = [entity]
+    entities_in_union = _get_union_members_or_itself(entity)
     for entity in entities_in_union:
         if isinstance(entity, models.Location):
             for psg_view in entity.passages_to_neighbours:  # all passages must be with other union members or a source
