@@ -1416,7 +1416,9 @@ class CreateCharacterAction(PlayerAction):
         self.language = language
 
     def perform_action(self):
-        loc = models.RootLocation.query.order_by(func.random()).first()
+        loc = models.RootLocation.query.filter(models.RootLocation.position == Point(1, 1).wkt).first()
+        if not loc:
+            loc = models.RootLocation.query.first()
         new_char = models.Character(self.character_name, self.sex, self.player, self.language,
                                     general.GameDate.now(), loc.position, loc)
         db.session.add(new_char)
