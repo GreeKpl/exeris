@@ -7,6 +7,7 @@ import string
 import time
 from collections import deque
 
+import itertools
 import shapely
 import sqlalchemy as sql
 from geoalchemy2.shape import to_shape
@@ -399,36 +400,55 @@ class AreaRangeSpec(RangeSpec):
         DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
         logger.debug("intervals are: %s", changes)
 
-        current_intervals = []
-        credits_left = travel_credits
-        real_length = 0
-        last_checkpoint_distance = 0
-        for change in sorted(changes):
-            logger.debug("### change %s", change)
-            current_intervals.sort()
-            if credits_left and current_intervals:
-                interval_length = change[DISTANCE] - last_checkpoint_distance
-                logger.debug("interval length: %s", interval_length)
-                value_with_top_prio = current_intervals[-1][1]
-                logger.debug("value with top prio: %s", value_with_top_prio)
-                interval_credits_cost = interval_length / value_with_top_prio
-                logger.debug("interval credits cost: %s", interval_credits_cost)
-                logger.debug("distance left: %s", credits_left)
-                if credits_left >= interval_credits_cost:
-                    logger.debug("decrease credits_left by %s", interval_credits_cost)
-                    credits_left -= interval_credits_cost
-                    real_length = change[DISTANCE]
-                else:
-                    real_length = last_checkpoint_distance + credits_left * value_with_top_prio
-                    credits_left = 0
-                last_checkpoint_distance = change[DISTANCE]
+        # a bucket is a group of changes which happen in the same distance from the beginning
+        buckets = []
+        for bucket_distance, bucket in itertools.groupby(sorted(changes), lambda change: change[DISTANCE]):
+            buckets.append({"distance": bucket_distance, "changes": list(bucket)})
 
+        current_intervals = []
+        # the first bucket is special, because it must create current_intervals
+        if buckets and math.isclose(buckets[0]["distance"], 0.0, abs_tol=1e-9):
+            self.update_intervals_based_on(buckets[0]["changes"], current_intervals)
+            buckets.pop(0)
+
+        credits_left = travel_credits
+        passed_distance = 0
+        for bucket in buckets:
+            logger.debug("### change %s", bucket["distance"])
+            current_intervals.sort()
+
+            # if any interval is missing or no credits then stop processing
+            if len(current_intervals) == 0 or credits_left == 0:
+                return passed_distance
+
+            value_of_interval_with_top_prio = current_intervals[-1][1]
+            # if any interval is impassable then stop processing
+            if value_of_interval_with_top_prio == 0:
+                return passed_distance
+
+            logger.debug("value with top prio: %s", value_of_interval_with_top_prio)
+            interval_length = bucket["distance"] - passed_distance
+            credits_cost_of_interval = interval_length / value_of_interval_with_top_prio
+            logger.debug("interval length: %s; interval cost: %s", interval_length, credits_cost_of_interval)
+            if credits_cost_of_interval < credits_left:
+                passed_distance = bucket["distance"]
+                logger.debug("decrease credits_left by %s", credits_cost_of_interval)
+                credits_left -= credits_cost_of_interval
+            else:
+                passed_distance += credits_left * value_of_interval_with_top_prio
+                credits_left = 0
+
+            self.update_intervals_based_on(bucket["changes"], current_intervals)
+        return passed_distance
+
+    def update_intervals_based_on(self, changes, current_intervals):
+        DISTANCE, PRIORITY, TYPE, VALUE = 0, 1, 2, 3
+        BEGIN, END = 1, 2
+        for change in changes:
             if change[TYPE] == BEGIN:
                 current_intervals.append((change[PRIORITY], change[VALUE]))
             else:
                 current_intervals.remove((change[PRIORITY], change[VALUE]))
-
-        return real_length
 
     def extract_line_strings(self, intersection):
         if intersection.geom_type == "MultiLineString":  # happens by the edge of the map

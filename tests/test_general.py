@@ -197,7 +197,6 @@ class RangeSpecTest(TestCase):
         db.session.add_all([lava_type, forest_type, land_terrain, area1, area2, area1_terrain, area2_terrain])
 
         rng = TraversabilityBasedRange(20, allowed_terrain_types=[Types.LAND_TERRAIN])
-
         # lava would allow to pass 20 units on map, but it's not a subtype of land terrain
         self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 10, 20))
 
@@ -208,6 +207,24 @@ class RangeSpecTest(TestCase):
         rng = TraversabilityBasedRange(20, allowed_terrain_types=["lava"])
         # now we wear lava-walking boots
         self.assertEqual(20, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 10, 20))
+
+    def test_terrain_based_limitation_for_traversability_with_hole(self):
+        grassland_type = TerrainType("grassland")
+        land_terrain = TypeGroup.by_name(Types.LAND_TERRAIN)
+        land_terrain.add_to_group(grassland_type)
+
+        area_poly = Polygon([(5, 0), (12, 0), (12, 20), (5, 20)])
+
+        area2_terrain = TerrainArea(area_poly, grassland_type)
+        area2 = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1,
+                             area_poly, terrain_area=area2_terrain)
+
+        db.session.add_all([grassland_type, land_terrain, area2, area2_terrain])
+
+        rng = TraversabilityBasedRange(6, allowed_terrain_types=[Types.LAND_TERRAIN])
+
+        self.assertEqual(5, rng.get_maximum_range_from_estimate(Point(10, 1), 180, 6, 12))
+        self.assertEqual(0, rng.get_maximum_range_from_estimate(Point(0, 1), 0, 6, 12))
 
     def test_entities_near(self):
         self.maxDiff = None

@@ -61,11 +61,11 @@ class SchedulerTravelTest(TestCase):
         util.initialize_date()
 
         rl = RootLocation(Point(2.8, 2.8), 123)
-        grass_type = TerrainType("grassland")
+        grassland_type = TerrainType("grassland")
         land_terrain_type = TypeGroup.by_name(main.Types.LAND_TERRAIN)
-        land_terrain_type.add_to_group(grass_type)
+        land_terrain_type.add_to_group(grassland_type)
         accessible_area = Polygon([(0, 0), (0, 20), (20, 20), (20, 0)])
-        grass_terrain = TerrainArea(accessible_area, grass_type)
+        grassland_terrain = TerrainArea(accessible_area, grassland_type)
 
         potato_loc = RootLocation(Point(10, 10), 55)
         potato_type = ItemType("potato", 10, stackable=True)
@@ -75,9 +75,9 @@ class SchedulerTravelTest(TestCase):
         potatoes = Item(potato_type, potato_loc, amount=10)
 
         land_trav_area = PropertyArea(models.AREA_KIND_TRAVERSABILITY, 1, 1, accessible_area,
-                                      terrain_area=grass_terrain)
+                                      terrain_area=grassland_terrain)
         visibility_area = PropertyArea(models.AREA_KIND_VISIBILITY, 1, 1, accessible_area,
-                                       terrain_area=grass_terrain)
+                                       terrain_area=grassland_terrain)
         traveler = util.create_character("John", rl, util.create_player("ABC"))
 
         eat_action = EatAction(traveler, potatoes, 5)
@@ -87,7 +87,7 @@ class SchedulerTravelTest(TestCase):
             go_to_entity_and_eat_action.travel_action = TravelToEntityAction(traveler, potatoes)
             go_to_entity_and_eat_action.target_action = eat_action
 
-        db.session.add_all([rl, grass_type, grass_terrain, land_trav_area, visibility_area,
+        db.session.add_all([rl, grassland_type, grassland_terrain, land_trav_area, visibility_area,
                             potato_loc, potato_type, potatoes])
 
         work_process = WorkProcess(None)
