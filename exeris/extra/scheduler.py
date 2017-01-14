@@ -57,7 +57,8 @@ class Scheduler:
                 self.logger.info("Task executed successfully: %s", task.process_data)
                 return True
             except Exception as e:
-                self.logger.warn("Failed to run process for the %s time: %s,", tries, task.process_data, exc_info=True)
+                self.logger.warning("Failed to run process for the %s time: %s,", tries, task.process_data,
+                                    exc_info=True)
                 self._rollback_transaction()
         self.logger.error("UNABLE TO COMPLETE PROCESS %s", task.process_data)
         return False

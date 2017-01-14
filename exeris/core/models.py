@@ -890,7 +890,7 @@ class Item(Entity):
 
     def __repr__(self):
         if not self.parent_entity:
-            logger.warn("Item with id=%s has no parent entity", self.id)
+            logger.warning("Item with id=%s has no parent entity", self.id)
             return "{{Item id={}, type={}, NO PARENT ENTITY}}".format(self.id, self.type_name)
         if self.amount > 1:
             return "{{Item id={}, type={}, amount={}, parent={}, parent_type={}}}" \

@@ -88,7 +88,7 @@ def socketio_player_event(*args, **kwargs):
         @wraps(f)
         def fg(*a, **k):
             if not current_user.is_authenticated:
-                logger.warn("Disconnected unwanted user", request.access_route)
+                logger.warning("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
 
             character_id = request.args.get("character_id", 0)
@@ -115,7 +115,7 @@ def socketio_character_event(*args, **kwargs):
         @wraps(f)
         def fg(*a, **k):
             if not current_user.is_authenticated:
-                logger.warn("Disconnected unwanted user", request.access_route)
+                logger.warning("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
             character_id = request.args.get("character_id")
             g.player = current_user
