@@ -12,7 +12,7 @@ export const ownCharactersListReducer = (state = Immutable.List(), action) => {
 
 export const getOwnCharactersList = state => state.get("ownCharactersList");
 
-const playerReducer = (state = Immutable.fromJS({"achievements": []}), action) => {
+export const playerReducer = (state = Immutable.fromJS({"achievements": []}), action) => {
   switch (action.type) {
     case actions.UPDATE_ACHIEVEMENTS_LIST:
       return state.set("achievements", Immutable.fromJS(action.achievementsList));
@@ -24,5 +24,3 @@ const playerReducer = (state = Immutable.fromJS({"achievements": []}), action) =
 export const getAchievementsList = state => {
   return state.get("achievements");
 };
-
-export default playerReducer;

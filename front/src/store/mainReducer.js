@@ -1,4 +1,4 @@
-import playerReducer from "../player/reducers";
+import {playerReducer} from "../player/reducers";
 import {combineReducers} from "redux-immutable";
 import {ownCharactersListReducer} from "../player/reducers";
 

@@ -6,10 +6,12 @@ import chai from "chai";
 import sinonChai from "sinon-chai";
 import chaiAsPromised from "chai-as-promised";
 import chaiEnzyme from "chai-enzyme";
+import chaiImmutable from "chai-immutable";
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
 chai.use(chaiEnzyme());
+chai.use(chaiImmutable);
 
 global.chai = chai;
 global.sinon = sinon;

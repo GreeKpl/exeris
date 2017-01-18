@@ -122,6 +122,7 @@
     "chai": "^3.4.1",
     "chai-as-promised": "^6.0.0",
     "chai-enzyme": "^0.6.1",
+    "chai-immutable": "^1.6.0",
     "cheerio": "^0.22.0",
     "codecov": "^1.0.1",
     "enzyme": "^2.0.0",
