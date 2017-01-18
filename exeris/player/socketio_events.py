@@ -2,6 +2,7 @@ import copy
 
 import flask_socketio as client_socket
 from exeris.app import socketio_player_event
+from exeris.core import achievements
 from exeris.core import main
 from exeris.core import models, actions, util
 from exeris.core.main import db
@@ -9,7 +10,7 @@ from flask import g, render_template
 from sqlalchemy import sql
 
 
-@socketio_player_event("create_character")
+@socketio_player_event("player.create_new_character")
 def create_character(char_name):
     create_character_action = actions.CreateCharacterAction(g.player, char_name, models.Character.SEX_MALE, "en")
     new_char = create_character_action.perform()
@@ -20,8 +21,27 @@ def create_character(char_name):
 
 @socketio_player_event("player.update_top_bar")
 def player_update_top_bar():
-    rendered = render_template("player_top_bar.html")
+    rendered = render_template("exeris/player/templates/player_top_bar.html")
     return rendered,
+
+
+@socketio_player_event("player.get_characters_list")
+def get_characters_list():
+    alive_characters = g.player.alive_characters
+
+    return sorted([{"id": ch.id, "name": ch.name} for ch in alive_characters], key=lambda ch: ch["id"]),
+
+
+@socketio_player_event("player.get_achievements_list")
+def get_achievements_list():
+    awarded_achievements = models.Achievement.query.filter_by(achiever=g.player).all()
+    achievements_to_show = []
+    for awarded_achievement in awarded_achievements:
+        for achievement in achievements.achievements:
+            if achievement[0] == awarded_achievement.achievement:
+                achievements_to_show.append(achievement)
+
+    return [{"title": achievement[0], "content": achievement[1]} for achievement in achievements_to_show],
 
 
 @socketio_player_event("player.pull_notifications_initial")
