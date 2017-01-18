@@ -15,7 +15,7 @@ with app.app_context():
                                            general.GameDate.now().game_timestamp, 3600)
         db.session.add(eating_task)
         animals_task = models.ScheduledTask(["exeris.core.actions.AnimalsProcess", {}],
-                                            general.GameDate.now().game_timestamp, 3600)
+                                            general.GameDate.now().game_timestamp, 24 * 3600)
         db.session.add(animals_task)
 
         db.session.commit()
