@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
 import TopBar from "./TopBar";
-import {requestOwnCharactersList} from "./../player/actions";
-import {getOwnCharactersList} from "./reducers";
+import {requestOwnCharactersList} from "./actions";
+import {getOwnCharactersList} from "../player/reducers";
 
 const mapStateToProps = (state) => {
   return {

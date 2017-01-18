@@ -1,6 +1,6 @@
 import playerReducer from "../player/reducers";
 import {combineReducers} from "redux-immutable";
-import {ownCharactersListReducer} from "../app/reducers";
+import {ownCharactersListReducer} from "../player/reducers";
 
 
 const mainReducer = combineReducers({
