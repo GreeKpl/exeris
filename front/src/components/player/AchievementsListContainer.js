@@ -1,9 +1,9 @@
 import {connect} from "react-redux";
-import {requestAchievementsList, getAchievementsList} from "../../modules/player";
+import {requestAchievementsList, getAchievementsList, fromPlayerState} from "../../modules/player";
 import AchievementsList from "./AchievementsList";
 
 const mapStateToProps = (state) => {
-  return {achievements: getAchievementsList(state.get("player"))};
+  return {achievements: getAchievementsList(fromPlayerState(state))};
 };
 
 const mapDispatchToProps = (dispatch) => {

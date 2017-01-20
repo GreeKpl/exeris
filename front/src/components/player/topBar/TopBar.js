@@ -15,23 +15,18 @@ class TopBar extends React.Component {
 
   render() {
     return <Nav bsStyle="pills"
-                className="TopBar-Nav"
-                style={{
-                  position: "fixed",
-                  top: "0px",
-                  left: "0px",
-                  right: "0px",
-                }}>
+                className="TopBar-Nav">
       <LinkContainer to="/player" key="main">
         <NavItem className="actionItem">
           Main
         </NavItem>
       </LinkContainer>
       {this.props.charactersList.map(character_info =>
-        <NavItem key={character_info.get("id")} className="actionItem"
-                 href={"/character/" + character_info.get("id") + "/events"}>
-          {character_info.get("name")}
-        </NavItem>
+        <LinkContainer to={"/character/" + character_info.get("id") + "/events"} key={character_info.get("id")}>
+          <NavItem className="actionItem">
+            {character_info.get("name")}
+          </NavItem>
+        </LinkContainer>
       )}
     </Nav>
   }

@@ -1,16 +1,18 @@
 import {connect} from "react-redux";
 import TopBar from "./TopBar";
-import {requestOwnCharactersList, getOwnCharactersList} from "../../modules/player";
+import {getOwnCharactersList, fromPlayerState, requestOwnCharactersList} from "../../../modules/player";
 
 const mapStateToProps = (state) => {
   return {
-    charactersList: getOwnCharactersList(state),
+    charactersList: getOwnCharactersList(fromPlayerState(state)),
   };
 };
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    onMount: () => dispatch(requestOwnCharactersList()),
+    onMount: () => {
+      dispatch(requestOwnCharactersList());
+    },
   };
 };
 
