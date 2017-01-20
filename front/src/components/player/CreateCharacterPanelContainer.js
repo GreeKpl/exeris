@@ -1,6 +1,6 @@
 import {connect} from "react-redux";
 import CreateCharacterPanel from "./CreateCharacterPanel";
-import {createNewCharacter} from "./actions";
+import {createNewCharacter} from "../../modules/player";
 
 const mapStateToProps = (state) => {
   return {};

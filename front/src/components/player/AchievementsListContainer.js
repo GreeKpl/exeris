@@ -1,7 +1,6 @@
 import {connect} from "react-redux";
-import {requestAchievementsList} from "./actions";
+import {requestAchievementsList, getAchievementsList} from "../../modules/player";
 import AchievementsList from "./AchievementsList";
-import {getAchievementsList} from "./reducers";
 
 const mapStateToProps = (state) => {
   return {achievements: getAchievementsList(state.get("player"))};

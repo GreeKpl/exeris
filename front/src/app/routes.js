@@ -1,5 +1,5 @@
 import React from "react";
-import DashboardContainer from "../player/DashboardContainer";
+import DashboardContainer from "../components/player/DashboardContainer";
 import {Route, IndexRedirect} from "react-router";
 import Root from "./Root";
 

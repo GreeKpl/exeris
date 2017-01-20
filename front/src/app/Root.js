@@ -1,5 +1,5 @@
 import React from "react";
-import TopBarContainer from "../player/TopBarContainer";
+import TopBarContainer from "../components/topBar/TopBarContainer";
 
 const Root = (props) => {
   return <div>

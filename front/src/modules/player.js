@@ -1,8 +1,9 @@
+import * as Immutable from "immutable";
 import socket from "../util/server";
 
-export const REQUEST_OWN_CHARACTERS_LIST = "REQUEST_OWN_CHARACTERS_LIST";
-export const UPDATE_OWN_CHARACTERS_LIST = "UPDATE_OWN_CHARACTERS_LIST";
-export const UPDATE_ACHIEVEMENTS_LIST = "UPDATE_ACHIEVEMENTS_LIST";
+export const REQUEST_OWN_CHARACTERS_LIST = "exeris/player/REQUEST_OWN_CHARACTERS_LIST";
+export const UPDATE_OWN_CHARACTERS_LIST = "exeris/player/UPDATE_OWN_CHARACTERS_LIST";
+export const UPDATE_ACHIEVEMENTS_LIST = "exeris/player/UPDATE_ACHIEVEMENTS_LIST";
 
 export const requestOwnCharactersList = () => {
   return dispatch => {
@@ -45,3 +46,19 @@ export const updateAchievementsList = (achievementsList) => {
     achievementsList,
   };
 };
+
+
+export const playerReducer = (state = Immutable.fromJS({achievements: [], ownCharacters: []}), action) => {
+  switch (action.type) {
+    case UPDATE_ACHIEVEMENTS_LIST:
+      return state.set("achievements", Immutable.fromJS(action.achievementsList));
+    case UPDATE_OWN_CHARACTERS_LIST:
+      return state.set("ownCharacters", Immutable.fromJS(action.charactersList));
+    default:
+      return state;
+  }
+};
+
+export const getOwnCharactersList = state => state.get("ownCharacters");
+
+export const getAchievementsList = state => state.get("achievements");

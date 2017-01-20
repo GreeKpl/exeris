@@ -1,11 +1,9 @@
-import {playerReducer} from "../player/reducers";
+import {playerReducer} from "../modules/player";
 import {combineReducers} from "redux-immutable";
-import {ownCharactersListReducer} from "../player/reducers";
 
 
 const mainReducer = combineReducers({
   player: playerReducer,
-  ownCharactersList: ownCharactersListReducer,
 });
 
 export default mainReducer;
