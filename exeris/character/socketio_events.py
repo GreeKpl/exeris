@@ -135,11 +135,16 @@ def get_all_events():
 def get_all_characters_around():
     visibility_range = general.VisibilityBasedRange(10)
     chars = visibility_range.characters_near(g.character)
-    rendered = render_template("events/people_short.html", chars=chars,
-                               get_combat_action=lambda char: properties.CombatableProperty(char).combat_action)
+    # rendered = render_template("events/people_short.html", chars=chars,
+    #                            get_combat_action=lambda char: properties.CombatableProperty(char).combat_action)
+
+    characters_list = [{
+                           "id": app.encode(char.id),
+                           "name": g.pyslate.t("character_info", html=True, **char.pyslatize())
+                       } for char in chars]
 
     db.session.commit()
-    return rendered,
+    return characters_list,
 
 
 @socketio_character_event("character.combat_refresh_box")
