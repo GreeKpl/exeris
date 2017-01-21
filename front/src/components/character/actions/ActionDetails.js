@@ -76,7 +76,7 @@ class ActionDetails extends React.Component {
             Amount
           </Col>
           <Col sm={9}>
-            <FormControl type="text" placeholder="amount" value="2"/>
+            <FormControl type="text" placeholder="amount" value="2" readOnly/>
           </Col>
         </FormGroup>
 
