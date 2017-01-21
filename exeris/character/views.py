@@ -7,29 +7,10 @@ from exeris.core.graphics import get_map
 from flask import render_template, g
 
 
-@character_bp.route('/events')
-def page_events():
-    return render_template("events/page_events.html")
-
-
-@character_bp.route('/entities')
-def page_entities():
-    return render_template("entities/page_entities.html", entities_to_show="entities")
-
-
-@character_bp.route('/inventory')
-def page_inventory():
-    return render_template("entities/page_entities.html", entities_to_show="inventory")
-
-
-@character_bp.route('/map')
-def page_map():
-    return render_template("map/page_map.html")
-
-
-@character_bp.route('/actions')
-def page_actions():
-    return render_template("actions/page_actions.html")
+@character_bp.route("/", defaults={'path': ''})
+@character_bp.route("/<path:path>")
+def page_player(path):
+    return render_template("front/dist/index.html")
 
 
 @character_bp.route("/map_image")

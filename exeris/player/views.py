@@ -15,8 +15,9 @@ from pydiscourse.exceptions import DiscourseError
 from pydiscourse.sso import sso_validate, sso_payload
 
 
-@player_bp.route("/")
-def page_player():
+@player_bp.route("/", defaults={'path': ''})
+@player_bp.route("/<path:path>")
+def page_player(path):
     return render_template("front/dist/index.html")
 
 
