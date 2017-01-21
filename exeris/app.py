@@ -113,11 +113,11 @@ def socketio_character_event(*args, **kwargs):
 
     def dec(f):
         @wraps(f)
-        def fg(*a, **k):
+        def fg(*request_args, **request_kwargs):
             if not current_user.is_authenticated:
                 logger.warning("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
-            character_id = request.args.get("character_id")
+            character_id = request_args[0]
             g.player = current_user
             g.character = models.Character.by_id(character_id)
             g.language = g.character.language
@@ -128,7 +128,8 @@ def socketio_character_event(*args, **kwargs):
             if not g.character.is_alive:
                 raise main.CharacterDeadException(character=g.character)
 
-            result = f(*a, **k)  # argument list (the first and only positional arg) is expanded
+            # argument list (the first and only positional arg) is expanded
+            result = f(*request_args[1:], **request_kwargs)
             return (True,) + (result if result else ())
 
         return socketio_handler(fg)

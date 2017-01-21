@@ -111,8 +111,8 @@ def join_activity(activity_id):
     return ()
 
 
-@socketio_character_event("character.pull_events_initial")
-def pull_events_initial():
+@socketio_character_event("character.get_all_events")
+def get_all_events():
     start = time.time()
     events = db.session.query(models.Event).join(models.EventObserver).filter_by(observer=g.character) \
         .order_by(models.Event.id.asc()).all()
