@@ -13,6 +13,7 @@ class PlayerPage extends React.Component {
         top: "0px",
         left: "0px",
         right: "0px",
+        zIndex: 1,
       }}>
         <TopBarContainer/>
       </div>

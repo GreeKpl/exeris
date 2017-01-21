@@ -14,6 +14,7 @@ class CharacterPage extends React.Component {
         top: "0px",
         left: "0px",
         right: "0px",
+        zIndex: 1,
       }}>
         <TopBarContainer characterId={this.props.characterId}/>
         <CharacterTopBarContainer characterId={this.props.characterId}/>
