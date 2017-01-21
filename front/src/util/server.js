@@ -3,7 +3,7 @@ import io from "socket.io-client";
 
 const getDeprecatedQueryString = () => {
   const href = window.location.href;
-  const parts = /character\/\d+/.exec(href);
+  const parts = /character\/(\d+)/.exec(href);
   let characterId = "";
   if (parts) {
     characterId = parts[1];
