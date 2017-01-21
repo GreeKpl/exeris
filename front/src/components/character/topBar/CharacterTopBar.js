@@ -13,7 +13,7 @@ class CharacterTopBar extends React.Component {
       events: "Events",
       entities: "Entities",
       actions: "Actions",
-      myInfo: "My character"
+      myCharacter: "My character"
     }).forEach(
       (entries) => {
         links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>

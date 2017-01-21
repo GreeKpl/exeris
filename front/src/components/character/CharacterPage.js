@@ -21,6 +21,7 @@ class CharacterPage extends React.Component {
       </div>
       <br/><br/>
       <br/><br/>
+      <br/>
       {this.props.children}
     </div>;
   }
