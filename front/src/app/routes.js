@@ -6,6 +6,7 @@ import CharacterPageContainer from "../components/character/CharacterPageContain
 import PlayerPageContainer from "../components/player/PlayerPageContainer";
 import DashboardContainer from "../components/player/DashboardContainer";
 import EntitiesPageContainer from "../components/character/entities/EntitiesPageContainer";
+import ActionsPageContainer from "../components/character/actions/ActionsPageContainer";
 
 const routes = (
   <Route path="/" component={Root}>
@@ -18,6 +19,7 @@ const routes = (
       <IndexRedirect to="events"/>
       <Route path="events" component={EventsPageContainer}/>
       <Route path="entities" component={EntitiesPageContainer}/>
+      <Route path="actions" component={ActionsPageContainer}/>
     </Route>
   </Route>
 );
