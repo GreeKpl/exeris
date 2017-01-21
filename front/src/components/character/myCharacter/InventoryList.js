@@ -9,7 +9,7 @@ class InventoryList extends React.Component {
 
   render() {
     return (
-      <ListGroup striped={true}>
+      <ListGroup>
         <ListGroupItem>A sword (equipped)</ListGroupItem>
         <ListGroupItem>5 lumps of clay</ListGroupItem>
         <ListGroupItem>An axe</ListGroupItem>

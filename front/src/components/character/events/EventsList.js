@@ -1,17 +1,31 @@
 import React from "react";
-import {Panel} from "react-bootstrap";
+import {ListGroup, ListGroupItem} from "react-bootstrap";
 
-class EventsPage extends React.Component {
+
+class EventsList extends React.Component {
 
   constructor(props) {
     super(props);
   }
 
+  componentDidMount() {
+    this.props.onMount();
+  }
+
   render() {
-    return <Panel header="Events list">
-      Events page for {this.props.characterId}.
-    </Panel>;
+    let eventsList = [];
+    const events = this.props.events;
+    for (let i = events.size - 1; i >= 0; i--) {
+      eventsList.push(
+        <ListGroupItem key={events.get(i).get("id")} dangerouslySetInnerHTML={{__html: events.get(i).get("text")}}/>
+      );
+    }
+
+    return (
+      <ListGroup>
+        {eventsList}
+      </ListGroup>);
   }
 }
 
-export default EventsPage;
+export default EventsList;
