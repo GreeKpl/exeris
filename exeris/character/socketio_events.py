@@ -131,8 +131,8 @@ def get_all_events():
     return events,
 
 
-@socketio_character_event("people_short.refresh_list")
-def people_short_refresh_list():
+@socketio_character_event("character.get_all_characters_around")
+def get_all_characters_around():
     visibility_range = general.VisibilityBasedRange(10)
     chars = visibility_range.characters_near(g.character)
     rendered = render_template("events/people_short.html", chars=chars,
