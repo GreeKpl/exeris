@@ -20,15 +20,17 @@ class CharactersList extends React.Component {
   render() {
     return <Panel header="People around">
       <ListGroup fill>
-        {this.props.charactersAround.map(character => (
-          <CharacterEntry
-            key={character.get("id")}
-            id={character.get("id")}
-            name={character.get("name")}
-          />
-        ))}
+        {this.props.charactersAround.map(this.createCharacterEntry)}
       </ListGroup>
     </Panel>;
+  }
+
+  createCharacterEntry(character) {
+    return <CharacterEntry
+      key={character.get("id")}
+      id={character.get("id")}
+      name={character.get("name")}
+    />;
   }
 }
 

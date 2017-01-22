@@ -35,4 +35,4 @@ export const decoratedCharactersAroundReducer = characterReducerDecorator(charac
 export const getCharactersAround = state => state;
 
 export const fromCharactersAroundState = (state, characterId) =>
-  state.getIn(["charactersAround", characterId], Immutable.Map());
+  state.getIn(["charactersAround", characterId], Immutable.List());
