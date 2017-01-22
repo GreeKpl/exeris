@@ -60,7 +60,7 @@ def speaking_form_refresh(message_type, receiver=None):
     return rendered,
 
 
-@socketio_character_event("say_aloud")
+@socketio_character_event("character.say_aloud")
 def say_aloud(message):
     action = actions.SayAloudAction(g.character, message)
     action.perform()
@@ -69,7 +69,7 @@ def say_aloud(message):
     return ()
 
 
-@socketio_character_event("say_to_somebody")
+@socketio_character_event("character.say_to_somebody")
 def say_to_somebody(receiver_id, message):
     receiver_id = app.decode(receiver_id)
     receiver = models.Character.by_id(receiver_id)
@@ -81,7 +81,7 @@ def say_to_somebody(receiver_id, message):
     return ()
 
 
-@socketio_character_event("whisper")
+@socketio_character_event("character.whisper")
 def whisper(receiver_id, message):
     receiver_id = app.decode(receiver_id)
     receiver = models.Character.by_id(receiver_id)
