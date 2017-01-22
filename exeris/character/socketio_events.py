@@ -140,7 +140,7 @@ def get_all_characters_around():
 
     characters_list = [{
                            "id": app.encode(char.id),
-                           "name": g.pyslate.t("character_info", html=True, **char.pyslatize())
+                           "name": g.pyslate.t("character_info", html=False, **char.pyslatize())
                        } for char in chars]
 
     db.session.commit()
