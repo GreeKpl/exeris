@@ -10,7 +10,9 @@ class TopBar extends React.Component {
   }
 
   componentDidMount() {
-    this.props.onMount();
+    if (this.props.charactersList.size == 0) {
+      this.props.requestState();
+    }
   }
 
   render() {

@@ -22,10 +22,9 @@ class SpeechPanel extends React.Component {
     };
 
     return <Panel>
-      <form>
+      <form onSubmit={this.props.onSubmit}>
         <FormGroup
-          controlId="speechMessage"
-        >
+          controlId="speechMessage">
           <Col sm={10}>
             <FormControl
               type="text"
@@ -34,7 +33,7 @@ class SpeechPanel extends React.Component {
               onChange={this.onTextChange}
             />
           </Col>
-          <Col componentClass={Button} sm={2} onClick={this.props.onClick}>
+          <Col componentClass={Button} sm={2} type="submit">
             {speechTypeToLabel[this.props.speechType]}
           </Col>
         </FormGroup>

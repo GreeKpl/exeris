@@ -21,7 +21,10 @@ const mapStateToProps = (state, ownProps) => {
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
     onTextChange: (newText) => dispatch(updateText(ownProps.characterId, newText)),
-    onClick: () => dispatch(speakText(ownProps.characterId)),
+    onSubmit: event => {
+      event.preventDefault();
+      dispatch(speakText(ownProps.characterId));
+    },
   }
 };
 

@@ -10,7 +10,7 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {
-  return {onMount: () => dispatch(requestAllEvents(ownProps.characterId))}
+  return {requestState: () => dispatch(requestAllEvents(ownProps.characterId))}
 };
 
 const EventsListContainer = connect(

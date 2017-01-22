@@ -15,7 +15,7 @@ const mapStateToProps = (state, ownProps) => {
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    onMount: () => dispatch(requestCharactersAround(ownProps.characterId)),
+    requestState: () => dispatch(requestCharactersAround(ownProps.characterId)),
   }
 };
 

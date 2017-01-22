@@ -9,7 +9,13 @@ class EventsList extends React.Component {
   }
 
   componentDidMount() {
-    this.props.onMount();
+    this.props.requestState();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.characterId !== this.props.characterId) {
+      this.props.requestState();
+    }
   }
 
   render() {
