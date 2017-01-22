@@ -3,6 +3,7 @@ import {combineReducers} from "redux-immutable";
 import {decoratedEventsReducer} from "../modules/events";
 import {decoratedCharactersAroundReducer} from "../modules/charactersAround";
 import {decoratedSpeechReducer} from "../modules/speech";
+import {decoratedTopPanelReducer} from "../modules/topPanel";
 
 
 const mainReducer = combineReducers({
@@ -10,6 +11,7 @@ const mainReducer = combineReducers({
   events: decoratedEventsReducer,
   charactersAround: decoratedCharactersAroundReducer,
   speech: decoratedSpeechReducer,
+  topPanel: decoratedTopPanelReducer,
 });
 
 export default mainReducer;
