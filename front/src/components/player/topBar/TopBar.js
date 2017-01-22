@@ -1,7 +1,7 @@
 import React from "react";
 import {Nav, NavItem} from "react-bootstrap";
-import "./style.scss";
 import {LinkContainer} from "react-router-bootstrap";
+import "./style.scss";
 
 class TopBar extends React.Component {
 
@@ -17,7 +17,7 @@ class TopBar extends React.Component {
 
   render() {
     return <Nav bsStyle="pills"
-                className="TopBar-Nav">
+                className="Player-TopBar-Nav">
       <LinkContainer to="/player" key="main">
         <NavItem className="actionItem">
           Main

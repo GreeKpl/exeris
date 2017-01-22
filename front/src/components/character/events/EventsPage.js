@@ -3,6 +3,7 @@ import {Grid, Row, Col} from "react-bootstrap";
 import EventsListContainer from "./EventsListContainer";
 import CharactersListContainer from "./CharactersListContainer";
 import SpeechPanelContainer from "./SpeechPanelContainer";
+import "./style.scss";
 
 class EventsPage extends React.Component {
 

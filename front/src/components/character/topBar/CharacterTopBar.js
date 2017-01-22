@@ -1,6 +1,7 @@
 import React from "react";
 import {Nav, NavItem} from "react-bootstrap";
 import {LinkContainer} from "react-router-bootstrap";
+import "./style.scss";
 
 class CharacterTopBar extends React.Component {
   constructor(props) {
@@ -23,7 +24,7 @@ class CharacterTopBar extends React.Component {
         </LinkContainer>);
       });
     return <Nav bsStyle="pills"
-                className="TopBar-Nav">
+                className="Character-TopBar-Nav">
       {links}
     </Nav>;
   }
