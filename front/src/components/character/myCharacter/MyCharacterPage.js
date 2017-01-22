@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Row, Col, Panel} from "react-bootstrap";
+import {Grid, Row, Col} from "react-bootstrap";
 import EquipmentContainer from "./EquipmentContainer";
 import InventoryListContainer from "./InventoryListContainer";
 import SkillsListContainer from "./SkillsListContainer";
@@ -16,20 +16,12 @@ class MyCharacterPage extends React.Component {
       <Grid fluid={true}>
         <Row>
           <Col xs={12} md={6}>
-            <Panel header="Your RootLocation">
-              <InventoryListContainer characterId={this.props.characterId}/>
-            </Panel>
+            <InventoryListContainer characterId={this.props.characterId}/>
           </Col>
           <Col xs={12} md={6}>
-            <Panel header="Equipment">
-              <EquipmentContainer characterId={this.props.characterId}/>
-            </Panel>
-            <Panel header="Skills">
-              <SkillsListContainer characterId={this.props.characterId}/>
-            </Panel>
-            <Panel header="Appearance">
-              <AppearanceContainer characterId={this.props.characterId}/>
-            </Panel>
+            <EquipmentContainer characterId={this.props.characterId}/>
+            <SkillsListContainer characterId={this.props.characterId}/>
+            <AppearanceContainer characterId={this.props.characterId}/>
           </Col>
         </Row>
       </Grid>);
