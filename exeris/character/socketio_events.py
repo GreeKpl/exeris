@@ -135,40 +135,60 @@ def get_all_events():
 def get_all_characters_around():
     visibility_range = general.VisibilityBasedRange(10)
     chars = visibility_range.characters_near(g.character)
+
     # rendered = render_template("events/people_short.html", chars=chars,
     #                            get_combat_action=lambda char: properties.CombatableProperty(char).combat_action)
 
+    def get_combat_id(char):
+        combat_action = properties.CombatableProperty(char).combat_action
+        if combat_action:
+            return combat_action.id
+        return None
+
+    def get_combat_name(char):
+        combat_action = properties.CombatableProperty(char).combat_action
+        if combat_action:
+            return g.pyslate.t("action_info", **combat_action.pyslatize())
+        return None
+
     characters_list = [{
                            "id": app.encode(char.id),
-                           "name": g.pyslate.t("character_info", html=False, **char.pyslatize())
+                           "name": g.pyslate.t("character_info", html=False, **char.pyslatize()),
+                           "combatName": get_combat_name(char),
+                           "combatId": get_combat_id(char)
                        } for char in chars]
 
     db.session.commit()
     return characters_list,
 
 
-@socketio_character_event("character.combat_refresh_box")
+@socketio_character_event("character.get_combat_details")
 def combat_refresh_box(combat_id=None):
     if combat_id:
         combat_id = app.decode(combat_id)
         combat_entity = models.Combat.query.get(combat_id)
-        own_combat_action = None
     else:  # default - try to show own combat
         combat_intent = models.Intent.query.filter_by(executor=g.character, type=main.Intents.COMBAT).first()
         if not combat_intent:
             return ""
         combat_entity = combat_intent.target
-        own_combat_action = deferred.call(combat_intent.serialized_action)
     if not combat_entity:
-        return ""
+        return None
 
     attackers, defenders = combat.get_combat_actions_of_attackers_and_defenders(g.character, combat_entity)
 
-    rendered = render_template("combat.html", own_action=own_combat_action,
-                               attackers=attackers, defenders=defenders,
-                               combat_entity=combat_entity, combat_stances=combat)
+    def convert_to_json(fighter_action):
+        return {"id": app.encode(fighter_action.executor.id),
+                "name": g.pyslate.t("character_info", **fighter_action.executor.pyslatize()),
+                "stance": fighter_action.stance,
+                "damage": fighter_action.executor.damage,
+                "recordedDamage": combat_entity.get_recorded_damage(fighter_action.executor),
+                }
 
-    return rendered,
+    return {
+               "attackers": [convert_to_json(action) for action in attackers],
+               "defenders": [convert_to_json(action) for action in defenders],
+           },
 
 
 @socketio_character_event("character.combat_change_stance")
@@ -352,7 +372,7 @@ def character_goto_location(entity_id):
     return ()
 
 
-@socketio_character_event("character.get_info")
+@socketio_character_event("character.get_character_details")
 def character_goto_location(target_character_id):
     target_character_id = app.decode(target_character_id)
     target_character = models.Character.by_id(target_character_id)
@@ -370,14 +390,30 @@ def character_goto_location(target_character_id):
 
     participant_combatable_property = properties.CombatableProperty(target_character)
     combat_action = participant_combatable_property.combat_action
-    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize(html=True))
-    stripped_character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
+    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
+    location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
+    if action_worked_on:
+        action_name = g.pyslate.t("action_info", **action_worked_on.pyslatize())
+    else:
+        action_name = None
+    if combat_action:
+        combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
+    else:
+        combat_name = None
+    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_item in equipment]
 
-    modal = render_template("modal_character_info.html", character=target_character, name=character_observed_name,
-                            stripped_name=stripped_character_observed_name, action_worked_on=action_worked_on,
-                            combat_action=combat_action, location=location, modifiers=modifiers, equipment=equipment)
-
-    return modal,
+    return {
+               "id": app.encode(target_character.id),
+               "name": character_observed_name,
+               "locationName": location_observed_name,
+               "locationId": app.encode(location.id),
+               "workIntent": action_name,
+               "combatIntent": combat_name,
+               "shortDescription": "a bald man",
+               "longDescription": "a handsome tall band man with blue eyes",
+               "equipment": equipment_names,
+               "modifiers": modifiers,
+           },
 
 
 @socketio_character_event("open_readable_contents")
