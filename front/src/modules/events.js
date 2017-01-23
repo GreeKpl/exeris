@@ -5,6 +5,12 @@ import {characterReducerDecorator} from "../util/characterReducerDecorator";
 export const UPDATE_EVENTS_LIST = "exeris-front/events/UPDATE_EVENTS_LIST";
 export const APPEND_TO_EVENTS_LIST = "exeris-front/events/APPEND_TO_EVENTS_LIST";
 
+export const setUpSocketioListeners = dispatch => {
+  socket.on("character.new_event", (characterId, event) => {
+    dispatch(appendToEventsList(characterId, [event]));
+  });
+};
+
 export const requestAllEvents = (characterId) => {
   return dispatch => {
     socket.request("character.get_all_events", characterId, eventsList => {

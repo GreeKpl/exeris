@@ -1,11 +1,20 @@
 import React, {Component, PropTypes} from "react";
 import {browserHistory, Router} from "react-router";
 import {Provider} from "react-redux";
+import * as duckModules from "../modules";
 
 class AppContainer extends Component {
 
   static shouldComponentUpdate() {
     return false;
+  }
+
+  componentDidMount() {
+    for (let module of Object.values(duckModules)) {
+      if ("setUpSocketioListeners" in module) {
+        module.setUpSocketioListeners(this.props.store.dispatch);
+      }
+    }
   }
 
   render() {

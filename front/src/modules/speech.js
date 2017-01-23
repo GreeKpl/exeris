@@ -37,17 +37,16 @@ export const speakText = characterId => {
     if (spokenText.length == 0) {
       return {};
     }
-    const onSucceed = () => {
-      dispatch(updateText(characterId, ""));
-    };
+    dispatch(updateText(characterId, ""));
+
     const speechType = getSpeechType(fromSpeechState(getState(), characterId));
     const speechTarget = getSpeechTargetId(fromSpeechState(getState(), characterId));
     if (speechType == SPEECH_TYPE_ALOUD) {
-      socket.request("character.say_aloud", characterId, spokenText, onSucceed);
+      socket.request("character.say_aloud", characterId, spokenText);
     } else if (speechType == SPEECH_TYPE_SPEAK_TO) {
-      socket.request("character.say_to_somebody", characterId, speechTarget, spokenText, onSucceed);
+      socket.request("character.say_to_somebody", characterId, speechTarget, spokenText);
     } else if (speechType == SPEECH_TYPE_WHISPER_TO) {
-      socket.request("character.whisper", characterId, speechTarget, spokenText, onSucceed);
+      socket.request("character.whisper", characterId, speechTarget, spokenText);
     }
   }
 };
