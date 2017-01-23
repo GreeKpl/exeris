@@ -3,6 +3,7 @@ import {Grid, Row, Col} from "react-bootstrap";
 import EventsListContainer from "./EventsListContainer";
 import CharactersListContainer from "./CharactersListContainer";
 import SpeechPanelContainer from "./SpeechPanelContainer";
+import TopPanelContainer from "../topPanel/TopPanelContainer";
 import "./style.scss";
 
 class EventsPage extends React.Component {
@@ -16,6 +17,7 @@ class EventsPage extends React.Component {
       <Grid fluid={true}>
         <Row>
           <Col xs={12} md={8}>
+            <TopPanelContainer characterId={this.props.characterId}/>
             <SpeechPanelContainer characterId={this.props.characterId}/>
             <EventsListContainer characterId={this.props.characterId}/>
           </Col>

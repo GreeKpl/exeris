@@ -67,7 +67,7 @@ export const topPanelReducer = (state = Immutable.fromJS({
 
 export const decoratedTopPanelReducer = characterReducerDecorator(topPanelReducer);
 
-export const getDetailsType = state => state.get("type");
+export const getDetailsType = state => state.get("type", null);
 
 export const getDetailsData = state => state.delete("type");
 

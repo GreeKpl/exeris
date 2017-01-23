@@ -34,5 +34,9 @@ export const decoratedCharactersAroundReducer = characterReducerDecorator(charac
 
 export const getCharactersAround = state => state;
 
+export const getCombatName = state => state.get("combatName");
+
+export const getCombatId = state => state.get("combatId");
+
 export const fromCharactersAroundState = (state, characterId) =>
   state.getIn(["charactersAround", characterId], Immutable.List());

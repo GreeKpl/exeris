@@ -1,5 +1,5 @@
 import React from "react";
-import {Panel, ListGroup, ListGroupItem, Button} from "react-bootstrap";
+import {Panel, ListGroup, ListGroupItem, Button, Glyphicon} from "react-bootstrap";
 import speakBubble from "../../../images/speakBubble.png";
 import whisperBubble from "../../../images/whisperBubble.png";
 import {SPEECH_TYPE_ALOUD, SPEECH_TYPE_SPEAK_TO, SPEECH_TYPE_WHISPER_TO} from "../../../modules/speech";
@@ -20,10 +20,11 @@ const WhisperBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
        onClick={onClick}
        src={whisperBubble}/>;
 
-const CharacterEntry = ({id, name, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper}) => (
+const CharacterEntry = ({id, name, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper, onShowMore}) => (
   <ListGroupItem>
     {name} <SpeakBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectSpeak}/>
     <WhisperBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectWhisper}/>
+    <Glyphicon glyph="option-horizontal" className="Character-CharactersList-speechIcon" onClick={onShowMore}/>
   </ListGroupItem>
 );
 
@@ -61,8 +62,11 @@ class CharactersList extends React.Component {
       key={character.get("id")}
       id={character.get("id")}
       name={character.get("name")}
+      combatName={character.get("combatName")}
+      combatId={character.get("combatId")}
       onSelectSpeak={this.props.onSelectSpeak(character.get("id"))}
       onSelectWhisper={this.props.onSelectWhisper(character.get("id"))}
+      onShowMore={this.props.onShowMore(character.get("id"))}
       isSpeechTarget={this.props.speechTarget === character.get("id")}
       speechType={this.props.speechType}
     />;

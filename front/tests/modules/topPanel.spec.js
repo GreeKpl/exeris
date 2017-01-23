@@ -36,7 +36,7 @@ describe('(topPanel) topPanelReducer', () => {
       name: "John",
       locationName: "Place",
       locationId: "123",
-      intent: "",
+      workIntent: "",
     }));
     expect(state).to.equal(Immutable.fromJS({
         type: DETAILS_CHARACTER,
@@ -44,7 +44,7 @@ describe('(topPanel) topPanelReducer', () => {
         name: "John",
         locationName: "Place",
         locationId: "123",
-        intent: "",
+        workIntent: "",
       }
     ));
   });
@@ -55,16 +55,16 @@ describe('(topPanel) topPanelReducer', () => {
     });
     let state = topPanelReducer(previousState, applyCombatDetails(0, {
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5},
-        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, receivedDamage: 0.15}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5},
+        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, recordedDamage: 0.15}],
     }));
     expect(state).to.equal(Immutable.fromJS({
       type: DETAILS_COMBAT,
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5},
-        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, receivedDamage: 0.15}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5},
+        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, recordedDamage: 0.15}],
     }));
   });
 
@@ -75,7 +75,7 @@ describe('(topPanel) topPanelReducer', () => {
       name: "John",
       locationName: "Place",
       locationId: "123",
-      intent: "",
+      workIntent: "",
     });
     let state = topPanelReducer(previousState, closeTopPanel(0));
     expect(state).to.equal(Immutable.fromJS({
@@ -90,18 +90,18 @@ describe('(topPanel) topPanelReducer', () => {
       name: "John",
       locationName: "Place",
       locationId: "123",
-      intent: "",
+      workIntent: "",
     });
     let state = topPanelReducer(previousState, applyCombatDetails(0, {
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
     }));
     expect(state).to.equal(Immutable.fromJS({
       type: DETAILS_COMBAT,
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
     }));
   });
 
@@ -109,16 +109,16 @@ describe('(topPanel) topPanelReducer', () => {
     let state = decoratedTopPanelReducer(undefined, {});
     state = decoratedTopPanelReducer(state, applyCombatDetails("HEHE", {
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
     }));
     const globalState = Immutable.Map({topPanel: state});
 
     expect(getDetailsType(fromTopPanelState(globalState, "HEHE"))).to.equal(DETAILS_COMBAT);
     expect(getDetailsData(fromTopPanelState(globalState, "HEHE"))).to.equal(Immutable.fromJS({
       id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, receivedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, receivedDamage: 0.5}],
+      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
+      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
     }));
     expect(getDetailsData(fromTopPanelState(globalState, "MISSING_CHAR"))).to.equal(Immutable.Map());
   });
