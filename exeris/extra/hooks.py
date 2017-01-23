@@ -37,7 +37,7 @@ def on_new_event(event_observer):
                              character=observer)
 
     for sid in exeris.app.socketio_users.get_all_by_character_id(observer.id):
-        notifications_service.add_event_to_send(sid, event.id,
+        notifications_service.add_event_to_send(sid, observer.id, event.id,
                                                 pyslate.t("game_date", game_date=event.date) + ": " +
                                                 pyslate.t(event.type_name, html=True, **event.params))
 
