@@ -2,20 +2,21 @@ import React from "react";
 import {Panel, ListGroup, ListGroupItem, Button, Glyphicon} from "react-bootstrap";
 import speakBubble from "../../../images/speakBubble.png";
 import whisperBubble from "../../../images/whisperBubble.png";
+import actionDots from "../../../images/threeDots.png";
 import {SPEECH_TYPE_ALOUD, SPEECH_TYPE_SPEAK_TO, SPEECH_TYPE_WHISPER_TO} from "../../../modules/speech";
 
 
 const SpeakBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
   <img className={[
-    "Character-CharactersList-speechIcon",
-    (isSpeechTarget && speechType == SPEECH_TYPE_SPEAK_TO) ? "Character-CharactersList-speechIcon--active" : "",
+    "Character-CharactersList-actionIcon",
+    (isSpeechTarget && speechType == SPEECH_TYPE_SPEAK_TO) ? "Character-CharactersList-actionIcon--active" : "",
   ].join(" ")}
        onClick={onClick}
        src={speakBubble}/>;
 const WhisperBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
   <img className={[
-    "Character-CharactersList-speechIcon",
-    (isSpeechTarget && speechType == SPEECH_TYPE_WHISPER_TO) ? "Character-CharactersList-speechIcon--active" : "",
+    "Character-CharactersList-actionIcon",
+    (isSpeechTarget && speechType == SPEECH_TYPE_WHISPER_TO) ? "Character-CharactersList-actionIcon--active" : "",
   ].join(" ")}
        onClick={onClick}
        src={whisperBubble}/>;
@@ -24,7 +25,7 @@ const CharacterEntry = ({id, name, isSpeechTarget, speechType, onSelectSpeak, on
   <ListGroupItem>
     {name} <SpeakBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectSpeak}/>
     <WhisperBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectWhisper}/>
-    <Glyphicon glyph="option-horizontal" className="Character-CharactersList-speechIcon" onClick={onShowMore}/>
+    <img src={actionDots} className="Character-CharactersList-actionIcon" onClick={onShowMore}/>
   </ListGroupItem>
 );
 
