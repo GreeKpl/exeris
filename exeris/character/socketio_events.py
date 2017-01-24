@@ -477,8 +477,8 @@ def collapse_entity(parent_entity_id):
     return parent_entity_id,
 
 
-@socketio_character_event("entities_refresh_list")
-def entities_refresh_list(view):
+@socketio_character_event("character.get_root_entities")
+def entities_refresh_list(view="entities"):
     if view == "inventory":
         displayed_locations = [g.character]
     else:
@@ -506,16 +506,19 @@ def refresh_entity_info(entity_id):
     return entity_info,
 
 
-@socketio_character_event("entities_get_sublist")
+@socketio_character_event("character.get_children_entities")
 def entities_get_sublist(entity_id, parent_parent_id):
     parent_entity = models.Entity.by_id(app.decode(entity_id))
     rng = general.VisibilityBasedRange(distance=30)
     if not rng.is_near(g.character, parent_entity):
         raise main.EntityTooFarAwayException(entity=parent_entity)
     exclude = [models.Entity.by_id(app.decode(parent_parent_id))] if parent_parent_id else []
+    if isinstance(parent_entity, models.Passage):
+        parent_entity = parent_entity.right_location \
+            if parent_entity.left_location in exclude \
+            else parent_entity.left_location
     rendered = _get_entities_in(parent_entity, g.character, exclude)
-
-    return entity_id, rendered,
+    return rendered,
 
 
 @socketio_character_event("move_to_location")
@@ -646,7 +649,7 @@ def _get_entity_info(entity, observer):
         other_side = passage_to_neighbour.other_side
 
     elif isinstance(entity, models.Entity):
-        full_name = g.pyslate.t("entity_info", **entity.pyslatize(html=True, detailed=True))
+        full_name = g.pyslate.t("entity_info", **entity.pyslatize(detailed=True))
     else:
         raise ValueError("Entity to show is of type {}".format(type(entity)))
 
@@ -695,10 +698,15 @@ def _get_entity_info(entity, observer):
         entity_member_of_union = properties.OptionalMemberOfUnionProperty(entity)
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
-    entity_html = render_template("entities/entity_info.html", full_name=full_name, entity_id=entity.id,
-                                  actions=possible_actions, activities=activities, expandable=expandable,
-                                  other_side=other_side, union_membership=union_membership)
-    return {"html": entity_html, "id": app.encode(entity.id)}
+    return {
+        "id": app.encode(entity.id),
+        "name": full_name,
+        "expandable": expandable,
+        "actions": [a.tag_name for a in possible_actions],
+        "activities": [a.id for a in activities],
+        "otherSide": other_side.id if other_side else None,
+        "unionMembership": union_membership,
+    }
 
 
 def _get_directed_passage_in_correct_direction(char_location, entity):
