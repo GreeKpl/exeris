@@ -3,6 +3,7 @@ import {Grid, Row, Col, Panel} from "react-bootstrap";
 import EntitiesListContainer from "./EntitiesListContainer";
 import MapInfoContainer from "./MapInfoContainer";
 import ControlMovementContainer from "./ControlMovementContainer";
+import "./style.scss";
 
 class EventsPage extends React.Component {
 

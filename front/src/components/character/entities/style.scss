@@ -1,0 +1,12 @@
+.EntitiesList-EntityChildren {
+  padding: 0 0 0 15px;
+}
+
+.EntitiesList-EntityList {
+  margin-bottom: 0;
+}
+
+/* Rounded corners look ugly for nested lists */
+.EntitiesList-EntityInfo.list-group-item:last-child, .EntitiesList-EntityInfo.list-group-item:first-child {
+  border-radius: 0;
+}

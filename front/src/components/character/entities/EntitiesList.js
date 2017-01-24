@@ -12,8 +12,8 @@ class EntityInfo extends React.Component {
   }
 
   render() {
-    return <ListGroupItem>
-      {this.props.entityInfo.get("id").substring(0, 4)} {this.props.entityInfo.get("name")}
+    return <ListGroupItem className="EntitiesList-EntityInfo">
+      {this.props.entityInfo.get("name")}
       {this.props.entityInfo.get("expandable") && (!this.props.isExpanded ?
           <Button onClick={this.handleExpand}>\/</Button> :
           <Button onClick={this.handleCollapse}>/\</Button>
@@ -33,7 +33,7 @@ class EntityInfo extends React.Component {
 }
 
 const Entities = ({entities, onExpand, onCollapse, info, children, expanded}) =>
-  <ListGroup>
+  <ListGroup className="EntitiesList-EntityList">
     {entities.map(entityId => {
       const entityInfo = info.get(entityId);
       const isExpanded = expanded.has(entityId);
@@ -46,7 +46,7 @@ const Entities = ({entities, onExpand, onCollapse, info, children, expanded}) =>
                     isExpanded={isExpanded}
         />,
         (isExpanded && childrenIds.size > 0) ?
-          <ListGroupItem key={entityId + "-children"}>
+          <ListGroupItem key={entityId + "-children"} className="EntitiesList-EntityChildren">
             <Entities entities={childrenIds}
                       onExpand={onExpand}
                       onCollapse={onCollapse}
