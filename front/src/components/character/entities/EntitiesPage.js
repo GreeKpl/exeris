@@ -15,12 +15,7 @@ class EventsPage extends React.Component {
       <Grid fluid={true}>
         <Row>
           <Col xs={12} md={7}>
-            <Panel header="Your RootLocation">
-              <EntitiesListContainer characterId={this.props.characterId}/>
-            </Panel>
-            <Panel header="Other RootLocation">
-              <EntitiesListContainer characterId={this.props.characterId}/>
-            </Panel>
+            <EntitiesListContainer characterId={this.props.characterId}/>
           </Col>
           <Col xs={12} md={5}>
             <MapInfoContainer characterId={this.props.characterId}/>
