@@ -27,6 +27,7 @@ from pyslate.backends import postgres_backend
 from shapely.geometry import Point, Polygon
 from wtforms import StringField, SelectField
 from flask_mail import Mail
+import time
 
 # noinspection PyUnresolvedReferences
 from exeris.core import achievements
@@ -114,6 +115,7 @@ def socketio_character_event(*args, **kwargs):
     def dec(f):
         @wraps(f)
         def fg(*request_args, **request_kwargs):
+            start = time.time()
             if not current_user.is_authenticated:
                 logger.warning("Disconnected unwanted user", request.access_route)
                 client_socket.disconnect()
@@ -130,6 +132,8 @@ def socketio_character_event(*args, **kwargs):
 
             # argument list (the first and only positional arg) is expanded
             result = f(*request_args[1:], **request_kwargs)
+            end = time.time()
+            logger.info("%s took %s msec", args[0], (end - start) * 1000)
             return (True,) + (result if result else ())
 
         return socketio_handler(fg)
