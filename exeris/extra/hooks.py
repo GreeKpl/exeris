@@ -36,7 +36,7 @@ def on_new_event(event_observer):
     pyslate = create_pyslate(observer.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
                              character=observer)
 
-    for sid in exeris.app.socketio_users.get_all_by_character_id(observer.id):
+    for sid in exeris.app.socketio_users.get_all_by_player_id(observer.player_id):
         notifications_service.add_event_to_send(sid, observer.id, event.id,
                                                 pyslate.t("game_date", game_date=event.date) + ": " +
                                                 pyslate.t(event.type_name, html=True, **event.params))
@@ -48,7 +48,7 @@ def on_new_notification(character, notification):
     pyslate = create_pyslate(character.language, backend=postgres_backend.PostgresBackend(conn, "translations"),
                              character=character)
 
-    for sid in exeris.app.socketio_users.get_all_by_character_id(character.id):
+    for sid in exeris.app.socketio_users.get_all_by_player_id(character.player_id):
         notification_info = util.serialize_notifications([notification], pyslate)[0]
         notifications_service.add_notification_to_send(sid, notification_info)
 

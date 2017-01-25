@@ -745,31 +745,16 @@ class SocketioUsers:
         result_from_redis = redis_db.smembers("sid_by_player_id:" + str(player_id))
         return [result.decode('utf-8') for result in result_from_redis]
 
-    def get_all_by_character_id(self, character_id):
-        result_from_redis = redis_db.smembers("sid_by_character_id:" + str(character_id))
-
-        return [result.decode('utf-8') for result in result_from_redis]
-
     def add_for_player_id(self, sid, player_id):
         redis_db.sadd("sid_by_player_id:" + str(player_id), sid)
-
-    def add_for_character_id(self, sid, character_id):
-        redis_db.sadd("sid_by_character_id:" + str(character_id), sid)
 
     def remove_sid(self, sid):
         player_id_sets = redis_db.keys("sid_by_player_id:*")
         for player_id_set_name in player_id_sets:
             redis_db.srem(player_id_set_name, sid)
 
-        character_id_sets = redis_db.keys("sid_by_character_id:*")
-        for character_id_set_name in character_id_sets:
-            redis_db.srem(character_id_set_name, sid)
-
     def remove_for_player_id(self, player_id):
         redis_db.delete("sid_by_player_id:" + str(player_id))
-
-    def remove_for_character_id(self, character_id):
-        redis_db.delete("sid_by_character_id:" + str(character_id))
 
 
 socketio_users = SocketioUsers()
@@ -777,14 +762,8 @@ socketio_users = SocketioUsers()
 
 @socketio.on("connect")
 def on_connect():
-    character_id = request.args.get("character_id", None)
-    character_id = int(character_id) if character_id else 0
-
     if current_user.is_authenticated:
         socketio_users.add_for_player_id(request.sid, current_user.id)
-        character = models.Character.by_id(character_id)
-        if character and character.player == current_user and character.is_alive:
-            socketio_users.add_for_character_id(request.sid, character_id)
 
 
 @socketio.on("disconnect")

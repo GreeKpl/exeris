@@ -142,7 +142,7 @@ def get_all_characters_around():
     def get_combat_id(char):
         combat_action = properties.CombatableProperty(char).combat_action
         if combat_action:
-            return combat_action.id
+            return combat_action.combat_entity.id
         return None
 
     def get_combat_name(char):

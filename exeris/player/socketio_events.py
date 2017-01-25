@@ -44,12 +44,14 @@ def get_achievements_list():
     return [{"title": achievement[0], "content": achievement[1]} for achievement in achievements_to_show],
 
 
-@socketio_player_event("player.pull_notifications_initial")
+@socketio_player_event("player.request_all_notifications")
 def get_notifications_list():
     notifications = models.Notification.query.filter_by(player=g.player).all()
 
-    if hasattr(g, "character"):
-        notifications += models.Notification.query.filter_by(character=g.character).all()
+    notifications += models.Notification.query \
+        .filter(models.Notification.character_id == models.Character.id) \
+        .filter(models.Character.player_id == g.player.id) \
+        .all()
 
     notifications = util.serialize_notifications(notifications, g.pyslate)
 
