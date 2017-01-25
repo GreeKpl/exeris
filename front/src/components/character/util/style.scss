@@ -1,0 +1,17 @@
+
+.ActionsBar-Nav {
+  white-space: nowrap;
+  overflow-x: auto;
+  background-color: #e0e0e0;
+}
+
+li.ActionsBar-actionItem {
+  width: 100px;
+  display: inline-block;
+  float: none;
+}
+
+.ActionsBar-actionItemCaption {
+  text-align: center;
+}
+
