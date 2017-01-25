@@ -1,6 +1,7 @@
 import React from "react";
 import TopBarContainer from "../player/topBar/TopBarContainer";
 import CharacterTopBarContainer from "../character/topBar/CharacterTopBarContainer";
+import NotificationsContainer from "../common/NotificationsContainer";
 
 class CharacterPage extends React.Component {
   constructor(props) {
@@ -23,6 +24,7 @@ class CharacterPage extends React.Component {
       <br/><br/>
       <br/>
       {this.props.children}
+      <NotificationsContainer characterId={this.props.characterId}/>
     </div>;
   }
 }
