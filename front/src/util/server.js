@@ -1,22 +1,6 @@
 import io from "socket.io-client";
 
-
-const getDeprecatedQueryString = () => {
-  const href = window.location.href;
-  const parts = /character\/(\d+)/.exec(href);
-  let characterId = "";
-  if (parts) {
-    characterId = parts[1];
-  }
-
-  return {
-    query: "character_id=" + characterId + "&blueprint=character&language=en",
-  }
-};
-
-const socket = io.connect('//' + window.location.hostname + ':' + window.location.port,
-  getDeprecatedQueryString()
-); // TODO temporarily needed for old, server-side templates
+const socket = io.connect('//' + window.location.hostname + ':' + window.location.port);
 
 // create request which turns "acknowledgement callback" into "on success callback"
 
