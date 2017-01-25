@@ -698,11 +698,17 @@ def _get_entity_info(entity, observer):
         entity_member_of_union = properties.OptionalMemberOfUnionProperty(entity)
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
+    available_actions = [{"name": a.tag_name,
+                          "image": a.image,
+                          "entity": app.encode(a.entity.id),
+                          "endpoint": a.endpoint,
+                          } for a in possible_actions]
+
     return {
         "id": app.encode(entity.id),
         "name": full_name,
         "expandable": expandable,
-        "actions": [a.tag_name for a in possible_actions],
+        "actions": available_actions,
         "activities": [a.id for a in activities],
         "otherSide": other_side.id if other_side else None,
         "unionMembership": union_membership,
