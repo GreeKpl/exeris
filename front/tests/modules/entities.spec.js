@@ -19,6 +19,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     }));
   });
 
@@ -28,6 +29,7 @@ describe('(entities) entitiesReducer', () => {
       children: {"DEF": ["ABA"]},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     });
     let state = entitiesReducer(previousState, {});
     expect(state).to.equal(previousState);
@@ -39,6 +41,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     });
     let state = entitiesReducer(previousState, updateRootEntitiesList(0, ["ABC", "DEF"]));
     expect(state).to.equal(Immutable.fromJS({
@@ -46,6 +49,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     }));
   });
 
@@ -55,6 +59,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     });
     let state = entitiesReducer(previousState, updateChildrenOfEntity(0, "BAF", ["CBA", "DOM"]));
     expect(state).to.equal(Immutable.fromJS({
@@ -62,6 +67,7 @@ describe('(entities) entitiesReducer', () => {
       children: {"BAF": ["CBA", "DOM"]},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     }));
   });
 
@@ -71,6 +77,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     });
     state = entitiesReducer(state, addEntityInfo(0, {
       id: "BAC",
@@ -85,6 +92,7 @@ describe('(entities) entitiesReducer', () => {
       children: {},
       info: {"BAC": {id: "BAC", name: "a house"}, "CAN": {id: "CAN", name: "a hammer"}},
       expanded: Immutable.Set(),
+      selected: Immutable.Set(),
     }));
   });
 
@@ -119,6 +127,7 @@ describe('(entities) entitiesReducer', () => {
             }
           },
           expanded: Immutable.Set(),
+          selected: Immutable.Set(),
         }
       },
     }));

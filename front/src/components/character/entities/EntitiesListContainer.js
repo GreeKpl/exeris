@@ -9,6 +9,9 @@ import {
   fromEntitiesState,
   expandEntity,
   collapseEntity,
+  selectEntity,
+  deselectEntity,
+  getSelectedEntities
 } from "../../../modules/entities";
 
 const mapStateToProps = (state, ownProps) => {
@@ -18,6 +21,7 @@ const mapStateToProps = (state, ownProps) => {
     info: getEntityInfos(fromEntitiesState(state, ownProps.characterId)),
     children: getChildren(fromEntitiesState(state, ownProps.characterId)),
     expanded: getExpanded(fromEntitiesState(state, ownProps.characterId)),
+    selectedEntities: getSelectedEntities(fromEntitiesState(state, ownProps.characterId)),
   };
 };
 
@@ -29,6 +33,12 @@ const mapDispatchToProps = (dispatch, ownProps) => {
     },
     onCollapse: entity => {
       dispatch(collapseEntity(ownProps.characterId, entity));
+    },
+    onSelect: entity => {
+      dispatch(selectEntity(ownProps.characterId, entity));
+    },
+    onDeselect: entity => {
+      dispatch(deselectEntity(ownProps.characterId, entity));
     },
   }
 };

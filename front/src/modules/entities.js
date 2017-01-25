@@ -7,7 +7,42 @@ export const UPDATE_ROOT_ENTITIES_LIST = "exeris-front/entities/UPDATE_ROOT_ENTI
 export const UPDATE_CHILDREN_OF_ENTITY = "exeris-front/entities/UPDATE_CHILDREN_OF_ENTITY";
 export const EXPAND_ENTITY = "exeris-front/entities/EXPAND_ENTITY";
 export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
+export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
+export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 
+
+export const setUpSocketioListeners = dispatch => {
+
+  socket.on("after_take_item", function (item_id) {
+    // $.publish("entities:refresh_entity_info", item_id);
+  });
+
+  socket.on("after_unbind_from_vehicle", function (entities) {
+    // for (let i = 0; i < entities.length; i++) {
+    //   $.publish("entities:refresh_entity_info", entities[i]);
+    // }
+  });
+
+  socket.on("after_start_boarding_ship", function (entity_id) {
+    // $.publish("entities:refresh_entity_info", entity_id);
+  });
+
+  socket.on("after_start_unboarding_from_ship", function (entity_id) {
+    // $.publish("entities:refresh_entity_info", entity_id);
+  });
+
+  socket.on("after_drop_item", function (item_id) {
+    // $.publish("entities:refresh_entity_info", item_id);
+  });
+};
+
+export const performEntityAction = (characterId, endpoint, entityId) => {
+  return dispatch => {
+    socket.request(endpoint, characterId, entityId, () => {
+      console.log("PERFORMED");
+    });
+  }
+};
 
 export const requestRootEntities = (characterId) => {
   return dispatch => {
@@ -77,6 +112,29 @@ export const collapseEntity = (characterId, entityId) => {
   }
 };
 
+export const selectEntity = (characterId, entityId) => {
+  return dispatch => {
+    dispatch({
+      type: SELECT_ENTITY,
+      entityId: entityId,
+      characterId: characterId,
+    });
+
+    dispatch(requestChildrenEntities(characterId, entityId));
+  }
+};
+
+
+export const deselectEntity = (characterId, entityId) => {
+  return dispatch => {
+    dispatch({
+      type: DESELECT_ENTITY,
+      entityId: entityId,
+      characterId: characterId,
+    });
+  }
+};
+
 export const updateRootEntitiesList = (characterId, rootEntitiesList) => {
   return {
     type: UPDATE_ROOT_ENTITIES_LIST,
@@ -100,6 +158,7 @@ export const entitiesReducer = (state = Immutable.fromJS(
     "children": {},
     "rootEntities": [],
     "expanded": Immutable.Set(),
+    "selected": Immutable.Set(),
   }), action) => {
   switch (action.type) {
     case ADD_ENTITY_INFO:
@@ -113,6 +172,10 @@ export const entitiesReducer = (state = Immutable.fromJS(
       return state.update("expanded", expandedSet => expandedSet.add(action.entityId));
     case COLLAPSE_ENTITY:
       return state.update("expanded", expandedSet => expandedSet.delete(action.entityId));
+    case SELECT_ENTITY:
+      return state.update("selected", selectedSet => selectedSet.add(action.entityId));
+    case DESELECT_ENTITY:
+      return state.update("selected", selectedSet => selectedSet.delete(action.entityId));
     default:
       return state;
   }
@@ -127,6 +190,8 @@ export const getChildren = (state) => state.get("children", Immutable.Map());
 export const getEntityInfos = (state) => state.get("info", Immutable.Map());
 
 export const getExpanded = (state) => state.get("expanded", Immutable.Set());
+
+export const getSelectedEntities = (state) => state.get("selected", Immutable.Set());
 
 
 export const fromEntitiesState = (state, characterId) =>
