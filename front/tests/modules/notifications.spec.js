@@ -3,7 +3,11 @@ import {
   getCharacterAndPlayerNotifications,
   alreadyStartedLoading,
   startLoading,
-  notificationsReducer
+  getVisibleNotification,
+  notificationsReducer,
+  removeNotification,
+  showNotificationDialog,
+  hideNotificationDialog
 } from "../../src/modules/notifications";
 import * as Immutable from "immutable";
 
@@ -13,6 +17,7 @@ describe('(notifications) notificationsReducer', () => {
     expect(notificationsReducer(undefined, {})).to.equal(Immutable.fromJS({
       list: [],
       startedLoading: false,
+      visibleNotification: Immutable.Map(),
     }));
   });
 
@@ -20,6 +25,7 @@ describe('(notifications) notificationsReducer', () => {
     const previousState = Immutable.fromJS({
       list: [],
       startedLoading: false,
+      visibleNotification: Immutable.Map(),
     });
     let state = notificationsReducer(previousState, {});
     expect(state).to.equal(previousState);
@@ -30,6 +36,7 @@ describe('(notifications) notificationsReducer', () => {
     const previousState = Immutable.fromJS({
       list: [],
       startedLoading: false,
+      visibleNotification: Immutable.Map(),
     });
     expect(alreadyStartedLoading(previousState)).to.equal(false);
 
@@ -37,6 +44,7 @@ describe('(notifications) notificationsReducer', () => {
     expect(state).to.equal(Immutable.fromJS({
       list: [],
       startedLoading: true,
+      visibleNotification: Immutable.Map(),
     }));
 
     expect(alreadyStartedLoading(state)).to.equal(true);
@@ -46,6 +54,7 @@ describe('(notifications) notificationsReducer', () => {
     let state = Immutable.fromJS({
       list: [],
       startedLoading: false,
+      visibleNotification: Immutable.Map(),
     });
 
     state = notificationsReducer(state,
@@ -66,6 +75,7 @@ describe('(notifications) notificationsReducer', () => {
         {"id": 7, "characterId": "NIE"},
       ],
       startedLoading: false,
+      visibleNotification: Immutable.Map(),
     }));
 
     expect(getCharacterAndPlayerNotifications(state, "TAK")).to.equal(Immutable.fromJS([
@@ -76,5 +86,35 @@ describe('(notifications) notificationsReducer', () => {
     expect(getCharacterAndPlayerNotifications(state, null)).to.equal(Immutable.fromJS([
       {"id": 3, "characterId": "0"},
     ]));
+
+    state = notificationsReducer(state, removeNotification(7));
+    expect(getCharacterAndPlayerNotifications(state, "NIE")).to.equal(Immutable.fromJS([
+      {"id": 3, "characterId": "0"},
+    ]));
+  });
+
+
+  it('Should be able to show and hide notification dialog.', () => {
+    let state = Immutable.fromJS({
+      list: [],
+      startedLoading: false,
+      visibleNotification: Immutable.Map(),
+    });
+
+    expect(getVisibleNotification(state)).to.equal(Immutable.Map());
+
+    state = notificationsReducer(state, showNotificationDialog({
+      id: "hehehe",
+      options: [],
+      title: "HEHE"
+    }));
+    expect(getVisibleNotification(state)).to.equal(Immutable.fromJS({
+      id: "hehehe",
+      options: [],
+      title: "HEHE"
+    }));
+
+    state = notificationsReducer(state, hideNotificationDialog());
+    expect(getVisibleNotification(state)).to.equal(Immutable.Map());
   });
 });
