@@ -1682,16 +1682,16 @@ class Notification(db.Model):
             db.session.flush()  # to make sure that ID is available
         self.add_option("notification_close", {}, "notification.close", [self.id])
 
-    def add_option(self, name_tag, name_params, endpoint, request_params):
+    def add_option(self, name_tag, name_params, endpoint, params):
         encoded_params_indexes = []
-        for i in range(len(request_params)):
-            param = request_params[i]
+        for i in range(len(params)):
+            param = params[i]
             if isinstance(param, Entity):
-                request_params[i] = param.id
+                params[i] = param.id
                 encoded_params_indexes += [i]
 
         self.options.append({"name_tag": name_tag, "name_params": name_params,
-                             "endpoint": endpoint, "request_params": request_params,
+                             "endpoint": endpoint, "params": params,
                              "encoded_indexes": encoded_params_indexes})
 
     def get_option(self, endpoint_name):

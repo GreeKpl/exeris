@@ -56,10 +56,10 @@ def get_notifications_list():
     notifications = util.serialize_notifications(notifications, g.pyslate)
 
     for notification in notifications:
-        client_socket.emit("player.new_notification", (notification,))
+        client_socket.emit("player.new_notification", notification)
 
 
-@socketio_player_event("notification.show_modal")
+@socketio_player_event("player.show_notification")
 def show_notification_modal(notification_id):
     owner_condition = models.Notification.player == g.player
     if hasattr(g, "character"):
@@ -67,15 +67,26 @@ def show_notification_modal(notification_id):
 
     notification = models.Notification.query.filter_by(id=notification_id).filter(owner_condition).one()
 
-    encoded_options = copy.deepcopy(notification.options)
-    for option in encoded_options:
-        for idx, param in enumerate(option["request_params"]):
-            if idx in option["encoded_indexes"]:
-                option["request_params"][idx] = main.app.encode(param)
+    encoded_options = []
+    for option in notification.options:
+        encoded_option = {
+            "name": g.pyslate.t(option["name_tag"], **option["name_params"]),
+            "endpoint": option["endpoint"],
+            "params": option["params"],
+            "notificationId": notification.id,
+        }
 
-    rendered = render_template("modal_notification.html", notification=notification,
-                               notification_options=encoded_options)
-    return rendered,
+        for idx, param in enumerate(encoded_option["params"]):
+            if idx in option["encoded_indexes"]:
+                encoded_option["params"][idx] = main.app.encode(param)
+        encoded_options.append(encoded_option)
+
+    return {
+               "id": notification.id,
+               "title": g.pyslate.t(notification.title_tag, **notification.title_params),
+               "text": g.pyslate.t(notification.text_tag, **notification.text_params),
+               "options": encoded_options,
+           },
 
 
 def check_if_notification_option_exists(notification, expected_option):
