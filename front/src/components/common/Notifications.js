@@ -11,9 +11,9 @@ class Notification extends React.Component {
   }
 
   render() {
-    return <Alert bsStyle="info"
+    return <Alert bsStyle={this.props.type == "error" ? "danger" : "info"}
                   onDismiss={this.props.closeable ? this.handleDismiss : null}
-                  onClick={this.handleDisplay}>
+                  onClick={this.props.detailed ? this.handleDisplay : null}>
       {this.props.title}
     </Alert>
   }
@@ -50,6 +50,8 @@ class Notifications extends React.Component {
                       id={notification.get("id")}
                       onDisplay={this.props.onDisplay}
                       closeable={notification.get("easyClose")}
+                      detailed={notification.get("detailed")}
+                      type={notification.get("type")}
                       onDismiss={this.props.onDismiss}
         />
       )}

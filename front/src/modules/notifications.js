@@ -12,6 +12,21 @@ export const setUpSocketioListeners = dispatch => {
   socket.on("player.new_notification", notification => {
     dispatch(addNotification(notification));
   });
+
+  socket.on("player.show_error", (characterId, errorMessage) => {
+    if (!characterId) {
+      characterId = "0";
+    }
+    const uniqueId = "error-" + Math.floor(Math.random() * 1e6);
+    dispatch(addNotification({
+      characterId: characterId,
+      title: errorMessage,
+      id: uniqueId,
+      detailed: false,
+      easyClose: true,
+      type: "error",
+    }));
+  });
 };
 
 export const requestMissingNotifications = () => {
