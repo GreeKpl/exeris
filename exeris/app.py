@@ -773,10 +773,15 @@ def on_disconnect():
 
 @socketio.on_error()
 def error_handler(exception):
+    character_id = None
+    if hasattr(g, "character"):
+        character_id = str(g.character.id)
     if isinstance(exception, main.GameException):
-        client_socket.emit("global.show_error", g.pyslate.t(exception.error_tag, **exception.error_kwargs))
+        client_socket.emit("player.show_error", (character_id,
+                                                 g.pyslate.t(exception.error_tag, **exception.error_kwargs)))
     else:
-        client_socket.emit("global.show_error", "socketio error for " + str(request.event) + ": " + str(exception))
+        client_socket.emit("player.show_error", (character_id,
+                                                 "socketio error for " + str(request.event) + ": " + str(exception)))
     if isinstance(exception, main.MalformedInputErrorMixin) or not isinstance(exception, main.GameException):
         logger.exception(exception)
     return False,

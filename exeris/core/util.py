@@ -76,9 +76,15 @@ def serialize_notifications(notifications, pyslate):
     def close_is_the_only_option(notification):
         return len(notification.options) == 1 and notification.get_option("notification.close") is not None
 
-    return [{"id": n.id, "title": pyslate.t(n.title_tag, **n.title_params),
-             "count": n.count, "date": n.game_date, "easyClose": close_is_the_only_option(n),
-             "characterId": app.encode(n.character_id) if n.character_id else "0"} for n in notifications]
+    return [{"id": n.id,
+             "title": pyslate.t(n.title_tag, **n.title_params),
+             "count": n.count,
+             "date": n.game_date,
+             "easyClose": close_is_the_only_option(n),
+             "characterId": str(n.character_id) if n.character_id else "0",
+             "detailed": True,
+             "type": "info",
+             } for n in notifications]
 
 
 class Sql:
