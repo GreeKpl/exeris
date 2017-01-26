@@ -3,7 +3,7 @@ import Notifications from "./Notifications";
 import {
   getCharacterAndPlayerNotifications,
   fromNotificationsState,
-  requestMissingNotifications
+  requestMissingNotifications, requestShowNotification, removeNotification
 } from "../../modules/notifications";
 
 const mapStateToProps = (state, ownProps) => {
@@ -17,7 +17,15 @@ const mapStateToProps = (state, ownProps) => {
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    requestState: () => dispatch(requestMissingNotifications()),
+    requestState: () => {
+      dispatch(requestMissingNotifications());
+    },
+    onDisplay: notificationId => {
+      dispatch(requestShowNotification(notificationId));
+    },
+    onDismiss: notificationId => {
+      dispatch(removeNotification(notificationId));
+    },
   }
 };
 

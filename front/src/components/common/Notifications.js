@@ -1,10 +1,32 @@
 import React from "react";
 import {Alert} from "react-bootstrap";
+import NotificationDialogContainer from "./NotificationDialogContainer";
 
-const Notification = ({title, id, onClick}) => {
-  return <Alert bsStyle="info" onDismiss={() => {
-  }} onClick={onClick}>{title}</Alert>
-};
+class Notification extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.handleDisplay = this.handleDisplay.bind(this);
+    this.handleDismiss = this.handleDismiss.bind(this);
+  }
+
+  render() {
+    return <Alert bsStyle="info"
+                  onDismiss={this.props.closeable ? this.handleDismiss : null}
+                  onClick={this.handleDisplay}>
+      {this.props.title}
+    </Alert>
+  }
+
+  handleDisplay() {
+    this.props.onDisplay(this.props.id);
+  }
+
+  handleDismiss() {
+    this.props.onDismiss(this.props.id);
+  }
+}
+
 
 class Notifications extends React.Component {
   constructor(props) {
@@ -18,17 +40,23 @@ class Notifications extends React.Component {
   render() {
     return <div style={{
       position: "fixed",
-      top: "50px",
+      top: "80px",
       right: "10px",
       width: "400px",
     }}>
       {this.props.notifications.map(notification =>
         <Notification key={notification.get("id")}
                       title={notification.get("title")}
-                      id={notification.get("id")}/>
+                      id={notification.get("id")}
+                      onDisplay={this.props.onDisplay}
+                      closeable={notification.get("easyClose")}
+                      onDismiss={this.props.onDismiss}
+        />
       )}
+      <NotificationDialogContainer key="notificationDialog"/>
     </div>
   }
+
 }
 
 export default Notifications;
