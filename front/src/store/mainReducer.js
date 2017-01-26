@@ -6,6 +6,7 @@ import {decoratedSpeechReducer} from "../modules/speech";
 import {decoratedTopPanelReducer} from "../modules/topPanel";
 import {decoratedEntitiesReducer} from "../modules/entities";
 import {notificationsReducer} from "../modules/notifications";
+import {decoratedRecipesReducer} from "../modules/recipes";
 
 
 const mainReducer = combineReducers({
@@ -16,6 +17,7 @@ const mainReducer = combineReducers({
   topPanel: decoratedTopPanelReducer,
   entities: decoratedEntitiesReducer,
   notifications: notificationsReducer,
+  recipes: decoratedRecipesReducer,
 });
 
 export default mainReducer;
