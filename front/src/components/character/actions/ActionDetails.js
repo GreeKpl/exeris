@@ -1,60 +1,69 @@
 import React from "react";
-import {Form, FormGroup, Col, FormControl, ControlLabel, Button, ListGroup, ListGroupItem} from "react-bootstrap";
+import {FormGroup, Form, Col, FormControl, ControlLabel, Button, ListGroup, ListGroupItem} from "react-bootstrap";
+import HorizontalFormInput from "../../common/HorizontalFormInput";
+
+import {Field, reduxForm} from 'redux-form/immutable';
+import HorizontalFormInfo from "../../common/HorizontalFormInfo";
+
+
+const RequirementInfo = ({info, infoKey, label}) =>
+  info.get(infoKey).size > 0 ?
+    <Field name={infoKey}
+           component={HorizontalFormInfo}
+           label={label}
+           key={infoKey}
+           lines={info.get(infoKey)}
+    /> : null;
 
 class ActionDetails extends React.Component {
 
   constructor(props) {
     super(props);
 
-    this.state = {
-      amount: 1
-    };
-
-    this.onChange = this.onChange.bind(this);
     this.renderAdditionalFormInputs = this.renderAdditionalFormInputs.bind(this);
+    this.getAmount = this.getAmount.bind(this);
   }
 
-  onChange(event) {
-    const newAmount = event.target.value;
-    this.setState({amount: newAmount});
+  componentDidUpdate(prevProps) {
+    if (prevProps.recipeDetails.get("id") !== this.props.recipeDetails.get("id")
+      || prevProps.characterId !== this.props.characterId) {
+      this.props.reset();
+    }
   }
 
   renderAdditionalFormInputs() {
     let renderedFormInputs = [];
-    for (let formInput of this.props.actionDetails.get("requiredFormInputs")) {
+    for (let formInput of this.props.recipeDetails.get("requiredFormInputs")) {
       if (formInput.get("type") == "AmountInput") {
         renderedFormInputs.push(
-          <FormGroup key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
-            <Col componentClass={ControlLabel} sm={3}>
-              {formInput.get("name")}
-            </Col>
-            <Col sm={9}>
-              <FormControl type="text" placeholder="amount" value={this.state.amount} onChange={this.onChange}/>
-            </Col>
-          </FormGroup>
-        );
+          <Field name={formInput.get("name")}
+                 component={HorizontalFormInput}
+                 componentClass="input"
+                 type="text"
+                 label={formInput.get("name")}
+                 placeholder="Set amount"
+                 key={formInput.get("name")}
+          />);
       } else if (formInput.get("type") == "NameInput") {
         renderedFormInputs.push(
-          <FormGroup key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
-            <Col componentClass={ControlLabel} sm={3}>
-              {formInput.get("name")}
-            </Col>
-            <Col sm={9}>
-              <FormControl type="text" placeholder="Enter name..." defaultValue=""/>
-            </Col>
-          </FormGroup>
-        );
+          <Field name={formInput.get("name")}
+                 component={HorizontalFormInput}
+                 componentClass="input"
+                 type="text"
+                 label={formInput.get("name")}
+                 placeholder="Enter name..."
+                 key={"form-" + formInput.get("name")}
+          />);
       } else if (formInput.get("type") == "WorkDaysInput") {
         renderedFormInputs.push(
-          <FormGroup key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
-            <Col componentClass={ControlLabel} sm={3}>
-              {formInput.get("name")}
-            </Col>
-            <Col sm={9}>
-              <FormControl type="text" placeholder="workDays" value={this.state.amount} onChange={this.onChange}/>
-            </Col>
-          </FormGroup>
-        );
+          <Field name={formInput.get("name")}
+                 component={HorizontalFormInput}
+                 componentClass="input"
+                 type="text"
+                 label="Work days"
+                 placeholder="Set number"
+                 key={formInput.get("name")}
+          />);
       } else if (formInput.get("type") == "AnimalResourceLevel") {
         renderedFormInputs.push(
           <FormGroup key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
@@ -62,9 +71,7 @@ class ActionDetails extends React.Component {
               Animal resource level
             </Col>
             <Col sm={9} componentClass={FormControl.Static}>
-              <ListGroup>
-                {formInput.get("args").get("resource_type")}
-              </ListGroup>
+              {formInput.get("args").get("resource_type")}
             </Col>
           </FormGroup>);
       }
@@ -72,108 +79,78 @@ class ActionDetails extends React.Component {
     return renderedFormInputs;
   }
 
-  render() {
-    const actionDetails = this.props.actionDetails;
+  getAmount() {
+    if (!this.formState) {
+      return 1;
+    } else {
+      this.formState.get("amount", 1);
+    }
+  }
 
-    if (actionDetails.size == 0) {
+  render() {
+    const recipeDetails = this.props.recipeDetails;
+
+    if (recipeDetails.size == 0) {
       return null;
     }
 
+    const {handleSubmit, pristine, reset, submitting} = this.props;
+
     return (
-      <Form horizontal>
-        {actionDetails.get("errorMessages").size > 0 &&
+      <Form horizontal onSubmit={handleSubmit}>
+        {recipeDetails.get("errorMessages").size > 0 &&
         <FormGroup key="errorMessages" controlId="errorMessages">
           <Col componentClass={ControlLabel} sm={3}>
             Errors
           </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
+          <Col sm={9}>
             <ListGroup>
-              {actionDetails.get("errorMessages").map(message => <ListGroupItem
+              {recipeDetails.get("errorMessages").map(message => <ListGroupItem
                 key={message}>{message}</ListGroupItem>)}
             </ListGroup>
           </Col>
         </FormGroup>}
-        <FormGroup key="actionName" controlId="actionName">
-          <Col componentClass={ControlLabel} sm={3}>
-            Name
-          </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
-            {actionDetails.get("name")}
-          </Col>
-        </FormGroup>
-        {actionDetails.get("requiresSubject") &&
-        <FormGroup key="activitySubject" controlId="activitySubject">
-          <Col componentClass={ControlLabel} sm={3}>
-            Subject of activity
-          </Col>
-          <Col sm={9}>
-            <FormControl componentClass="select" placeholder="Select subject...">
-              {actionDetails.get("subjects").map(subject =>
-                <option value={subject.get("id")}>
-                  {subject.get("name")}
-                </option>)}
-            </FormControl>
-          </Col>
-        </FormGroup>}
-        {actionDetails.get("requiredInput").size > 0 &&
-        <FormGroup key="requiredInput" controlId="requiredInput">
-          <Col componentClass={ControlLabel} sm={3}>
-            Required input
-          </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
-            <ListGroup>
-              {actionDetails.get("requiredInput").map(input => <ListGroupItem key={input}>{input}</ListGroupItem>)}
-            </ListGroup>
-          </Col>
-        </FormGroup>}
-        {actionDetails.get("requiredTools").size > 0 &&
-        <FormGroup key="requiredTools" controlId="requiredTools">
-          <Col componentClass={ControlLabel} sm={3}>
-            Required tools
-          </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
-            <ListGroup>
-              {actionDetails.get("requiredTools").map(tool => <ListGroupItem key={tool}>{tool}</ListGroupItem>)}
-            </ListGroup>
-          </Col>
-        </FormGroup>}
-        {actionDetails.get("requiredMachines").size > 0 &&
-        <FormGroup key="requiredMachines" controlId="requiredMachines">
-          <Col componentClass={ControlLabel} sm={3}>
-            Required machines
-          </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
-            <ListGroup>
-              {actionDetails.get("requiredMachines").map(machine => <ListGroupItem
-                key={machine}>{machine}</ListGroupItem>)}
-            </ListGroup>
-          </Col>
-        </FormGroup>}
+        <RequirementInfo info={recipeDetails}
+                         infoKey="name"
+                         label="Name"/>
+        {recipeDetails.get("requiresSubject") &&
+        <Field name="activitySubject"
+               component={HorizontalFormInput}
+               componentClass="select"
+               label="Subject of activity"
+               placeholder="Select subject..."
+               key="activitySubject">
+          {recipeDetails.get("subjects").map(subject =>
+            <option value={subject.get("id")} key={subject.get("id")}>
+              {subject.get("name")}
+            </option>)}
+        </Field>}
+        <RequirementInfo info={recipeDetails}
+                         infoKey="requiredInput"
+                         label="Required input"/>
+        <RequirementInfo info={recipeDetails}
+                         infoKey="requiredTools"
+                         label="Required tools"/>
+        <RequirementInfo info={recipeDetails}
+                         infoKey="requiredMachines"
+                         label="Required machines"/>
         <FormGroup key="requiredDays" controlId="requiredDays">
           <Col componentClass={ControlLabel} sm={3}>
             Required days
           </Col>
           <Col sm={9} componentClass={FormControl.Static}>
-            {actionDetails.get("requiredDays") * this.state.amount} = {actionDetails.get("requiredDays")}
+            {recipeDetails.get("requiredDays") * this.getAmount()} = {recipeDetails.get("requiredDays")}
             {" "}
-            x {this.state.amount}
+            x {this.getAmount()}
           </Col>
         </FormGroup>
-        {actionDetails.get("requiredSkills").size > 0 &&
-        <FormGroup key="requiredSkill" controlId="requiredSkill">
-          <Col componentClass={ControlLabel} sm={3}>
-            Required skills
-          </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
-            <ListGroup>
-              {actionDetails.get("requiredSkills").map(skill => <ListGroupItem key={skill}>{skill}</ListGroupItem>)}
-            </ListGroup>
-          </Col>
-        </FormGroup>}
+        <RequirementInfo info={recipeDetails}
+                         infoKey="requiredSkills"
+                         label="Required skills"/>
         {this.renderAdditionalFormInputs()}
         <FormGroup key="submit">
           <Col smOffset={3} sm={9}>
-            <Button type="submit" disabled={actionDetails.get("errorMessages").size > 0}>
+            <Button type="submit" disabled={recipeDetails.get("errorMessages").size > 0}>
               Start an activity
             </Button>
           </Col>
@@ -182,4 +159,6 @@ class ActionDetails extends React.Component {
   }
 }
 
-export default ActionDetails;
+export default reduxForm({
+  form: 'recipeDetails',
+})(ActionDetails);

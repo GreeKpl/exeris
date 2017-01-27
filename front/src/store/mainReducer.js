@@ -7,6 +7,7 @@ import {decoratedTopPanelReducer} from "../modules/topPanel";
 import {decoratedEntitiesReducer} from "../modules/entities";
 import {notificationsReducer} from "../modules/notifications";
 import {decoratedRecipesReducer} from "../modules/recipes";
+import {reducer as formReducer} from "redux-form/immutable";
 
 
 const mainReducer = combineReducers({
@@ -18,6 +19,7 @@ const mainReducer = combineReducers({
   entities: decoratedEntitiesReducer,
   notifications: notificationsReducer,
   recipes: decoratedRecipesReducer,
+  form: formReducer,
 });
 
 export default mainReducer;

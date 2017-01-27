@@ -2,18 +2,26 @@ import {connect} from "react-redux";
 import ActionDetails from "./ActionDetails";
 import {
   fromRecipesState,
-  getSelectedRecipe
+  getSelectedRecipe,
+  createActivityFromRecipe
 } from "../../../modules/recipes";
+import {getFormValues, formValueSelector} from "redux-form/immutable";
+
 
 const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.characterId,
-    actionDetails: getSelectedRecipe(fromRecipesState(state, ownProps.characterId)),
+    recipeDetails: getSelectedRecipe(fromRecipesState(state, ownProps.characterId)),
+    formState: getFormValues('recipeDetails')(state),
   };
 };
 
-const mapDispatchToProps = (dispatch) => {
-  return {}
+const mapDispatchToProps = (dispatch, ownProps) => {
+  return {
+    onSubmit: data => {
+      dispatch(createActivityFromRecipe(ownProps.characterId, data.toJS()));
+    },
+  }
 };
 
 const ActionDetailsContainer = connect(
