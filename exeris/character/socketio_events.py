@@ -750,7 +750,7 @@ def character_attack(entity_id):
     client_socket.emit("after_attack_entity", entity_id)
 
 
-@socketio_character_event("update_actions_list")
+@socketio_character_event("character.get_all_recipes")
 def update_actions_list():
     recipe_list_producer = recipes.RecipeListProducer(g.character)
     entity_recipes = models.EntityRecipe.query.all()
@@ -762,7 +762,7 @@ def update_actions_list():
     return recipe_names,
 
 
-@socketio_character_event("activity_from_recipe_setup")
+@socketio_character_event("character.get_recipe_details")
 def activity_from_recipe_setup(recipe_id):
     recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
@@ -772,12 +772,35 @@ def activity_from_recipe_setup(recipe_id):
     errors = recipes.ActivityFactory.get_list_of_errors(recipe, g.character)
     error_messages = [g.pyslate.t(error.error_tag, **error.error_kwargs) for error in errors]
 
-    selectable_entities = recipes.ActivityFactory.get_selectable_entities(recipe, g.character)
+    potential_subjects = recipes.ActivityFactory.get_selectable_entities(recipe, g.character)
 
-    rendered_modal = render_template("actions/modal_recipe_setup.html", title="recipe", form_inputs=form_inputs,
-                                     recipe_id=recipe_id, selectable_entities=selectable_entities,
-                                     error_messages=error_messages)
-    return rendered_modal,
+    subjects = [
+        {
+            "id": app.encode(subject.id),
+            "name": g.pyslate.t("entity_info", **subject.pyslatize()),
+        } for subject in potential_subjects]
+
+    additional_form_inputs = [{
+                                  "name": input_name,
+                                  "type": input_class.__name__,
+                                  "args": input_class.action_args,
+                              } for input_name, input_class in form_inputs.items()]
+
+    return {
+               "id": recipe.id,
+               "name": g.pyslate.t(recipe.name_tag, **recipe.name_params),
+               "requiresSubject": recipe.activity_container[0] == "selected_entity",
+               "subjects": subjects,
+               "requiredInput": list(recipe.requirements.get("input", {}).keys()),
+               "requiredTools": recipe.requirements.get("mandatory_tools", []),
+               "optionalTools": list(recipe.requirements.get("optional_tools", {}).keys()),
+               "requiredMachines": recipe.requirements.get("mandatory_machines", []),
+               "optionalMachines": list(recipe.requirements.get("optional_machines", {}).keys()),
+               "requiredDays": recipe.ticks_needed,
+               "requiredSkills": list(recipe.requirements.get("skills", {}).keys()),
+               "requiredFormInputs": additional_form_inputs,
+               "errorMessages": error_messages,
+           },
 
 
 @socketio_character_event("create_activity_from_recipe")
