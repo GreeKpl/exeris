@@ -16,7 +16,7 @@ class CreateCharacterPanel extends React.Component {
 
   onClick(event) {
     event.preventDefault();
-    this.state.setState({"characterName": ""});
+    this.setState({"characterName": ""});
     this.props.onCreateCharacterClick(this.state.characterName);
   }
 
