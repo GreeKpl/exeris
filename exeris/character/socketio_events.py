@@ -803,9 +803,8 @@ def activity_from_recipe_setup(recipe_id):
            },
 
 
-@socketio_character_event("create_activity_from_recipe")
+@socketio_character_event("character.create_activity_from_recipe")
 def create_activity_from_recipe(recipe_id, user_input, selected_entity_id):
-    recipe_id = app.decode(recipe_id)
     recipe = models.EntityRecipe.query.filter_by(id=recipe_id).one()
 
     activitys_being_in = g.character.get_location()
