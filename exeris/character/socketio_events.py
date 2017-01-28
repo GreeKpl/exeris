@@ -478,20 +478,26 @@ def collapse_entity(parent_entity_id):
 
 
 @socketio_character_event("character.get_root_entities")
-def entities_refresh_list(view="entities"):
-    if view == "inventory":
-        displayed_locations = [g.character]
-    else:
-        location = g.character.being_in
-        rng = general.VisibilityBasedRange(distance=10, only_through_unlimited=False)
+def get_root_entities():
+    location = g.character.being_in
+    rng = general.VisibilityBasedRange(distance=10, only_through_unlimited=False)
 
-        displayed_locations = rng.root_locations_near(location)
-        if location.get_root() in displayed_locations:
-            displayed_locations.remove(location.get_root())
-        displayed_locations = [location] + displayed_locations
+    displayed_locations = rng.root_locations_near(location)
+    if location.get_root() in displayed_locations:
+        displayed_locations.remove(location.get_root())
+    displayed_locations = [location] + displayed_locations
 
     locations = [_get_entity_info(loc_to_show, g.character) for loc_to_show in displayed_locations]
     return locations,
+
+
+@socketio_character_event("character.get_items_in_inventory")
+def get_inventory_root():
+    rng = general.InsideRange()
+    items_in_inventory = rng.items_near(g.character)
+
+    items = [_get_entity_info(item_to_show, g.character) for item_to_show in items_in_inventory]
+    return items,
 
 
 @socketio_character_event("refresh_entity_info")
