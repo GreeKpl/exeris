@@ -4,7 +4,7 @@ import {
   getCharacterAndPlayerNotifications,
   fromNotificationsState,
   requestMissingNotifications, requestShowNotification, removeNotification
-} from "../../modules/notifications";
+} from "../../../modules/notifications";
 
 const mapStateToProps = (state, ownProps) => {
   return {

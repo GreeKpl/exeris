@@ -1,6 +1,6 @@
 import React from "react";
 import TopBarContainer from "../player/topBar/TopBarContainer";
-import NotificationsContainer from "../common/NotificationsContainer";
+import NotificationsContainer from "../commons/notifications/NotificationsContainer";
 
 class PlayerPage extends React.Component {
   constructor(props) {

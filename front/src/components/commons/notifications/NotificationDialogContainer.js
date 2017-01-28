@@ -5,7 +5,7 @@ import {
   fromNotificationsState,
   selectNotificationOption,
   hideNotificationDialog
-} from "../../modules/notifications";
+} from "../../../modules/notifications";
 
 const mapStateToProps = (state, ownProps) => {
   const visibleNotification = getVisibleNotification(fromNotificationsState(state));

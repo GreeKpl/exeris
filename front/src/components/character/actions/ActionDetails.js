@@ -1,9 +1,9 @@
 import React from "react";
 import {FormGroup, Form, Col, FormControl, ControlLabel, Button, ListGroup, ListGroupItem} from "react-bootstrap";
-import HorizontalFormInput from "../../common/HorizontalFormInput";
+import HorizontalFormInput from "../../commons/HorizontalFormInput";
 
 import {Field, reduxForm} from 'redux-form/immutable';
-import HorizontalFormInfo from "../../common/HorizontalFormInfo";
+import HorizontalFormInfo from "../../commons/HorizontalFormInfo";
 
 
 const RequirementInfo = ({info, infoKey, label}) =>

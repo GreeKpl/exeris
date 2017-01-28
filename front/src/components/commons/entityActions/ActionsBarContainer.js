@@ -1,5 +1,5 @@
 import {connect} from "react-redux";
-import ActionsBar from "../util/ActionsBar";
+import ActionsBar from "./ActionsBar";
 import {getSelectedEntities, fromEntitiesState, getEntityInfos, performEntityAction} from "../../../modules/entities";
 import * as Immutable from "immutable";
 

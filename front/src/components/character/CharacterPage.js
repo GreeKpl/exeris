@@ -1,7 +1,7 @@
 import React from "react";
 import TopBarContainer from "../player/topBar/TopBarContainer";
 import CharacterTopBarContainer from "../character/topBar/CharacterTopBarContainer";
-import NotificationsContainer from "../common/NotificationsContainer";
+import NotificationsContainer from "../commons/notifications/NotificationsContainer";
 
 class CharacterPage extends React.Component {
   constructor(props) {
