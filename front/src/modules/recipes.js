@@ -71,7 +71,6 @@ export const recipesReducer = (state = Immutable.fromJS({
   "filter": "",
   "list": [],
   "selectedRecipe": {},
-  "formState": {},
 }), action) => {
   switch (action.type) {
     case UPDATE_FILTER_TEXT:
