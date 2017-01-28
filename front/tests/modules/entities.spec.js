@@ -7,7 +7,7 @@ import {
   getEntityInfos,
   fromEntitiesState,
   entitiesReducer,
-  decoratedEntitiesReducer
+  decoratedEntitiesReducer, updateItemsInInventoryList
 } from "../../src/modules/entities";
 import * as Immutable from "immutable";
 
@@ -16,6 +16,7 @@ describe('(entities) entitiesReducer', () => {
   it('Should initialize with initial state of empty list.', () => {
     expect(entitiesReducer(undefined, {})).to.equal(Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {},
       info: {},
       expanded: Immutable.Set(),
@@ -26,6 +27,7 @@ describe('(entities) entitiesReducer', () => {
   it('Should return the previous state if an action was not matched.', () => {
     const previousState = Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {"DEF": ["ABA"]},
       info: {},
       expanded: Immutable.Set(),
@@ -38,6 +40,7 @@ describe('(entities) entitiesReducer', () => {
   it('Should update the rootEntities.', () => {
     const previousState = Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {},
       info: {},
       expanded: Immutable.Set(),
@@ -46,6 +49,28 @@ describe('(entities) entitiesReducer', () => {
     let state = entitiesReducer(previousState, updateRootEntitiesList(0, ["ABC", "DEF"]));
     expect(state).to.equal(Immutable.fromJS({
       rootEntities: ["ABC", "DEF"],
+      itemsInInventory: [],
+      children: {},
+      info: {},
+      expanded: Immutable.Set(),
+      selected: Immutable.Set(),
+    }));
+  });
+
+
+  it('Should update the itemsInInventory.', () => {
+    const previousState = Immutable.fromJS({
+      rootEntities: [],
+      itemsInInventory: [],
+      children: {},
+      info: {},
+      expanded: Immutable.Set(),
+      selected: Immutable.Set(),
+    });
+    let state = entitiesReducer(previousState, updateItemsInInventoryList(0, ["HEJ", "TAM"]));
+    expect(state).to.equal(Immutable.fromJS({
+      rootEntities: [],
+      itemsInInventory: ["HEJ", "TAM"],
       children: {},
       info: {},
       expanded: Immutable.Set(),
@@ -56,6 +81,7 @@ describe('(entities) entitiesReducer', () => {
   it('Should update the children.', () => {
     const previousState = Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {},
       info: {},
       expanded: Immutable.Set(),
@@ -64,6 +90,7 @@ describe('(entities) entitiesReducer', () => {
     let state = entitiesReducer(previousState, updateChildrenOfEntity(0, "BAF", ["CBA", "DOM"]));
     expect(state).to.equal(Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {"BAF": ["CBA", "DOM"]},
       info: {},
       expanded: Immutable.Set(),
@@ -74,6 +101,7 @@ describe('(entities) entitiesReducer', () => {
   it('Should update the info.', () => {
     let state = Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {},
       info: {},
       expanded: Immutable.Set(),
@@ -89,6 +117,7 @@ describe('(entities) entitiesReducer', () => {
     }));
     expect(state).to.equal(Immutable.fromJS({
       rootEntities: [],
+      itemsInInventory: [],
       children: {},
       info: {"BAC": {id: "BAC", name: "a house"}, "CAN": {id: "CAN", name: "a hammer"}},
       expanded: Immutable.Set(),
@@ -115,6 +144,7 @@ describe('(entities) entitiesReducer', () => {
       entities: {
         "CHAR": {
           rootEntities: ["CAN"],
+          itemsInInventory: [],
           children: {"CAN": ["KLA"]},
           info: {
             "CAN": {

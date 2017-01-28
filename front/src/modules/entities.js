@@ -4,6 +4,8 @@ import {characterReducerDecorator} from "../util/characterReducerDecorator";
 
 export const ADD_ENTITY_INFO = "exeris-front/entities/ADD_ENTITY_INFO";
 export const UPDATE_ROOT_ENTITIES_LIST = "exeris-front/entities/UPDATE_ROOT_ENTITIES_LIST";
+export const UPDATE_ITEMS_IN_INVENTORY_LIST = "exeris-front/entities/UPDATE_ITEMS_IN_INVENTORY_LIST";
+
 export const UPDATE_CHILDREN_OF_ENTITY = "exeris-front/entities/UPDATE_CHILDREN_OF_ENTITY";
 export const EXPAND_ENTITY = "exeris-front/entities/EXPAND_ENTITY";
 export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
@@ -53,6 +55,19 @@ export const requestRootEntities = (characterId) => {
 
       const entitiesIds = entitiesInfo.map(info => info.id);
       dispatch(updateRootEntitiesList(characterId, entitiesIds));
+    });
+  }
+};
+
+export const requestInventoryEntities = characterId => {
+  return dispatch => {
+    socket.request("character.get_items_in_inventory", characterId, entitiesInfo => {
+      for (let entityInfo of entitiesInfo) {
+        dispatch(addEntityInfo(characterId, entityInfo));
+      }
+
+      const entitiesIds = entitiesInfo.map(info => info.id);
+      dispatch(updateItemsInInventoryList(characterId, entitiesIds));
     });
   }
 };
@@ -143,6 +158,15 @@ export const updateRootEntitiesList = (characterId, rootEntitiesList) => {
   };
 };
 
+
+export const updateItemsInInventoryList = (characterId, itemsList) => {
+  return {
+    type: UPDATE_ITEMS_IN_INVENTORY_LIST,
+    itemsList: itemsList,
+    characterId: characterId,
+  };
+};
+
 export const updateChildrenOfEntity = (characterId, parentEntityId, childrenIds) => {
   return {
     type: UPDATE_CHILDREN_OF_ENTITY,
@@ -157,6 +181,7 @@ export const entitiesReducer = (state = Immutable.fromJS(
     "info": {},
     "children": {},
     "rootEntities": [],
+    "itemsInInventory": [],
     "expanded": Immutable.Set(),
     "selected": Immutable.Set(),
   }), action) => {
@@ -168,6 +193,8 @@ export const entitiesReducer = (state = Immutable.fromJS(
       return state.setIn(["children", action.parentEntityId], Immutable.fromJS(action.childrenIds));
     case UPDATE_ROOT_ENTITIES_LIST:
       return state.set("rootEntities", Immutable.fromJS(action.rootEntitiesList));
+    case UPDATE_ITEMS_IN_INVENTORY_LIST:
+      return state.set("itemsInInventory", Immutable.fromJS(action.itemsList));
     case EXPAND_ENTITY:
       return state.update("expanded", expandedSet => expandedSet.add(action.entityId));
     case COLLAPSE_ENTITY:
@@ -184,6 +211,8 @@ export const entitiesReducer = (state = Immutable.fromJS(
 export const decoratedEntitiesReducer = characterReducerDecorator(entitiesReducer);
 
 export const getRootEntities = state => state.get("rootEntities", Immutable.List());
+
+export const getItemsInInventory = state => state.get("itemsInInventory", Immutable.List());
 
 export const getChildren = (state) => state.get("children", Immutable.Map());
 

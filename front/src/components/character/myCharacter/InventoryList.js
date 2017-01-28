@@ -1,5 +1,6 @@
 import React from "react";
-import {ListGroup, ListGroupItem, Panel} from "react-bootstrap";
+import Entities from "../../commons/entities/Entities";
+import {Panel} from "react-bootstrap";
 
 class InventoryList extends React.Component {
 
@@ -7,21 +8,20 @@ class InventoryList extends React.Component {
     super(props);
   }
 
+  componentDidMount() {
+    this.props.requestState();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.characterId !== this.props.characterId) {
+      this.props.requestState();
+    }
+  }
+
   render() {
-    return (
-      <Panel header="Inventory">
-        <ListGroup fill>
-          <ListGroupItem>A sword (equipped)</ListGroupItem>
-          <ListGroupItem>5 lumps of clay</ListGroupItem>
-          <ListGroupItem>An axe</ListGroupItem>
-          <ListGroupItem>an ushanka hat (equipped)</ListGroupItem>
-          <ListGroupItem>a hammer (equipped)</ListGroupItem>
-          <ListGroupItem>a pairt of trousers (equipped)</ListGroupItem>
-          <ListGroupItem>a shirt (equipped)</ListGroupItem>
-          <ListGroupItem>a crossbow</ListGroupItem>
-          <ListGroupItem>20 oak branches</ListGroupItem>
-        </ListGroup>
-      </Panel>);
+    return <Panel header="Inventory">
+      <Entities entities={this.props.itemsInInventory} {...this.props}/>
+    </Panel>;
   }
 }
 
