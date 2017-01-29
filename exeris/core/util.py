@@ -2,7 +2,6 @@ import random
 
 import math
 
-from exeris import app
 from exeris.core import map_data
 from shapely.geometry import Point
 

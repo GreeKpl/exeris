@@ -188,27 +188,26 @@ def create_app(database=db, own_config_file_path=""):
     return app
 
 
-def _cipher():
+def _cipher(character_id):
     h = hashlib.sha256()
     h.update(app.config['SECRET_KEY'].encode())
-
-    if hasattr(g, "character"):
-        h.update(g.character.id.to_bytes(8, 'big'))
-    else:
-        h.update(b'NO CHAR ID')
+    if character_id is None and hasattr(g, "character"):
+        character_id = g.character.id
+    assert character_id is not None, "encryption key cannot be None"
+    h.update(character_id.to_bytes(8, 'big'))
     return AES.new(h.digest(), AES.MODE_ECB)
 
 
 _encode_token = b'f' * 8
 
 
-def encode(uid):
+def encode(uid, character_id=None):
     pt = uid.to_bytes(8, 'big') + _encode_token
-    return str(int.from_bytes(_cipher().encrypt(pt), 'big'))
+    return str(int.from_bytes(_cipher(character_id).encrypt(pt), 'big'))
 
 
-def decode(encoded_id):
-    pt = _cipher().decrypt(int(encoded_id).to_bytes(16, 'big'))
+def decode(encoded_id, character_id=None):
+    pt = _cipher(character_id).decrypt(int(encoded_id).to_bytes(16, 'big'))
     if pt[8:] != _encode_token:
         raise ValueError('Could not decode ID')
     return int.from_bytes(pt[:8], 'big')

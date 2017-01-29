@@ -33,7 +33,9 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
             entity_type_name = params["entity_type"]
             entity_id = params.get(entity_type_name + "_id", 0)
             from exeris.app import app
-            classes = ["entity", entity_type_name, "id_{}".format(app.encode(entity_id))]
+            observer_id_for_encryption = params.get("observer").id if params.get("observer", None) else 0
+            classes = ["entity", entity_type_name, "id_{}".format(app.encode(entity_id,
+                                                                             character_id=observer_id_for_encryption))]
             classes += ["dynamic_nameable"] if params.get("dynamic_nameable", False) else []
             return '<span class="{}">{}</span>'.format(" ".join(classes), result_text)
 
