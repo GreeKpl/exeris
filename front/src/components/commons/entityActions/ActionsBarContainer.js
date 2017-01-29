@@ -16,18 +16,17 @@ export const getAllowedActions = (state, characterId) => {
     .reduce((accumulator, action) => {
       const actionName = action.get("name");
       if (!accumulator[actionName]) {
-        accumulator[actionName] = {count: 0, actions: []};
+        accumulator[actionName] = {count: 0, entities: []};
       }
       const actionData = accumulator[actionName];
       actionData.count += 1;
-      actionData.actions.push({
-        entity: action.get("entity"),
-        endpoint: action.get("endpoint")
-      });
+      actionData.entities.push(action.get("entity"));
+      actionData.endpoint = action.get("endpoint");
       actionData.name = actionName;
       actionData.image = action.get("image");
       return accumulator;
     }, {});
+
   return Immutable.Map(occurrencesOfActions)
     .filter(action => action.count >= selectedEntities.size)
     .valueSeq().toJS();
@@ -43,11 +42,10 @@ const mapStateToProps = (state, ownProps) => {
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    onClick: actionsList => event => {
+    onClick: (entities, actionEndpoint) => event => {
       event.preventDefault();
-      for (let action of actionsList) {
-        dispatch(performEntityAction(ownProps.characterId, action.endpoint, action.entity));
-      }
+
+      dispatch(performEntityAction(ownProps.characterId, actionEndpoint, entities));
     },
   }
 };

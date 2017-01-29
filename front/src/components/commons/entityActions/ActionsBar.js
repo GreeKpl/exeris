@@ -20,7 +20,7 @@ const ActionsBar = ({actions, onClick}) => {
               }}>
     {actions.map(action =>
       <NavItem className="ActionsBar-actionItem" key={action.name}
-               onClick={onClick(action.actions)}>
+               onClick={onClick(action.endpoint, action.entities)}>
         <Image style={{height: "80px"}} src={actionImage} rounded/>
         <p className="ActionsBar-actionItemCaption">{action.name}</p>
       </NavItem>

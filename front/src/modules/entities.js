@@ -38,10 +38,10 @@ export const setUpSocketioListeners = dispatch => {
   });
 };
 
-export const performEntityAction = (characterId, endpoint, entityId) => {
+export const performEntityAction = (characterId, endpoint, entityIds) => {
   return dispatch => {
-    socket.request(endpoint, characterId, entityId, () => {
-      console.log("PERFORMED");
+    socket.request(endpoint, characterId, entityIds, () => {
+      console.log("PERFORMED FOR", entityIds);
     });
   }
 };
