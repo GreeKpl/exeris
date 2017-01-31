@@ -15,7 +15,15 @@ export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 
 export const setUpSocketioListeners = dispatch => {
 
-  socket.on("after_take_item", function (item_id) {
+  socket.on("character.eat_setup", function (item_ids) {
+    // $.publish("entities:refresh_entity_info", item_id);
+  });
+
+  socket.on("character.after_take_item", function (item_id) {
+    // $.publish("entities:refresh_entity_info", item_id);
+  });
+
+  socket.on("character.take_item_setup", function (item_id) {
     // $.publish("entities:refresh_entity_info", item_id);
   });
 
@@ -40,7 +48,7 @@ export const setUpSocketioListeners = dispatch => {
 
 export const performEntityAction = (characterId, endpoint, entityIds) => {
   return dispatch => {
-    socket.request(endpoint, characterId, entityIds, () => {
+    socket.request(characterId, endpoint, entityIds, () => {
       console.log("PERFORMED FOR", entityIds);
     });
   }

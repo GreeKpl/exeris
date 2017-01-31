@@ -24,11 +24,16 @@ export const getAllowedActions = (state, characterId) => {
       actionData.endpoint = action.get("endpoint");
       actionData.name = actionName;
       actionData.image = action.get("image");
+      actionData.allowMultipleEntities = action.get("allowMultipleEntities");
+      if (actionData.count > 1 && action.get("multiEntitiesName") !== null) {
+        actionData.name = action.get("multiEntitiesName");
+      }
       return accumulator;
     }, {});
 
   return Immutable.Map(occurrencesOfActions)
-    .filter(action => action.count >= selectedEntities.size)
+    .filter(action => action.count >= selectedEntities.size
+    && (selectedEntities.size == 1 || action.allowMultipleEntities))
     .valueSeq().toJS();
 };
 
