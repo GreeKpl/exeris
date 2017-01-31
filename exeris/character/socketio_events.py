@@ -214,14 +214,17 @@ def combat_change_stance(combat_id, side):
     return ()
 
 
-@socketio_character_event("eat")
-def eat(entity_id, amount=None):
-    entity_id = app.decode(entity_id)
+@socketio_character_event("character.eat")
+def eat(entity_ids, amount=None):
+    entity_id = app.decode(entity_ids[0])
     entity = models.Item.by_id(entity_id)
 
     if not amount:
         entity_edible_property = properties.EdibleProperty(entity)
-        client_socket.emit("before_eat", (app.encode(entity_id), entity_edible_property.get_max_edible(g.character)))
+        client_socket.emit("character.eat_setup",
+                           (
+                               g.character.id, [app.encode(entity_id)],
+                               entity_edible_property.get_max_edible(g.character)))
     else:
         eat_action = actions.EatAction(g.character, entity, amount)
         eat_action.perform()
@@ -264,7 +267,7 @@ def get_moving_entity_info():
         return "",
 
 
-@socketio_character_event("get_entities_to_bind_to")
+@socketio_character_event("character.get_entities_to_bind_to")
 def get_entities_to_bind_to(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
@@ -288,7 +291,7 @@ def get_entities_to_bind_to(entity_id):
 
     rendered_entities_to_bind_to = render_template("entities/modal_entities_to_bind_to.html", binding_entity=entity,
                                                    entities_to_bind_to=entities)
-    client_socket.emit("before_bind_to_vehicle", rendered_entities_to_bind_to)
+    client_socket.emit("character.bind_to_vehicle_setup", rendered_entities_to_bind_to)
     return ()
 
 
@@ -311,7 +314,7 @@ def bind_to_vehicle(entity_id, entity_to_bind_to_id):
     return [app.encode(entity_id) for entity_id in entities_in_union],
 
 
-@socketio_character_event("unbind_from_vehicle")
+@socketio_character_event("character.unbind_from_vehicle")
 def unbind_from_vehicle(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
@@ -323,11 +326,12 @@ def unbind_from_vehicle(entity_id):
     unbind_from_vehicle_action.perform()
 
     db.session.commit()
-    client_socket.emit("after_unbind_from_vehicle", [app.encode(union_member) for union_member in members_of_union])
+    client_socket.emit("character.unbind_from_vehicle_after",
+                       [app.encode(union_member) for union_member in members_of_union])
     return ()
 
 
-@socketio_character_event("start_boarding_ship")
+@socketio_character_event("character.start_boarding_ship")
 def start_boarding_ship(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
@@ -335,11 +339,11 @@ def start_boarding_ship(entity_id):
     start_boarding_action = actions.StartBoardingAction(g.character, entity)
     start_boarding_action.perform()
     db.session.commit()
-    client_socket.emit("after_start_boarding_ship", app.encode(entity_id))
+    client_socket.emit("character.start_boarding_ship_after", app.encode(entity_id))
     return ()
 
 
-@socketio_character_event("start_unboarding_from_ship")
+@socketio_character_event("character.start_unboarding_from_ship")
 def get_ship_to_unboard_from(other_ship_id):
     other_ship_id = app.decode(other_ship_id)
     other_ship = models.Entity.by_id(other_ship_id)
@@ -348,7 +352,7 @@ def get_ship_to_unboard_from(other_ship_id):
     start_unboarding_action.perform()
 
     db.session.commit()
-    client_socket.emit("after_start_unboarding_from_ship", app.encode(other_ship_id))
+    client_socket.emit("character.start_unboarding_from_ship_after", app.encode(other_ship_id))
     return ()
 
 
@@ -416,8 +420,8 @@ def character_goto_location(target_character_id):
            },
 
 
-@socketio_character_event("open_readable_contents")
-def open_readable_contents(entity_id):
+@socketio_character_event("character.show_readable_content")
+def show_readable_content(entity_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
 
@@ -427,7 +431,7 @@ def open_readable_contents(entity_id):
     raw_contents = entity_readable_property.read_raw_contents()
     modal = render_template("entities/modal_readable.html", title=title, contents=contents, entity_id=entity_id,
                             raw_contents=raw_contents)
-    client_socket.emit("after_open_readable_contents", modal)
+    client_socket.emit("character.show_readable_content_after", modal)
 
 
 @socketio_character_event("edit_readable")
@@ -527,7 +531,7 @@ def entities_get_sublist(entity_id, parent_parent_id):
     return rendered,
 
 
-@socketio_character_event("move_to_location")
+@socketio_character_event("character.move_to_location")
 def move_to_location(location_id):
     location_id = app.decode(location_id)
     location = models.Location.by_id(location_id)
@@ -538,58 +542,62 @@ def move_to_location(location_id):
     action.perform()
 
     db.session.commit()
-    client_socket.emit("after_move_to_location", app.encode(passage.id))
+    client_socket.emit("character.after_move_to_location", app.encode(passage.id))
 
 
-@socketio_character_event("form_add_item_to_activity")
-def form_add_item_to_activity(entity_id):
-    entity_id = app.decode(entity_id)
-    entity_to_add = models.Entity.by_id(entity_id)
-    loc = g.character.being_in
-    activity_holders = models.Entity.query.filter(models.Entity.is_in(loc)).all()
+@socketio_character_event("character.add_item_to_activity")
+def form_add_item_to_activity(entity_to_add_id, amount=None, activity_id=None):
+    entity_to_add_id = app.decode(entity_to_add_id)
+    entity_to_add = models.Entity.by_id(entity_to_add_id)
 
-    activities = models.Activity.query.filter(models.Activity.is_in(activity_holders)).all()
+    if amount and activity_id:
+        loc = g.character.being_in
+        activity_holders = models.Entity.query.filter(models.Entity.is_in(loc)).all()
 
-    activities_to_add = []
-    for activity in activities:
-        if "input" in activity.requirements:
-            for needed_type_name, req_data in activity.requirements["input"].items():
-                needed_type = models.EntityType.by_name(needed_type_name)
-                if needed_type.contains(entity_to_add.type):
-                    amount = req_data["left"] / needed_type.quantity_efficiency(entity_to_add.type)
-                    activities_to_add += [
-                        {"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
+        activities = models.Activity.query.filter(models.Activity.is_in(activity_holders)).all()
 
-    rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
-                               entity_to_add=entity_to_add)
+        activities_to_add = []
+        for activity in activities:
+            if "input" in activity.requirements:
+                for needed_type_name, req_data in activity.requirements["input"].items():
+                    needed_type = models.EntityType.by_name(needed_type_name)
+                    if needed_type.contains(entity_to_add.type):
+                        amount = req_data["left"] / needed_type.quantity_efficiency(entity_to_add.type)
+                        activities_to_add += [
+                            {"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
 
-    client_socket.emit("after_form_add_item_to_activity", rendered)
+        rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
+                                   entity_to_add=entity_to_add)
 
+        client_socket.emit("character.add_item_to_activity_setup", rendered)
 
-@socketio_character_event("add_item_to_activity")
-def add_item_to_activity(entity_to_add, amount, activity_id):
-    entity_to_add = models.Entity.by_id(app.decode(entity_to_add))
-    activity = models.Activity.by_id(app.decode(activity_id))
+        db.session.commit()
+        return ()
+    else:
+        entity_to_add = models.Entity.by_id(app.decode(entity_to_add))
+        activity = models.Activity.by_id(app.decode(activity_id))
 
-    action = actions.AddEntityToActivityAction(g.character, entity_to_add, activity, amount)
-    action.perform()
+        action = actions.AddEntityToActivityAction(g.character, entity_to_add, activity, amount)
+        action.perform()
 
-    db.session.commit()
-    return ()
+        db.session.commit()
+        return ()
 
 
 @socketio_character_event("character.take_item")
-def take_item(item_id, amount=None):
-    item = models.Item.by_id(app.decode(item_id))
+def take_item(item_ids, amount=None):
+    item_ids = [app.decode(item_id) for item_id in item_ids]
+    items = [models.Item.by_id(item_id) for item_id in item_ids]
 
-    if item.type.stackable and not amount:
-        client_socket.emit("before_take_item", (item_id, item.amount))
+    if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
+        client_socket.emit("character.take_item_setup", (item_ids, items[0].amount))
     else:
-        amount = amount if amount else 1
-        take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
-        take_from_storage_action.perform()
+        for item in items:
+            amount = amount if amount else item.amount
+            take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
+            take_from_storage_action.perform()
 
-    client_socket.emit("after_take_item", item_id)
+        client_socket.emit("character.take_item_after", item_ids)
     db.session.commit()
     return ()
 
@@ -606,30 +614,33 @@ def put_into_storage(item_id, storage_id=None, amount=None):
 
         accessible_storages = storage_items + storage_locations
         rendered = render_template("entities/modal_put_into_storage.html", item=item, storages=accessible_storages)
-        client_socket.emit("before_put_into_storage", rendered)
+        client_socket.emit("character.put_into_storage_setup", rendered)
     else:
         amount = amount if amount else 1
         storage = models.Entity.by_id(app.decode(storage_id))
         put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
         put_into_storage_action.perform()
         db.session.commit()
-        client_socket.emit("after_put_into_storage", item_id)
+        client_socket.emit("character.put_into_storage_after", item_id)
 
     return ()
 
 
-@socketio_character_event("inventory.drop_item")
-def drop_item(item_id, amount=None):
-    item = models.Item.by_id(app.decode(item_id))
+@socketio_character_event("character.drop_item")
+def drop_item(item_ids, amount=None):
+    item_ids = [app.decode(item_id) for item_id in item_ids]
+    items = [models.Item.by_id(item_id) for item_id in item_ids]
 
-    if item.type.stackable and not amount:
-        client_socket.emit("before_drop_item", (item_id, item.amount))
+    if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
+        client_socket.emit("character.drop_item_setup", (items[0].id, items[0].amount))
     else:
-        amount = amount if amount else 1
-        drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
-        drop_item_action.perform()
+        for item in items:
+            amount = amount if amount else item.amount
+            drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
+            drop_item_action.perform()
 
-    client_socket.emit("after_drop_item", item_id)
+    client_socket.emit("character.drop_item_after", item_ids)
+
     db.session.commit()
     return ()
 
@@ -691,7 +702,6 @@ def _get_entity_info(entity, observer):
         activity = models.Activity.query.filter(models.Activity.is_in(other_side)).first()
         if activity:
             activities.append(activity)
-
         other_side_member_of_union = properties.OptionalMemberOfUnionProperty(other_side)
         union_membership = get_identifier_for_union(other_side_member_of_union.get_union_id())
     else:
@@ -700,7 +710,6 @@ def _get_entity_info(entity, observer):
                      and not entity.has_property(P.CLOSEABLE, closed=True) and \
                      models.Entity.query.filter(models.Entity.parent_entity == entity) \
                          .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY).first() is not None
-
         entity_member_of_union = properties.OptionalMemberOfUnionProperty(entity)
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
@@ -708,6 +717,8 @@ def _get_entity_info(entity, observer):
                           "image": a.image,
                           "entity": app.encode(a.entity.id),
                           "endpoint": a.endpoint,
+                          "allowMultipleEntities": a.multi_entities,
+                          "multiEntitiesName": a.multi_tag_name,
                           } for a in possible_actions]
 
     return {
@@ -734,7 +745,7 @@ def _get_directed_passage_in_correct_direction(char_location, entity):
     return entity
 
 
-@socketio_character_event("toggle_closeable")
+@socketio_character_event("character.toggle_closeable")
 def toggle_closeable(entity_id):
     entity = models.Entity.by_id(app.decode(entity_id))
 
@@ -742,7 +753,7 @@ def toggle_closeable(entity_id):
     action.perform()
 
     db.session.commit()
-    client_socket.emit("after_toggle_closeable", entity_id)
+    client_socket.emit("character.toggle_closeable_after", entity_id)
 
 
 @socketio_character_event("character.attack")
