@@ -128,3 +128,6 @@ def perform_or_turn_into_intent(executor, action, priority=1):
         models.Intent.query.filter_by(executor=executor).delete()  # TODO no multiple intents till #72
 
         exception.turn_into_intent(executor, action, priority)
+    except:
+        db.session.rollback()  # rollback to savepoint
+        raise
