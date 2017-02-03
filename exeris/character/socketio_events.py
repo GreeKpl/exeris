@@ -446,21 +446,8 @@ def edit_readable(entity_id, text):
     return app.encode(entity_id),
 
 
-def _get_entities_in(parent_entity, observer, excluded=None):
-    excluded = excluded if excluded else []
-
-    entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
-        .filter(~models.Entity.id.in_(models.ids(excluded))) \
-        .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY) \
-        .all()
-
-    if isinstance(parent_entity, models.Location):
-        entities += [passage for passage in parent_entity.passages_to_neighbours if
-                     passage.other_side not in excluded]
-
-        if not models.EntityContentsPreference.query.filter_by(character=g.character,
-                                                               open_entity=parent_entity).first():
-            db.session.add(models.EntityContentsPreference(g.character, parent_entity))
+def _get_entity_infos_in(parent_entity, observer, excluded=None):
+    entities = _get_entities_in(parent_entity, excluded)
 
     entity_entries = []
     for entity in entities:
@@ -468,6 +455,22 @@ def _get_entities_in(parent_entity, observer, excluded=None):
 
         entity_entries.append(entity_info)
     return entity_entries
+
+
+def _get_entities_in(parent_entity, excluded=None):
+    excluded = excluded if excluded else []
+    entities = models.Entity.query.filter(models.Entity.is_in(parent_entity)) \
+        .filter(~models.Entity.id.in_(models.ids(excluded))) \
+        .filter(models.Entity.discriminator_type != models.ENTITY_ACTIVITY) \
+        .all()
+    if isinstance(parent_entity, models.Location):
+        entities += [passage for passage in parent_entity.passages_to_neighbours if
+                     passage.other_side not in excluded]
+
+        if not models.EntityContentsPreference.query.filter_by(character=g.character,
+                                                               open_entity=parent_entity).first():
+            db.session.add(models.EntityContentsPreference(g.character, parent_entity))
+    return entities
 
 
 @socketio_character_event("collapse_entity")
@@ -517,7 +520,7 @@ def refresh_entity_info(entity_id):
 
 
 @socketio_character_event("character.get_children_entities")
-def entities_get_sublist(entity_id, parent_parent_id):
+def get_children_entities(entity_id, parent_parent_id):
     parent_entity = models.Entity.by_id(app.decode(entity_id))
     rng = general.VisibilityBasedRange(distance=30)
     if not rng.is_near(g.character, parent_entity):
@@ -527,8 +530,31 @@ def entities_get_sublist(entity_id, parent_parent_id):
         parent_entity = parent_entity.right_location \
             if parent_entity.left_location in exclude \
             else parent_entity.left_location
-    rendered = _get_entities_in(parent_entity, g.character, exclude)
+    rendered = _get_entity_infos_in(parent_entity, g.character, exclude)
     return rendered,
+
+
+@socketio_character_event("character.get_extended_entity_info")
+def get_entities(enc_entity_id, enc_parent_id):
+    entity_id = app.decode(enc_entity_id)
+    entity = models.Entity.by_id(entity_id)
+
+    parent_id = app.decode(enc_parent_id)
+    parent_entity = models.Entity.by_id(parent_id)
+
+    rng = general.VisibilityBasedRange(distance=30)
+    if not rng.is_near(g.character, entity):
+        raise main.EntityTooFarAwayException(entity=entity)
+
+    if entity.being_in == parent_entity:
+        entity_info = _get_entity_info(entity, g.character)
+    else:
+        entity_info = None
+
+    return {"id": app.encode(entity_id),
+            "info": entity_info,
+            "children": _get_entities_in(entity, [parent_entity])
+            },
 
 
 @socketio_character_event("character.move_to_location")
@@ -590,7 +616,7 @@ def take_item(item_ids, amount=None):
     items = [models.Item.by_id(item_id) for item_id in item_ids]
 
     if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
-        client_socket.emit("character.take_item_setup", (item_ids, items[0].amount))
+        client_socket.emit("character.take_item_setup", (str(g.character.id), app.encode(items[0].id), items[0].amount))
     else:
         for item in items:
             amount = amount if amount else item.amount
