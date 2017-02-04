@@ -10,7 +10,7 @@ class MapInfo extends React.Component {
   render() {
     return (
       <Panel header="World map">
-        <img src={"/character/" + this.props.characterId + "/map_image"}/>
+        <img src={"/character/" + this.props.characterId + "/map_image"} style={{maxWidth: "100%"}}/>
       </Panel>);
   }
 }
