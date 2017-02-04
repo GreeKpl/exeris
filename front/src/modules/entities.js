@@ -7,51 +7,32 @@ export const UPDATE_ROOT_ENTITIES_LIST = "exeris-front/entities/UPDATE_ROOT_ENTI
 export const UPDATE_ITEMS_IN_INVENTORY_LIST = "exeris-front/entities/UPDATE_ITEMS_IN_INVENTORY_LIST";
 
 export const UPDATE_CHILDREN_OF_ENTITY = "exeris-front/entities/UPDATE_CHILDREN_OF_ENTITY";
+export const REMOVE_CHILD_OF_ENTITY = "exeris-front/entities/REMOVE_CHILD_OF_ENTITY";
+
 export const EXPAND_ENTITY = "exeris-front/entities/EXPAND_ENTITY";
 export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
 export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
 export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 
 
-export const setUpSocketioListeners = dispatch => {
+export const requestRefreshEntity = (characterId, entityId) => {
+  return (dispatch, getState) => {
+    const childrenByEntity = getChildren(fromEntitiesState(getState(), characterId));
+    const parentEntities = childrenByEntity.filter(children => children.includes(entityId)).keySeq();
+    if (!parentEntities.size) {
+      return; // this entity is not visible anywhere
+    }
 
-  socket.on("character.eat_setup", function (item_ids) {
-    // $.publish("entities:refresh_entity_info", item_id);
-  });
-
-  socket.on("character.after_take_item", function (item_id) {
-    // $.publish("entities:refresh_entity_info", item_id);
-  });
-
-  socket.on("character.take_item_setup", function (item_id) {
-    // $.publish("entities:refresh_entity_info", item_id);
-  });
-
-  socket.on("after_unbind_from_vehicle", function (entities) {
-    // for (let i = 0; i < entities.length; i++) {
-    //   $.publish("entities:refresh_entity_info", entities[i]);
-    // }
-  });
-
-  socket.on("after_start_boarding_ship", function (entity_id) {
-    // $.publish("entities:refresh_entity_info", entity_id);
-  });
-
-  socket.on("after_start_unboarding_from_ship", function (entity_id) {
-    // $.publish("entities:refresh_entity_info", entity_id);
-  });
-
-  socket.on("after_drop_item", function (item_id) {
-    // $.publish("entities:refresh_entity_info", item_id);
-  });
-};
-
-export const performEntityAction = (characterId, endpoint, entityIds) => {
-  return dispatch => {
-    socket.request(characterId, endpoint, entityIds, () => {
-      console.log("PERFORMED FOR", entityIds);
+    const parentId = parentEntities.first();
+    socket.request("character.get_extended_entity_info", characterId, entityId, parentId, extendedEntityInfo => {
+      if (extendedEntityInfo.info) {
+        dispatch(addEntityInfo(characterId, extendedEntityInfo.info));
+        dispatch(updateChildrenOfEntity(characterId, entityId, extendedEntityInfo.children));
+      } else {
+        dispatch(removeChildOfEntity(characterId, parentId, extendedEntityInfo.id));
+      }
     });
-  }
+  };
 };
 
 export const requestRootEntities = (characterId) => {
@@ -184,6 +165,16 @@ export const updateChildrenOfEntity = (characterId, parentEntityId, childrenIds)
   };
 };
 
+
+export const removeChildOfEntity = (characterId, parentEntityId, childId) => {
+  return {
+    type: REMOVE_CHILD_OF_ENTITY,
+    parentEntityId: parentEntityId,
+    childId: childId,
+    characterId: characterId,
+  };
+};
+
 export const entitiesReducer = (state = Immutable.fromJS(
   {
     "info": {},
@@ -198,7 +189,11 @@ export const entitiesReducer = (state = Immutable.fromJS(
       const entityInfo = action.entityInfo;
       return state.setIn(["info", entityInfo.id], Immutable.fromJS(entityInfo));
     case UPDATE_CHILDREN_OF_ENTITY:
-      return state.setIn(["children", action.parentEntityId], Immutable.fromJS(action.childrenIds));
+      return state.setIn(["children", action.parentEntityId],
+        Immutable.fromJS(action.childrenIds));
+    case REMOVE_CHILD_OF_ENTITY:
+      return state.updateIn(["children", action.parentEntityId], Immutable.List(),
+        list => list.filter(el => el !== action.childId));
     case UPDATE_ROOT_ENTITIES_LIST:
       return state.set("rootEntities", Immutable.fromJS(action.rootEntitiesList));
     case UPDATE_ITEMS_IN_INVENTORY_LIST:

@@ -2,6 +2,7 @@ import {
   addEntityInfo,
   updateRootEntitiesList,
   updateChildrenOfEntity,
+  removeChildOfEntity,
   getChildren,
   getRootEntities,
   getEntityInfos,
@@ -72,6 +73,27 @@ describe('(entities) entitiesReducer', () => {
       rootEntities: [],
       itemsInInventory: ["HEJ", "TAM"],
       children: {},
+      info: {},
+      expanded: Immutable.Set(),
+      selected: Immutable.Set(),
+    }));
+  });
+
+  it('Should remove the child.', () => {
+    const previousState = Immutable.fromJS({
+      rootEntities: [],
+      itemsInInventory: [],
+      children: {"BAF": ["CBA", "DOM"]},
+      info: {},
+      expanded: Immutable.Set(),
+      selected: Immutable.Set(),
+    });
+
+    let state = entitiesReducer(previousState, removeChildOfEntity(0, "BAF", "CBA"));
+    expect(state).to.equal(Immutable.fromJS({
+      rootEntities: [],
+      itemsInInventory: [],
+      children: {"BAF": ["DOM"]},
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
