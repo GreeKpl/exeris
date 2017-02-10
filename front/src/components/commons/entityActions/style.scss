@@ -1,8 +1,11 @@
 
-.ActionsBar-Nav {
+.ActionsBar-bar {
+  background-color: #e0e0e0;
+}
+
+.ActionsBar-actionsList {
   white-space: nowrap;
   overflow-x: auto;
-  background-color: #e0e0e0;
 }
 
 li.ActionsBar-actionItem {

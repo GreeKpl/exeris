@@ -14,6 +14,8 @@ export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
 export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
 export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 
+export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION";
+
 
 export const requestRefreshEntity = (characterId, entityId) => {
   return (dispatch, getState) => {
@@ -175,6 +177,26 @@ export const removeChildOfEntity = (characterId, parentEntityId, childId) => {
   };
 };
 
+
+export const selectEntityAction = (characterId, actionType, details) => {
+  return {
+    type: SELECT_ENTITY_ACTION,
+    actionType: actionType,
+    details: details,
+    characterId: characterId,
+  }
+};
+
+export const clearSelectedEntityAction = characterId => {
+  return {
+    type: SELECT_ENTITY_ACTION,
+    actionType: null,
+    details: {},
+    characterId: characterId,
+  };
+};
+
+
 export const entitiesReducer = (state = Immutable.fromJS(
   {
     "info": {},
@@ -183,6 +205,8 @@ export const entitiesReducer = (state = Immutable.fromJS(
     "itemsInInventory": [],
     "expanded": Immutable.Set(),
     "selected": Immutable.Set(),
+    "actionType": null,
+    "actionDetails": {},
   }), action) => {
   switch (action.type) {
     case ADD_ENTITY_INFO:
@@ -203,9 +227,16 @@ export const entitiesReducer = (state = Immutable.fromJS(
     case COLLAPSE_ENTITY:
       return state.update("expanded", expandedSet => expandedSet.delete(action.entityId));
     case SELECT_ENTITY:
-      return state.update("selected", selectedSet => selectedSet.add(action.entityId));
+      return state.update("selected", selectedSet => selectedSet.add(action.entityId))
+        .set("actionType", null)
+        .set("actionDetails", Immutable.Map());
     case DESELECT_ENTITY:
-      return state.update("selected", selectedSet => selectedSet.delete(action.entityId));
+      return state.update("selected", selectedSet => selectedSet.delete(action.entityId))
+        .set("actionType", null)
+        .set("actionDetails", Immutable.Map());
+    case SELECT_ENTITY_ACTION:
+      return state.set("actionType", action.actionType)
+        .set("actionDetails", Immutable.fromJS(action.details));
     default:
       return state;
   }
@@ -225,6 +256,10 @@ export const getExpanded = (state) => state.get("expanded", Immutable.Set());
 
 export const getSelectedEntities = (state) => state.get("selected", Immutable.Set());
 
+// entity actions
+export const getActionType = (state) => state.get("actionType", null);
+
+export const getActionDetails = (state) => state.get("actionDetails", Immutable.Map());
 
 export const fromEntitiesState = (state, characterId) =>
   state.getIn(["entities", characterId], Immutable.Map());

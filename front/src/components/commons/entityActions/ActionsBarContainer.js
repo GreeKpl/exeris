@@ -1,6 +1,8 @@
 import {connect} from "react-redux";
 import ActionsBar from "./ActionsBar";
-import {getSelectedEntities, fromEntitiesState, getEntityInfos, performEntityAction} from "../../../modules/entities";
+import {getSelectedEntities, fromEntitiesState, getEntityInfos, getActionType} from "../../../modules/entities";
+import {
+  performEntityAction} from "../../../modules/entities-actionsAddon";
 import * as Immutable from "immutable";
 
 export const getAllowedActions = (state, characterId) => {
@@ -42,12 +44,13 @@ const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.characterId,
     actions: getAllowedActions(state, ownProps.characterId),
+    actionFormType: getActionType(fromEntitiesState(state, ownProps.characterId)),
   };
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    onClick: (entities, actionEndpoint) => event => {
+    onClick: (actionEndpoint, entities) => event => {
       event.preventDefault();
 
       dispatch(performEntityAction(ownProps.characterId, actionEndpoint, entities));
