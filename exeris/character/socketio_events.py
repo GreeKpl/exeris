@@ -221,17 +221,17 @@ def eat(entity_ids, amount=None):
 
     if not amount:
         entity_edible_property = properties.EdibleProperty(entity)
+        max_amount = min(entity.amount, entity_edible_property.get_max_edible(g.character))
         client_socket.emit("character.eat_setup",
-                           (
-                               g.character.id, [app.encode(entity_id)],
-                               entity_edible_property.get_max_edible(g.character)))
+                           (str(g.character.id), max_amount))
     else:
         eat_action = actions.EatAction(g.character, entity, amount)
         eat_action.perform()
-        entity_info = g.pyslate.t("entity_info", **entity.pyslatize(item_amount=amount))
 
         db.session.commit()
-        return entity_info, amount
+        client_socket.emit("character.eat_after",
+                           (str(g.character.id), entity_ids))
+        return ()
 
 
 @socketio_character_event("character.move_in_direction")
@@ -612,18 +612,18 @@ def form_add_item_to_activity(entity_to_add_id, amount=None, activity_id=None):
 
 @socketio_character_event("character.take_item")
 def take_item(item_ids, amount=None):
-    item_ids = [app.decode(item_id) for item_id in item_ids]
-    items = [models.Item.by_id(item_id) for item_id in item_ids]
+    dec_item_ids = [app.decode(item_id) for item_id in item_ids]
+    items = [models.Item.by_id(item_id) for item_id in dec_item_ids]
 
     if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
-        client_socket.emit("character.take_item_setup", (str(g.character.id), app.encode(items[0].id), items[0].amount))
+        client_socket.emit("character.take_item_setup", (str(g.character.id), items[0].amount))
     else:
         for item in items:
             amount = amount if amount else item.amount
             take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
             take_from_storage_action.perform()
 
-        client_socket.emit("character.take_item_after", item_ids)
+        client_socket.emit("character.take_item_after", (str(g.character.id), item_ids))
     db.session.commit()
     return ()
 
@@ -658,14 +658,14 @@ def drop_item(item_ids, amount=None):
     items = [models.Item.by_id(item_id) for item_id in item_ids]
 
     if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
-        client_socket.emit("character.drop_item_setup", (items[0].id, items[0].amount))
+        client_socket.emit("character.drop_item_setup", (str(g.character.id), items[0].amount))
     else:
         for item in items:
             amount = amount if amount else item.amount
             drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
             drop_item_action.perform()
 
-    client_socket.emit("character.drop_item_after", item_ids)
+        client_socket.emit("character.drop_item_after", (str(g.character.id), item_ids))
 
     db.session.commit()
     return ()

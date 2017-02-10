@@ -378,7 +378,7 @@ class AreaRangeSpec(RangeSpec):
         changes = []
         for intersection_wkb, area in intersecting_areas:
             intersection = to_shape(intersection_wkb)
-            if intersection.geom_type == "Point":
+            if intersection.geom_type in ("Point", "MultiPoint"):
                 continue  # points have no meaning
             logger.debug("intersection: %s %s", intersection, area)
 
