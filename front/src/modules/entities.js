@@ -23,11 +23,15 @@ export const requestRefreshEntity = (characterId, entityId) => {
   return (dispatch, getState) => {
     const childrenByEntity = getChildren(fromEntitiesState(getState(), characterId));
     const parentEntities = childrenByEntity.filter(children => children.includes(entityId)).keySeq();
-    if (!parentEntities.size) {
+    const itemsInInventory = getItemsInInventory(fromEntitiesState(getState(), characterId));
+    if (!parentEntities.size && !itemsInInventory.includes(entityId)) {
       return; // this entity is not visible anywhere
     }
 
-    const parentId = parentEntities.first();
+    let parentId = parentEntities.first();
+    if (itemsInInventory.includes(entityId)) {
+      parentId = null;
+    }
     socket.request("character.get_extended_entity_info", characterId, entityId, parentId, extendedEntityInfo => {
       if (extendedEntityInfo.info) {
         dispatch(addEntityInfo(characterId, extendedEntityInfo.info));
