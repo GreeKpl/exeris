@@ -14,6 +14,24 @@ from exeris.core.properties_base import P
 logger = logging.getLogger(__name__)
 
 
+def decode_and_load_entities(enc_entities_ids):
+    entities_ids = [app.decode(entity_id) for entity_id in enc_entities_ids]
+    return models.Entity.query.filter(models.Entity.id.in_(entities_ids)).all()
+
+
+def decode_and_load_entity(enc_entity_id):
+    entity_id = app.decode(enc_entity_id)
+    return models.Entity.query.filter_by(id=entity_id).one()
+
+
+def single_entity_action(wrapped_function):
+    def f(*args):
+        entities_ids = args[0]
+        return wrapped_function(entities_ids[0], *args[1:])
+
+    return f
+
+
 @socketio_character_event("rename_entity")
 def rename_entity(entity_id, new_name):
     entity_id = app.decode(entity_id)
@@ -539,21 +557,25 @@ def get_entities(enc_entity_id, enc_parent_id):
     entity_id = app.decode(enc_entity_id)
     entity = models.Entity.by_id(entity_id)
 
-    parent_id = app.decode(enc_parent_id)
-    parent_entity = models.Entity.by_id(parent_id)
+    parent_entity = None
+    if enc_parent_id:
+        parent_entity = decode_and_load_entity(enc_parent_id)
 
     rng = general.VisibilityBasedRange(distance=30)
     if not rng.is_near(g.character, entity):
-        raise main.EntityTooFarAwayException(entity=entity)
+        return {"id": enc_entity_id},
 
-    if entity.being_in == parent_entity:
+    if not enc_parent_id or entity.being_in == parent_entity:
         entity_info = _get_entity_info(entity, g.character)
     else:
         entity_info = None
 
+    excluded = []
+    if parent_entity:
+        excluded = [parent_entity]
     return {"id": app.encode(entity_id),
             "info": entity_info,
-            "children": _get_entities_in(entity, [parent_entity])
+            "children": _get_entities_in(entity, excluded)
             },
 
 
@@ -611,9 +633,8 @@ def form_add_item_to_activity(entity_to_add_id, amount=None, activity_id=None):
 
 
 @socketio_character_event("character.take_item")
-def take_item(item_ids, amount=None):
-    dec_item_ids = [app.decode(item_id) for item_id in item_ids]
-    items = [models.Item.by_id(item_id) for item_id in dec_item_ids]
+def take_item(enc_item_ids, amount=None):
+    items = decode_and_load_entities(enc_item_ids)
 
     if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
         client_socket.emit("character.take_item_setup", (str(g.character.id), items[0].amount))
@@ -623,15 +644,14 @@ def take_item(item_ids, amount=None):
             take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
             take_from_storage_action.perform()
 
-        client_socket.emit("character.take_item_after", (str(g.character.id), item_ids))
+        client_socket.emit("character.take_item_after", (str(g.character.id), enc_item_ids))
     db.session.commit()
     return ()
 
 
 @socketio_character_event("character.put_into_storage")
-def put_into_storage(item_ids, storage_id=None, amount=None):
-    dec_item_ids = [app.decode(item_id) for item_id in item_ids]
-    items = [models.Item.by_id(item_id) for item_id in dec_item_ids]
+def put_into_storage(enc_item_ids, storage_id=None, amount=None):
+    items = decode_and_load_entities(enc_item_ids)
 
     if not storage_id:
         storage_items = models.Item.query.filter(models.Item.is_in([g.character, g.character.being_in]),
@@ -657,15 +677,14 @@ def put_into_storage(item_ids, storage_id=None, amount=None):
             put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
             put_into_storage_action.perform()
         db.session.commit()
-        client_socket.emit("character.put_into_storage_after", item_ids)
+        client_socket.emit("character.put_into_storage_after", enc_item_ids)
 
     return ()
 
 
 @socketio_character_event("character.drop_item")
-def drop_item(item_ids, amount=None):
-    item_ids = [app.decode(item_id) for item_id in item_ids]
-    items = [models.Item.by_id(item_id) for item_id in item_ids]
+def drop_item(enc_item_ids, amount=None):
+    items = decode_and_load_entities(enc_item_ids)
 
     if len(items) == 1 and items[0].type.stackable and not amount:  # one stackable
         client_socket.emit("character.drop_item_setup", (str(g.character.id), items[0].amount))
@@ -675,9 +694,9 @@ def drop_item(item_ids, amount=None):
             drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
             drop_item_action.perform()
 
-        client_socket.emit("character.drop_item_after", (str(g.character.id), item_ids))
+        db.session.commit()
+        client_socket.emit("character.drop_item_after", (str(g.character.id), enc_item_ids))
 
-    db.session.commit()
     return ()
 
 
@@ -793,14 +812,15 @@ def toggle_closeable(entity_id):
 
 
 @socketio_character_event("character.attack")
-def character_attack(entity_id):
-    entity_to_attack = models.Entity.by_id(app.decode(entity_id))
+@single_entity_action
+def character_attack(enc_entity_id):
+    entity_to_attack = decode_and_load_entity(enc_entity_id)
 
     action = actions.AttackEntityAction(g.character, entity_to_attack)
     action.perform()
 
     db.session.commit()
-    client_socket.emit("after_attack_entity", entity_id)
+    client_socket.emit("after_attack_entity", enc_entity_id)
 
 
 @socketio_character_event("character.get_all_recipes")

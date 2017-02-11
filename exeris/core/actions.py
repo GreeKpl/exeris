@@ -2667,6 +2667,8 @@ class TakeItemAction(ActionOnItem):
         if not self.executor.has_access(top_level_item, rng=general.AdjacentLocationsRange(False)):
             raise main.EntityTooFarAwayException(entity=top_level_item)
 
+        top_item_location = top_level_item.get_location()
+
         if self.amount < 0 or self.amount > self.item.amount:
             raise main.InvalidAmountException(amount=self.amount)
         move_entity_between_entities(self.item, self.item.being_in, self.executor, self.amount)
@@ -2679,34 +2681,36 @@ class TakeItemAction(ActionOnItem):
             else:
                 raise main.EntityCapacityExceeded(entity=e.entity)
 
-        self.create_events(top_level_item)
+        self.create_events(top_level_item, top_item_location)
 
     def check_storage_lock(self, storage):
         optional_lockable_property = properties.OptionalLockableProperty(storage)
         if not optional_lockable_property.can_pass(self.executor):
             raise main.NoKeyToLockException(entity=storage, lock_id=optional_lockable_property.get_lock_id())
 
-    def create_events(self, top_level_item):
-        item_location = top_level_item.get_location()
+    def create_events(self, top_level_item, top_item_location):
         executor_location = self.executor.get_location()
 
         pyslatized_item = self.item.pyslatize(**overwrite_item_amount(self.item, self.amount))
-        pyslatized_item_location = item_location.pyslatize()
+        pyslatized_item_location = top_item_location.pyslatize()
         pyslatized_executor_location = executor_location.pyslatize()
-        pyslatized_storage = top_level_item.pyslatize()
 
-        if item_location == executor_location and top_level_item == self.item:  # from ground
+        pyslatized_storage = None
+        if top_level_item != self.item:
+            pyslatized_storage = top_level_item.pyslatize()
+
+        if top_item_location == executor_location and top_level_item == self.item:  # from ground
             general.EventCreator.base(Events.TAKE_ITEM, rng=general.SameLocationRange(),
                                       params={"groups": {
                                           "item": pyslatized_item
                                       }}, doer=self.executor)
-        elif item_location == executor_location and top_level_item != self.item:  # from storage
+        elif top_item_location == executor_location and top_level_item != self.item:  # from storage
             general.EventCreator.base(Events.TAKE_ITEM_FROM_STORAGE, rng=general.SameLocationRange(),
                                       params={"groups": {
                                           "item": pyslatized_item,
                                           "storage": pyslatized_storage
                                       }}, doer=self.executor)
-        elif item_location != executor_location and top_level_item == self.item:  # from adjacent loc
+        elif top_item_location != executor_location and top_level_item == self.item:  # from adjacent loc
             general.EventCreator.base(Events.TAKE_ITEM_FROM_LOCATION,
                                       rng=general.SameLocationRange(),
                                       params={"groups": {
@@ -2720,8 +2724,8 @@ class TakeItemAction(ActionOnItem):
                                             "doer": self.executor.pyslatize(),
                                             "doer_loc": pyslatized_executor_location,
                                         }},
-                                        locations=[item_location])
-        elif item_location != executor_location and top_level_item == self.item:  # from storage in adjacent loc
+                                        locations=[top_item_location])
+        elif top_item_location != executor_location and top_level_item == self.item:  # from storage in adjacent loc
             general.EventCreator.base(Events.TAKE_ITEM_FROM_STORAGE_IN_LOCATION,
                                       rng=general.SameLocationRange(),
                                       params={"groups": {
@@ -2736,4 +2740,4 @@ class TakeItemAction(ActionOnItem):
                                                            "doer_loc": pyslatized_executor_location,
                                                            "storage": pyslatized_storage,
                                                            }},
-                                        locations=[item_location])
+                                        locations=[top_item_location])
