@@ -233,9 +233,9 @@ def combat_change_stance(combat_id, side):
 
 
 @socketio_character_event("character.eat")
-def eat(entity_ids, amount=None):
-    entity_id = app.decode(entity_ids[0])
-    entity = models.Item.by_id(entity_id)
+@single_entity_action
+def eat(enc_entity_id, amount=None):
+    entity = decode_and_load_entity(enc_entity_id)
 
     if not amount:
         entity_edible_property = properties.EdibleProperty(entity)
@@ -248,7 +248,7 @@ def eat(entity_ids, amount=None):
 
         db.session.commit()
         client_socket.emit("character.eat_after",
-                           (str(g.character.id), entity_ids))
+                           (str(g.character.id), enc_entity_id))
         return ()
 
 
@@ -307,13 +307,15 @@ def get_entities_to_bind_to(entity_id):
                + models.Character.query.filter(models.Character.type_name.in_(allowed_concrete_types)) \
                    .filter(models.Character.is_in(char_loc)).all()
 
-    rendered_entities_to_bind_to = render_template("entities/modal_entities_to_bind_to.html", binding_entity=entity,
-                                                   entities_to_bind_to=entities)
-    client_socket.emit("character.bind_to_vehicle_setup", rendered_entities_to_bind_to)
-    return ()
+    client_socket.emit("character.bind_to_vehicle_setup",
+                       (str(g.character.id),
+                        [{
+                             "id": app.encode(entity.id),
+                             "name": g.pyslate.t("entity_info", **entity.pyslatize()),
+                         } for entity in entities]))
 
 
-@socketio_character_event("bind_to_vehicle")
+@socketio_character_event("character.bind_to_vehicle")
 def bind_to_vehicle(entity_id, entity_to_bind_to_id):
     entity_id = app.decode(entity_id)
     entity = models.Entity.by_id(entity_id)
@@ -328,8 +330,8 @@ def bind_to_vehicle(entity_id, entity_to_bind_to_id):
                          in entity_union_member_property.get_entity_properties_of_own_union()]
 
     db.session.commit()
-
-    return [app.encode(entity_id) for entity_id in entities_in_union],
+    client_socket.emit("character.bind_to_vehicle_after",
+                       (str(g.character.id), [app.encode(entity_id) for entity_id in entities_in_union]))
 
 
 @socketio_character_event("character.unbind_from_vehicle")
@@ -345,7 +347,7 @@ def unbind_from_vehicle(entity_id):
 
     db.session.commit()
     client_socket.emit("character.unbind_from_vehicle_after",
-                       [app.encode(union_member) for union_member in members_of_union])
+                       (str(g.character.id), [app.encode(union_member) for union_member in members_of_union]))
     return ()
 
 
@@ -357,28 +359,25 @@ def start_boarding_ship(entity_id):
     start_boarding_action = actions.StartBoardingAction(g.character, entity)
     start_boarding_action.perform()
     db.session.commit()
-    client_socket.emit("character.start_boarding_ship_after", app.encode(entity_id))
-    return ()
+    client_socket.emit("character.start_boarding_ship_after", (str(g.character.id), app.encode(entity_id)))
 
 
 @socketio_character_event("character.start_unboarding_from_ship")
-def get_ship_to_unboard_from(other_ship_id):
-    other_ship_id = app.decode(other_ship_id)
-    other_ship = models.Entity.by_id(other_ship_id)
+@single_entity_action
+def get_ship_to_unboard_from(enc_other_ship_id):
+    other_ship = decode_and_load_entity(enc_other_ship_id)
 
     start_unboarding_action = actions.StartUnboardingAction(g.character, other_ship)
     start_unboarding_action.perform()
 
     db.session.commit()
-    client_socket.emit("character.start_unboarding_from_ship_after", app.encode(other_ship_id))
-    return ()
+    client_socket.emit("character.start_unboarding_from_ship_after", (str(g.character.id), enc_other_ship_id))
 
 
 @socketio_character_event("character.go_to_location")
+@single_entity_action
 def character_goto_location(entity_id):
-    entity_id = app.decode(entity_id)
-    entity = models.Entity.by_id(entity_id)
-
+    entity = decode_and_load_entity(entity_id)
     assert isinstance(entity, models.Location)
 
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
@@ -391,7 +390,7 @@ def character_goto_location(entity_id):
             control_movement_intent.target, entity)
 
     db.session.commit()
-    return ()
+    client_socket.emit("character.go_to_location_after", (str(g.character.id),))
 
 
 @socketio_character_event("character.get_character_details")
@@ -438,18 +437,22 @@ def character_goto_location(target_character_id):
            },
 
 
-@socketio_character_event("character.show_readable_content")
-def show_readable_content(entity_id):
-    entity_id = app.decode(entity_id)
-    entity = models.Entity.by_id(entity_id)
+@socketio_character_event("character.show_readable_contents")
+@single_entity_action
+def show_readable_content(enc_entity_id):
+    entity = decode_and_load_entity(enc_entity_id)
 
     entity_readable_property = properties.ReadableProperty(entity)
     title = entity_readable_property.read_title()
     contents = entity_readable_property.read_contents()
     raw_contents = entity_readable_property.read_raw_contents()
-    modal = render_template("entities/modal_readable.html", title=title, contents=contents, entity_id=entity_id,
-                            raw_contents=raw_contents)
-    client_socket.emit("character.show_readable_content_after", modal)
+
+    client_socket.emit("character.show_readable_contents_after", (str(g.character.id), {
+        "id": enc_entity_id,
+        "title": title,
+        "contents": contents,
+        "rawContents": raw_contents,
+    }))
 
 
 @socketio_character_event("edit_readable")
@@ -491,17 +494,6 @@ def _get_entities_in(parent_entity, excluded=None):
     return entities
 
 
-@socketio_character_event("collapse_entity")
-def collapse_entity(parent_entity_id):
-    parent_entity = models.Entity.by_id(app.decode(parent_entity_id))
-    pref = models.EntityContentsPreference.query.filter_by(character=g.character, open_entity=parent_entity).first()
-    if pref:
-        db.session.delete(pref)
-
-    db.session.commit()
-    return parent_entity_id,
-
-
 @socketio_character_event("character.get_root_entities")
 def get_root_entities():
     location = g.character.being_in
@@ -523,18 +515,6 @@ def get_inventory_root():
 
     items = [_get_entity_info(item_to_show, g.character) for item_to_show in items_in_inventory]
     return items,
-
-
-@socketio_character_event("refresh_entity_info")
-def refresh_entity_info(entity_id):
-    entity_id = app.decode(entity_id)
-    entity = models.Entity.by_id(entity_id)
-
-    if entity:
-        entity_info = _get_entity_info(entity, g.character)
-    else:
-        entity_info = None
-    return entity_info,
 
 
 @socketio_character_event("character.get_children_entities")
@@ -580,9 +560,9 @@ def get_entities(enc_entity_id, enc_parent_id):
 
 
 @socketio_character_event("character.move_to_location")
+@single_entity_action
 def move_to_location(location_id):
-    location_id = app.decode(location_id)
-    location = models.Location.by_id(location_id)
+    location = decode_and_load_entity(location_id)
 
     passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, location)).one()
 
@@ -590,7 +570,7 @@ def move_to_location(location_id):
     action.perform()
 
     db.session.commit()
-    client_socket.emit("character.after_move_to_location", app.encode(passage.id))
+    client_socket.emit("character.move_to_location_after", (str(g.character.id)))
 
 
 @socketio_character_event("character.add_item_to_activity")
@@ -676,10 +656,9 @@ def put_into_storage(enc_item_ids, storage_id=None, amount=None):
             amount = amount if amount else item.amount
             put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
             put_into_storage_action.perform()
+
         db.session.commit()
         client_socket.emit("character.put_into_storage_after", enc_item_ids)
-
-    return ()
 
 
 @socketio_character_event("character.drop_item")
@@ -696,8 +675,6 @@ def drop_item(enc_item_ids, amount=None):
 
         db.session.commit()
         client_socket.emit("character.drop_item_after", (str(g.character.id), enc_item_ids))
-
-    return ()
 
 
 def get_identifier_for_union(union_id):
@@ -820,7 +797,7 @@ def character_attack(enc_entity_id):
     action.perform()
 
     db.session.commit()
-    client_socket.emit("after_attack_entity", enc_entity_id)
+    client_socket.emit("character.attack_after", enc_entity_id)
 
 
 @socketio_character_event("character.get_all_recipes")
@@ -909,21 +886,24 @@ def create_activity_from_recipe(recipe_id, user_input, selected_entity_id):
 
 
 @socketio_character_event("character.start_burying_entity")
-def start_burying_entity(entity_id):
-    entity = models.Entity.by_id(app.decode(entity_id))
+@single_entity_action
+def start_burying_entity(enc_entity_id):
+    entity = decode_and_load_entity(enc_entity_id)
 
     start_burying_entity_action = actions.StartBuryingEntityAction(g.character, entity)
     start_burying_entity_action.perform()
+
     db.session.commit()
-    return ()
+    client_socket.emit("character.start_burying_entity_after", (str(g.character.id),))
 
 
 @socketio_character_event("character.start_taming_animal")
-def start_taming_animal(entity_id):
-    entity = models.Entity.by_id(app.decode(entity_id))
+def start_taming_animal(enc_entity_ids):
+    entities = decode_and_load_entities(enc_entity_ids)
 
-    start_taming_animal_action = actions.StartTamingAnimalAction(g.character, entity)
-    start_taming_animal_action.perform()
+    for entity in entities:
+        start_taming_animal_action = actions.StartTamingAnimalAction(g.character, entity)
+        start_taming_animal_action.perform()
 
     db.session.commit()
-    return ()
+    client_socket.emit("character.start_taming_animal_after", (str(g.character.id), enc_entity_ids))
