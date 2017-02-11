@@ -10,13 +10,14 @@ import {
   TakeFormContainer,
   DropFormContainer,
   GiveFormContainer,
-  EatFormContainer
+  EatFormContainer,
+  PutIntoStorageFormContainer
 } from "./EntityActions";
 import {
   ENTITY_ACTION_TAKE,
   ENTITY_ACTION_DROP,
   ENTITY_ACTION_GIVE,
-  ENTITY_ACTION_EAT
+  ENTITY_ACTION_EAT, ENTITY_ACTION_PUT_INTO_STORAGE
 } from "../../../modules/entities-actionsAddon";
 
 
@@ -52,6 +53,8 @@ const ActionsBar = ({actionFormType, actions, onClick, characterId}) => {
       return <FixedBar><GiveFormContainer characterId={characterId}/></FixedBar>;
     case ENTITY_ACTION_EAT:
       return <FixedBar><EatFormContainer characterId={characterId}/></FixedBar>;
+    case ENTITY_ACTION_PUT_INTO_STORAGE:
+      return <FixedBar><PutIntoStorageFormContainer characterId={characterId}/></FixedBar>;
     default:
       if (actions.length == 0) {
         return null;

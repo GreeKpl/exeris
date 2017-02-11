@@ -1,8 +1,18 @@
 import {connect} from "react-redux";
 import InventoryList from "./InventoryList";
 import {
-  requestInventoryEntities, fromEntitiesState, getEntityInfos, getChildren, getExpanded,
-  getSelectedEntities, collapseEntity, expandEntity, selectEntity, deselectEntity, getItemsInInventory
+  requestInventoryEntities,
+  fromEntitiesState,
+  getEntityInfos,
+  getChildren,
+  getExpanded,
+  getSelectedEntities,
+  collapseEntity,
+  expandEntity,
+  selectEntity,
+  deselectEntity,
+  getItemsInInventory,
+  clearEntitySelection
 } from "../../../modules/entities";
 
 const mapStateToProps = (state, ownProps) => {
@@ -19,6 +29,7 @@ const mapStateToProps = (state, ownProps) => {
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
     requestState: () => dispatch(requestInventoryEntities(ownProps.characterId)),
+    clearSelection: () => dispatch(clearEntitySelection(ownProps.characterId)),
     onExpand: entity => {
       dispatch(expandEntity(ownProps.characterId, entity));
     },

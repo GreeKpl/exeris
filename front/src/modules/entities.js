@@ -13,6 +13,8 @@ export const EXPAND_ENTITY = "exeris-front/entities/EXPAND_ENTITY";
 export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
 export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
 export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
+export const CLEAR_ENTITY_SELECTION = "exeris-front/entities/CLEAR_ENTITY_SELECTION";
+
 
 export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION";
 
@@ -132,13 +134,18 @@ export const selectEntity = (characterId, entityId) => {
 
 
 export const deselectEntity = (characterId, entityId) => {
-  return dispatch => {
-    dispatch({
-      type: DESELECT_ENTITY,
-      entityId: entityId,
-      characterId: characterId,
-    });
-  }
+  return {
+    type: DESELECT_ENTITY,
+    entityId: entityId,
+    characterId: characterId,
+  };
+};
+
+export const clearEntitySelection = (characterId) => {
+  return {
+    type: CLEAR_ENTITY_SELECTION,
+    characterId: characterId,
+  };
 };
 
 export const updateRootEntitiesList = (characterId, rootEntitiesList) => {
@@ -232,6 +239,10 @@ export const entitiesReducer = (state = Immutable.fromJS(
         .set("actionDetails", Immutable.Map());
     case DESELECT_ENTITY:
       return state.update("selected", selectedSet => selectedSet.delete(action.entityId))
+        .set("actionType", null)
+        .set("actionDetails", Immutable.Map());
+    case CLEAR_ENTITY_SELECTION:
+      return state.set("selected", Immutable.Set())
         .set("actionType", null)
         .set("actionDetails", Immutable.Map());
     case SELECT_ENTITY_ACTION:

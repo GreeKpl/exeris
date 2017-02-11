@@ -5,6 +5,7 @@ export const ENTITY_ACTION_TAKE = "ENTITY_ACTION_TAKE";
 export const ENTITY_ACTION_DROP = "ENTITY_ACTION_DROP";
 export const ENTITY_ACTION_GIVE = "ENTITY_ACTION_GIVE";
 export const ENTITY_ACTION_EAT = "ENTITY_ACTION_EAT";
+export const ENTITY_ACTION_PUT_INTO_STORAGE = "ENTITY_ACTION_PUT_INTO_STORAGE";
 
 export const setUpSocketioListeners = dispatch => {
 
@@ -46,6 +47,20 @@ export const setUpSocketioListeners = dispatch => {
     for (let itemId of itemIds) {
       dispatch(standardAfterEntityAction(characterId, itemId));
     }
+  });
+
+  socket.on("character.put_into_storage_setup", (characterId, maxAmount, storages) => {
+    dispatch(selectEntityAction(characterId, ENTITY_ACTION_PUT_INTO_STORAGE, {
+      maxAmount: maxAmount,
+      storages: storages,
+    }));
+  });
+
+  socket.on("character.put_into_storage_after", (characterId, itemIds, storageId) => {
+    for (let itemId of itemIds) {
+      dispatch(standardAfterEntityAction(characterId, itemId));
+    }
+    dispatch(requestRefreshEntity(characterId, storageId));
   });
 
   socket.on("after_unbind_from_vehicle", (entities) => {

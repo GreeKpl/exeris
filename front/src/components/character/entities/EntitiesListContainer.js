@@ -11,6 +11,7 @@ import {
   collapseEntity,
   selectEntity,
   deselectEntity,
+  clearEntitySelection,
   getSelectedEntities
 } from "../../../modules/entities";
 
@@ -28,6 +29,7 @@ const mapStateToProps = (state, ownProps) => {
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
     requestState: () => dispatch(requestRootEntities(ownProps.characterId)),
+    clearSelection: () => dispatch(clearEntitySelection(ownProps.characterId)),
     onExpand: entity => {
       dispatch(expandEntity(ownProps.characterId, entity));
     },

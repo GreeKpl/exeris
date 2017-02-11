@@ -10,6 +10,7 @@ class EntitiesList extends React.Component {
 
   componentDidMount() {
     this.props.requestState();
+    this.props.clearSelection();
   }
 
   componentDidUpdate(prevProps) {
