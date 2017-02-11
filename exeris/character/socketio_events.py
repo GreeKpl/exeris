@@ -629,25 +629,35 @@ def take_item(item_ids, amount=None):
 
 
 @socketio_character_event("character.put_into_storage")
-def put_into_storage(item_id, storage_id=None, amount=None):
-    item = models.Item.by_id(app.decode(item_id))
+def put_into_storage(item_ids, storage_id=None, amount=None):
+    dec_item_ids = [app.decode(item_id) for item_id in item_ids]
+    items = [models.Item.by_id(item_id) for item_id in dec_item_ids]
 
-    if not storage_id and not amount:
+    if not storage_id:
         storage_items = models.Item.query.filter(models.Item.is_in([g.character, g.character.being_in]),
                                                  models.Item.has_property(P.STORAGE, can_store=True)).all()
         storage_locations = [psg for psg in g.character.get_location().passages_to_neighbours
                              if psg.other_side.has_property(P.STORAGE, can_store=True)]
 
         accessible_storages = storage_items + storage_locations
-        rendered = render_template("entities/modal_put_into_storage.html", item=item, storages=accessible_storages)
-        client_socket.emit("character.put_into_storage_setup", rendered)
+        storages_json = [{
+                             "id": app.encode(storage.id),
+                             "name": g.pyslate.t("entity_info", **storage.pyslatize()),
+                         } for storage in accessible_storages]
+
+        max_amount = None
+        if len(items) == 1:
+            max_amount = items[0].amount
+        client_socket.emit("character.put_into_storage_setup", (str(g.character.id), max_amount, storages_json))
     else:
-        amount = amount if amount else 1
         storage = models.Entity.by_id(app.decode(storage_id))
-        put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
-        put_into_storage_action.perform()
+
+        for item in items:
+            amount = amount if amount else item.amount
+            put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
+            put_into_storage_action.perform()
         db.session.commit()
-        client_socket.emit("character.put_into_storage_after", item_id)
+        client_socket.emit("character.put_into_storage_after", item_ids)
 
     return ()
 
