@@ -4,6 +4,7 @@ import CharacterTopBar from "./CharacterTopBar";
 const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.characterId,
+    activePage: ownProps.activePage,
   };
 };
 

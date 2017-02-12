@@ -23,10 +23,10 @@ class TopBar extends React.Component {
           Main
         </NavItem>
       </LinkContainer>
-      {this.props.charactersList.map(character_info =>
-        <LinkContainer to={"/character/" + character_info.get("id") + "/events"} key={character_info.get("id")}>
-          <NavItem className="actionItem">
-            {character_info.get("name")}
+      {this.props.charactersList.map(characterInfo =>
+        <LinkContainer to={"/character/" + characterInfo.get("id") + "/events"} key={characterInfo.get("id")}>
+          <NavItem className="actionItem" active={this.props.characterId == characterInfo.get("id")}>
+            {characterInfo.get("name")}
           </NavItem>
         </LinkContainer>
       )}

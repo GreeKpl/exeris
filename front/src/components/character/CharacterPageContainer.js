@@ -4,6 +4,7 @@ import CharacterPage from "./CharacterPage";
 const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.params.characterId,
+    characterPageUrl: /character\/\d+\/([^/]+)/.exec(ownProps.location.pathname)[1],
   };
 };
 

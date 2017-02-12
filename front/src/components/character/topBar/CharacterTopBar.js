@@ -18,7 +18,7 @@ class CharacterTopBar extends React.Component {
     }).forEach(
       (entries) => {
         links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>
-          <NavItem className="actionItem">
+          <NavItem className="actionItem" active={this.props.activePage == entries[0]}>
             {entries[1]}
           </NavItem>
         </LinkContainer>);

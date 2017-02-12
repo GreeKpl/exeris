@@ -2,9 +2,10 @@ import {connect} from "react-redux";
 import TopBar from "./TopBar";
 import {getOwnCharactersList, fromPlayerState, requestOwnCharactersList} from "../../../modules/player";
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state, ownProps) => {
   return {
     charactersList: getOwnCharactersList(fromPlayerState(state)),
+    characterId: ownProps.characterId,
   };
 };
 
