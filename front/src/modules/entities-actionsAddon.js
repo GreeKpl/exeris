@@ -122,6 +122,10 @@ export const setUpSocketioListeners = dispatch => {
   socket.on("character.show_readable_contents_after", (characterId, readableEntity) => {
     console.log("TODO READABLE ENTITY");
   });
+
+  socket.on("character.join_activity_after", (characterId, activityId) => { // travel to
+    dispatch(standardAfterEntityAction(characterId, activityId));
+  });
 };
 
 
@@ -132,11 +136,11 @@ export const performEntityAction = (characterId, endpoint, entityIds, ...params)
 };
 
 
-const standardAfterEntityAction = (characterId, itemId) => {
+const standardAfterEntityAction = (characterId, entityId) => {
   return dispatch => {
-    dispatch(requestRefreshEntity(characterId, itemId));
+    dispatch(requestRefreshEntity(characterId, entityId));
     dispatch(clearSelectedEntityAction(characterId));
-    dispatch(deselectEntity(characterId, itemId));
+    dispatch(deselectEntity(characterId, entityId));
   };
 };
 

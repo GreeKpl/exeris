@@ -22,6 +22,11 @@ export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION"
 export const requestRefreshEntity = (characterId, entityId) => {
   return (dispatch, getState) => {
     const childrenByEntity = getChildren(fromEntitiesState(getState(), characterId));
+    const entityInfos = getEntityInfos(fromEntitiesState(getState(), characterId));
+    const currentEntityInfo = entityInfos.get(entityId);
+    if (currentEntityInfo && currentEntityInfo.get("parent")) { // refresh parent entity of an activity
+      entityId = currentEntityInfo.get("parent");
+    }
     const parentEntities = childrenByEntity.filter(children => children.includes(entityId)).keySeq();
     const itemsInInventory = getItemsInInventory(fromEntitiesState(getState(), characterId));
     if (!parentEntities.size && !itemsInInventory.includes(entityId)) {
@@ -32,21 +37,31 @@ export const requestRefreshEntity = (characterId, entityId) => {
     if (itemsInInventory.includes(entityId)) {
       parentId = null;
     }
-    socket.request("character.get_extended_entity_info", characterId, entityId, parentId, extendedEntityInfo => {
-      if (extendedEntityInfo.info) {
-        dispatch(addEntityInfo(characterId, extendedEntityInfo.info));
-        dispatch(updateChildrenOfEntity(characterId, entityId, extendedEntityInfo.children));
+    socket.request("character.get_extended_entity_info", characterId, entityId, parentId, entityResponse => {
+      const entityInfo = entityResponse.info;
+      if (entityInfo) {
+        entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
+        dispatch(addEntityInfo(characterId, entityInfo));
+        dispatch(updateChildrenOfEntity(characterId, entityId, entityResponse.children));
       } else {
-        dispatch(removeChildOfEntity(characterId, parentId, extendedEntityInfo.id));
+        dispatch(removeChildOfEntity(characterId, parentId, entityResponse.id));
       }
     });
   };
+};
+
+const extractActivityFromEntityInfo = function (dispatch, entityInfo, characterId) {
+  return entityInfo.activities.map(activityInfo => {
+    dispatch(addEntityInfo(characterId, activityInfo));
+    return activityInfo.id;
+  });
 };
 
 export const requestRootEntities = (characterId) => {
   return dispatch => {
     socket.request("character.get_root_entities", characterId, entitiesInfo => {
       for (let entityInfo of entitiesInfo) {
+        entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
         dispatch(addEntityInfo(characterId, entityInfo));
       }
 
@@ -60,6 +75,7 @@ export const requestInventoryEntities = characterId => {
   return dispatch => {
     socket.request("character.get_items_in_inventory", characterId, entitiesInfo => {
       for (let entityInfo of entitiesInfo) {
+        entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
         dispatch(addEntityInfo(characterId, entityInfo));
       }
 
@@ -84,6 +100,7 @@ export const requestChildrenEntities = (characterId, entityId) => {
 
     socket.request("character.get_children_entities", characterId, entityId, parentEntity, childrenInfo => {
       for (let entityInfo of childrenInfo) {
+        entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
         dispatch(addEntityInfo(characterId, entityInfo));
       }
 
@@ -131,8 +148,6 @@ export const selectEntity = (characterId, entityId) => {
       entityId: entityId,
       characterId: characterId,
     });
-
-    dispatch(requestChildrenEntities(characterId, entityId));
   }
 };
 

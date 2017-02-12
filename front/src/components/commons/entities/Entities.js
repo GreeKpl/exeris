@@ -1,6 +1,7 @@
 import React from "react";
 import {ListGroup, ListGroupItem, Button} from "react-bootstrap";
 import * as Immutable from "immutable";
+import "./style.scss";
 
 class EntityInfo extends React.Component {
   constructor(props) {
@@ -46,6 +47,18 @@ class EntityInfo extends React.Component {
   }
 }
 
+class ActivityInfo extends EntityInfo {
+  render() {
+    const entityInfo = this.props.entityInfo;
+
+    return <li className={"list-group-item EntitiesList-ActivityList" + (this.props.isSelected ? " active" : "")}
+               onClick={this.props.isSelected ? this.handleDeselect : this.handleSelect}>
+      {entityInfo.get("name")} {entityInfo.get("ticksNeeded") - entityInfo.get("ticksLeft")}{" "}
+      / {entityInfo.get("ticksNeeded")}
+    </li>;
+  }
+}
+
 const Entities = ({entities, onExpand, onCollapse, onSelect, onDeselect, info, children, expanded, selectedEntities}) =>
   <ListGroup componentClass="ul" className="EntitiesList-EntityList">
     {entities.map(entityId => {
@@ -62,7 +75,19 @@ const Entities = ({entities, onExpand, onCollapse, onSelect, onDeselect, info, c
                     onDeselect={onDeselect}
                     isExpanded={isExpanded}
                     isSelected={isSelected}
-        />,
+        />].concat(
+        entityInfo.get("activities").map(
+          activityId => {
+            const activityInfo = info.get(activityId);
+            const isActivitySelected = selectedEntities.has(activityId);
+            return <ActivityInfo key={"activity-" + activityId}
+                                 entityInfo={activityInfo}
+                                 onSelect={onSelect}
+                                 onDeselect={onDeselect}
+                                 isSelected={isActivitySelected}
+            />;
+          }
+        )).concat(
         (isExpanded && childrenIds.size > 0) ?
           <ListGroupItem key={entityId + "-children"} className="EntitiesList-EntityChildren">
             <Entities entities={childrenIds}
@@ -75,8 +100,7 @@ const Entities = ({entities, onExpand, onCollapse, onSelect, onDeselect, info, c
                       expanded={expanded}
                       selectedEntities={selectedEntities}
             />
-          </ListGroupItem> : null
-      ];
+          </ListGroupItem> : []);
     })}
   </ListGroup>;
 

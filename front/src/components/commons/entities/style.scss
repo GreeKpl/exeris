@@ -10,3 +10,10 @@
 .EntitiesList-EntityInfo.list-group-item:last-child, .EntitiesList-EntityInfo.list-group-item:first-child {
   border-radius: 0;
 }
+
+.EntitiesList-ActivityList {
+  @extend .EntitiesList-EntityInfo;
+  background-color: #f5f5f5;
+  margin-left: 15px;
+  padding: 2px 15px 7px 15px;
+}
