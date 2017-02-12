@@ -111,22 +111,16 @@ def whisper(receiver_id, message):
     return ()
 
 
-@socketio_character_event("get_activity_info")
-def get_activity_info():
-    pass
+@socketio_character_event("character.join_activity")
+@single_entity_action
+def join_activity(enc_activity_id):
+    activity = decode_and_load_entity(enc_activity_id)
 
-
-@socketio_character_event("join_activity")
-def join_activity(activity_id):
-    activity_id = app.decode(activity_id)
-
-    activity = models.Activity.by_id(activity_id)
-    action = actions.JoinActivityAction(g.character, activity)
-
-    deferred.perform_or_turn_into_intent(g.character, action)
+    join_activity_action = actions.JoinActivityAction(g.character, activity)
+    deferred.perform_or_turn_into_intent(g.character, join_activity_action)
 
     db.session.commit()
-    return ()
+    client_socket.emit("character.join_activity_after", (str(g.character.id), enc_activity_id))
 
 
 @socketio_character_event("character.get_all_events")
@@ -684,6 +678,42 @@ def get_identifier_for_union(union_id):
     return string.ascii_uppercase[identifier_index]
 
 
+def get_entity_action_info(entity_action):
+    return {
+        "name": entity_action.tag_name,
+        "image": entity_action.image,
+        "entity": app.encode(entity_action.entity.id),
+        "endpoint": entity_action.endpoint,
+        "allowMultipleEntities": entity_action.multi_entities,
+        "multiEntitiesName": entity_action.multi_tag_name,
+    }
+
+
+def has_needed_prop(entity, action):
+    if action.required_property == P.ANY:
+        return True
+    return entity.has_property(action.required_property)
+
+
+def get_accessible_actions(entity, accessible_actions_list):
+    return [accessible_actions.EntityActionRecord(entity, action)
+            for action in accessible_actions_list
+            if has_needed_prop(entity, action) and action.other_req(entity)]
+
+
+def get_activity_info(activity):
+    possible_actions = get_accessible_actions(activity, accessible_actions.ACTIONS_ON_GROUND)
+    available_actions = [get_entity_action_info(a) for a in possible_actions]
+    return {
+        "id": app.encode(activity.id),
+        "name": g.pyslate.t("entity_info", **activity.pyslatize()),
+        "parent": app.encode(activity.being_in.id),
+        "ticksLeft": activity.ticks_left,
+        "ticksNeeded": activity.ticks_needed,
+        "actions": available_actions,
+    }
+
+
 def _get_entity_info(entity, observer):
     if isinstance(entity, models.Passage):
         entity = _get_directed_passage_in_correct_direction(g.character.being_in, entity)
@@ -702,25 +732,16 @@ def _get_entity_info(entity, observer):
     else:
         raise ValueError("Entity to show is of type {}".format(type(entity)))
 
-    def has_needed_prop(entity, action):
-        if action.required_property == P.ANY:
-            return True
-        return entity.has_property(action.required_property)
-
     activities = []
     # TODO translation
     activity = models.Activity.query.filter(models.Activity.is_in(entity)).first()
     if activity:
         activities.append(activity)
 
-    possible_actions = [accessible_actions.EntityActionRecord(entity, action)
-                        for action in accessible_actions.ACTIONS_ON_GROUND
-                        if has_needed_prop(entity, action) and action.other_req(entity)]
+    possible_actions = get_accessible_actions(entity, accessible_actions.ACTIONS_ON_GROUND)
 
     if isinstance(entity, models.Passage):
-        possible_actions += [accessible_actions.EntityActionRecord(other_side, action)
-                             for action in accessible_actions.ACTIONS_ON_GROUND
-                             if has_needed_prop(other_side, action) and action.other_req(other_side)]
+        possible_actions += get_accessible_actions(other_side, accessible_actions.ACTIONS_ON_GROUND)
 
         other_side_is_enterable_or_storage = other_side.has_property(P.STORAGE) or other_side.has_property(P.ENTERABLE)
         are_entities_on_other_side = models.Entity.query.filter(models.Entity.is_in(other_side)) \
@@ -745,20 +766,14 @@ def _get_entity_info(entity, observer):
         entity_member_of_union = properties.OptionalMemberOfUnionProperty(entity)
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
-    available_actions = [{"name": a.tag_name,
-                          "image": a.image,
-                          "entity": app.encode(a.entity.id),
-                          "endpoint": a.endpoint,
-                          "allowMultipleEntities": a.multi_entities,
-                          "multiEntitiesName": a.multi_tag_name,
-                          } for a in possible_actions]
+    available_actions = [get_entity_action_info(a) for a in possible_actions]
 
     return {
         "id": app.encode(entity.id),
         "name": full_name,
         "expandable": expandable,
         "actions": available_actions,
-        "activities": [a.id for a in activities],
+        "activities": [get_activity_info(a) for a in activities],
         "otherSide": other_side.id if other_side else None,
         "unionMembership": union_membership,
     }

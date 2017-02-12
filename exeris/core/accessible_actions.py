@@ -58,4 +58,5 @@ ACTIONS_ON_GROUND = [
     ActionRecord("start_boarding_ship", "image", P.BOARDABLE,
                  "character.start_boarding_ship"),  # should have access to executor's loc
     ActionRecord("unboard_ship", "image", P.IN_BOARDING, "character.start_unboarding_from_ship"),
+    ActionRecord("join_activity", "image", P.ANY, "character.join_activity", lambda x: isinstance(x, models.Activity)),
 ]
