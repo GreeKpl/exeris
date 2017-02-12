@@ -205,7 +205,7 @@ def create_database():
         build_menu_category = models.BuildMenuCategory("structures")
         signpost_recipe = models.EntityRecipe("building_signpost", {}, {"location_types": Types.OUTSIDE}, 10,
                                               build_menu_category, result_entity=models.ItemType.by_name("signpost"),
-                                              result=[["exeris.core.actions.actions.AddTitleToEntityAction", {}]])
+                                              result=[["exeris.core.actions.AddTitleToEntityAction", {}]])
         db.session.add_all([build_menu_category, signpost_recipe])
 
         build_menu_category = models.BuildMenuCategory.query.filter_by(name="structures").one()
