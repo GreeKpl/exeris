@@ -477,7 +477,7 @@ class Entity(db.Model):
         return props
 
     def get_entity_property(self, name):
-        return EntityProperty.query.get(self.id, name)
+        return EntityProperty.query.get((self.id, name))
 
     @hybrid_method
     def has_property(self, name, **kwargs):
