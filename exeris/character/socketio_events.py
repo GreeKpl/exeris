@@ -8,6 +8,7 @@ from flask import g, render_template
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
 from exeris.core import properties
+from exeris.core import util
 from exeris.core.main import db, app
 from exeris.core.properties_base import P
 
@@ -463,6 +464,7 @@ def edit_readable(entity_id, text):
 
 def _get_entity_infos_in(parent_entity, observer, excluded=None):
     entities = _get_entities_in(parent_entity, excluded)
+    cache_properties_of_entities(entities)
 
     entity_entries = []
     for entity in entities:
@@ -470,6 +472,20 @@ def _get_entity_infos_in(parent_entity, observer, excluded=None):
 
         entity_entries.append(entity_info)
     return entity_entries
+
+
+def cache_properties_of_entities(entities):
+    real_entities = [e for e in entities if isinstance(e, models.Entity)]
+    property_cache = main.property_cache
+    property_cache.save_all_properties_of_entities(real_entities)
+    entities_in_passages_to_neighbours = util.flatten([[e.other_side, e.passage]
+                                                       for e in entities if isinstance(e, models.PassageToNeighbour)])
+    property_cache.save_all_properties_of_entities(entities_in_passages_to_neighbours)
+    all_found_entities = real_entities + entities_in_passages_to_neighbours
+    if len(all_found_entities):
+        activities = models.Entity.query.filter(
+            models.Entity.is_in(all_found_entities)).all()
+        property_cache.save_all_properties_of_entities(activities)
 
 
 def _get_entities_in(parent_entity, excluded=None):
@@ -530,6 +546,8 @@ def get_children_entities(entity_id, parent_parent_id):
 def get_entities(enc_entity_id, enc_parent_id):
     entity_id = app.decode(enc_entity_id)
     entity = models.Entity.by_id(entity_id)
+
+    cache_properties_of_entities([entity])
 
     parent_entity = None
     if enc_parent_id:
@@ -696,9 +714,8 @@ def has_needed_prop(entity, action):
 
 
 def get_accessible_actions(entity, accessible_actions_list):
-    return [accessible_actions.EntityActionRecord(entity, action)
-            for action in accessible_actions_list
-            if has_needed_prop(entity, action) and action.other_req(entity)]
+    return [accessible_actions.EntityActionRecord(entity, action) for action in accessible_actions_list if
+            has_needed_prop(entity, action) and action.other_req(entity)]
 
 
 def get_activity_info(activity):
@@ -726,7 +743,6 @@ def _get_entity_info(entity, observer):
         passage_to_neighbour = entity
         entity = passage_to_neighbour.passage
         other_side = passage_to_neighbour.other_side
-
     elif isinstance(entity, models.Entity):
         full_name = g.pyslate.t("entity_info", **entity.pyslatize(detailed=True))
     else:
@@ -767,7 +783,6 @@ def _get_entity_info(entity, observer):
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
     available_actions = [get_entity_action_info(a) for a in possible_actions]
-
     return {
         "id": app.encode(entity.id),
         "name": full_name,
