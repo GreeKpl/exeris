@@ -163,6 +163,18 @@ class RangeSpec:
 
     @staticmethod
     def get_path_between_locations(loc1, loc2, only_through_unlimited=False):
+        """
+        Get list of locations which need to be passed to go from loc1 to loc2.
+        It doesn't take into account the actual distance limitation,
+        like a visibility/traversability limitation. In other words, it should be considered a *potential* path,
+        which is not necessarily passable.
+        If every of these locations is a child of a different root location, then the path is like that:
+        loc1, ..., root_of_loc_1, root_of_loc_2, ..., loc2
+        :param loc1: loc to go from
+        :param loc2: loc to go to
+        :param only_through_unlimited: if True then only Passages being UNLIMITED are taken into account.
+        :return: a list of locations that needs to be passed to go from loc1 to loc2 (including these two locs)
+        """
         if loc1 == loc2:
             return [loc1]
 
@@ -279,6 +291,36 @@ class AreaRangeSpec(RangeSpec):
                                           for terrain_type in allowed_terrain_types]
         else:
             self.allowed_terrain_types = [models.EntityType.by_name(main.Types.ANY_TERRAIN)]
+
+    def is_near(self, entity_a, entity_b):
+        """
+        Checks whether entity_a has access to entity_b.
+        :param entity_a:
+        :param entity_b:
+        :return:
+        """
+        if entity_a.get_location() == entity_b.get_location():
+            return True
+        entity_a_root = entity_a.get_root()
+        entity_b_root = entity_b.get_root()
+        if entity_a_root == entity_b_root:
+            neighbouring_locs_range = NeighbouringLocationsRange(self.only_through_unlimited)
+            return neighbouring_locs_range.is_near(entity_a, entity_b)
+
+        neighbouring_locs_range = NeighbouringLocationsRange(self.only_through_unlimited)
+        if not neighbouring_locs_range.is_near(entity_a, entity_a_root) \
+                or not neighbouring_locs_range.is_near(entity_a, entity_a_root):  # check whether there's a path to root
+            return False
+
+        direction_from_center = util.direction_degrees(entity_a_root.position, entity_b_root.position)
+        distance_to_point = util.distance(entity_a_root.position, entity_b_root.position)
+
+        maximum_accessible_range = self.get_maximum_range_from_estimate(entity_a_root.position,
+                                                                        direction_from_center,
+                                                                        self.distance, distance_to_point)
+
+        return maximum_accessible_range > distance_to_point or math.isclose(maximum_accessible_range,
+                                                                            distance_to_point)
 
     def locations_near(self, entity):
         locs = visit_subgraph(entity, self.only_through_unlimited)
