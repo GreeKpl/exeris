@@ -6,6 +6,8 @@ import flask_socketio as client_socket
 import os
 import psycopg2
 import redis
+
+from exeris.core import cache
 from exeris.core import models, main, general
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import create_app, db, Types
@@ -143,6 +145,8 @@ def socketio_character_event(*args, **kwargs):
 
 app.encode = main.encode
 app.decode = main.decode
+
+main.property_cache = cache.PropertyCache()
 
 from exeris.outer import outer_bp
 from exeris.player import player_bp

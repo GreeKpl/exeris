@@ -11,6 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 app = None
+property_cache = None
 
 logger = logging.getLogger(__name__)
 

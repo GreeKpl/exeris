@@ -38,8 +38,11 @@ ALIVE_CHARACTER_WEIGHT = 1000
 logger = logging.getLogger(__name__)
 
 
-def ids(entities):
-    return [entity.id for entity in entities]
+def ids(entities, ensure_non_emptiness=True):
+    ids_list = [entity.id for entity in entities]
+    if ensure_non_emptiness:
+        ids_list += [-1]
+    return ids_list
 
 
 roles_users = db.Table('player_roles',
@@ -156,7 +159,11 @@ class EntityType(db.Model):
         return [(self, 1.0)]
 
     def get_property(self, name):
-        type_property = EntityTypeProperty.query.filter_by(type=self, name=name).first()
+        if main.property_cache.type_cached(self):
+            type_property = main.property_cache.get_type_prop(name)
+        else:
+            type_property = EntityTypeProperty.query.get((self, name))
+
         if type_property:
             return type_property.data
         return None
@@ -414,14 +421,14 @@ class Entity(db.Model):
         return self.role == Entity.ROLE_BEING_IN and (self.parent_entity in parents)
 
     @is_in.expression
-    def is_in(self, parents):
+    def is_in(cls, parents):
         if not isinstance(parents, collections.Iterable):
             parents = [parents]
         if any([e_id is None for e_id in ids(parents)]):  # any id is missing
             db.session.flush()
-        return (self.role == Entity.ROLE_BEING_IN) & (
-            self.parent_entity_id.in_(ids(parents)) & ~self.discriminator_type.in_([ENTITY_LOCATION,
-                                                                                    ENTITY_ROOT_LOCATION]))
+        return (cls.role == Entity.ROLE_BEING_IN) & (
+            cls.parent_entity_id.in_(ids(parents)) & ~cls.discriminator_type.in_([ENTITY_LOCATION,
+                                                                                  ENTITY_ROOT_LOCATION]))
 
     @hybrid_method
     def is_used_for(self, parents):
@@ -449,12 +456,18 @@ class Entity(db.Model):
     def get_property(self, name):
         props = {}
         ok = False
-        type_property = EntityTypeProperty.query.filter_by(type=self.type, name=name).first()
+        if main.property_cache.type_cached(self.type):
+            type_property = main.property_cache.get_type_prop(self.type, name)
+        else:
+            type_property = EntityTypeProperty.query.get((self.type_name, name))
         if type_property:
             props.update(type_property.data)
             ok = True
 
-        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
+        if main.property_cache.entity_cached(self):
+            entity_property = main.property_cache.get_entity_prop(self, name)
+        else:
+            entity_property = EntityProperty.query.get((self.id, name))
         if entity_property:
             props.update(entity_property.data)
             ok = True
@@ -464,7 +477,7 @@ class Entity(db.Model):
         return props
 
     def get_entity_property(self, name):
-        return EntityProperty.query.filter_by(entity=self, name=name).first()
+        return EntityProperty.query.get(self.id, name)
 
     @hybrid_method
     def has_property(self, name, **kwargs):
@@ -550,7 +563,7 @@ class Entity(db.Model):
         """
         if not data:
             data = {}
-        entity_property = EntityProperty.query.filter_by(entity=self, name=name).first()
+        entity_property = EntityProperty.query.get((self.id, name))
         if entity_property:
             entity_property.data = data
         else:

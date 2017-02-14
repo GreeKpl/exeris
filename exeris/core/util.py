@@ -109,3 +109,7 @@ def pol_to_cart(rho, phi):
     x = rho * math.cos(phi)
     y = rho * math.sin(phi)
     return Point(x, y)
+
+
+def flatten(nested_list):
+    return [element for sublist in nested_list for element in sublist]
