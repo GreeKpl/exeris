@@ -544,8 +544,7 @@ def get_children_entities(entity_id, parent_parent_id):
 
 @socketio_character_event("character.get_extended_entity_info")
 def get_entities(enc_entity_id, enc_parent_id):
-    entity_id = app.decode(enc_entity_id)
-    entity = models.Entity.by_id(entity_id)
+    entity = decode_and_load_entity(enc_entity_id)
 
     cache_properties_of_entities([entity])
 
@@ -565,10 +564,33 @@ def get_entities(enc_entity_id, enc_parent_id):
     excluded = []
     if parent_entity:
         excluded = [parent_entity]
-    return {"id": app.encode(entity_id),
+    return {"id": enc_entity_id,
             "info": entity_info,
             "children": _get_entities_in(entity, excluded)
             },
+
+
+@socketio_character_event("character.get_detailed_entity_info")
+def get_detailed_entity_info(enc_entity_id):
+    entity = decode_and_load_entity(enc_entity_id)
+
+    rng = general.VisibilityBasedRange(distance=30)
+    if not rng.is_near(g.character, entity):
+        raise main.EntityTooFarAwayException(entity=entity)
+
+    if isinstance(entity, models.Activity):
+        return {
+                   "type": "Activity",
+                   "name": g.pyslate.t("entity_info", **entity.pyslatize()),
+                   "input": entity.requirements.get("input", {}),
+                   "ticksLeft": entity.ticks_left,
+                   "ticksNeeded": entity.ticks_needed,
+               },
+
+    return {
+               "type": entity.__class__.__name__,
+               "name": g.pyslate.t("entity_info", **entity.pyslatize()),
+           },
 
 
 @socketio_character_event("character.move_to_location")
