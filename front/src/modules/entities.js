@@ -14,7 +14,7 @@ export const COLLAPSE_ENTITY = "exeris-front/entities/COLLAPSE_ENTITY";
 export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
 export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 export const CLEAR_ENTITY_SELECTION = "exeris-front/entities/CLEAR_ENTITY_SELECTION";
-
+export const SHOW_SELECTED_DETAILS = "exeris-front/entities/SHOW_SELECTED_DETAILS";
 
 export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION";
 
@@ -142,21 +142,47 @@ export const collapseEntity = (characterId, entityId) => {
 };
 
 export const selectEntity = (characterId, entityId) => {
-  return dispatch => {
+  return (dispatch, getState) => {
     dispatch({
       type: SELECT_ENTITY,
       entityId: entityId,
       characterId: characterId,
     });
+
+    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size == 1) { // select the first entity
+      dispatch(requestSelectedDetails(characterId, entityId));
+    }
   }
+};
+
+export const requestSelectedDetails = (characterId, entityId) => {
+  return dispatch => {
+    socket.request("character.get_detailed_entity_info", characterId, entityId, (entityDetails) => {
+      dispatch({
+        type: SHOW_SELECTED_DETAILS,
+        entityDetails: entityDetails,
+        characterId: characterId,
+      });
+    });
+  };
 };
 
 
 export const deselectEntity = (characterId, entityId) => {
-  return {
-    type: DESELECT_ENTITY,
-    entityId: entityId,
-    characterId: characterId,
+  return (dispatch, getState) => {
+    dispatch({
+      type: DESELECT_ENTITY,
+      entityId: entityId,
+      characterId: characterId,
+    });
+
+    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size == 0) { // deselected the last entity
+      dispatch({
+        type: SHOW_SELECTED_DETAILS,
+        entityDetails: null,
+        characterId: characterId,
+      });
+    }
   };
 };
 
@@ -233,6 +259,7 @@ export const entitiesReducer = (state = Immutable.fromJS(
     "selected": Immutable.Set(),
     "actionType": null,
     "actionDetails": {},
+    "selectedDetails": null,
   }), action) => {
   switch (action.type) {
     case ADD_ENTITY_INFO:
@@ -267,6 +294,8 @@ export const entitiesReducer = (state = Immutable.fromJS(
     case SELECT_ENTITY_ACTION:
       return state.set("actionType", action.actionType)
         .set("actionDetails", Immutable.fromJS(action.details));
+    case SHOW_SELECTED_DETAILS:
+      return state.set("selectedDetails", Immutable.fromJS(action.entityDetails));
     default:
       return state;
   }
@@ -285,6 +314,8 @@ export const getEntityInfos = (state) => state.get("info", Immutable.Map());
 export const getExpanded = (state) => state.get("expanded", Immutable.Set());
 
 export const getSelectedEntities = (state) => state.get("selected", Immutable.Set());
+
+export const getSelectedDetails = state => state.get("selectedDetails", null);
 
 // entity actions
 export const getActionType = (state) => state.get("actionType", null);

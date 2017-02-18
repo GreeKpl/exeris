@@ -4,6 +4,7 @@ import EntitiesListContainer from "./EntitiesListContainer";
 import MapInfoContainer from "./MapInfoContainer";
 import ControlMovementContainer from "./ControlMovementContainer";
 import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer";
+import {EntityDetailsContainer, ActivityDetailsContainer} from "./EntityDetailsContainer";
 
 class EventsPage extends React.Component {
 
@@ -12,6 +13,18 @@ class EventsPage extends React.Component {
   }
 
   render() {
+
+    let optionalEntityInfo = null;
+    if (this.props.selectedDetails) {
+      switch (this.props.selectedDetails.get("type")) {
+        case "Activity":
+          optionalEntityInfo = <ActivityDetailsContainer characterId={this.props.characterId}/>;
+          break;
+        default:
+          optionalEntityInfo = <EntityDetailsContainer characterId={this.props.characterId}/>;
+      }
+    }
+
     return (
       <div>
         <Grid fluid={true}>
@@ -20,6 +33,7 @@ class EventsPage extends React.Component {
               <EntitiesListContainer characterId={this.props.characterId}/>
             </Col>
             <Col xs={12} md={5}>
+              {optionalEntityInfo}
               <MapInfoContainer characterId={this.props.characterId}/>
               <ControlMovementContainer characterId={this.props.characterId}/>
             </Col>

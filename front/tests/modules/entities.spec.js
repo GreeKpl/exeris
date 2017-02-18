@@ -13,7 +13,6 @@ import {
 import * as Immutable from "immutable";
 
 describe('(entities) entitiesReducer', () => {
-
   it('Should initialize with initial state of empty list.', () => {
     expect(entitiesReducer(undefined, {})).to.equal(Immutable.fromJS({
       rootEntities: [],
@@ -22,6 +21,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -33,6 +35,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
     let state = entitiesReducer(previousState, {});
     expect(state).to.equal(previousState);
@@ -46,6 +51,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateRootEntitiesList(0, ["ABC", "DEF"]));
     expect(state).to.equal(Immutable.fromJS({
@@ -55,6 +63,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -67,6 +78,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateItemsInInventoryList(0, ["HEJ", "TAM"]));
     expect(state).to.equal(Immutable.fromJS({
@@ -76,6 +90,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -87,6 +104,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
 
     let state = entitiesReducer(previousState, removeChildOfEntity(0, "BAF", "CBA"));
@@ -97,6 +117,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -108,6 +131,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateChildrenOfEntity(0, "BAF", ["CBA", "DOM"]));
     expect(state).to.equal(Immutable.fromJS({
@@ -117,6 +143,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -128,6 +157,9 @@ describe('(entities) entitiesReducer', () => {
       info: {},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     });
     state = entitiesReducer(state, addEntityInfo(0, {
       id: "BAC",
@@ -144,6 +176,9 @@ describe('(entities) entitiesReducer', () => {
       info: {"BAC": {id: "BAC", name: "a house"}, "CAN": {id: "CAN", name: "a hammer"}},
       expanded: Immutable.Set(),
       selected: Immutable.Set(),
+      actionType: null,
+      actionDetails: Immutable.Map(),
+      selectedDetails: null,
     }));
   });
 
@@ -180,6 +215,9 @@ describe('(entities) entitiesReducer', () => {
           },
           expanded: Immutable.Set(),
           selected: Immutable.Set(),
+          actionType: null,
+          actionDetails: Immutable.Map(),
+          selectedDetails: null,
         }
       },
     }));
