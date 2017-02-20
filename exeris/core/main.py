@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    ITEM_NOT_APPLICABLE_FOR_ACTIVITY = "error_item_not_applicable_for_activity"
+    ONLY_SPECIFIC_TYPE_FOR_GROUP = "error_only_specific_type_for_group"
     INVALID_SHIP_TYPE_FOR_BOARDING = "error_invalid_ship_type_for_boarding"
     SHIP_NOT_BOARDED = "error_ship_not_boarded"
     CANNOT_UNBOARD_FROM_OWN_SHIP = "error_cannot_unboard_from_own_ship"
@@ -341,13 +343,13 @@ class EntityUnsupportedOperationException(GameException):
 class OnlySpecificTypeForGroupException(GameException):
     def __init__(self, *, type_name, group_name):
         params = dict(item_name=type_name, group_name=group_name)  # TODO? PYSLATIZE GROUP?
-        super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **params)
+        super().__init__(Errors.ONLY_SPECIFIC_TYPE_FOR_GROUP, **params)
 
 
 class ItemNotApplicableForActivityException(GameException):
     def __init__(self, *, item, activity):
         params = dict(item.pyslatize(), **activity.pyslatize())
-        super().__init__(Errors.ENTITY_NOT_IN_INVENTORY, **params)
+        super().__init__(Errors.ITEM_NOT_APPLICABLE_FOR_ACTIVITY, **params)
 
 
 class CannotControlMovementException(GameException):

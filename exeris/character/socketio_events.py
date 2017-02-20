@@ -3,7 +3,9 @@ import string
 import time
 
 import flask_socketio as client_socket
+import math
 from flask import g, render_template
+import sqlalchemy as sql
 
 from exeris.app import socketio_character_event
 from exeris.core import models, actions, accessible_actions, recipes, deferred, general, main, combat
@@ -580,6 +582,7 @@ def get_detailed_entity_info(enc_entity_id):
 
     if isinstance(entity, models.Activity):
         return {
+                   "id": app.encode(entity.id),
                    "type": "Activity",
                    "name": g.pyslate.t("entity_info", **entity.pyslatize()),
                    "input": entity.requirements.get("input", {}),
@@ -588,6 +591,7 @@ def get_detailed_entity_info(enc_entity_id):
                },
 
     return {
+               "id": app.encode(entity.id),
                "type": entity.__class__.__name__,
                "name": g.pyslate.t("entity_info", **entity.pyslatize()),
            },
@@ -608,42 +612,56 @@ def move_to_location(location_id):
 
 
 @socketio_character_event("character.add_item_to_activity")
-def form_add_item_to_activity(entity_to_add_id, amount=None, activity_id=None):
-    entity_to_add_id = app.decode(entity_to_add_id)
-    entity_to_add = models.Entity.by_id(entity_to_add_id)
+@single_entity_action
+def form_add_item_to_activity(enc_activity_id, req_group_name, enc_entity_to_add_id=None, amount=None):
+    activity = decode_and_load_entity(enc_activity_id)
 
-    if amount and activity_id:
+    if not enc_entity_to_add_id:
         loc = g.character.being_in
-        activity_holders = models.Entity.query.filter(models.Entity.is_in(loc)).all()
 
-        activities = models.Activity.query.filter(models.Activity.is_in(activity_holders)).all()
+        req_group = models.EntityType.by_name(req_group_name)
+        type_names_in_group = [t_and_e[0].name for t_and_e in req_group.get_descending_types()]
 
-        activities_to_add = []
-        for activity in activities:
-            if "input" in activity.requirements:
-                for needed_type_name, req_data in activity.requirements["input"].items():
-                    needed_type = models.EntityType.by_name(needed_type_name)
-                    if needed_type.contains(entity_to_add.type):
-                        amount = req_data["left"] / needed_type.quantity_efficiency(entity_to_add.type)
-                        activities_to_add += [
-                            {"id": app.encode(activity.id), "name": activity.name_tag, "amount": amount}]
+        potential_items_to_add = models.Item.query.filter(
+            sql.or_(
+                models.Item.is_in(g.character),
+                models.Item.is_in(loc),
+            ),
+            models.Item.type_name.in_(type_names_in_group),
+        ).all()
+        req_info = activity.requirements["input"][req_group_name]
+        used_type = req_info.get("used_type", None)
+        req_left = req_info["left"]
 
-        rendered = render_template("entities/modal_add_to_activity.html", activities=activities_to_add,
-                                   entity_to_add=entity_to_add)
-
-        client_socket.emit("character.add_item_to_activity_setup", rendered)
+        item_infos = []
+        for item in potential_items_to_add:
+            if used_type and item.type_name != used_type:
+                continue
+            type_efficiency_ratio = req_group.quantity_efficiency(item.type)
+            max_needed = math.ceil(req_left / type_efficiency_ratio)
+            max_amount = min(max_needed, item.amount)
+            item_infos.append({
+                "id": app.encode(item.id),
+                "name": item.type.name + " in " + str(item.being_in),  # TODO i18n translate
+                "maxAmount": max_amount,
+            })
 
         db.session.commit()
-        return ()
+        client_socket.emit("character.add_item_to_activity_setup", (g.character.id,
+                                                                    enc_activity_id, {
+                                                                        "itemsToAdd": item_infos
+                                                                    }))
     else:
-        entity_to_add = models.Entity.by_id(app.decode(entity_to_add))
-        activity = models.Activity.by_id(app.decode(activity_id))
+        entity_to_add = decode_and_load_entity(enc_entity_to_add_id)
 
         action = actions.AddEntityToActivityAction(g.character, entity_to_add, activity, amount)
         action.perform()
 
         db.session.commit()
-        return ()
+        client_socket.emit("character.add_item_to_activity_after", (g.character.id,
+                                                                    enc_activity_id,
+                                                                    enc_entity_to_add_id))
+    return ()
 
 
 @socketio_character_event("character.take_item")
