@@ -15,6 +15,9 @@ export const SELECT_ENTITY = "exeris-front/entities/SELECT_ENTITY";
 export const DESELECT_ENTITY = "exeris-front/entities/DESELECT_ENTITY";
 export const CLEAR_ENTITY_SELECTION = "exeris-front/entities/CLEAR_ENTITY_SELECTION";
 export const SHOW_SELECTED_DETAILS = "exeris-front/entities/SHOW_SELECTED_DETAILS";
+export const UPDATE_EXPANDED_INPUT = "exeris-front/entities/UPDATE_EXPANDED_INPUT";
+export const UPDATE_EXPANDED_INPUT_DETAILS = "exeris-front/entities/UPDATE_EXPANDED_INPUT_DETAILS";
+
 
 export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION";
 
@@ -186,6 +189,28 @@ export const deselectEntity = (characterId, entityId) => {
   };
 };
 
+export const updateExpandedInput = (characterId, expandedInput) => {
+  return (dispatch, getState) => {
+
+    const selectedDetails = getSelectedDetails(fromEntitiesState(getState(), characterId));
+    socket.request("character.add_item_to_activity", characterId, [selectedDetails.get("id")], expandedInput);
+
+    dispatch({
+      type: UPDATE_EXPANDED_INPUT,
+      expandedInput: expandedInput,
+      characterId: characterId,
+    });
+  }
+};
+
+export const updateExpandedInputDetails = (characterId, expandedInputDetails) => {
+  return {
+    type: UPDATE_EXPANDED_INPUT_DETAILS,
+    expandedInputDetails: expandedInputDetails,
+    characterId: characterId,
+  };
+};
+
 export const clearEntitySelection = (characterId) => {
   return {
     type: CLEAR_ENTITY_SELECTION,
@@ -296,6 +321,10 @@ export const entitiesReducer = (state = Immutable.fromJS(
         .set("actionDetails", Immutable.fromJS(action.details));
     case SHOW_SELECTED_DETAILS:
       return state.set("selectedDetails", Immutable.fromJS(action.entityDetails));
+    case UPDATE_EXPANDED_INPUT:
+      return state.setIn(["selectedDetails", "expandedInput"], action.expandedInput);
+    case UPDATE_EXPANDED_INPUT_DETAILS:
+      return state.setIn(["selectedDetails", "expandedInputDetails"], Immutable.fromJS(action.expandedInputDetails));
     default:
       return state;
   }

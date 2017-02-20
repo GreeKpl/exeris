@@ -4,7 +4,7 @@ import {
   deselectEntity,
   selectEntityAction,
   clearSelectedEntityAction,
-  requestRootEntities
+  requestRootEntities, updateExpandedInputDetails, requestSelectedDetails
 } from "./entities";
 
 export const ENTITY_ACTION_TAKE = "ENTITY_ACTION_TAKE";
@@ -126,6 +126,16 @@ export const setUpSocketioListeners = dispatch => {
   socket.on("character.join_activity_after", (characterId, activityId) => { // travel to
     dispatch(standardAfterEntityAction(characterId, activityId));
   });
+
+  socket.on("character.add_item_to_activity_setup", (characterId, activityId, itemInfos) => {
+    dispatch(updateExpandedInputDetails(characterId, itemInfos));
+  });
+
+  socket.on("character.add_item_to_activity_after", (characterId, activityId, itemId) => {
+    dispatch(requestSelectedDetails(characterId, activityId));
+    dispatch(requestRefreshEntity(characterId, activityId));
+    dispatch(requestRefreshEntity(characterId, itemId));
+  });
 };
 
 
@@ -135,7 +145,6 @@ export const performEntityAction = (characterId, endpoint, entityIds, ...params)
   }
 };
 
-
 const standardAfterEntityAction = (characterId, entityId) => {
   return dispatch => {
     dispatch(requestRefreshEntity(characterId, entityId));
@@ -144,3 +153,10 @@ const standardAfterEntityAction = (characterId, entityId) => {
   };
 };
 
+export const performAddEntityToItemAction = (characterId, activityId, reqGroup, addedItemId, amount) => {
+  return dispatch => {
+    dispatch(performEntityAction(characterId,
+      "character.add_item_to_activity",
+      [activityId], reqGroup, addedItemId, amount));
+  };
+};
