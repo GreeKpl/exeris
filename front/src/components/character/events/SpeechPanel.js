@@ -22,7 +22,7 @@ class SpeechPanel extends React.Component {
     };
 
     return <Panel>
-      <form onSubmit={this.props.onSubmit}>
+      <form autoComplete="off" onSubmit={this.props.onSubmit}>
         <FormGroup
           controlId="speechMessage">
           <Col sm={10}>

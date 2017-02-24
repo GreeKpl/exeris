@@ -27,7 +27,7 @@ class CreateCharacterPanel extends React.Component {
   }
 
   render() {
-    return <Form horizontal>
+    return <Form autoComplete="off" horizontal>
       <FormGroup controlId="characterName">
         <Col sm={3}>
           Character name

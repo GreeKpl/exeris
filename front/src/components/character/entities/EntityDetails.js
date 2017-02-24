@@ -69,7 +69,7 @@ class AddInputSelection extends React.Component {
 
   render() {
     const expandedDetails = this.props.expandedDetails;
-    return <Form>
+    return <Form autoComplete="off">
       <FormGroup controlId="addToActivitySelect">
         <ControlLabel>Select resource to add:</ControlLabel>
         <FormControl

@@ -10,7 +10,7 @@ class Appearance extends React.Component {
   render() {
     return (
       <Panel header="Appearance">
-        <Form horizontal>
+        <Form autoComplete="off" horizontal>
           <FormGroup controlId="shortDescriptionTextarea">
             <Col componentClass={ControlLabel} sm={3}>
               Short description

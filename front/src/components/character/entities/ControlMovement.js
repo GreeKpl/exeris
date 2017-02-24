@@ -10,7 +10,7 @@ class ControlMovement extends React.Component {
   render() {
     return (
       <Panel header="Control movement">
-        <Form inline>
+        <Form autoComplete="off" inline>
           <FormGroup controlId="travelDirection">
             <ControlLabel>Direction</ControlLabel>
             {' '}

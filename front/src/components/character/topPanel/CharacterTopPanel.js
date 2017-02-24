@@ -23,7 +23,7 @@ class CharacterTopPanel extends React.Component {
       <Grid fluid>
         <Row>
           <Col xs={12} md={3}>
-            <Form horizontal>
+            <Form autoComplete="off" horizontal>
               <FormGroup controlId="characterName">
                 <Col componentClass={ControlLabel} sm={4}>
                   Name
@@ -69,7 +69,7 @@ class CharacterTopPanel extends React.Component {
             </FormGroup>
           </Col>
           <Col xs={12} md={6}>
-            <Form horizontal>
+            <Form autoComplete="off" horizontal>
               <FormGroup controlId="shortDescription">
                 <Col componentClass={ControlLabel} sm={3}>
                   Short description

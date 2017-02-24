@@ -97,7 +97,7 @@ class ActionDetails extends React.Component {
     const {handleSubmit, pristine, reset, submitting} = this.props;
 
     return (
-      <Form horizontal onSubmit={handleSubmit}>
+      <Form autoComplete="off" horizontal onSubmit={handleSubmit}>
         {recipeDetails.get("errorMessages").size > 0 &&
         <FormGroup key="errorMessages" controlId="errorMessages">
           <Col componentClass={ControlLabel} sm={3}>

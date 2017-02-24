@@ -5,11 +5,13 @@ class ActionsFilter extends React.Component {
 
   constructor(props) {
     super(props);
+
+    this.onSubmit = this.onSubmit.bind(this);
   }
 
   render() {
     return (
-      <form>
+      <form autoComplete="off" onSubmit={this.onSubmit}>
         <FormGroup
           controlId="actionsFilter">
           <FormControl
@@ -20,6 +22,10 @@ class ActionsFilter extends React.Component {
           />
         </FormGroup>
       </form>);
+  }
+
+  onSubmit(event) {
+    event.preventDefault();
   }
 }
 
