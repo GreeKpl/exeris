@@ -90,7 +90,7 @@ export const requestInventoryEntities = characterId => {
 
 const getParentEntity = (characterId, entityId, state) => {
   const children = getChildren(fromEntitiesState(state, characterId));
-  const keys = children.filter((value, key) => value.includes(entityId)).keys();
+  const keys = children.filter((value, key) => value.includes(entityId)).keySeq();
   if (keys.size > 0) {
     return keys.first();
   }
