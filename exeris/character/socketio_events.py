@@ -829,7 +829,7 @@ def _get_entity_info(entity, observer):
         "expandable": expandable,
         "actions": available_actions,
         "activities": [get_activity_info(a) for a in activities],
-        "otherSide": other_side.id if other_side else None,
+        "otherSide": app.encode(other_side.id) if other_side else None,
         "unionMembership": union_membership,
     }
 
