@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class Errors:
+    INVALID_TARGET_GENERIC = "error_invalid_target_generic"
+    INVALID_TARGET = "error_invalid_target"
     ITEM_NOT_APPLICABLE_FOR_ACTIVITY = "error_item_not_applicable_for_activity"
     ONLY_SPECIFIC_TYPE_FOR_GROUP = "error_only_specific_type_for_group"
     INVALID_SHIP_TYPE_FOR_BOARDING = "error_invalid_ship_type_for_boarding"
@@ -311,6 +313,14 @@ class AlreadyBeingInCombat(GameException):
 class TargetAlreadyInCombat(CharacterException):
     def __init__(self, *, entity):
         super().__init__(Errors.TARGET_ALREADY_IN_COMBAT, **entity.pyslatize())
+
+
+class InvalidTargetException(GameException):
+    def __init__(self, *, entity=None):
+        if entity:
+            super().__init__(Errors.INVALID_TARGET, **entity.pyslatize())
+        else:
+            super().__init__(Errors.INVALID_TARGET_GENERIC)
 
 
 class EntityTooFarAwayException(GameException, TurningIntoIntentExceptionMixin):

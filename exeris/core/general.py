@@ -232,6 +232,8 @@ class SameLocationRange(RangeSpec):
             return [entity]
         if isinstance(entity, models.Passage):
             return [entity.left_location, entity.right_location]
+        if isinstance(entity, models.Activity):
+            entity = entity.being_in
         return [entity.being_in]
 
 
@@ -299,10 +301,17 @@ class AreaRangeSpec(RangeSpec):
         :param entity_b:
         :return:
         """
-        if entity_a.get_location() == entity_b.get_location():
+        if not entity_a or not entity_b:
+            return False
+
+        entity_a_parents = entity_a.parent_locations()
+        entity_b_parents = entity_b.parent_locations()
+        if entity_a_parents == entity_b_parents:
             return True
-        entity_a_root = entity_a.get_root()
-        entity_b_root = entity_b.get_root()
+
+        # a simplification, because all adjacent locations must have the same root  # May need TODO for gates
+        entity_a_root = entity_a_parents[0].get_root()
+        entity_b_root = entity_b_parents[0].get_root()
         if entity_a_root == entity_b_root:
             neighbouring_locs_range = NeighbouringLocationsRange(self.only_through_unlimited)
             return neighbouring_locs_range.is_near(entity_a, entity_b)

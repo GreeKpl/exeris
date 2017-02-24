@@ -849,6 +849,8 @@ class TravelToEntityAction(ActionOnEntity):
 
     def perform_action(self):
         seeing_entity_range = general.VisibilityBasedRange(20)
+        if not self.entity:
+            raise main.InvalidTargetException(entity=self.entity)
         if not seeing_entity_range.is_near(self.executor, self.entity):
             raise main.EntityTooFarAwayException(entity=self.entity)
 
