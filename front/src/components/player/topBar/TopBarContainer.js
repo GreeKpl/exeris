@@ -6,6 +6,7 @@ const mapStateToProps = (state, ownProps) => {
   return {
     charactersList: getOwnCharactersList(fromPlayerState(state)),
     characterId: ownProps.characterId,
+    mainPageActive: ownProps.mainPageActive,
   };
 };
 

@@ -17,8 +17,10 @@ class CharacterPage extends React.Component {
         right: "0px",
         zIndex: 1,
       }}>
-        <TopBarContainer characterId={this.props.characterId}/>
-        <CharacterTopBarContainer characterId={this.props.characterId} activePage={this.props.characterPageUrl}/>
+        <TopBarContainer characterId={this.props.characterId}
+                         activePage={this.props.pageUrl}/>
+        <CharacterTopBarContainer characterId={this.props.characterId}
+                                  activePage={this.props.characterPageUrl}/>
       </div>
       <br/><br/>
       <br/><br/>

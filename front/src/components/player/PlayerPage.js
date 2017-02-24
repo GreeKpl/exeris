@@ -16,7 +16,7 @@ class PlayerPage extends React.Component {
         right: "0px",
         zIndex: 1,
       }}>
-        <TopBarContainer/>
+        <TopBarContainer mainPageActive={true}/>
       </div>
       <br/><br/>
       {this.props.children}

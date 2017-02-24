@@ -1,6 +1,6 @@
 import React from "react";
 import {Nav, NavItem} from "react-bootstrap";
-import {LinkContainer} from "react-router-bootstrap";
+import {IndexLinkContainer} from "react-router-bootstrap";
 import "./style.scss";
 
 class TopBar extends React.Component {
@@ -18,17 +18,21 @@ class TopBar extends React.Component {
   render() {
     return <Nav bsStyle="pills"
                 className="Player-TopBar-Nav">
-      <LinkContainer to="/player" key="main">
+      <IndexLinkContainer to="/player"
+                          active={this.props.mainPageActive}
+                          key="main">
         <NavItem className="actionItem">
           Main
         </NavItem>
-      </LinkContainer>
+      </IndexLinkContainer>
       {this.props.charactersList.map(characterInfo =>
-        <LinkContainer to={"/character/" + characterInfo.get("id") + "/events"} key={characterInfo.get("id")}>
-          <NavItem className="actionItem" active={this.props.characterId == characterInfo.get("id")}>
+        <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
+                            active={this.props.characterId == characterInfo.get("id")}
+                            key={characterInfo.get("id")}>
+          <NavItem className="actionItem">
             {characterInfo.get("name")}
           </NavItem>
-        </LinkContainer>
+        </IndexLinkContainer>
       )}
     </Nav>
   }
