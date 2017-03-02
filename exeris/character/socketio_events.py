@@ -35,7 +35,7 @@ def single_entity_action(wrapped_function):
     return f
 
 
-@socketio_character_event("rename_entity")
+@socketio_character_event("character.rename_entity")
 def rename_entity(entity_id, new_name):
     entity_id = app.decode(entity_id)
     entity_to_rename = models.Entity.by_id(entity_id)
