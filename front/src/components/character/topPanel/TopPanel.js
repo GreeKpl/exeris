@@ -4,7 +4,7 @@ import {
   DETAILS_COMBAT,
 } from "../../../modules/topPanel";
 import CombatTopPanelContainer from "./CombatTopPanelContainer";
-import CharacterTopPanelContainer from "./CharacterTopPanelContainer";
+import CharacterPanelContainer from "./CharacterPanelContainer";
 
 /**
  * @return {XML|null}
@@ -15,7 +15,7 @@ const TopPanel = ({characterId, detailsType}) => {
       return <CombatTopPanelContainer characterId={characterId}/>;
       break;
     case DETAILS_CHARACTER:
-      return <CharacterTopPanelContainer characterId={characterId}/>;
+      return <CharacterPanelContainer characterId={characterId}/>;
       break;
     default:
       return null;

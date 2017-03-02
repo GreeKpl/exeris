@@ -1,8 +1,8 @@
 import {connect} from "react-redux";
-import CharacterTopPanel from "./CharacterTopPanel";
+import CharacterPanel from "./CharacterPanel";
 import {
   getDetailsData,
-  fromTopPanelState,
+  fromTopPanelState, submitEditedName
 } from "../../../modules/topPanel";
 
 
@@ -14,12 +14,16 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {
-  return {}
+  return {
+    onSubmitName: newName => {
+      dispatch(submitEditedName(ownProps.characterId, newName));
+    },
+  }
 };
 
-const CharacterTopPanelContainer = connect(
+const CharacterPanelContainer = connect(
   mapStateToProps,
   mapDispatchToProps
-)(CharacterTopPanel);
+)(CharacterPanel);
 
-export default CharacterTopPanelContainer;
+export default CharacterPanelContainer;

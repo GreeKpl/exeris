@@ -10,13 +10,65 @@ import {
   Form,
   FormGroup,
   FormControl,
+  Button
 } from "react-bootstrap";
 
-class CharacterTopPanel extends React.Component {
+
+const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName}) => <FormGroup
+  controlId="newCharacterName">
+  <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
+    Name
+  </Col>
+  <Col sm={8}>
+    <Grid fluid>
+      <Row>
+        <Col>
+          <FormControl type="text" onChange={onNewNameChange} value={newName}/>
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <Button style={{width: "100%"}} onClick={onSubmitName}>OK</Button>
+        </Col>
+      </Row>
+    </Grid>
+  </Col>
+</FormGroup>;
+
+class CharacterPanel extends React.Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      nameBeingEdited: false,
+    };
+
+    this.handleSubmitName = this.handleSubmitName.bind(this);
+    this.startEditingName = this.startEditingName.bind(this);
+    this.onNewNameChange = this.onNewNameChange.bind(this);
   }
 
+  handleSubmitName(event) {
+    this.props.onSubmitName(this.state.newName);
+    this.setState({
+      nameBeingEdited: false,
+    });
+  }
+
+  startEditingName(event) {
+    this.setState({
+      nameBeingEdited: true,
+      newName: this.props.name,
+    });
+  }
+
+  onNewNameChange(event) {
+    const newName = event.target.value;
+    this.setState({
+      nameBeingEdited: true,
+      newName: newName,
+    });
+  }
 
   render() {
     return <Panel header="Character info">
@@ -24,15 +76,20 @@ class CharacterTopPanel extends React.Component {
         <Row>
           <Col xs={12} md={3}>
             <Form autoComplete="off" horizontal>
-              <FormGroup controlId="characterName">
-                <Col componentClass={ControlLabel} sm={4}>
-                  Name
-                </Col>
-                <Col componentClass={FormControl.Static} sm={8}>
-                  {this.props.name} <Glyphicon glyph="pencil"/>
-                </Col>
-              </FormGroup>
-              <FormGroup controlId="characterName">
+              {this.state.nameBeingEdited ? <CharacterNameEditBox
+                  newName={this.state.newName}
+                  onNewNameChange={this.onNewNameChange}
+                  onSubmitName={this.handleSubmitName}/> : <FormGroup controlId="characterName">
+                  <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
+                    Name
+                  </Col>
+                  <Col sm={8}
+                       onClick={this.startEditingName}
+                       componentClass={FormControl.Static}>
+                    {this.props.name} <Glyphicon glyph="pencil"/>
+                  </Col>
+                </FormGroup>}
+              <FormGroup controlId="characterLocation">
                 <Col componentClass={ControlLabel} sm={4}>
                   Location
                 </Col>
@@ -41,7 +98,7 @@ class CharacterTopPanel extends React.Component {
                 </Col>
               </FormGroup>
               {this.props.workIntent &&
-              <FormGroup controlId="characterName">
+              <FormGroup controlId="characterWork">
                 <Col componentClass={ControlLabel} sm={4}>
                   Working on
                 </Col>
@@ -50,7 +107,7 @@ class CharacterTopPanel extends React.Component {
                 </Col>
               </FormGroup>}
               {this.props.combatIntent &&
-              <FormGroup controlId="characterName">
+              <FormGroup controlId="characterCombat">
                 <Col componentClass={ControlLabel} sm={4}>
                   Fighting in
                 </Col>
@@ -95,4 +152,4 @@ class CharacterTopPanel extends React.Component {
 }
 
 
-export default CharacterTopPanel;
+export default CharacterPanel;
