@@ -16,7 +16,7 @@ import {fireOnEnter} from "../../eventUtil";
 import "./style.scss";
 
 
-const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName}) => {
+const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName, onCancelName}) => {
 
   return <FormGroup
     controlId="newCharacterName">
@@ -33,7 +33,8 @@ const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName}) => {
         </Row>
         <Row>
           <Col>
-            <Button style={{width: "50%"}} onClick={onSubmitName}>OK</Button>
+            <Button style={{width: "50%"}} onClick={onCancelName}><Glyphicon glyph="remove"/></Button>
+            <Button style={{width: "50%"}} onClick={onSubmitName}><Glyphicon glyph="ok"/></Button>
           </Col>
         </Row>
       </Grid>
@@ -52,6 +53,7 @@ class CharacterPanel extends React.Component {
     this.handleSubmitName = this.handleSubmitName.bind(this);
     this.startEditingName = this.startEditingName.bind(this);
     this.onNewNameChange = this.onNewNameChange.bind(this);
+    this.cancelEditingName = this.cancelEditingName.bind(this);
   }
 
   handleSubmitName() {
@@ -65,6 +67,12 @@ class CharacterPanel extends React.Component {
     this.setState({
       nameBeingEdited: true,
       newName: this.props.rawName,
+    });
+  }
+
+  cancelEditingName() {
+    this.setState({
+      nameBeingEdited: false,
     });
   }
 
@@ -85,14 +93,15 @@ class CharacterPanel extends React.Component {
               {this.state.nameBeingEdited ? <CharacterNameEditBox
                   newName={this.state.newName}
                   onNewNameChange={this.onNewNameChange}
-                  onSubmitName={this.handleSubmitName}/> : <FormGroup controlId="characterName">
+                  onSubmitName={this.handleSubmitName}
+                  onCancelName={this.cancelEditingName}/> : <FormGroup controlId="characterName">
                   <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
                     Name
                   </Col>
                   <Col sm={8}
                        onClick={this.startEditingName}
                        componentClass={FormControl.Static}
-                  className="CharacterPanel-ClickableName">
+                       className="CharacterPanel-ClickableName">
                     {this.props.rawName} <Glyphicon glyph="pencil"/>
                   </Col>
                 </FormGroup>}
