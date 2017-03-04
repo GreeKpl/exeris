@@ -1,6 +1,7 @@
 import * as Immutable from "immutable";
 import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
+import {extractActionsFromHtml} from "../util/parseDynamicName";
 
 export const APPLY_PANEL_CHANGE = "exeris-front/topPanel/APPLY_PANEL_CHANGE";
 export const CLOSE_TOP_PANEL = "exeris-front/topPanel/CLOSE_TOP_PANEL";
@@ -15,6 +16,8 @@ export const DETAILS_COMBAT = "DETAILS_COMBAT";
 export const requestCharacterDetails = (characterId, targetId) => {
   return dispatch => {
     socket.request("character.get_character_details", characterId, targetId, data => {
+      const actionsToUpdateNames = extractActionsFromHtml(characterId, data.name);
+      actionsToUpdateNames.forEach(action => dispatch(action));
       dispatch(applyCharacterDetails(characterId, data));
     });
   }
@@ -77,7 +80,8 @@ export const submitEditedName = (characterId, newName) => {
     const detailsData = getDetailsData(fromTopPanelState(getState(), characterId));
     const targetId = detailsData.get("id");
     socket.request("character.rename_entity", characterId, targetId, newName, () => {
-      console.log("Should update name to ", newName);
+      // panel is *probably* still open, so refresh it
+      dispatch(requestCharacterDetails(characterId, targetId));
     });
   };
 };

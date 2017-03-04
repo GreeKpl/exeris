@@ -17,11 +17,18 @@ import {
   SPEECH_TYPE_ALOUD,
 } from "../../../modules/speech";
 import {requestCharacterDetails} from "../../../modules/topPanel";
+import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 
 const mapStateToProps = (state, ownProps) => {
+  let charactersAround = getCharactersAround(fromCharactersAroundState(state, ownProps.characterId));
+  charactersAround = charactersAround.map(characterInfo => {
+    const component = parseHtmlToComponents(ownProps.characterId, characterInfo.get("name"));
+    return characterInfo.set("nameComponent", component);
+  });
+
   return {
     characterId: ownProps.characterId,
-    charactersAround: getCharactersAround(fromCharactersAroundState(state, ownProps.characterId)),
+    charactersAround: charactersAround,
     speechTarget: getSpeechTargetId(fromSpeechState(state, ownProps.characterId)),
     speechType: getSpeechType(fromSpeechState(state, ownProps.characterId)),
     combatName: getCombatName(fromCharactersAroundState(state, ownProps.characterId)),

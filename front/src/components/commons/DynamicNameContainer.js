@@ -1,19 +1,20 @@
 import DynamicName from "./DynamicName";
 import {connect} from "react-redux";
 import {getDynamicName, fromDynamicNamesState} from "../../modules/dynamicNames";
+import {requestCharacterDetails} from "../../modules/topPanel";
 
 const mapStateToProps = (state, ownProps) => {
   return {
     observerId: ownProps.observerId,
     entityId: ownProps.entityId,
-    name: getDynamicName(fromDynamicNamesState(state, ownProps.observerId)),
+    name: getDynamicName(fromDynamicNamesState(state, ownProps.observerId), ownProps.entityId),
   };
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    onClick: (actionEndpoint, entities) => event => {
-      console.log("Placeholder for click on name");
+    onClick: event => {
+      dispatch(requestCharacterDetails(ownProps.observerId, ownProps.entityId));
     },
   }
 };

@@ -21,10 +21,16 @@ const WhisperBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
        onClick={onClick}
        src={whisperBubble}/>;
 
-const CharacterEntry = ({id, name, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper, onShowMore}) => (
+const CharacterEntry = ({id, nameComponent, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper, onShowMore}) => (
   <ListGroupItem>
-    {name} <SpeakBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectSpeak}/>
-    <WhisperBubble targetId={id} isSpeechTarget={isSpeechTarget} speechType={speechType} onClick={onSelectWhisper}/>
+    {nameComponent} <SpeakBubble targetId={id}
+                                 isSpeechTarget={isSpeechTarget}
+                                 speechType={speechType}
+                                 onClick={onSelectSpeak}/>
+    <WhisperBubble targetId={id}
+                   isSpeechTarget={isSpeechTarget}
+                   speechType={speechType}
+                   onClick={onSelectWhisper}/>
     <img src={actionDots} className="Character-CharactersList-actionIcon" onClick={onShowMore}/>
   </ListGroupItem>
 );
@@ -62,7 +68,7 @@ class CharactersList extends React.Component {
     return <CharacterEntry
       key={character.get("id")}
       id={character.get("id")}
-      name={character.get("name")}
+      nameComponent={character.get("nameComponent")}
       combatName={character.get("combatName")}
       combatId={character.get("combatId")}
       onSelectSpeak={this.props.onSelectSpeak(character.get("id"))}

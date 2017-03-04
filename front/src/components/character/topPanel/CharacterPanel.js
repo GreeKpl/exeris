@@ -12,28 +12,34 @@ import {
   FormControl,
   Button
 } from "react-bootstrap";
+import {fireOnEnter} from "../../eventUtil";
+import "./style.scss";
 
 
-const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName}) => <FormGroup
-  controlId="newCharacterName">
-  <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
-    Name
-  </Col>
-  <Col sm={8}>
-    <Grid fluid>
-      <Row>
-        <Col>
-          <FormControl type="text" onChange={onNewNameChange} value={newName}/>
-        </Col>
-      </Row>
-      <Row>
-        <Col>
-          <Button style={{width: "100%"}} onClick={onSubmitName}>OK</Button>
-        </Col>
-      </Row>
-    </Grid>
-  </Col>
-</FormGroup>;
+const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName}) => {
+
+  return <FormGroup
+    controlId="newCharacterName">
+    <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
+      Name
+    </Col>
+    <Col sm={8}>
+      <Grid fluid>
+        <Row>
+          <Col>
+            <FormControl type="text" onKeyPress={fireOnEnter(onSubmitName)} onChange={onNewNameChange}
+                         value={newName}/>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Button style={{width: "50%"}} onClick={onSubmitName}>OK</Button>
+          </Col>
+        </Row>
+      </Grid>
+    </Col>
+  </FormGroup>;
+};
 
 class CharacterPanel extends React.Component {
   constructor(props) {
@@ -48,17 +54,17 @@ class CharacterPanel extends React.Component {
     this.onNewNameChange = this.onNewNameChange.bind(this);
   }
 
-  handleSubmitName(event) {
+  handleSubmitName() {
     this.props.onSubmitName(this.state.newName);
     this.setState({
       nameBeingEdited: false,
     });
   }
 
-  startEditingName(event) {
+  startEditingName() {
     this.setState({
       nameBeingEdited: true,
-      newName: this.props.name,
+      newName: this.props.rawName,
     });
   }
 
@@ -85,8 +91,9 @@ class CharacterPanel extends React.Component {
                   </Col>
                   <Col sm={8}
                        onClick={this.startEditingName}
-                       componentClass={FormControl.Static}>
-                    {this.props.name} <Glyphicon glyph="pencil"/>
+                       componentClass={FormControl.Static}
+                  className="CharacterPanel-ClickableName">
+                    {this.props.rawName} <Glyphicon glyph="pencil"/>
                   </Col>
                 </FormGroup>}
               <FormGroup controlId="characterLocation">

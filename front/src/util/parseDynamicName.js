@@ -1,5 +1,5 @@
 import React from 'react';
-import {Parser as HtmlToReactParser, ProcessNodeDefinitions} from 'html-to-react';
+import {Parser as HtmlToReactParser, ProcessNodeDefinitions, IsValidNodeDefinitions} from 'html-to-react';
 import * as Immutable from "immutable";
 import DynamicNameContainer from "../../src/components/commons/DynamicNameContainer";
 import {updateDynamicName} from "../modules/dynamicNames";
@@ -13,7 +13,14 @@ const isValidNode = function () {
 const processNodeDefinitions = new ProcessNodeDefinitions(React);
 
 
-export const parseHtmlToComponent = (observerId, html) => {
+export const parseHtmlToComponents = (observerId, html) =>
+  parseHtmlToComponentsAndActions(observerId, html)[0];
+
+export const extractActionsFromHtml = (observerId, html) =>
+  parseHtmlToComponentsAndActions(observerId, html)[1];
+
+
+export const parseHtmlToComponentsAndActions = (observerId, html) => {
   // Instructions are processed in the order they're defined
 
   const actionsForReducers = [];
@@ -50,7 +57,7 @@ export const parseHtmlToComponent = (observerId, html) => {
   ];
 
   const parsedComponents = htmlToReactParser.parseWithInstructions(
-    html, isValidNode, processingInstructions);
+    html, IsValidNodeDefinitions.alwaysValid, processingInstructions);
 
   return [parsedComponents, actionsForReducers];
 };

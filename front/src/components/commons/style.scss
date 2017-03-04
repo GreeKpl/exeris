@@ -1,0 +1,11 @@
+
+.DynamicName-clickable {
+  color: #337ab7;
+  font-weight: bold;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.DynamicName-clickable:hover {
+  text-decoration: underline;
+}

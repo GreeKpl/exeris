@@ -4,12 +4,16 @@ import {
   getDetailsData,
   fromTopPanelState, submitEditedName
 } from "../../../modules/topPanel";
+import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 
 
 const mapStateToProps = (state, ownProps) => {
+  let allDetails = getDetailsData(fromTopPanelState(state, ownProps.characterId));
+  const nameComponent = parseHtmlToComponents(ownProps.characterId, allDetails.get("name"));
   return {
     characterId: ownProps.characterId,
-    ...getDetailsData(fromTopPanelState(state, ownProps.characterId)).toObject(),
+    nameComponent: nameComponent,
+    ...allDetails.toObject(),
   };
 };
 

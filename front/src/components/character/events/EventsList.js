@@ -23,7 +23,9 @@ class EventsList extends React.Component {
     const events = this.props.events;
     for (let i = events.size - 1; i >= 0; i--) {
       eventsList.push(
-        <ListGroupItem key={events.get(i).get("id")} dangerouslySetInnerHTML={{__html: events.get(i).get("text")}}/>
+        <ListGroupItem key={events.get(i).get("id")}>
+          {events.get(i).get("textComponent")}
+        </ListGroupItem>
       );
     }
 
