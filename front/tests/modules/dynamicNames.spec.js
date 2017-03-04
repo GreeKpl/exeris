@@ -30,5 +30,6 @@ describe('(dynamicNames) dynamicNames reducer', () => {
     expect(state).to.equal(state.set("ZET", "Tommy"));
     state = dynamicNamesReducer(state, updateDynamicName(0, "ZET", "Jimmy"));
     expect(state).to.equal(state.set("ZET", "Jimmy"));
+    expect(getDynamicName(state, "ZET")).to.equal("Jimmy");
   });
 });
