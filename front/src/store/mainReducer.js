@@ -8,6 +8,7 @@ import {decoratedEntitiesReducer} from "../modules/entities";
 import {notificationsReducer} from "../modules/notifications";
 import {decoratedRecipesReducer} from "../modules/recipes";
 import {reducer as formReducer} from "redux-form/immutable";
+import {decoratedDynamicNamesReducer} from "../modules/dynamicNames";
 
 
 const mainReducer = combineReducers({
@@ -19,6 +20,7 @@ const mainReducer = combineReducers({
   entities: decoratedEntitiesReducer,
   notifications: notificationsReducer,
   recipes: decoratedRecipesReducer,
+  dynamicNames: decoratedDynamicNamesReducer,
   form: formReducer,
 });
 
