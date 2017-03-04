@@ -136,8 +136,10 @@ def get_all_events():
     logger.debug("Initial pull of events on events page")
     logger.debug("query time: %s", queried - start)
 
-    events = [{"id": event.id, "text": g.pyslate.t("game_date", game_date=event.date) + ": " +
-                                       g.pyslate.t(event.type_name, html=True, **event.params)} for event in events]
+    events = [{"id": event.id,
+               "text": g.pyslate.t("game_date", game_date=event.date) + ": " +
+                       g.pyslate.t(event.type_name, html=True, **event.params)
+               } for event in events]
 
     tran = time.time()
     logger.debug("translations: %s", tran - queried)
@@ -408,7 +410,8 @@ def character_goto_location(target_character_id):
 
     participant_combatable_property = properties.CombatableProperty(target_character)
     combat_action = participant_combatable_property.combat_action
-    character_observed_name = g.pyslate.t("character_info", **target_character.pyslatize())
+    character_observed_name = g.pyslate.t("character_info", html=True, **target_character.pyslatize())
+    character_observed_raw_name = g.pyslate.t("character_info", html=False, **target_character.pyslatize())
     location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
     if action_worked_on:
         action_name = g.pyslate.t("action_info", **action_worked_on.pyslatize())
@@ -423,6 +426,7 @@ def character_goto_location(target_character_id):
     return {
                "id": app.encode(target_character.id),
                "name": character_observed_name,
+               "rawName": character_observed_raw_name,
                "locationName": location_observed_name,
                "locationId": app.encode(location.id),
                "workIntent": action_name,
