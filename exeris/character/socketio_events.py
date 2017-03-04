@@ -168,7 +168,7 @@ def get_all_characters_around():
 
     characters_list = [{
                            "id": app.encode(char.id),
-                           "name": g.pyslate.t("character_info", html=False, **char.pyslatize()),
+                           "name": g.pyslate.t("character_info", html=True, **char.pyslatize()),
                            "combatName": get_combat_name(char),
                            "combatId": get_combat_id(char)
                        } for char in chars]
