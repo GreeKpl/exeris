@@ -37,7 +37,7 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
             enc_entity_id = app.encode(entity_id, character_id=observer_id_for_encryption)
             classes = ["entity", entity_type_name]
             classes += ["dynamic_nameable"] if params.get("dynamic_nameable", False) else []
-            return '<span data-entity-id={} class="{}">{}</span>'.format(
+            return '<span data-entity-id="{}" class="{}">{}</span>'.format(
                 enc_entity_id,
                 " ".join(classes),
                 result_text)

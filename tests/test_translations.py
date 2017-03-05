@@ -325,12 +325,13 @@ class ItemTranslationTest(TestCase):
         self.assertEqual("uszkodzona konopna koszula", pyslate.t("item_info", **shirt.pyslatize(detailed=True)))
 
     def test_stackable(self):
-        backend = json_backend.JsonBackend(json_data=data)
-        pyslate_en = create_pyslate("en", backend=backend)
-        pyslate_pl = create_pyslate("pl", backend=backend)
-
         rl = RootLocation(Point(1, 1), 111)
         g.character = util.create_character("QAZ", rl, util.create_player("WER"))
+
+        backend = json_backend.JsonBackend(json_data=data)
+        pyslate_en = create_pyslate("en", backend=backend, context={"observer": g.character})
+        pyslate_pl = create_pyslate("pl", backend=backend, context={"observer": g.character})
+
         hemp_cloth_type = ItemType("hemp_cloth", 5, stackable=True)
         hemp_cloth = Item(hemp_cloth_type, rl, amount=1)
 
@@ -369,8 +370,8 @@ class ItemTranslationTest(TestCase):
 
         # embedded in HTML tag
         translated_html_text = pyslate_pl.t("entity_info", **carrots.pyslatize(detailed=True, html=True))
-        self.assertEqual("""<span class="entity item id_{}">11 marchewek</span>""".format(main.encode(carrots.id)),
-                         translated_html_text)
+        self.assertEqual("""<span data-entity-id="{}" class="entity item">11 marchewek</span>"""
+                         .format(main.encode(carrots.id)), translated_html_text)
 
 
 class CharacterAndLocationTranslationTest(TestCase):
@@ -411,8 +412,8 @@ class CharacterAndLocationTranslationTest(TestCase):
         self.assertEqual("John", pyslate_en.t("character_info", **man.pyslatize()))
 
         translated_html_text = pyslate_en.t("character_info", **man.pyslatize(html=True))
-        self.assertEqual("""<span class="entity character id_{}">John</span>""".format(main.encode(man.id)),
-                         translated_html_text)
+        self.assertEqual("""<span data-entity-id="{}" class="entity character">John</span>"""
+                         .format(main.encode(man.id, character_id=obs2.id)), translated_html_text)
 
     def test_dead_character_name(self):
         util.initialize_date()
@@ -468,7 +469,8 @@ class CharacterAndLocationTranslationTest(TestCase):
         # test embedding in HTML tag
         translated_html_text = pyslate_en.t("location_info", **loc.pyslatize(html=True))
         self.assertEqual(
-            """<span class="entity location id_{}">building 'Workshop'</span>""".format(main.encode(loc.id)),
+            """<span data-entity-id="{}" class="entity location">building 'Workshop'</span>""".format(
+                main.encode(loc.id, character_id=obs.id)),
             translated_html_text)
 
     def test_root_location_name(self):
