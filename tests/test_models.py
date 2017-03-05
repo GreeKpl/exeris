@@ -152,14 +152,14 @@ class EntityTest(TestCase):
 
         item = Item(item_type, None, weight=100)
         prop = EntityProperty("Happy", entity=item)
-        db.session.add(prop)
+        db.session.add_all([prop, item_type])
 
         happy_property = HappyProperty(item)
         happy_property.be_happy()
 
         item2 = Item(item_type, None, weight=200)
         type_prop = EntityTypeProperty(name="Happy", type=item_type)
-        db.session.add(type_prop)
+        db.session.add_all([item2, type_prop])
         db.session.flush()
 
         happy_property = HappyProperty(item2)
@@ -170,12 +170,6 @@ class EntityTest(TestCase):
         self.assertRaises(ValueError, lambda: HappyProperty(item2))
 
     def test_has_property(self):
-        class SadProperty(properties_base.PropertyBase):
-            __property__ = "Sad"
-
-            def be_sad(self):
-                pass
-
         item_type = ItemType("potato", 1, stackable=True)
 
         item = Item(item_type, None, weight=100)

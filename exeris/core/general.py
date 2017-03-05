@@ -309,6 +309,9 @@ class AreaRangeSpec(RangeSpec):
         if entity_a_parents == entity_b_parents:
             return True
 
+        if not len(entity_a_parents) or not len(entity_b_parents):
+            return False
+
         # a simplification, because all adjacent locations must have the same root  # May need TODO for gates
         entity_a_root = entity_a_parents[0].get_root()
         entity_b_root = entity_b_parents[0].get_root()

@@ -159,10 +159,10 @@ class EntityType(db.Model):
         return [(self, 1.0)]
 
     def get_property(self, name):
-        if main.property_cache.type_cached(self):
+        if main.property_cache and main.property_cache.type_cached(self):
             type_property = main.property_cache.get_type_prop(name)
         else:
-            type_property = EntityTypeProperty.query.get((self, name))
+            type_property = EntityTypeProperty.query.get((self.name, name))
 
         if type_property:
             return type_property.data
@@ -456,15 +456,15 @@ class Entity(db.Model):
     def get_property(self, name):
         props = {}
         ok = False
-        if main.property_cache.type_cached(self.type):
+        if main.property_cache and main.property_cache.type_cached(self.type):
             type_property = main.property_cache.get_type_prop(self.type, name)
         else:
-            type_property = EntityTypeProperty.query.get((self.type_name, name))
+            type_property = EntityTypeProperty.query.get((self.type.name, name))
         if type_property:
             props.update(type_property.data)
             ok = True
 
-        if main.property_cache.entity_cached(self):
+        if main.property_cache and main.property_cache.entity_cached(self):
             entity_property = main.property_cache.get_entity_prop(self, name)
         else:
             entity_property = EntityProperty.query.get((self.id, name))
@@ -595,6 +595,8 @@ class Entity(db.Model):
         return self.get_root().position
 
     def parent_locations(self):
+        if self.being_in is None:
+            return []
         return self.being_in.parent_locations()
 
     def get_location(self):

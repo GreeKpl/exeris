@@ -1650,6 +1650,8 @@ class EatAction(ActionOnItem):
         self.amount = amount
 
     def perform_action(self):
+        if not self.item:
+            raise main.InvalidTargetException(entity=self.item)
         if not self.executor.has_access(self.item, rng=general.TraversabilityBasedRange(
                 10, allowed_terrain_types=[main.Types.LAND_TERRAIN])):
             raise main.EntityTooFarAwayException(entity=self.item)
