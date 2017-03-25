@@ -274,14 +274,34 @@ def get_moving_entity_info():
     control_movement_class_name = deferred.get_qualified_class_name(actions.ControlMovementAction)
 
     try:
+        moving_entity = actions.get_moving_entity(g.character)
+
         moving_entity_intent = models.Intent.query \
-            .filter_by(target=actions.get_moving_entity(g.character)) \
+            .filter_by(target=moving_entity) \
             .filter(models.Intent.serialized_action[0] == control_movement_class_name).first()
 
-        rendered_info_page = render_template("map/control_movement.html", moving_entity_intent=moving_entity_intent)
-        return rendered_info_page,
+        if moving_entity_intent:
+            movement_info = {
+                "canBeControlled": True,
+                "youAreDriving": moving_entity_intent.executor == g.character,
+            }
+            rng = general.NeighbouringLocationsRange(False)
+            can_see_driver = rng.is_near(g.character, moving_entity_intent.executor)
+            if can_see_driver:
+                with moving_entity_intent as action:
+                    movement_info["movementAction"] = g.pyslate.t("character_info", html=True,
+                                                                  **moving_entity_intent.executor.pyslatize()) + " " + \
+                                                      g.pyslate.t("action_info", **action.pyslatize())
+            return movement_info,
+        elif moving_entity:
+            return {
+                       "canBeControlled": True,
+                   },
     except main.CannotControlMovementException:
-        return "",
+        pass
+    return {
+               "canBeControlled": False,
+           },
 
 
 @socketio_character_event("character.get_entities_to_bind_to")
