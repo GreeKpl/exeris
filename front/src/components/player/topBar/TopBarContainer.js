@@ -4,7 +4,7 @@ import {getOwnCharactersList, fromPlayerState, requestOwnCharactersList} from ".
 
 const mapStateToProps = (state, ownProps) => {
   return {
-    charactersList: getOwnCharactersList(fromPlayerState(state)),
+    characterIdsList: getOwnCharactersList(fromPlayerState(state)),
     characterId: ownProps.characterId,
     mainPageActive: ownProps.mainPageActive,
   };

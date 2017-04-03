@@ -10,7 +10,7 @@ class TopBar extends React.Component {
   }
 
   componentDidMount() {
-    if (this.props.charactersList.size == 0) {
+    if (this.props.characterIdsList.size == 0) {
       this.props.requestState();
     }
   }
@@ -25,7 +25,7 @@ class TopBar extends React.Component {
           Main
         </NavItem>
       </IndexLinkContainer>
-      {this.props.charactersList.map(characterInfo =>
+      {this.props.characterIdsList.map(characterInfo =>
         <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
                             active={this.props.characterId == characterInfo.get("id")}
                             key={characterInfo.get("id")}>

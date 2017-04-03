@@ -3,11 +3,10 @@ import {
   applyCharacterDetails,
   applyCombatDetails,
   closeTopPanel,
-  getDetailsData,
   getDetailsType,
   fromTopPanelState,
   topPanelReducer,
-  decoratedTopPanelReducer
+  decoratedTopPanelReducer, getDetailsTarget
 } from "../../src/modules/topPanel";
 import * as Immutable from "immutable";
 
@@ -31,20 +30,10 @@ describe('(topPanel) topPanelReducer', () => {
     const previousState = Immutable.fromJS({
       type: null,
     });
-    let state = topPanelReducer(previousState, applyCharacterDetails(0, {
-      id: "DEF",
-      name: "John",
-      locationName: "Place",
-      locationId: "123",
-      workIntent: "",
-    }));
+    let state = topPanelReducer(previousState, applyCharacterDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
         type: DETAILS_CHARACTER,
-        id: "DEF",
-        name: "John",
-        locationName: "Place",
-        locationId: "123",
-        workIntent: "",
+        targetId: "DEF",
       }
     ));
   });
@@ -53,18 +42,10 @@ describe('(topPanel) topPanelReducer', () => {
     const previousState = Immutable.fromJS({
       type: null,
     });
-    let state = topPanelReducer(previousState, applyCombatDetails(0, {
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5},
-        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, recordedDamage: 0.15}],
-    }));
+    let state = topPanelReducer(previousState, applyCombatDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
       type: DETAILS_COMBAT,
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5},
-        {id: "BIN", name: "Kelly", stance: "retreat", damage: 0.2, recordedDamage: 0.15}],
+      targetId: "DEF",
     }));
   });
 
@@ -86,40 +67,22 @@ describe('(topPanel) topPanelReducer', () => {
   it('Should completely remove old state when replaced by a new state.', () => {
     const previousState = Immutable.fromJS({
       type: DETAILS_CHARACTER,
-      id: "DEF",
-      name: "John",
-      locationName: "Place",
-      locationId: "123",
-      workIntent: "",
+      targetId: "DEF",
     });
-    let state = topPanelReducer(previousState, applyCombatDetails(0, {
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
-    }));
+    let state = topPanelReducer(previousState, applyCombatDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
       type: DETAILS_COMBAT,
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
+      targetId: "DEF",
     }));
   });
 
   it('Should update the speech of a specified character.', () => {
     let state = decoratedTopPanelReducer(undefined, {});
-    state = decoratedTopPanelReducer(state, applyCombatDetails("HEHE", {
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
-    }));
+    state = decoratedTopPanelReducer(state, applyCombatDetails("HEHE", "DEF"));
     const globalState = Immutable.Map({topPanel: state});
 
     expect(getDetailsType(fromTopPanelState(globalState, "HEHE"))).to.equal(DETAILS_COMBAT);
-    expect(getDetailsData(fromTopPanelState(globalState, "HEHE"))).to.equal(Immutable.fromJS({
-      id: "DEF",
-      attackers: [{id: "HEL", name: "Eddy", stance: "offensive", damage: 0.3, recordedDamage: 0.1}],
-      defenders: [{id: "ICH", name: "Ally", stance: "offensive", damage: 0.1, recordedDamage: 0.5}],
-    }));
-    expect(getDetailsData(fromTopPanelState(globalState, "MISSING_CHAR"))).to.equal(Immutable.Map());
+    expect(getDetailsTarget(fromTopPanelState(globalState, "HEHE"))).to.equal("DEF");
+    expect(getDetailsTarget(fromTopPanelState(globalState, "MISSING_CHAR"))).to.equal(null);
   });
 });

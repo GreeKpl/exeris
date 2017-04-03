@@ -22,7 +22,6 @@ export const updateTravelState = (characterId, travelData) => {
       actionsToUpdateNames.forEach(action => dispatch(action));
     }
 
-    console.log(UPDATE_TRAVEL_STATE, travelData);
     dispatch({
       type: UPDATE_TRAVEL_STATE,
       travelData: travelData,

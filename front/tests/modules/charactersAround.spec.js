@@ -1,7 +1,7 @@
 import {
   updateCharactersAround,
   charactersAroundReducer,
-  getCharactersAround,
+  getIdsOfCharactersAround,
   fromCharactersAroundState,
   decoratedCharactersAroundReducer
 } from "../../src/modules/charactersAround";
@@ -37,14 +37,12 @@ describe('(charactersAround) charactersAroundReducer', () => {
 
   it('Should update the charactersAround of a specified character.', () => {
     let state = decoratedCharactersAroundReducer(undefined, {});
-    state = decoratedCharactersAroundReducer(state, updateCharactersAround("DEF", [{id: 1, name: "abc"}]));
-    state = decoratedCharactersAroundReducer(state, updateCharactersAround("3", [{id: 11, name: "ade"}]));
+    state = decoratedCharactersAroundReducer(state, updateCharactersAround("DEF", ["HEH", "AHA"]));
+    state = decoratedCharactersAroundReducer(state, updateCharactersAround("3", ["HEJ", "HON"]));
     state = Immutable.Map({charactersAround: state});
-    expect(getCharactersAround(fromCharactersAroundState(state, "3"))).to.equal(Immutable.fromJS([
-      {id: 11, name: "ade"}
-    ]));
-    expect(getCharactersAround(fromCharactersAroundState(state, "DEF"))).to.equal(Immutable.fromJS([
-      {id: 1, name: "abc"},
-    ]));
+    expect(getIdsOfCharactersAround(fromCharactersAroundState(state, "3")))
+      .to.equal(Immutable.List(["HEJ", "HON"]));
+    expect(getIdsOfCharactersAround(fromCharactersAroundState(state, "DEF")))
+      .to.equal(Immutable.List(["HEH", "AHA"]));
   });
 });

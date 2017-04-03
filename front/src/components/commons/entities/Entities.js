@@ -16,7 +16,7 @@ class EntityInfo extends React.Component {
   render() {
     return <li className={"list-group-item EntitiesList-EntityInfo" + (this.props.isSelected ? " active" : "")}
                onClick={this.props.isSelected ? this.handleDeselect : this.handleSelect}>
-      {this.props.entityInfo.get("name")}
+      {this.props.entityInfo.get("rawName")}
       {this.props.entityInfo.get("expandable") && (!this.props.isExpanded ?
           <Button onClick={this.handleExpand}>\/</Button> :
           <Button onClick={this.handleCollapse}>/\</Button>

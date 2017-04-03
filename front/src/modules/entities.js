@@ -340,6 +340,8 @@ export const getChildren = (state) => state.get("children", Immutable.Map());
 
 export const getEntityInfos = (state) => state.get("info", Immutable.Map());
 
+export const getEntityInfo = (entityId, state) => getEntityInfos(state).get(entityId);
+
 export const getExpanded = (state) => state.get("expanded", Immutable.Set());
 
 export const getSelectedEntities = (state) => state.get("selected", Immutable.Set());

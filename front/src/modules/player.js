@@ -15,7 +15,7 @@ export const requestOwnCharactersList = () => {
 export const updateOwnCharactersList = (charactersList) => {
   return {
     type: UPDATE_OWN_CHARACTERS_LIST,
-    charactersList: charactersList,
+    characterIdsList: charactersList,
   };
 };
 
@@ -48,7 +48,7 @@ export const playerReducer = (state = Immutable.fromJS({achievements: [], ownCha
     case UPDATE_ACHIEVEMENTS_LIST:
       return state.set("achievements", Immutable.fromJS(action.achievementsList));
     case UPDATE_OWN_CHARACTERS_LIST:
-      return state.set("ownCharacters", Immutable.fromJS(action.charactersList));
+      return state.set("ownCharacters", Immutable.fromJS(action.characterIdsList));
     default:
       return state;
   }
