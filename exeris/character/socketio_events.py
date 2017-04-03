@@ -153,59 +153,42 @@ def get_all_characters_around():
     visibility_range = general.VisibilityBasedRange(10)
     chars = visibility_range.characters_near(g.character)
 
-    # rendered = render_template("events/people_short.html", chars=chars,
-    #                            get_combat_action=lambda char: properties.CombatableProperty(char).combat_action)
-
-    def get_combat_id(char):
-        combat_action = properties.CombatableProperty(char).combat_action
-        if combat_action:
-            return combat_action.combat_entity.id
-        return None
-
-    def get_combat_name(char):
-        combat_action = properties.CombatableProperty(char).combat_action
-        if combat_action:
-            return g.pyslate.t("action_info", **combat_action.pyslatize())
-        return None
-
-    characters_list = [{
-                           "id": app.encode(char.id),
-                           "name": g.pyslate.t("character_info", html=True, **char.pyslatize()),
-                           "combatName": get_combat_name(char),
-                           "combatId": get_combat_id(char)
-                       } for char in chars]
+    character_infos = [_get_entity_info(char, g.character) for char in chars]
 
     db.session.commit()
-    return characters_list,
+    return character_infos,
 
 
 @socketio_character_event("character.get_combat_details")
 def combat_refresh_box(combat_id=None):
     if combat_id:
-        combat_id = app.decode(combat_id)
-        combat_entity = models.Combat.query.get(combat_id)
+        combat_entity = decode_and_load_entity(combat_id)
     else:  # default - try to show own combat
-        combat_intent = models.Intent.query.filter_by(executor=g.character, type=main.Intents.COMBAT).first()
-        if not combat_intent:
-            return ""
-        combat_entity = combat_intent.target
+        combat_entity = _get_combat_of_observer(g.character)
     if not combat_entity:
-        return None
+        return {}
 
     attackers, defenders = combat.get_combat_actions_of_attackers_and_defenders(g.character, combat_entity)
 
     def convert_to_json(fighter_action):
-        return {"id": app.encode(fighter_action.executor.id),
-                "name": g.pyslate.t("character_info", **fighter_action.executor.pyslatize()),
-                "stance": fighter_action.stance,
-                "damage": fighter_action.executor.damage,
-                "recordedDamage": combat_entity.get_recorded_damage(fighter_action.executor),
-                }
+        return {
+            "id": app.encode(fighter_action.executor.id),
+            "name": g.pyslate.t("character_info", **fighter_action.executor.pyslatize()),
+            "stance": fighter_action.stance,
+            "damage": fighter_action.executor.damage,
+            "recordedDamage": combat_entity.get_recorded_damage(fighter_action.executor),
+        }
 
     return {
+               "id": app.encode(combat_id),
                "attackers": [convert_to_json(action) for action in attackers],
                "defenders": [convert_to_json(action) for action in defenders],
            },
+
+
+def _get_combat_of_observer(observer):
+    combat_intent = models.Intent.query.filter_by(executor=observer, type=main.Intents.COMBAT).first()
+    return combat_intent.target if combat_intent else None
 
 
 @socketio_character_event("character.combat_change_stance")
@@ -413,49 +396,10 @@ def character_goto_location(entity_id):
 
 
 @socketio_character_event("character.get_character_details")
-def character_goto_location(target_character_id):
+def get_character_details(target_character_id):
     target_character_id = app.decode(target_character_id)
     target_character = models.Character.by_id(target_character_id)
-
-    if not general.VisibilityBasedRange(10).is_near(g.character, target_character):
-        raise main.EntityTooFarAwayException(entity=target_character)
-
-    intent_worked_on = models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).first()
-
-    action_worked_on = deferred.call(intent_worked_on.serialized_action) if intent_worked_on else None
-    location = target_character.get_location()
-    modifiers = target_character.modifiers
-    target_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(target_character)
-    equipment = target_optional_preferred_equipment_property.get_equipment()
-
-    participant_combatable_property = properties.CombatableProperty(target_character)
-    combat_action = participant_combatable_property.combat_action
-    character_observed_name = g.pyslate.t("character_info", html=True, **target_character.pyslatize())
-    character_observed_raw_name = g.pyslate.t("character_info", html=False, **target_character.pyslatize())
-    location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
-    if action_worked_on:
-        action_name = g.pyslate.t("action_info", **action_worked_on.pyslatize())
-    else:
-        action_name = None
-    if combat_action:
-        combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
-    else:
-        combat_name = None
-    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_item in equipment]
-
-    return {
-               "id": app.encode(target_character.id),
-               "name": character_observed_name,
-               "rawName": character_observed_raw_name,
-               "locationName": location_observed_name,
-               "locationId": app.encode(location.id),
-               "workIntent": action_name,
-               "combatIntent": combat_name,
-               "shortDescription": "a bald man",
-               "longDescription": "a handsome tall band man with blue eyes",
-               "equipment": equipment_names,
-               "modifiers": modifiers,
-           },
+    return _get_entity_info(target_character, g.character),
 
 
 @socketio_character_event("character.show_readable_contents")
@@ -795,7 +739,7 @@ def get_activity_info(activity):
     }
 
 
-def _get_entity_info(entity, observer):
+def _get_entity_info(entity, observer):  # TODO optimize by batching
     if isinstance(entity, models.Passage):
         entity = _get_directed_passage_in_correct_direction(g.character.being_in, entity)
 
@@ -807,8 +751,20 @@ def _get_entity_info(entity, observer):
         passage_to_neighbour = entity
         entity = passage_to_neighbour.passage
         other_side = passage_to_neighbour.other_side
+        info = {
+            "id": app.encode(entity.id),
+            "name": full_name,
+            "rawName": full_name,
+        }
+    elif isinstance(entity, models.Character):
+        info = _get_character_info(entity, observer)
     elif isinstance(entity, models.Entity):
         full_name = g.pyslate.t("entity_info", **entity.pyslatize(detailed=True))
+        info = {
+            "id": app.encode(entity.id),
+            "name": full_name,
+            "rawName": full_name,
+        }
     else:
         raise ValueError("Entity to show is of type {}".format(type(entity)))
 
@@ -847,14 +803,66 @@ def _get_entity_info(entity, observer):
         union_membership = get_identifier_for_union(entity_member_of_union.get_union_id())
 
     available_actions = [get_entity_action_info(a) for a in possible_actions]
-    return {
-        "id": app.encode(entity.id),
-        "name": full_name,
+    info.update({
         "expandable": expandable,
         "actions": available_actions,
         "activities": [get_activity_info(a) for a in activities],
         "otherSide": app.encode(other_side.id) if other_side else None,
         "unionMembership": union_membership,
+    })
+    return info
+
+
+def _get_character_info(target_character, observer):
+    char_data = {}
+    if target_character == observer:
+        char_data = _get_own_character_info(target_character)
+    elif not general.VisibilityBasedRange(10).is_near(g.character, target_character):
+        raise main.EntityTooFarAwayException(entity=target_character)
+
+    intent_worked_on = models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).first()
+
+    action_worked_on = deferred.call(intent_worked_on.serialized_action) if intent_worked_on else None
+    location = target_character.get_location()
+    modifiers = target_character.modifiers
+    target_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(target_character)
+    equipment = target_optional_preferred_equipment_property.get_equipment()
+
+    participant_combatable_property = properties.CombatableProperty(target_character)
+    combat_action = participant_combatable_property.combat_action
+    character_observed_name = g.pyslate.t("character_info", html=True, **target_character.pyslatize())
+    character_observed_raw_name = g.pyslate.t("character_info", html=False, **target_character.pyslatize())
+    location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
+    if action_worked_on:
+        action_name = g.pyslate.t("action_info", **action_worked_on.pyslatize())
+    else:
+        action_name = None
+    if combat_action:
+        combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
+    else:
+        combat_name = None
+    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_item in equipment]
+
+    char_data.update({
+        "id": app.encode(target_character.id),
+        "name": character_observed_name,
+        "rawName": character_observed_raw_name,
+        "locationName": location_observed_name,
+        "locationId": app.encode(location.id),
+        "workIntent": action_name,
+        "combatIntent": combat_name,
+        "shortDescription": "a bald man",
+        "longDescription": "a handsome tall band man with blue eyes",
+        "equipment": equipment_names,
+        "modifiers": modifiers,
+    })
+
+    return char_data
+
+
+def _get_own_character_info(character):
+    return {
+        "skills": [],
     }
 
 
