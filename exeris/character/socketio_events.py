@@ -402,6 +402,11 @@ def get_character_details(target_character_id):
     return _get_entity_info(target_character, g.character),
 
 
+@socketio_character_event("character.get_my_character_info")
+def get_my_character_info():
+    return _get_entity_info(g.character, g.character),
+
+
 @socketio_character_event("character.show_readable_contents")
 @single_entity_action
 def show_readable_content(enc_entity_id):
@@ -841,7 +846,7 @@ def _get_character_info(target_character, observer):
         combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
     else:
         combat_name = None
-    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_item in equipment]
+    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_part, eq_item in equipment.items()]
 
     char_data.update({
         "id": app.encode(target_character.id),
@@ -861,8 +866,9 @@ def _get_character_info(target_character, observer):
 
 
 def _get_own_character_info(character):
+    skills_property = properties.SkillsProperty(character)
     return {
-        "skills": [],
+        "skills": skills_property.get_all_skills(),
     }
 
 
