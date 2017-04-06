@@ -12,6 +12,16 @@ class MyCharacterPage extends React.Component {
     super(props);
   }
 
+  componentDidMount() {
+    this.props.requestState();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.characterId !== this.props.characterId) {
+      this.props.requestState();
+    }
+  }
+
   render() {
     return (
       <div>
