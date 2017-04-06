@@ -45,8 +45,42 @@ class SkillsProperty(PropertyBase):
 
         return statistics.mean([specific_skill_value, general_skill_value])
 
+    def get_all_skills(self):
+
+        skill_values = {}
+        skill_parents = {}
+
+        specific_skills = models.SkillType.query.all()
+        for skill_type in specific_skills:
+            skill_values[skill_type.name] = self.get_raw_skill(skill_type.name)
+            skill_values[skill_type.general_name] = self.get_raw_skill(skill_type.general_name)
+            skill_parents[skill_type.name] = skill_type.general_name
+        general_skill_names = set(skill_parents.values())
+
+        all_skills = []
+        for general_skill_name in general_skill_names:
+            general_skill_dict = self._dict_representation(general_skill_name, skill_values[general_skill_name])
+            general_skill_dict["children"] = self.get_dict_representation_of_children(general_skill_name, skill_parents)
+            all_skills.append(general_skill_dict)
+
+        return all_skills
+
+    def get_dict_representation_of_children(self, general_skill_name, skill_parents):
+        child_skill_names = [skill_name for skill_name, skill_parent
+                             in skill_parents.items() if skill_parent == general_skill_name]
+        a = [self._dict_representation(child_skill_name,
+                                       self.get_raw_skill(child_skill_name))
+             for child_skill_name in child_skill_names]
+        return a
+
+    def _dict_representation(self, name, value):
+        return {
+            "name": name,
+            "value": value,
+        }
+
     def alter_skill_by(self, skill_name, change):
-        skill_val = self.entity_property.data.get(skill_name, SkillsProperty.SKILL_DEFAULT_VALUE)
+        skill_val = self.get_raw_skill(skill_name)
         self.entity_property.data[skill_name] = skill_val + change
 
 
