@@ -730,6 +730,7 @@ class Character(Entity):
         self.weight = ALIVE_CHARACTER_WEIGHT
         super().__init__()
         self.properties.append(EntityProperty(P.PREFERRED_EQUIPMENT))
+        self.properties.append(EntityProperty(P.SKILLS))
 
     sex = sql.Column(sql.Enum(SEX_MALE, SEX_FEMALE, name="sex"))
 

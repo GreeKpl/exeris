@@ -686,6 +686,9 @@ def create_database():
         db.session.add_all([gangway_type, rl_on_sea])
         db.session.add_all([small_boat_type, small_boat, small_boat_recipe])
 
+    db.session.merge(models.SkillType("baking", "cooking"))
+    db.session.merge(models.SkillType("confectionery", "cooking"))
+
     if app.config["DEBUG"] and not models.Player.query.count():
         new_plr = models.Player("jan", "jan@gmail.com", "en", "test")
 
