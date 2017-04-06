@@ -2,6 +2,7 @@ export * as charactersAround from "./charactersAround";
 export * as entities from "./entities";
 export * as entitiesActions from "./entities-actionsAddon";
 export * as events from "./events";
+export * as myCharacter from "./myCharacter";
 export * as notifications from "./notifications";
 export * as player from "./player";
 export * as recipes from "./recipes";

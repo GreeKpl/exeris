@@ -10,6 +10,7 @@ import {decoratedRecipesReducer} from "../modules/recipes";
 import {reducer as formReducer} from "redux-form/immutable";
 import {decoratedDynamicNamesReducer} from "../modules/dynamicNames";
 import {decoratedTravelReducer} from "../modules/travel";
+import {decoratedMyCharacterReducer} from "../modules/myCharacter";
 
 
 const mainReducer = combineReducers({
@@ -19,6 +20,7 @@ const mainReducer = combineReducers({
   speech: decoratedSpeechReducer,
   topPanel: decoratedTopPanelReducer,
   entities: decoratedEntitiesReducer,
+  myCharacter: decoratedMyCharacterReducer,
   notifications: notificationsReducer,
   recipes: decoratedRecipesReducer,
   travel: decoratedTravelReducer,
