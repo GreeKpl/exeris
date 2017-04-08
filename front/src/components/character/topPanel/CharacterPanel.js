@@ -137,7 +137,7 @@ class CharacterPanel extends React.Component {
             <FormGroup controlId="inventory">
               <ControlLabel>Equipment</ControlLabel>
               <FormControl componentClass="list-group">
-                {this.props.equipment.map(itemName => <ListGroupItem>{itemName}</ListGroupItem>)}
+                {this.props.equipment.map((itemName, eqPart) => <ListGroupItem>{itemName}</ListGroupItem>)}
               </FormControl>
             </FormGroup>
           </Col>
