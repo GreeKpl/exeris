@@ -1,47 +1,44 @@
 import React from "react";
 import {Table, Panel} from "react-bootstrap";
 
-class Equipment extends React.Component {
 
-  constructor(props) {
-    super(props);
-  }
+const EquipmentPart = ({piece, name}) => {
+  return <tr>
+    <td>{piece}</td>
+    <td>{name}</td>
+  </tr>;
+};
 
-  render() {
-    return (
-      <Panel header="Equipment">
-        <Table fill responsive hover={true} striped={true}>
-          <thead>
-          <tr>
-            <th>Element</th>
-            <th>Piece of equipment</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr>
-            <td>Head</td>
-            <td>an ushanka hat</td>
-          </tr>
-          <tr>
-            <td>Body</td>
-            <td>a shirt</td>
-          </tr>
-          <tr>
-            <td>Legs</td>
-            <td>a pair of trousers</td>
-          </tr>
-          <tr>
-            <td>Left hand</td>
-            <td>a sword</td>
-          </tr>
-          <tr>
-            <td>Right hand</td>
-            <td>a hammer</td>
-          </tr>
-          </tbody>
-        </Table>
-      </Panel>);
-  }
-}
+const EquipmentList = ({equipment}) => {
+  return <Table fill responsive hover={true} striped={true}>
+    <thead>
+    <tr>
+      <th>Element</th>
+      <th>Piece of equipment</th>
+    </tr>
+    </thead>
+    <tbody>
+    {equipment.map((eqName, eqPart) =>
+      <EquipmentPart
+        piece={eqPart}
+        name={eqName}
+      />
+    ).valueSeq()}
+    </tbody>
+  </Table>;
+};
+
+const NoEquipmentInfo = () => {
+  return <p>
+    Your character has no equipment
+  </p>;
+};
+
+const Equipment = ({equipment}) =>
+  <Panel header="Equipment">
+    {equipment.size > 0
+      ? <EquipmentList equipment={equipment}/>
+      : <NoEquipmentInfo/>}
+  </Panel>;
 
 export default Equipment;
