@@ -1,16 +1,14 @@
 import {connect} from "react-redux";
 import SkillsList from "./SkillsList";
-import {getEntityId, fromMyCharacterState} from "../../../modules/myCharacter";
-import {getEntityInfo, fromEntitiesState} from "../../../modules/entities";
+import {getMyCharacterInfoFromMyCharacterState} from "../../../modules/myCharacter";
 import * as Immutable from "immutable";
 
 const mapStateToProps = (state, ownProps) => {
 
-  const characterEntityId = getEntityId(fromMyCharacterState(state, ownProps.characterId));
-  const entityInfo = getEntityInfo(characterEntityId, fromEntitiesState(state, ownProps.characterId));
+  const myCharacterInfo = getMyCharacterInfoFromMyCharacterState(state, ownProps.characterId);
   return {
     characterId: ownProps.characterId,
-    mainSkills: entityInfo.get("skills", Immutable.List()),
+    mainSkills: myCharacterInfo.get("skills", Immutable.List()),
   };
 };
 

@@ -1,7 +1,7 @@
 import {
   myCharacterReducer,
   updateMyCharacterState,
-  getEntityId,
+  getMyCharacterEntityId,
   fromMyCharacterState,
 } from "../../src/modules/myCharacter";
 import * as Immutable from "immutable";
@@ -24,9 +24,9 @@ describe('(character) myCharacterReducer', () => {
 
   it('Should update myCharacter state.', () => {
     let state = myCharacterReducer(undefined, {});
-    expect(getEntityId(state)).to.equal(null);
+    expect(getMyCharacterEntityId(state)).to.equal(null);
 
     state = myCharacterReducer(state, updateMyCharacterState("ALA", "eaf18"));
-    expect(getEntityId(state)).to.equal("eaf18");
+    expect(getMyCharacterEntityId(state)).to.equal("eaf18");
   });
 });
