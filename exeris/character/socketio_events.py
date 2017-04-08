@@ -846,7 +846,8 @@ def _get_character_info(target_character, observer):
         combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
     else:
         combat_name = None
-    equipment_names = [g.pyslate.t("entity_info", **eq_item.pyslatize()) for eq_part, eq_item in equipment.items()]
+    equipment_parts = {eq_part: g.pyslate.t("entity_info", **eq_item.pyslatize())
+                       for eq_part, eq_item in equipment.items()}
 
     char_data.update({
         "id": app.encode(target_character.id),
@@ -858,7 +859,7 @@ def _get_character_info(target_character, observer):
         "combatIntent": combat_name,
         "shortDescription": "a bald man",
         "longDescription": "a handsome tall band man with blue eyes",
-        "equipment": equipment_names,
+        "equipment": equipment_parts,
         "modifiers": modifiers,
     })
 
