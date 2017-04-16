@@ -5,6 +5,7 @@ import InventoryListContainer from "./InventoryListContainer";
 import SkillsListContainer from "./SkillsListContainer";
 import AppearanceContainer from "./AppearanceContainer";
 import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer";
+import IntentsListContainer from "./IntentsListContainer";
 
 class MyCharacterPage extends React.Component {
 
@@ -31,6 +32,7 @@ class MyCharacterPage extends React.Component {
               <InventoryListContainer characterId={this.props.characterId}/>
             </Col>
             <Col xs={12} md={6}>
+              <IntentsListContainer characterId={this.props.characterId}/>
               <EquipmentContainer characterId={this.props.characterId}/>
               <SkillsListContainer characterId={this.props.characterId}/>
               <AppearanceContainer characterId={this.props.characterId}/>

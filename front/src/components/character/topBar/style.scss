@@ -1,3 +1,18 @@
 .Character-TopBar-Nav {
   background-color: #e0e0e0;
 }
+
+.Character-TopBar-State {
+  font-size: 35px;
+  line-height: 1;
+}
+
+.Character-TopBar-State span {
+  padding-left: 5px;
+  padding-right: 5px;
+  display: inline-block;
+}
+
+.Clickable {
+  cursor: pointer;
+}
