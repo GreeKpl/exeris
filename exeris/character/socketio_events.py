@@ -827,7 +827,7 @@ def _get_character_info(target_character, observer):
 
     intent_worked_on = models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).first()
 
-    action_worked_on = deferred.call(intent_worked_on.serialized_action) if intent_worked_on else None
+    work_name = get_intent_name(intent_worked_on) if intent_worked_on else None
     location = target_character.get_location()
     modifiers = target_character.modifiers
     target_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(target_character)
@@ -838,10 +838,6 @@ def _get_character_info(target_character, observer):
     character_observed_name = g.pyslate.t("character_info", html=True, **target_character.pyslatize())
     character_observed_raw_name = g.pyslate.t("character_info", html=False, **target_character.pyslatize())
     location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
-    if action_worked_on:
-        action_name = g.pyslate.t("action_info", **action_worked_on.pyslatize())
-    else:
-        action_name = None
     if combat_action:
         combat_name = g.pyslate.t("action_info", **combat_action.pyslatize())
     else:
@@ -855,7 +851,7 @@ def _get_character_info(target_character, observer):
         "rawName": character_observed_raw_name,
         "locationName": location_observed_name,
         "locationId": app.encode(location.id),
-        "workIntent": action_name,
+        "workIntent": work_name,
         "combatIntent": combat_name,
         "shortDescription": "a bald man",
         "longDescription": "a handsome tall band man with blue eyes",
@@ -868,9 +864,26 @@ def _get_character_info(target_character, observer):
 
 def _get_own_character_info(character):
     skills_property = properties.SkillsProperty(character)
+    intents = models.Intent.query.filter_by(executor=character).all()
     return {
         "skills": skills_property.get_all_skills(),
+        "states": {
+            "hunger": character.states[main.States.HUNGER],
+            "damage": character.states[main.States.DAMAGE],
+        },
+        "allIntents": [get_intent_info(intent) for intent in intents],
     }
+
+
+def get_intent_info(intent):
+    return {
+        "name": get_intent_name(intent),
+        "cancellable": True,
+    }
+
+
+def get_intent_name(intent):
+    return g.pyslate.t("action_info", **deferred.call(intent.serialized_action).pyslatize())
 
 
 def _get_directed_passage_in_correct_direction(char_location, entity):
