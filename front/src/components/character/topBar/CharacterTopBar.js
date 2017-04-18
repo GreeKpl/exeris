@@ -4,8 +4,8 @@ import {LinkContainer} from "react-router-bootstrap";
 import "./style.scss";
 
 
-const WithPopover = ({children, title}) => {
-  const popover = <Popover>
+const WithPopover = ({children, id, title}) => {
+  const popover = <Popover id={id}>
     {title}
   </Popover>;
   return <OverlayTrigger trigger="click" placement="bottom"
@@ -14,12 +14,12 @@ const WithPopover = ({children, title}) => {
   </OverlayTrigger>;
 };
 
-const CharacterHungry = () => <WithPopover title="HUNGRY"><Glyphicon glyph="apple" title="HUNGRY"/></WithPopover>;
+const CharacterHungry = () => <WithPopover id="hunger-icon" title="HUNGRY"><Glyphicon glyph="apple" title="HUNGRY"/></WithPopover>;
 
-const CharacterDamaged = () => <WithPopover title="DAMAGED"><Glyphicon glyph="alert" title="DAMAGED"/></WithPopover>;
+const CharacterDamaged = () => <WithPopover id="damage-icon" title="DAMAGED"><Glyphicon glyph="alert" title="DAMAGED"/></WithPopover>;
 
 const CharacterIntent = ({glyph, intentName}) => {
-  return <WithPopover title={intentName}>
+  return <WithPopover id="character-intent" title={intentName}>
     <Glyphicon className="Clickable" glyph={glyph} title={intentName}/>
   </WithPopover>;
 };
