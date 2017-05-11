@@ -1,7 +1,6 @@
 import React from "react";
-import TopBarContainer from "../player/topBar/TopBarContainer";
-import CharacterTopBarContainer from "../character/topBar/CharacterTopBarContainer";
 import NotificationsContainer from "../commons/notifications/NotificationsContainer";
+import TopBarLayoutContainer from "./../TopBarLayoutContainer";
 
 class CharacterPage extends React.Component {
   constructor(props) {
@@ -17,10 +16,10 @@ class CharacterPage extends React.Component {
         right: "0px",
         zIndex: 1,
       }}>
-        <TopBarContainer characterId={this.props.characterId}
-                         activePage={this.props.pageUrl}/>
-        <CharacterTopBarContainer characterId={this.props.characterId}
-                                  activePage={this.props.characterPageUrl}/>
+        <TopBarLayoutContainer characterId={this.props.characterId}
+                               activePage={this.props.pageUrl}
+                               characterActivePage={this.props.characterPageUrl}
+        />
       </div>
       <br/><br/>
       <br/><br/>
