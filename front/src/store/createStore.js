@@ -3,6 +3,7 @@ import thunk from "redux-thunk";
 import {browserHistory} from "react-router";
 import makeRootReducer from "./mainReducer";
 import {updateLocation} from "./location";
+import {responsiveStoreEnhancer} from "redux-responsive";
 
 export default () => {
   // ======================================================
@@ -13,7 +14,7 @@ export default () => {
   // ======================================================
   // Store Enhancers
   // ======================================================
-  const enhancers = [];
+  const enhancers = [responsiveStoreEnhancer];
 
   let composeEnhancers = compose;
 

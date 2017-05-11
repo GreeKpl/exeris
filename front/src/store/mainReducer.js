@@ -11,7 +11,8 @@ import {reducer as formReducer} from "redux-form/immutable";
 import {decoratedDynamicNamesReducer} from "../modules/dynamicNames";
 import {decoratedTravelReducer} from "../modules/travel";
 import {decoratedMyCharacterReducer} from "../modules/myCharacter";
-
+import {createResponsiveStateReducer} from "redux-responsive";
+import {transform} from 'lodash';
 
 const mainReducer = combineReducers({
   player: playerReducer,
@@ -26,6 +27,16 @@ const mainReducer = combineReducers({
   travel: decoratedTravelReducer,
   dynamicNames: decoratedDynamicNamesReducer,
   form: formReducer,
+  browser: createResponsiveStateReducer(null, {
+    extraFields: ({greaterThan, lessThan, is}) => ({
+      atLeast: transform(greaterThan, (result, value, mediaType) => {
+        result[mediaType] = value || is[mediaType]
+      }, {}),
+      atMost: transform(lessThan, (result, value, mediaType) => {
+        result[mediaType] = value || is[mediaType]
+      }, {}),
+    }),
+  }),
 });
 
 export default mainReducer;
