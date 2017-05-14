@@ -19,6 +19,7 @@ class IntentsList extends React.Component {
           <IntentInfo
             name={intentInfo.get("name")}
             cancellable={intentInfo.get("cancellable")}
+            key={intentInfo.get("name")}
           />)}
         </tbody>
       </Table>

@@ -8,15 +8,15 @@ const WithPopover = ({children, id, title}) => {
   const popover = <Popover id={id}>
     {title}
   </Popover>;
-  return <OverlayTrigger trigger="click" placement="bottom"
+  return <OverlayTrigger trigger={["hover", "click"]} placement="bottom"
                          overlay={popover} rootClose>
     {children}
   </OverlayTrigger>;
 };
 
-const CharacterHungry = () => <WithPopover id="hunger-icon" title="HUNGRY"><Glyphicon glyph="apple" title="HUNGRY"/></WithPopover>;
+const CharacterHungry = () => <WithPopover id="hunger-icon" title="HUNGRY"><Glyphicon glyph="apple"/></WithPopover>;
 
-const CharacterDamaged = () => <WithPopover id="damage-icon" title="DAMAGED"><Glyphicon glyph="alert" title="DAMAGED"/></WithPopover>;
+const CharacterDamaged = () => <WithPopover id="damage-icon" title="DAMAGED"><Glyphicon glyph="alert"/></WithPopover>;
 
 const CharacterIntent = ({glyph, intentName}) => {
   return <WithPopover id="character-intent" title={intentName}>
@@ -58,7 +58,7 @@ class CharacterTopBar extends React.Component {
     }).forEach(
       (entries) => {
         links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>
-          <NavItem className="actionItem" active={this.props.activePage == entries[0]}>
+          <NavItem className="actionItem" active={this.props.activePage === entries[0]}>
             {entries[1]}
           </NavItem>
         </LinkContainer>);

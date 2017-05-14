@@ -9,6 +9,8 @@ const mapStateToProps = (state, ownProps) => {
     characterId: ownProps.characterId,
     characterIdsList: getOwnCharactersList(fromPlayerState(state)),
     activePage: ownProps.activePage,
+    mainPageActive: false,
+    characterActivePage: ownProps.characterActivePage,
     workIntent: myCharacterInfo.get("workIntent"),
     combatIntent: myCharacterInfo.get("combatIntent"),
     hunger: myCharacterInfo.getIn(["states", "hunger"]),

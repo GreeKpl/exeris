@@ -3,27 +3,25 @@ import {IndexLinkContainer, LinkContainer} from "react-router-bootstrap";
 import {MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
 
 
-class DropdownMenu extends React.Component {
-  render() {
-    return <NavDropdown title="MENU" className="actionItem">
-      <IndexLinkContainer to={"/dashboard/"}
-                          key="main">
+const DropdownMenu = ({characters, characterId}) => {
+  return <NavDropdown id="characterMenu-dropdown" title="MENU" className="actionItem">
+    <IndexLinkContainer to={"/player/dashboard/"}
+                        key="main">
+      <MenuItem className="actionItem">
+        Community
+      </MenuItem>
+    </IndexLinkContainer>
+    {characters.map(characterInfo =>
+      <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
+        /*active={characterId === characterInfo.get("id")}*/
+                          key={characterInfo.get("id")}>
         <MenuItem className="actionItem">
-          Community
+          {characterInfo.get("name")}
         </MenuItem>
       </IndexLinkContainer>
-      {this.characters.map(characterInfo =>
-        <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
-                            active={this.props.characterId === characterInfo.get("id")}
-                            key={characterInfo.get("id")}>
-          <MenuItem className="actionItem">
-            {characterInfo.get("name")}
-          </MenuItem>
-        </IndexLinkContainer>
-      )}
-    </NavDropdown>;
-  }
-}
+    )}
+  </NavDropdown>;
+};
 
 class MobileCharacterTopBar extends React.Component {
   constructor(props) {
@@ -49,8 +47,10 @@ class MobileCharacterTopBar extends React.Component {
       myCharacter: "My character"
     }).forEach(
       (entries) => {
-        links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>
-          <NavItem className="actionItem" active={this.props.activePage === entries[0]}>
+        links.push(<LinkContainer key={entries[0]}
+                                  to={"/character/" + this.props.characterId + "/" + entries[0]}>
+          <NavItem className="actionItem"
+                   active={this.props.characterActivePage === entries[0]}>
             {entries[1]}
           </NavItem>
         </LinkContainer>);
@@ -60,11 +60,6 @@ class MobileCharacterTopBar extends React.Component {
       <DropdownMenu characterId={this.props.characterId}
                     characters={this.props.characterIdsList}/>
       {links}
-      <CharacterState workIntent={this.props.workIntent}
-                      combatIntent={this.props.combatIntent}
-                      hunger={this.props.hunger}
-                      damage={this.props.damage}
-      />
     </Nav>;
   }
 }
