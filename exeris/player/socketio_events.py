@@ -29,7 +29,7 @@ def player_update_top_bar():
 def get_characters_list():
     alive_characters = g.player.alive_characters
 
-    return sorted([{"id": ch.id, "name": ch.name} for ch in alive_characters], key=lambda ch: ch["id"]),
+    return sorted([{"id": str(ch.id), "name": ch.name} for ch in alive_characters], key=lambda ch: ch["id"]),
 
 
 @socketio_player_event("player.get_achievements_list")
