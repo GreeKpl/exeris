@@ -1,12 +1,11 @@
 import React from "react";
 import {IndexLinkContainer, LinkContainer} from "react-router-bootstrap";
-import {MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
+import {Glyphicon, MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
 
 
 const DropdownMenu = ({characters, characterId}) => {
-  return <NavDropdown id="characterMenu-dropdown"
-                      title="MENU"
-                      className="actionItem Character-TopBar-NavItem">
+  return <NavDropdown id="CharacterMenu-Dropdown"
+                      title={<Glyphicon glyph="menu-hamburger"/>}>
     <IndexLinkContainer to={"/player/dashboard/"}
                         key="main">
       <MenuItem className="actionItem">

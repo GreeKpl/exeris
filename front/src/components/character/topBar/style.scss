@@ -18,12 +18,19 @@
 }
 
 @media all and (max-width: 768px) {
-  .Character-TopBar-NavItem, .Character-TopBar-Nav.nav-pills > li + li {
-    width: 20%;
+  .Character-TopBar-Nav.nav-pills > li + li {
+    width: 22%;
     margin: 0;
   }
 
-  #characterMenu-dropdown > .caret {
+  #CharacterMenu-Dropdown {
+    width: 100%;
+    margin: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  #CharacterMenu-Dropdown > .caret {
     display: none;
   }
 
