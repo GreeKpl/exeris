@@ -5,6 +5,7 @@ const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.params.characterId,
     characterPageUrl: /character\/\d+\/([^/]+)/.exec(ownProps.location.pathname)[1],
+    isSmall: state.get("browser").atMost.small,
   };
 };
 

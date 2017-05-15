@@ -4,7 +4,9 @@ import {MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
 
 
 const DropdownMenu = ({characters, characterId}) => {
-  return <NavDropdown id="characterMenu-dropdown" title="MENU" className="actionItem">
+  return <NavDropdown id="characterMenu-dropdown"
+                      title="MENU"
+                      className="actionItem Character-TopBar-NavItem">
     <IndexLinkContainer to={"/player/dashboard/"}
                         key="main">
       <MenuItem className="actionItem">
@@ -44,17 +46,18 @@ class MobileCharacterTopBar extends React.Component {
       events: "Events",
       entities: "Entities",
       actions: "Actions",
-      myCharacter: "My character"
+      myCharacter: "Character"
     }).forEach(
       (entries) => {
         links.push(<LinkContainer key={entries[0]}
                                   to={"/character/" + this.props.characterId + "/" + entries[0]}>
-          <NavItem className="actionItem"
+          <NavItem className="actionItem Character-TopBar-NavItem"
                    active={this.props.characterActivePage === entries[0]}>
             {entries[1]}
           </NavItem>
         </LinkContainer>);
       });
+
     return <Nav bsStyle="pills"
                 className="Character-TopBar-Nav">
       <DropdownMenu characterId={this.props.characterId}

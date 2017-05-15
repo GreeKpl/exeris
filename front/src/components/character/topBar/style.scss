@@ -16,3 +16,18 @@
 .Clickable {
   cursor: pointer;
 }
+
+@media all and (max-width: 768px) {
+  .Character-TopBar-NavItem, .Character-TopBar-Nav.nav-pills > li + li {
+    width: 20%;
+    margin: 0;
+  }
+
+  #characterMenu-dropdown > .caret {
+    display: none;
+  }
+
+  .Character-TopBar-Nav {
+    text-align: center;
+  }
+}
