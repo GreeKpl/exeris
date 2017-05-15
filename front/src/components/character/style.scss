@@ -1,0 +1,9 @@
+.CharacterPage-TopBarPlaceholder {
+  height: 85px;
+}
+
+@media all and (max-width: 768px) {
+  .CharacterPage-TopBarPlaceholder {
+    height: 45px;
+  }
+}

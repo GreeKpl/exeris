@@ -1,13 +1,12 @@
 import {connect} from "react-redux";
 import MobileCharacterTopBar from "./MobileCharacterTopBar";
 import {getMyCharacterInfoFromMyCharacterState, requestMyCharacterInfo} from "../../../modules/myCharacter";
-import {fromPlayerState, getOwnCharactersList} from "../../../modules/player";
 
 const mapStateToProps = (state, ownProps) => {
   const myCharacterInfo = getMyCharacterInfoFromMyCharacterState(state, ownProps.characterId);
   return {
     characterId: ownProps.characterId,
-    characterIdsList: getOwnCharactersList(fromPlayerState(state)),
+    characterIdsList: ownProps.characterIdsList,
     activePage: ownProps.activePage,
     mainPageActive: false,
     characterActivePage: ownProps.characterActivePage,

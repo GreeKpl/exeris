@@ -9,12 +9,6 @@ class TopBar extends React.Component {
     super(props);
   }
 
-  componentDidMount() {
-    if (this.props.characterIdsList.size === 0) {
-      this.props.requestState();
-    }
-  }
-
   render() {
     return <Nav bsStyle="pills"
                 className="Player-TopBar-Nav">

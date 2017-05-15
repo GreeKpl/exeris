@@ -7,6 +7,12 @@ class PlayerPage extends React.Component {
     super(props);
   }
 
+  componentDidMount() {
+    if (this.props.characterIdsList.size === 0) {
+      this.props.requestState();
+    }
+  }
+
   render() {
     return <div>
       <div style={{
@@ -16,7 +22,7 @@ class PlayerPage extends React.Component {
         right: "0px",
         zIndex: 1,
       }}>
-        <TopBarContainer mainPageActive={true}/>
+        <TopBarContainer characterIdsList={this.props.characterIdsList} mainPageActive={true}/>
       </div>
       <br/><br/>
       {this.props.children}
