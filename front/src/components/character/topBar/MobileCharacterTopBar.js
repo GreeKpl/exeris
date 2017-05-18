@@ -1,6 +1,7 @@
 import React from "react";
 import {IndexLinkContainer, LinkContainer} from "react-router-bootstrap";
 import {Glyphicon, MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
+import {i18nize} from "../../../i18n";
 
 
 const DropdownMenu = ({characters, characterId}) => {
@@ -40,12 +41,14 @@ class MobileCharacterTopBar extends React.Component {
   }
 
   render() {
+    const {t} = this.props;
+
     let links = [];
     Object.entries({
-      events: "Events",
-      entities: "Entities",
-      actions: "Actions",
-      myCharacter: "Character"
+      events: t("top_bar_mobile_events"),
+      entities: t("top_bar_mobile_entities"),
+      actions: t("top_bar_mobile_actions"),
+      myCharacter: t("top_bar_mobile_my_character")
     }).forEach(
       (entries) => {
         links.push(<LinkContainer key={entries[0]}
@@ -66,4 +69,4 @@ class MobileCharacterTopBar extends React.Component {
   }
 }
 
-export default MobileCharacterTopBar;
+export default i18nize(MobileCharacterTopBar);

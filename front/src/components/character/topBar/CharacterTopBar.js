@@ -2,6 +2,7 @@ import React from "react";
 import {Nav, NavItem, Glyphicon, Popover, OverlayTrigger} from "react-bootstrap";
 import {LinkContainer} from "react-router-bootstrap";
 import "./style.scss";
+import {i18nize} from "../../../i18n";
 
 
 const WithPopover = ({children, id, title}) => {
@@ -49,12 +50,13 @@ class CharacterTopBar extends React.Component {
   }
 
   render() {
+    const {t} = this.props;
     let links = [];
     Object.entries({
-      events: "Events",
-      entities: "Entities",
-      actions: "Actions",
-      myCharacter: "My character"
+      events: t("top_bar_events"),
+      entities: t("top_bar_entities"),
+      actions: t("top_bar_actions"),
+      myCharacter: t("top_bar_my_character")
     }).forEach(
       (entries) => {
         links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>
@@ -75,4 +77,4 @@ class CharacterTopBar extends React.Component {
   }
 }
 
-export default CharacterTopBar;
+export default i18nize(CharacterTopBar);

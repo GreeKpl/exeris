@@ -1,5 +1,6 @@
 import React from "react";
 import {Table, ProgressBar, Panel} from "react-bootstrap";
+import {i18nize} from "../../../i18n";
 
 
 const Skill = ({name, value, indent = false}) => {
@@ -16,13 +17,15 @@ class SkillsList extends React.Component {
   }
 
   render() {
+    const {t} = this.props;
+
     return (
-      <Panel header="Skills">
+      <Panel header={t("panel_skills")}>
         <Table responsive fill>
           <thead>
           <tr>
-            <th>Skill</th>
-            <th>Level</th>
+            <th>{t("skills_header_name")}</th>
+            <th>{t("skills_header_level")}</th>
           </tr>
           </thead>
           <tbody>
@@ -51,4 +54,4 @@ class SkillsList extends React.Component {
   }
 }
 
-export default SkillsList;
+export default i18nize(SkillsList);

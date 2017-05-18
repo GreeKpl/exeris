@@ -6,7 +6,7 @@ import ControlMovementContainer from "./ControlMovementContainer";
 import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer";
 import {EntityDetailsContainer, ActivityDetailsContainer} from "./EntityDetailsContainer";
 
-class EventsPage extends React.Component {
+class EntitiesPage extends React.Component {
 
   constructor(props) {
     super(props);
@@ -44,4 +44,4 @@ class EventsPage extends React.Component {
   }
 }
 
-export default EventsPage;
+export default EntitiesPage;
