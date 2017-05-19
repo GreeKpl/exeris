@@ -3,7 +3,10 @@ import MyCharacterPage from "./MyCharacterPage";
 import {requestMyCharacterInfo} from "../../../modules/myCharacter";
 
 const mapStateToProps = (state, ownProps) => {
-  return {characterId: ownProps.params.characterId};
+  return {
+    characterId: ownProps.params.characterId,
+    isSmall: state.get("browser").atMost.small,
+  };
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {

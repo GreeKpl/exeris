@@ -2,6 +2,18 @@
 .ActionsBar-bar {
   background-color: #e0e0e0;
   z-index: 3;
+
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+}
+
+@media all and (max-width: 768px) {
+  .ActionsBar-bar {
+    height: 80px;
+  }
 }
 
 .ActionsBar-actionsList {
@@ -13,9 +25,25 @@ li.ActionsBar-actionItem {
   width: 100px;
   display: inline-block;
   float: none;
-}
-
-.ActionsBar-actionItemCaption {
   text-align: center;
 }
 
+.ActionsBar-actionItemImage {
+  height: 80px;
+}
+
+@media all and (max-width: 768px) {
+  .ActionsBar-actionItemImage {
+    height: 40px;
+  }
+
+  li.ActionsBar-actionItem {
+    width: 60px;
+    display: inline-block;
+    float: none;
+  }
+
+  li.ActionsBar-actionItem > a {
+    padding: 2px;
+  }
+}

@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Row, Col, Panel} from "react-bootstrap";
+import {Grid, Row, Col, Tabs, Tab} from "react-bootstrap";
 import EntitiesListContainer from "./EntitiesListContainer";
 import MapInfoContainer from "./MapInfoContainer";
 import ControlMovementContainer from "./ControlMovementContainer";
@@ -25,22 +25,41 @@ class EntitiesPage extends React.Component {
       }
     }
 
-    return (
-      <div>
-        <Grid fluid={true}>
-          <Row>
-            <Col xs={12} md={7}>
+    if (this.props.isSmall) {
+      return (
+        <div>
+          <Tabs bsStyle="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
+            <Tab eventKey={1} title="List">
               <EntitiesListContainer characterId={this.props.characterId}/>
-            </Col>
-            <Col xs={12} md={5}>
-              {optionalEntityInfo}
+            </Tab>
+            <Tab eventKey={3} title="Map">
               <MapInfoContainer characterId={this.props.characterId}/>
               <ControlMovementContainer characterId={this.props.characterId}/>
-            </Col>
-          </Row>
-        </Grid>
-        <ActionsBarContainer characterId={this.props.characterId}/>
-      </div>);
+            </Tab>
+            <Tab eventKey={2} title="Info">
+              {optionalEntityInfo}
+            </Tab>
+          </Tabs>
+          <ActionsBarContainer characterId={this.props.characterId}/>
+        </div>);
+    } else {
+      return (
+        <div>
+          <Grid fluid={true}>
+            <Row>
+              <Col xs={12} md={7}>
+                <EntitiesListContainer characterId={this.props.characterId}/>
+              </Col>
+              <Col xs={12} md={5}>
+                {optionalEntityInfo}
+                <MapInfoContainer characterId={this.props.characterId}/>
+                <ControlMovementContainer characterId={this.props.characterId}/>
+              </Col>
+            </Row>
+          </Grid>
+          <ActionsBarContainer characterId={this.props.characterId}/>
+        </div>);
+    }
   }
 }
 

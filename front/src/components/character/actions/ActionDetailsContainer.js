@@ -5,7 +5,7 @@ import {
   getSelectedRecipe,
   createActivityFromRecipe
 } from "../../../modules/recipes";
-import {getFormValues, formValueSelector} from "redux-form/immutable";
+import {getFormValues} from "redux-form/immutable";
 
 
 const mapStateToProps = (state, ownProps) => {

@@ -7,3 +7,17 @@
     height: 45px;
   }
 }
+
+.TupleNavTabsContainer > ul > li {
+  width: 50%;
+  text-align: center;
+}
+
+.TripleNavTabsContainer > ul > li {
+  width: 33%;
+  text-align: center;
+}
+
+.TupleNavTabsContainer > ul > li.active, .TripleNavTabsContainer > ul > li.active {
+  font-weight: bolder;
+}

@@ -56,22 +56,15 @@ const ActionsBar = ({actionFormType, actions, onClick, characterId}) => {
     case ENTITY_ACTION_PUT_INTO_STORAGE:
       return <FixedBar><PutIntoStorageFormContainer characterId={characterId}/></FixedBar>;
     default:
-      if (actions.length == 0) {
+      if (actions.length === 0) {
         return null;
       }
 
-      return <Nav className="ActionsBar-bar ActionsBar-actionsList"
-                  style={{
-                    position: "fixed",
-                    bottom: "0px",
-                    left: "0px",
-                    right: "0px",
-                    height: "150px"
-                  }}>
+      return <Nav className="ActionsBar-bar ActionsBar-actionsList">
         {actions.map(action =>
           <NavItem className="ActionsBar-actionItem" key={action.name}
                    onClick={onClick(action.endpoint, action.entities)}>
-            <Image style={{height: "80px"}} src={actionImage} rounded/>
+            <Image className="ActionsBar-actionItemImage" src={actionImage} rounded/>
             <p className="ActionsBar-actionItemCaption">{action.name}</p>
           </NavItem>
         )}

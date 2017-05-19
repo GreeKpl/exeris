@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Row, Col} from "react-bootstrap";
+import {Grid, Row, Col, Tab, Tabs} from "react-bootstrap";
 import EventsListContainer from "./EventsListContainer";
 import CharactersListContainer from "./CharactersListContainer";
 import SpeechPanelContainer from "./SpeechPanelContainer";
@@ -13,19 +13,31 @@ class EventsPage extends React.Component {
   }
 
   render() {
-    return (
-      <Grid fluid={true}>
-        <Row>
-          <Col xs={12} md={8}>
-            <TopPanelContainer characterId={this.props.characterId}/>
+    if (this.props.isSmall) {
+      return (
+        <Tabs bsStyle="tabs" className="TupleNavTabsContainer" defaultActiveKey={1}>
+          <Tab eventKey={1} title="Speaking">
             <SpeechPanelContainer characterId={this.props.characterId}/>
             <EventsListContainer characterId={this.props.characterId}/>
-          </Col>
-          <Col xs={12} md={4}>
+          </Tab>
+          <Tab eventKey={2} title="People">
             <CharactersListContainer characterId={this.props.characterId}/>
-          </Col>
-        </Row>
-      </Grid>);
+          </Tab>
+        </Tabs>);
+    } else {
+      return (
+        <Grid fluid={true}>
+          <Row>
+            <Col xs={12} md={8}>
+              <SpeechPanelContainer characterId={this.props.characterId}/>
+              <EventsListContainer characterId={this.props.characterId}/>
+            </Col>
+            <Col xs={12} md={4}>
+              <CharactersListContainer characterId={this.props.characterId}/>
+            </Col>
+          </Row>
+        </Grid>);
+    }
   }
 }
 
