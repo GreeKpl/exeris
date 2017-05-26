@@ -21,6 +21,7 @@ class EventsPage extends React.Component {
             <EventsListContainer characterId={this.props.characterId}/>
           </Tab>
           <Tab eventKey={2} title="People">
+            <TopPanelContainer characterId={this.props.characterId}/>
             <CharactersListContainer characterId={this.props.characterId}/>
           </Tab>
         </Tabs>);
@@ -29,6 +30,7 @@ class EventsPage extends React.Component {
         <Grid fluid={true}>
           <Row>
             <Col xs={12} md={8}>
+              <TopPanelContainer characterId={this.props.characterId}/>
               <SpeechPanelContainer characterId={this.props.characterId}/>
               <EventsListContainer characterId={this.props.characterId}/>
             </Col>
