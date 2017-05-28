@@ -1,8 +1,8 @@
 import {connect} from "react-redux";
 import TopPanel from "./CombatTopPanel";
 import {
-  fromTopPanelState, getDetailsTarget
-} from "../../../modules/topPanel";
+  fromDetailsState, getDetailsTarget
+} from "../../../modules/details";
 import {getEntityInfo, fromEntitiesState} from "../../../modules/entities";
 
 const characterSpecificState = (characterId, combatState) => {
@@ -17,7 +17,7 @@ const characterSpecificState = (characterId, combatState) => {
 };
 
 const mapStateToProps = (state, ownProps) => {
-  const combatId = getDetailsTarget(fromTopPanelState(state, ownProps.characterId));
+  const combatId = getDetailsTarget(fromDetailsState(state, ownProps.characterId));
   const entityInfo = getEntityInfo(combatId, fromEntitiesState(state, ownProps.characterId));
   return {
     characterId: ownProps.characterId,

@@ -3,7 +3,7 @@ import {combineReducers} from "redux-immutable";
 import {decoratedEventsReducer} from "../modules/events";
 import {decoratedCharactersAroundReducer} from "../modules/charactersAround";
 import {decoratedSpeechReducer} from "../modules/speech";
-import {decoratedTopPanelReducer} from "../modules/topPanel";
+import {decoratedDetailsReducer} from "../modules/details";
 import {decoratedEntitiesReducer} from "../modules/entities";
 import {notificationsReducer} from "../modules/notifications";
 import {decoratedRecipesReducer} from "../modules/recipes";
@@ -19,7 +19,7 @@ const mainReducer = combineReducers({
   events: decoratedEventsReducer,
   charactersAround: decoratedCharactersAroundReducer,
   speech: decoratedSpeechReducer,
-  topPanel: decoratedTopPanelReducer,
+  details: decoratedDetailsReducer,
   entities: decoratedEntitiesReducer,
   myCharacter: decoratedMyCharacterReducer,
   notifications: notificationsReducer,

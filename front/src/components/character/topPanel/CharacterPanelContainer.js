@@ -1,14 +1,14 @@
 import {connect} from "react-redux";
 import CharacterPanel from "./CharacterPanel";
 import {
-  fromTopPanelState, submitEditedName, getDetailsTarget
-} from "../../../modules/topPanel";
+  fromDetailsState, submitEditedName, getDetailsTarget
+} from "../../../modules/details";
 import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 import {getEntityInfo, fromEntitiesState} from "../../../modules/entities";
 
 
 const mapStateToProps = (state, ownProps) => {
-  const targetId = getDetailsTarget(fromTopPanelState(state, ownProps.characterId));
+  const targetId = getDetailsTarget(fromDetailsState(state, ownProps.characterId));
   const entityInfo = getEntityInfo(targetId, fromEntitiesState(state, ownProps.characterId));
 
   const nameComponent = parseHtmlToComponents(ownProps.characterId, entityInfo.get("name"));

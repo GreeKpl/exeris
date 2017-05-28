@@ -2,13 +2,13 @@ import {connect} from "react-redux";
 import TopPanel from "./TopPanel";
 import {
   getDetailsType,
-  fromTopPanelState,
-} from "../../../modules/topPanel";
+  fromDetailsState,
+} from "../../../modules/details";
 
 const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.characterId,
-    detailsType: getDetailsType(fromTopPanelState(state, ownProps.characterId)),
+    detailsType: getDetailsType(fromDetailsState(state, ownProps.characterId)),
   };
 };
 

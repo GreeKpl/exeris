@@ -4,14 +4,15 @@ import {characterReducerDecorator} from "../util/characterReducerDecorator";
 import {extractActionsFromHtml} from "../util/parseDynamicName";
 import {addEntityInfo} from "../modules/entities";
 
-export const APPLY_PANEL_CHANGE = "exeris-front/topPanel/APPLY_PANEL_CHANGE";
-export const CLOSE_TOP_PANEL = "exeris-front/topPanel/CLOSE_TOP_PANEL";
-export const ADD_MODIFIER = "exeris-front/topPanel/ADD_MODIFIER";
-export const REMOVE_MODIFIER = "exeris-front/topPanel/REMOVE_MODIFIER";
+export const APPLY_DETAILS_CHANGE = "exeris-front/details/APPLY_DETAILS_CHANGE";
+export const CLOSE_DETAILS = "exeris-front/details/CLOSE_DETAILS";
+export const ADD_MODIFIER = "exeris-front/details/ADD_MODIFIER";
+export const REMOVE_MODIFIER = "exeris-front/details/REMOVE_MODIFIER";
 
 
-export const DETAILS_CHARACTER = "DETAILS_CHARACTER";
-export const DETAILS_COMBAT = "DETAILS_COMBAT";
+export const PANEL_CHARACTER = "PANEL_CHARACTER";
+export const PANEL_COMBAT = "PANEL_COMBAT";
+export const DIALOG_READABLE = "DIALOG_READABLE";
 
 
 export const requestCharacterDetails = (characterId, targetId) => {
@@ -27,8 +28,8 @@ export const requestCharacterDetails = (characterId, targetId) => {
 
 export const applyCharacterDetails = (characterId, targetId) => {
   return {
-    type: APPLY_PANEL_CHANGE,
-    panelType: DETAILS_CHARACTER,
+    type: APPLY_DETAILS_CHANGE,
+    panelType: PANEL_CHARACTER,
     characterId: characterId,
     targetId: targetId,
   };
@@ -37,7 +38,7 @@ export const applyCharacterDetails = (characterId, targetId) => {
 export const requestCombatDetails = (characterId, combatId) => {
   return dispatch => {
     socket.request("character.get_combat_details", characterId, combatId, combatInfo => {
-      addEntityInfo(characterId, combatInfo);
+      dispatch(addEntityInfo(characterId, combatInfo));
     });
     dispatch(applyCombatDetails(characterId, combatId));
   }
@@ -45,15 +46,15 @@ export const requestCombatDetails = (characterId, combatId) => {
 
 export const applyCombatDetails = (characterId, targetId) => {
   return {
-    type: APPLY_PANEL_CHANGE,
+    type: APPLY_DETAILS_CHANGE,
     characterId: characterId,
-    panelType: DETAILS_COMBAT,
+    panelType: PANEL_COMBAT,
     targetId: targetId,
   };
 };
 
 
-const addPanelModifier = (characterId, key, value) => {
+const addDetailsModifier = (characterId, key, value) => {
   return {
     type: ADD_MODIFIER,
     characterId: characterId,
@@ -62,7 +63,7 @@ const addPanelModifier = (characterId, key, value) => {
   }
 };
 
-const removePanelModifier = (characterId, key) => {
+const removeDetailsModifier = (characterId, key) => {
   return {
     type: REMOVE_MODIFIER,
     characterId: characterId,
@@ -70,9 +71,9 @@ const removePanelModifier = (characterId, key) => {
   }
 };
 
-export const closeTopPanel = (characterId) => {
+export const closeDetails = (characterId) => {
   return {
-    type: CLOSE_TOP_PANEL,
+    type: CLOSE_DETAILS,
     characterId: characterId,
   };
 };
@@ -80,7 +81,7 @@ export const closeTopPanel = (characterId) => {
 
 export const submitEditedName = (characterId, newName) => {
   return (dispatch, getState) => {
-    const targetId = getDetailsTarget(fromTopPanelState(getState(), characterId));
+    const targetId = getDetailsTarget(fromDetailsState(getState(), characterId));
     socket.request("character.rename_entity", characterId, targetId, newName, () => {
       // panel is *probably* still open, so refresh it
       dispatch(requestCharacterDetails(characterId, targetId));
@@ -89,15 +90,15 @@ export const submitEditedName = (characterId, newName) => {
 };
 
 
-export const topPanelReducer = (state = Immutable.fromJS({
+export const detailsReducer = (state = Immutable.fromJS({
   type: null,
 }), action) => {
   switch (action.type) {
-    case CLOSE_TOP_PANEL:
+    case CLOSE_DETAILS:
       return Immutable.Map({
         type: null,
       });
-    case APPLY_PANEL_CHANGE:
+    case APPLY_DETAILS_CHANGE:
       return Immutable.Map({
         "type": action.panelType,
         "targetId": action.targetId,
@@ -111,10 +112,10 @@ export const topPanelReducer = (state = Immutable.fromJS({
   }
 };
 
-export const decoratedTopPanelReducer = characterReducerDecorator(topPanelReducer);
+export const decoratedDetailsReducer = characterReducerDecorator(detailsReducer);
 
 export const getDetailsType = state => state.get("type", null);
 
 export const getDetailsTarget = state => state.get("targetId", null);
 
-export const fromTopPanelState = (state, characterId) => state.getIn(["topPanel", characterId], Immutable.Map());
+export const fromDetailsState = (state, characterId) => state.getIn(["details", characterId], Immutable.Map());

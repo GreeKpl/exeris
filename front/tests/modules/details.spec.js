@@ -1,19 +1,19 @@
 import {
-  DETAILS_COMBAT, DETAILS_CHARACTER,
+  PANEL_COMBAT, PANEL_CHARACTER,
   applyCharacterDetails,
   applyCombatDetails,
-  closeTopPanel,
+  closeDetails,
   getDetailsType,
-  fromTopPanelState,
-  topPanelReducer,
-  decoratedTopPanelReducer, getDetailsTarget
-} from "../../src/modules/topPanel";
+  fromDetailsState,
+  detailsReducer,
+  decoratedDetailsReducer, getDetailsTarget
+} from "../../src/modules/details";
 import * as Immutable from "immutable";
 
-describe('(topPanel) topPanelReducer', () => {
+describe('(details) detailsReducer', () => {
 
   it('Should initialize with initial state.', () => {
-    expect(topPanelReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(detailsReducer(undefined, {})).to.equal(Immutable.fromJS({
       type: null,
     }));
   });
@@ -22,7 +22,7 @@ describe('(topPanel) topPanelReducer', () => {
     const previousState = Immutable.fromJS({
       type: null,
     });
-    let state = topPanelReducer(previousState, {});
+    let state = detailsReducer(previousState, {});
     expect(state).to.equal(previousState);
   });
 
@@ -30,9 +30,9 @@ describe('(topPanel) topPanelReducer', () => {
     const previousState = Immutable.fromJS({
       type: null,
     });
-    let state = topPanelReducer(previousState, applyCharacterDetails(0, "DEF"));
+    let state = detailsReducer(previousState, applyCharacterDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
-        type: DETAILS_CHARACTER,
+        type: PANEL_CHARACTER,
         targetId: "DEF",
       }
     ));
@@ -42,23 +42,23 @@ describe('(topPanel) topPanelReducer', () => {
     const previousState = Immutable.fromJS({
       type: null,
     });
-    let state = topPanelReducer(previousState, applyCombatDetails(0, "DEF"));
+    let state = detailsReducer(previousState, applyCombatDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
-      type: DETAILS_COMBAT,
+      type: PANEL_COMBAT,
       targetId: "DEF",
     }));
   });
 
   it('Should clear the state on close action.', () => {
     const previousState = Immutable.fromJS({
-      type: DETAILS_CHARACTER,
+      type: PANEL_CHARACTER,
       id: "DEF",
       name: "John",
       locationName: "Place",
       locationId: "123",
       workIntent: "",
     });
-    let state = topPanelReducer(previousState, closeTopPanel(0));
+    let state = detailsReducer(previousState, closeDetails(0));
     expect(state).to.equal(Immutable.fromJS({
       type: null,
     }));
@@ -66,23 +66,23 @@ describe('(topPanel) topPanelReducer', () => {
 
   it('Should completely remove old state when replaced by a new state.', () => {
     const previousState = Immutable.fromJS({
-      type: DETAILS_CHARACTER,
+      type: PANEL_CHARACTER,
       targetId: "DEF",
     });
-    let state = topPanelReducer(previousState, applyCombatDetails(0, "DEF"));
+    let state = detailsReducer(previousState, applyCombatDetails(0, "DEF"));
     expect(state).to.equal(Immutable.fromJS({
-      type: DETAILS_COMBAT,
+      type: PANEL_COMBAT,
       targetId: "DEF",
     }));
   });
 
   it('Should update the speech of a specified character.', () => {
-    let state = decoratedTopPanelReducer(undefined, {});
-    state = decoratedTopPanelReducer(state, applyCombatDetails("HEHE", "DEF"));
-    const globalState = Immutable.Map({topPanel: state});
+    let state = decoratedDetailsReducer(undefined, {});
+    state = decoratedDetailsReducer(state, applyCombatDetails("HEHE", "DEF"));
+    const globalState = Immutable.Map({details: state});
 
-    expect(getDetailsType(fromTopPanelState(globalState, "HEHE"))).to.equal(DETAILS_COMBAT);
-    expect(getDetailsTarget(fromTopPanelState(globalState, "HEHE"))).to.equal("DEF");
-    expect(getDetailsTarget(fromTopPanelState(globalState, "MISSING_CHAR"))).to.equal(null);
+    expect(getDetailsType(fromDetailsState(globalState, "HEHE"))).to.equal(PANEL_COMBAT);
+    expect(getDetailsTarget(fromDetailsState(globalState, "HEHE"))).to.equal("DEF");
+    expect(getDetailsTarget(fromDetailsState(globalState, "MISSING_CHAR"))).to.equal(null);
   });
 });

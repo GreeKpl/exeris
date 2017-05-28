@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  DETAILS_CHARACTER,
-  DETAILS_COMBAT,
-} from "../../../modules/topPanel";
+  PANEL_CHARACTER,
+  PANEL_COMBAT,
+} from "../../../modules/details";
 import CombatTopPanelContainer from "./CombatTopPanelContainer";
 import CharacterPanelContainer from "./CharacterPanelContainer";
 
@@ -11,10 +11,10 @@ import CharacterPanelContainer from "./CharacterPanelContainer";
  */
 const TopPanel = ({characterId, detailsType}) => {
   switch (detailsType) {
-    case DETAILS_COMBAT:
+    case PANEL_COMBAT:
       return <CombatTopPanelContainer characterId={characterId}/>;
       break;
-    case DETAILS_CHARACTER:
+    case PANEL_CHARACTER:
       return <CharacterPanelContainer characterId={characterId}/>;
       break;
     default:

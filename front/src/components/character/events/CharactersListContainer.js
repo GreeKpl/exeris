@@ -16,7 +16,7 @@ import {
   SPEECH_TYPE_WHISPER_TO,
   SPEECH_TYPE_ALOUD,
 } from "../../../modules/speech";
-import {requestCharacterDetails} from "../../../modules/topPanel";
+import {requestCharacterDetails} from "../../../modules/details";
 import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 
 

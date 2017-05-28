@@ -7,4 +7,4 @@ export * as notifications from "./notifications";
 export * as player from "./player";
 export * as recipes from "./recipes";
 export * as speech from "./speech";
-export * as topPanel from "./topPanel";
+export * as details from "./details";

@@ -1,7 +1,7 @@
 import DynamicName from "./DynamicName";
 import {connect} from "react-redux";
 import {getDynamicName, fromDynamicNamesState} from "../../modules/dynamicNames";
-import {requestCharacterDetails} from "../../modules/topPanel";
+import {requestCharacterDetails} from "../../modules/details";
 
 const mapStateToProps = (state, ownProps) => {
   return {
