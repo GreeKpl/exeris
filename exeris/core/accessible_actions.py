@@ -30,8 +30,6 @@ ACTIONS_ON_GROUND = [
     ActionRecord("eat", "image", P.EDIBLE, "character.eat"),
     ActionRecord("enter", "image", P.ENTERABLE, "character.move_to_location"),
     ActionRecord("read", "image", P.READABLE, "character.show_readable_contents"),
-    ActionRecord("add_to_activity", "image", P.ANY, "character.add_item_to_activity",
-                 lambda x: isinstance(x, models.Item)),
     ActionRecord("go_to_location", "image", P.ANY, "character.go_to_location",
                  lambda x: isinstance(x, models.RootLocation)),
     ActionRecord("open", "image", P.CLOSEABLE, "character.toggle_closeable",
