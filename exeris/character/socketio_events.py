@@ -312,9 +312,9 @@ def get_entities_to_bind_to(entity_id):
     client_socket.emit("character.bind_to_vehicle_setup",
                        (str(g.character.id),
                         [{
-                             "id": app.encode(entity.id),
-                             "name": g.pyslate.t("entity_info", **entity.pyslatize()),
-                         } for entity in entities]))
+                            "id": app.encode(entity.id),
+                            "name": g.pyslate.t("entity_info", **entity.pyslatize()),
+                        } for entity in entities]))
 
 
 @socketio_character_event("character.bind_to_vehicle")
@@ -378,8 +378,8 @@ def get_ship_to_unboard_from(enc_other_ship_id):
 
 @socketio_character_event("character.go_to_location")
 @single_entity_action
-def character_goto_location(entity_id):
-    entity = decode_and_load_entity(entity_id)
+def character_goto_location(enc_entity_id):
+    entity = decode_and_load_entity(enc_entity_id)
     assert isinstance(entity, models.Location)
 
     models.Intent.query.filter_by(executor=g.character, type=main.Intents.WORK).delete()
@@ -392,7 +392,7 @@ def character_goto_location(entity_id):
             control_movement_intent.target, entity)
 
     db.session.commit()
-    client_socket.emit("character.go_to_location_after", (str(g.character.id),))
+    client_socket.emit("character.go_to_location_after", (str(g.character.id), enc_entity_id))
 
 
 @socketio_character_event("character.get_character_details")
@@ -417,24 +417,25 @@ def show_readable_content(enc_entity_id):
     contents = entity_readable_property.read_contents()
     raw_contents = entity_readable_property.read_raw_contents()
 
-    client_socket.emit("character.show_readable_contents_after", (str(g.character.id), {
-        "id": enc_entity_id,
+    client_socket.emit("character.show_readable_contents_after", (str(g.character.id), enc_entity_id, {
         "title": title,
         "contents": contents,
         "rawContents": raw_contents,
+        "textEditable": True,
     }))
 
 
-@socketio_character_event("edit_readable")
-def edit_readable(entity_id, text):
-    entity_id = app.decode(entity_id)
+@socketio_character_event("character.edit_readable")
+def edit_readable(enc_entity_id, title, text):
+    entity_id = app.decode(enc_entity_id)
     entity = models.Entity.by_id(entity_id)
 
     entity_readable_property = properties.ReadableProperty(entity)
-    entity_readable_property.alter_contents("title", text, models.TextContent.FORMAT_MD)
+    entity_readable_property.alter_contents(title, text, models.TextContent.FORMAT_MD)
 
     db.session.commit()
-    return app.encode(entity_id),
+    client_socket.emit("character.edit_readable_after", (str(g.character.id), enc_entity_id))
+    return ()
 
 
 def _get_entity_infos_in(parent_entity, observer, excluded=None):
@@ -666,9 +667,9 @@ def put_into_storage(enc_item_ids, storage_id=None, amount=None):
 
         accessible_storages = storage_items + storage_locations
         storages_json = [{
-                             "id": app.encode(storage.id),
-                             "name": g.pyslate.t("entity_info", **storage.pyslatize()),
-                         } for storage in accessible_storages]
+            "id": app.encode(storage.id),
+            "name": g.pyslate.t("entity_info", **storage.pyslatize()),
+        } for storage in accessible_storages]
 
         max_amount = None
         if len(items) == 1:
@@ -953,10 +954,10 @@ def activity_from_recipe_setup(recipe_id):
         } for subject in potential_subjects]
 
     additional_form_inputs = [{
-                                  "name": input_name,
-                                  "type": input_class.__name__,
-                                  "args": input_class.action_args,
-                              } for input_name, input_class in form_inputs.items()]
+        "name": input_name,
+        "type": input_class.__name__,
+        "args": input_class.action_args,
+    } for input_name, input_class in form_inputs.items()]
 
     return {
                "id": recipe.id,
