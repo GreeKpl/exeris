@@ -4,8 +4,9 @@ import {
   deselectEntity,
   selectEntityAction,
   clearSelectedEntityAction,
-  requestRootEntities, updateExpandedInputDetails, requestSelectedDetails
+  requestRootEntities, updateExpandedInputDetails, requestSelectedDetails, extendEntityInfo
 } from "./entities";
+import {applyReadableDialogDetails} from "./details";
 
 export const ENTITY_ACTION_TAKE = "ENTITY_ACTION_TAKE";
 export const ENTITY_ACTION_DROP = "ENTITY_ACTION_DROP";
@@ -115,12 +116,18 @@ export const setUpSocketioListeners = dispatch => {
     dispatch(requestRootEntities(characterId));
   });
 
-  socket.on("character.go_to_location_after", (characterId) => { // travel to
-    console.log("TODO GO TO LOCATION");
+  socket.on("character.go_to_location_after", (characterId, entityId) => { // travel to
+    dispatch(standardAfterEntityAction(characterId, entityId));
   });
 
-  socket.on("character.show_readable_contents_after", (characterId, readableEntity) => {
-    console.log("TODO READABLE ENTITY");
+  socket.on("character.show_readable_contents_after", (characterId, entityId, readableEntityInfo) => {
+    dispatch(extendEntityInfo(characterId, entityId, readableEntityInfo));
+    dispatch(applyReadableDialogDetails(characterId, entityId));
+  });
+
+  socket.on("character.edit_readable_after", (characterId, entityId) => {
+    dispatch(requestRefreshEntity(characterId, entityId));
+    dispatch(performEntityAction(characterId, "character.show_readable_contents", [entityId]));
   });
 
   socket.on("character.join_activity_after", (characterId, activityId) => { // travel to
@@ -158,5 +165,12 @@ export const performAddEntityToItemAction = (characterId, activityId, reqGroup, 
     dispatch(performEntityAction(characterId,
       "character.add_item_to_activity",
       [activityId], reqGroup, addedItemId, amount));
+  };
+};
+
+export const performEditReadableEntityAction = (characterId, entityId, title, contents) => {
+  return dispatch => {
+    dispatch(performEntityAction(characterId, "character.edit_readable",
+      entityId, title, contents));
   };
 };

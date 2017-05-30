@@ -3,6 +3,8 @@ import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 
 export const ADD_ENTITY_INFO = "exeris-front/entities/ADD_ENTITY_INFO";
+export const EXTEND_ENTITY_INFO = "exeris-front/entities/EXTEND_ENTITY_INFO";
+
 export const UPDATE_ROOT_ENTITIES_LIST = "exeris-front/entities/UPDATE_ROOT_ENTITIES_LIST";
 export const UPDATE_ITEMS_IN_INVENTORY_LIST = "exeris-front/entities/UPDATE_ITEMS_IN_INVENTORY_LIST";
 
@@ -121,6 +123,15 @@ export const addEntityInfo = (characterId, entityInfo) => {
   };
 };
 
+export const extendEntityInfo = (characterId, entityId, infoToAppend) => {
+  return {
+    type: EXTEND_ENTITY_INFO,
+    entityId,
+    characterId,
+    infoToAppend,
+  };
+};
+
 export const expandEntity = (characterId, entityId) => {
   return dispatch => {
     dispatch({
@@ -152,7 +163,7 @@ export const selectEntity = (characterId, entityId) => {
       characterId: characterId,
     });
 
-    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size == 1) { // select the first entity
+    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size === 1) { // select the first entity
       dispatch(requestSelectedDetails(characterId, entityId));
     }
   }
@@ -179,7 +190,7 @@ export const deselectEntity = (characterId, entityId) => {
       characterId: characterId,
     });
 
-    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size == 0) { // deselected the last entity
+    if (getSelectedEntities(fromEntitiesState(getState(), characterId)).size === 0) { // deselected the last entity
       dispatch({
         type: SHOW_SELECTED_DETAILS,
         entityDetails: null,
@@ -290,6 +301,8 @@ export const entitiesReducer = (state = Immutable.fromJS(
     case ADD_ENTITY_INFO:
       const entityInfo = action.entityInfo;
       return state.setIn(["info", entityInfo.id], Immutable.fromJS(entityInfo));
+    case EXTEND_ENTITY_INFO:
+      return state.mergeIn(["info", action.entityId], Immutable.fromJS(action.infoToAppend));
     case UPDATE_CHILDREN_OF_ENTITY:
       return state.setIn(["children", action.parentEntityId],
         Immutable.fromJS(action.childrenIds));

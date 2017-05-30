@@ -29,7 +29,7 @@ export const requestCharacterDetails = (characterId, targetId) => {
 export const applyCharacterDetails = (characterId, targetId) => {
   return {
     type: APPLY_DETAILS_CHANGE,
-    panelType: PANEL_CHARACTER,
+    detailsType: PANEL_CHARACTER,
     characterId: characterId,
     targetId: targetId,
   };
@@ -48,11 +48,19 @@ export const applyCombatDetails = (characterId, targetId) => {
   return {
     type: APPLY_DETAILS_CHANGE,
     characterId: characterId,
-    panelType: PANEL_COMBAT,
+    detailsType: PANEL_COMBAT,
     targetId: targetId,
   };
 };
 
+export const applyReadableDialogDetails = (characterId, targetId) => {
+  return {
+    type: APPLY_DETAILS_CHANGE,
+    detailsType: DIALOG_READABLE,
+    characterId,
+    targetId,
+  };
+};
 
 const addDetailsModifier = (characterId, key, value) => {
   return {
@@ -100,8 +108,8 @@ export const detailsReducer = (state = Immutable.fromJS({
       });
     case APPLY_DETAILS_CHANGE:
       return Immutable.Map({
-        "type": action.panelType,
-        "targetId": action.targetId,
+        type: action.detailsType,
+        targetId: action.targetId,
       });
     case ADD_MODIFIER:
       return state.set(action.key, action.value);
