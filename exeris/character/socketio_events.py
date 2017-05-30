@@ -834,8 +834,10 @@ def _get_character_info(target_character, observer):
     target_optional_preferred_equipment_property = properties.OptionalPreferredEquipmentProperty(target_character)
     equipment = target_optional_preferred_equipment_property.get_equipment()
 
-    participant_combatable_property = properties.CombatableProperty(target_character)
-    combat_action = participant_combatable_property.combat_action
+    combat_action = None
+    if target_character.has_property(P.COMBATABLE):
+        participant_combatable_property = properties.CombatableProperty(target_character)
+        combat_action = participant_combatable_property.combat_action
     character_observed_name = g.pyslate.t("character_info", html=True, **target_character.pyslatize())
     character_observed_raw_name = g.pyslate.t("character_info", html=False, **target_character.pyslatize())
     location_observed_name = g.pyslate.t("location_info", **location.pyslatize())
