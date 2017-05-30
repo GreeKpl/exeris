@@ -155,6 +155,7 @@ class ReadableProperty(PropertyBase):
     def alter_contents(self, title, text, text_format):
         text_content = self._fetch_text_content()
         text_content.title = title
+        self.entity.title = title
         text_content.format = text_format
         if text_format == models.TextContent.FORMAT_MD:
             text_content.md_text = text
