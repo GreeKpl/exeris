@@ -1,5 +1,6 @@
 import {Button, Modal} from "react-bootstrap";
 import React from "react";
+import "./style.scss";
 
 
 class EditReadableModal extends React.Component {
@@ -39,21 +40,20 @@ class EditReadableModal extends React.Component {
 
   render() {
     const {onCancelEdit} = this.props;
-    return <Modal
-      show={true}
-      onHide={onCancelEdit}
-      dialogClassName="ReadableEntityModal-dialog"
-    >
+    return <Modal show={true}
+                  backdrop="static">
       <Modal.Header>
         <Modal.Title>
-          <input className="form-control" type="text" onChange={this.onTitleChange} value={this.state.title}/>
+          <input className="form-control"
+                 type="text"
+                 onChange={this.onTitleChange}
+                 value={this.state.title}/>
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <textarea className="form-control"
+      <Modal.Body className="EditReadableModal-Body">
+        <textarea className="form-control EditReadableModal-ContentsArea"
                   onChange={this.onContentsChange}
-                  value={this.state.contents}
-        />
+                  value={this.state.contents}/>
       </Modal.Body>
       <Modal.Footer>
         <Button onClick={this.handleConfirmEdit}>Save</Button>
@@ -65,15 +65,17 @@ class EditReadableModal extends React.Component {
 
 
 const ReadReadableModal = ({title, contents, editable, onClose, onClickEdit}) => {
-  return <Modal
-    show={true}
-    onHide={onClose}
-    dialogClassName="ReadableEntityModal-dialog"
-  >
-    <Modal.Header closeButton>
-      <span>{editable ? <Button style={{float: "right"}} onClick={onClickEdit}>
-        Edit
-      </Button> : null}</span>
+  return <Modal show={true}
+                backdrop="static">
+    <Modal.Header>
+      <span className="ReadableEntityModal-Header-Toolbar">
+        {editable && <Button onClick={onClickEdit}>
+          Edit
+        </Button>}
+        <Button onClick={onClose}>
+          Close
+        </Button>
+      </span>
       <Modal.Title>{title}</Modal.Title>
     </Modal.Header>
     <Modal.Body dangerouslySetInnerHTML={{__html: contents}}/>
