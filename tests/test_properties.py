@@ -46,8 +46,6 @@ class EntityPropertiesTest(TestCase):
         rl = RootLocation(Point(1, 1), 111)
         char = util.create_character("ABC", rl, util.create_player("wololo"))
 
-        char.properties.append(EntityProperty(P.SKILLS, {}))
-
         db.session.add_all([rl, SkillType("baking", "cooking"),
                             SkillType("frying", "cooking")])
         db.session.flush()

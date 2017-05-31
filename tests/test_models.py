@@ -761,7 +761,6 @@ class GroupTest(TestCase):
         rl = RootLocation(Point(1, 1), 32)
         building_type = LocationType("building", 1000)
         initiator = util.create_character("John", rl, util.create_player("AAA"))
-        initiator.properties.append(EntityProperty(P.SKILLS, {}))
         baking_skill_type = SkillType("smithing", "crafting")
 
         tools_category = BuildMenuCategory("tools")

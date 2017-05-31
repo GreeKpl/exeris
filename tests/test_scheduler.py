@@ -674,7 +674,7 @@ class SchedulerActivityTest(TestCase):
         frying_skill = SkillType("frying", "cooking")
         baking_skill = SkillType("baking", "cooking")
 
-        worker.properties.append(EntityProperty(P.SKILLS, data={"cooking": 0.1, "frying": 0.5, "baking": 0.1}))
+        worker.alter_property(P.SKILLS, {"cooking": 0.1, "frying": 0.5, "baking": 0.1})
 
         db.session.add_all([rl, worked_on_type, worked_on, frying_skill, baking_skill])
 
