@@ -2,7 +2,8 @@ import {connect} from "react-redux";
 import ActionsBar from "./ActionsBar";
 import {getSelectedEntities, fromEntitiesState, getEntityInfos, getActionType} from "../../../modules/entities";
 import {
-  performEntityAction} from "../../../modules/entities-actionsAddon";
+  performEntityAction
+} from "../../../modules/entities-actionsAddon";
 import * as Immutable from "immutable";
 
 export const getAllowedActions = (state, characterId) => {
@@ -35,7 +36,7 @@ export const getAllowedActions = (state, characterId) => {
 
   return Immutable.Map(occurrencesOfActions)
     .filter(action => action.count >= selectedEntities.size
-    && (selectedEntities.size == 1 || action.allowMultipleEntities))
+    && (selectedEntities.size === 1 || action.allowMultipleEntities))
     .valueSeq().toJS();
 };
 

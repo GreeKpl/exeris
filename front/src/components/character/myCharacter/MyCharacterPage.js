@@ -30,6 +30,7 @@ class MyCharacterPage extends React.Component {
         <Tabs bsStyle="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
           <Tab eventKey={1} title="Inventory">
             <InventoryListContainer characterId={this.props.characterId}/>
+            <ActionsBarContainer characterId={this.props.characterId}/>
           </Tab>
           <Tab eventKey={2} title="My state">
             <IntentsListContainer characterId={this.props.characterId}/>
