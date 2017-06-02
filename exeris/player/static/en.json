@@ -2,9 +2,9 @@
   "top_bar_events": "Events",
   "top_bar_entities": "Entities",
   "top_bar_actions": "Actions",
-  "top_bar_my_character": "Character",
+  "top_bar_my_character": "My character",
   "top_bar_mobile_events": "Events",
   "top_bar_mobile_entities": "Entities",
   "top_bar_mobile_actions": "Actions",
-  "top_bar_mobile_my_character": "Character"
+  "top_bar_mobile_my_character": "Me"
 }
