@@ -4,7 +4,7 @@ import {
   deselectEntity,
   selectEntityAction,
   clearSelectedEntityAction,
-  requestRootEntities, updateExpandedInputDetails, requestSelectedDetails, extendEntityInfo
+  requestRootEntities, updateExpandedInputDetails, requestSelectedDetails, extendEntityInfo, requestInventoryEntities
 } from "./entities";
 import {applyReadableDialogDetails} from "./details";
 
@@ -36,6 +36,7 @@ export const setUpSocketioListeners = dispatch => {
     for (let itemId of itemIds) {
       dispatch(standardAfterEntityAction(characterId, itemId));
     }
+    dispatch(requestInventoryEntities(characterId));
   });
 
   socket.on("character.give_item_setup", (characterId, maxAmount, receivers) => {
@@ -52,10 +53,8 @@ export const setUpSocketioListeners = dispatch => {
     dispatch(selectEntityAction(characterId, ENTITY_ACTION_EAT, {maxAmount: maxAmount}));
   });
 
-  socket.on("character.eat_after", (characterId, itemIds) => {
-    for (let itemId of itemIds) {
-      dispatch(standardAfterEntityAction(characterId, itemId));
-    }
+  socket.on("character.eat_after", (characterId, itemId) => {
+    dispatch(standardAfterEntityAction(characterId, itemId));
   });
 
   socket.on("character.put_into_storage_setup", (characterId, maxAmount, storages) => {
@@ -112,8 +111,9 @@ export const setUpSocketioListeners = dispatch => {
     dispatch(standardAfterEntityAction(characterId, entityId));
   });
 
-  socket.on("character.move_to_location_after", (characterId) => { // enter
+  socket.on("character.move_to_location_after", (characterId, entityId) => { // enter
     dispatch(requestRootEntities(characterId));
+    dispatch(standardAfterEntityAction(characterId, entityId));
   });
 
   socket.on("character.go_to_location_after", (characterId, entityId) => { // travel to

@@ -307,8 +307,11 @@ export const entitiesReducer = (state = Immutable.fromJS(
       return state.setIn(["children", action.parentEntityId],
         Immutable.fromJS(action.childrenIds));
     case REMOVE_CHILD_OF_ENTITY:
-      return state.updateIn(["children", action.parentEntityId], Immutable.List(),
+      let newState = state.updateIn(["children", action.parentEntityId], Immutable.List(),
         list => list.filter(el => el !== action.childId));
+      newState = newState.update("rootEntities", list => list.filter(el => el !== action.childId));
+      newState = newState.update("itemsInInventory", list => list.filter(el => el !== action.childId));
+      return newState;
     case UPDATE_ROOT_ENTITIES_LIST:
       return state.set("rootEntities", Immutable.fromJS(action.rootEntitiesList));
     case UPDATE_ITEMS_IN_INVENTORY_LIST:
