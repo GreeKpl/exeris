@@ -679,6 +679,12 @@ class WorkProcess(ProcessAction):
             return
         else:
             move_entity_to_position(representative, direction, destination_pos)
+        for union_member in _get_union_members_or_itself(representative):
+            if isinstance(union_member, models.Character):
+                characters_to_call = [union_member]
+            else:
+                characters_to_call = union_member.characters_inside()
+            [main.call_hook(main.Hooks.POSITION_CHANGED, character=char) for char in characters_to_call]
 
     def move_to_destination_if_close_enough(self, destination_pos, entity, initial_pos, travel_target):
         goal_point = travel_target.get_position()

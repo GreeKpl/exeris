@@ -1,5 +1,5 @@
 import exeris
-from exeris.app import app
+from exeris.app import app, socketio
 from exeris.core import main, actions, models, util
 from exeris.core.properties_base import P
 from exeris.extra import notifications_service
@@ -61,3 +61,9 @@ def on_new_player_notification(player, notification):
     for sid in exeris.app.socketio_users.get_all_by_player_id(player.id):
         notification_info = util.serialize_notifications([notification], pyslate)[0]
         notifications_service.add_notification_to_send(sid, notification_info)
+
+
+@main.hook(main.Hooks.POSITION_CHANGED)
+def on_position_changed(character):
+    for sid in exeris.app.socketio_users.get_all_by_player_id(character.player_id):
+        socketio.emit("character.position_changed", (character.id,), room=sid)
