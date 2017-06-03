@@ -4,7 +4,21 @@ import socket from "../util/server";
 import {extractActionsFromHtml} from "../util/parseDynamicName";
 
 export const UPDATE_TRAVEL_STATE = "exeris-front/travel/UPDATE_TRAVEL_STATE";
+export const INCREMENT_TRAVEL_TICK = "exeris-front/travel/INCREMENT_TRAVEL_TICK";
 
+
+export const setUpSocketioListeners = dispatch => {
+  socket.on("character.position_changed", (characterId) => {
+    dispatch(incrementTravelStateTick(characterId));
+  });
+};
+
+export const incrementTravelStateTick = characterId => {
+  return {
+    type: INCREMENT_TRAVEL_TICK,
+    characterId: characterId,
+  };
+};
 
 export const requestTravelState = characterId => {
   return dispatch => {
@@ -48,10 +62,13 @@ export const stopMovement = characterId => {
 
 export const travelReducer = (state = Immutable.fromJS({
   "canBeControlled": false,
+  "travelTick": 0,
 }), action) => {
   switch (action.type) {
     case UPDATE_TRAVEL_STATE:
-      return Immutable.fromJS(action.travelData);
+      return Immutable.fromJS(action.travelData).set("travelTick", state.get("travelTick"));
+    case INCREMENT_TRAVEL_TICK:
+      return state.set("travelTick", state.get("travelTick") + 1);
     default:
       return state;
   }
@@ -62,6 +79,8 @@ export const decoratedTravelReducer = characterReducerDecorator(travelReducer);
 export const canBeControlled = state => state.get("canBeControlled", false);
 
 export const getMovementAction = state => state.get("movementAction", null);
+
+export const getTickId = state => state.get("travelTick");
 
 export const fromTravelState = (state, characterId) =>
   state.getIn(["travel", characterId], Immutable.Map());

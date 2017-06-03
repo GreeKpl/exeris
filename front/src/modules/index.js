@@ -8,3 +8,4 @@ export * as player from "./player";
 export * as recipes from "./recipes";
 export * as speech from "./speech";
 export * as details from "./details";
+export * as travel from "./travel";
