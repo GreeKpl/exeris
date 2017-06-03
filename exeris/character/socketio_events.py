@@ -288,9 +288,8 @@ def get_moving_entity_info():
 
 
 @socketio_character_event("character.get_entities_to_bind_to")
-def get_entities_to_bind_to(entity_id):
-    entity_id = app.decode(entity_id)
-    entity = models.Entity.by_id(entity_id)
+def get_entities_to_bind_to(enc_entity_id):
+    entity = decode_and_load_entity(enc_entity_id)
     rng = general.AdjacentLocationsRange(False)
     if not rng.is_near(g.character, entity):
         raise main.EntityTooFarAwayException(entity=entity)
@@ -520,7 +519,11 @@ def get_children_entities(entity_id, parent_parent_id):
 
 @socketio_character_event("character.get_extended_entity_info")
 def get_entities(enc_entity_id, enc_parent_id):
-    entity = decode_and_load_entity(enc_entity_id)
+    entity_id = app.decode(enc_entity_id)
+    entity = models.Entity.query.filter_by(id=entity_id).first()
+
+    if not entity:
+        return {"id": enc_entity_id},
 
     cache_properties_of_entities([entity])
 
@@ -573,8 +576,8 @@ def get_detailed_entity_info(enc_entity_id):
 
 @socketio_character_event("character.move_to_location")
 @single_entity_action
-def move_to_location(location_id):
-    location = decode_and_load_entity(location_id)
+def move_to_location(enc_location_id):
+    location = decode_and_load_entity(enc_location_id)
 
     passage = models.Passage.query.filter(models.Passage.between(g.character.being_in, location)).one()
 
@@ -582,7 +585,7 @@ def move_to_location(location_id):
     action.perform()
 
     db.session.commit()
-    client_socket.emit("character.move_to_location_after", (str(g.character.id)))
+    client_socket.emit("character.move_to_location_after", (str(g.character.id), enc_location_id))
 
 
 @socketio_character_event("character.add_item_to_activity")
@@ -646,8 +649,8 @@ def take_item(enc_item_ids, amount=None):
         client_socket.emit("character.take_item_setup", (str(g.character.id), items[0].amount))
     else:
         for item in items:
-            amount = amount if amount else item.amount
-            take_from_storage_action = actions.TakeItemAction(g.character, item, amount=amount)
+            item_amount = amount if amount else item.amount
+            take_from_storage_action = actions.TakeItemAction(g.character, item, amount=item_amount)
             take_from_storage_action.perform()
 
         client_socket.emit("character.take_item_after", (str(g.character.id), enc_item_ids))
@@ -679,8 +682,8 @@ def put_into_storage(enc_item_ids, storage_id=None, amount=None):
         storage = models.Entity.by_id(app.decode(storage_id))
 
         for item in items:
-            amount = amount if amount else item.amount
-            put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=amount)
+            item_amount = amount if amount else item.amount
+            put_into_storage_action = actions.PutIntoStorageAction(g.character, item, storage, amount=item_amount)
             put_into_storage_action.perform()
 
         db.session.commit()
@@ -695,8 +698,8 @@ def drop_item(enc_item_ids, amount=None):
         client_socket.emit("character.drop_item_setup", (str(g.character.id), items[0].amount))
     else:
         for item in items:
-            amount = amount if amount else item.amount
-            drop_item_action = actions.DropItemAction(g.character, item, amount=amount)
+            item_amount = amount if amount else item.amount
+            drop_item_action = actions.DropItemAction(g.character, item, amount=item_amount)
             drop_item_action.perform()
 
         db.session.commit()
@@ -962,7 +965,7 @@ def activity_from_recipe_setup(recipe_id):
     } for input_name, input_class in form_inputs.items()]
 
     return {
-               "id": recipe.id,
+               "id": app.encode(recipe.id),
                "name": g.pyslate.t(recipe.name_tag, **recipe.name_params),
                "requiresSubject": recipe.activity_container[0] == "selected_entity",
                "subjects": subjects,
