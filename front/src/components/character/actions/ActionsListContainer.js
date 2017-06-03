@@ -3,9 +3,9 @@ import {
   getFilteredRecipes,
   fromRecipesState,
   requestRecipesList,
-  selectRecipe
+  selectRecipe,
+  getSelectedRecipe
 } from "../../../modules/recipes";
-
 import React from "react";
 import {ListGroup, ListGroupItem} from "react-bootstrap";
 
@@ -17,7 +17,8 @@ class ActionsListItem extends React.Component {
   }
 
   render() {
-    return <ListGroupItem onClick={this.handleClick}
+    return <ListGroupItem active={this.props.active}
+                          onClick={this.handleClick}
                           disabled={!this.props.action.get("enabled")}>
       {this.props.action.get("name")}
     </ListGroupItem>;
@@ -43,6 +44,7 @@ export class ActionsList extends React.Component {
       <ListGroup>
         {this.props.actionsList.map(action =>
           <ActionsListItem onSelectAction={this.props.onSelectAction}
+                           active={action.get("id") === this.props.selectedRecipeId}
                            action={action}
                            key={action.get("id")}/>)}
 
@@ -55,6 +57,7 @@ const mapStateToProps = (state, ownProps) => {
   return {
     characterId: ownProps.characterId,
     actionsList: getFilteredRecipes(fromRecipesState(state, ownProps.characterId)),
+    selectedRecipeId: getSelectedRecipe(fromRecipesState(state, ownProps.characterId)).get("id", null),
   };
 };
 
