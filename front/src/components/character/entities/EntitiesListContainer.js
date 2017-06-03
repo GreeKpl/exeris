@@ -1,5 +1,4 @@
 import {connect} from "react-redux";
-import EntitiesList from "./EntitiesList";
 import {
   requestRootEntities,
   getChildren,
@@ -14,6 +13,34 @@ import {
   clearEntitySelection,
   getSelectedEntities
 } from "../../../modules/entities";
+
+
+import React from "react";
+import Entities from "../../commons/entities/Entities";
+
+
+export class EntitiesList extends React.Component {
+
+  constructor(props) {
+    super(props);
+  }
+
+  componentDidMount() {
+    this.props.requestState();
+    this.props.clearSelection();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.characterId !== this.props.characterId) {
+      this.props.requestState();
+    }
+  }
+
+  render() {
+    return <Entities entities={this.props.rootEntities} {...this.props}/>;
+  }
+}
+
 
 const mapStateToProps = (state, ownProps) => {
   return {

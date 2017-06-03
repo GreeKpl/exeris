@@ -1,7 +1,18 @@
-import DynamicName from "./DynamicName";
 import {connect} from "react-redux";
 import {getDynamicName, fromDynamicNamesState} from "../../modules/dynamicNames";
 import {requestCharacterDetails} from "../../modules/details";
+import React from "react";
+import "./style.scss";
+
+class DynamicName extends React.Component {
+  render() {
+    return <span className="DynamicName-clickable" onClick={this.props.onClick}>
+      {this.props.name}
+      </span>;
+  }
+}
+
+export {DynamicName};
 
 const mapStateToProps = (state, ownProps) => {
   return {
