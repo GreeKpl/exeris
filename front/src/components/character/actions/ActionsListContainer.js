@@ -17,10 +17,11 @@ class ActionsListItem extends React.Component {
   }
 
   render() {
-    return <ListGroupItem active={this.props.active}
+    const {active, action} = this.props;
+    return <ListGroupItem active={active}
                           onClick={this.handleClick}
-                          disabled={!this.props.action.get("enabled")}>
-      {this.props.action.get("name")}
+                          disabled={!action.get("enabled")}>
+      {action.get("name")}
     </ListGroupItem>;
   }
 

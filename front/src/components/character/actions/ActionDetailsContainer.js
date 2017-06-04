@@ -23,7 +23,7 @@ const RequirementInfo = ({info, infoKey, label}) =>
            lines={info.get(infoKey)}
     /> : null;
 
-class ActionDetailsRaw extends React.Component {
+export class ActionDetailsRaw extends React.Component {
 
   constructor(props) {
     super(props);
