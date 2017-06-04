@@ -1,13 +1,12 @@
 import * as Immutable from "immutable";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
-import socket from "../util/server";
 import {addEntityInfo, getEntityInfo, fromEntitiesState} from "./entities";
 
 export const UPDATE_MY_CHARACTER_ID = "exeris-front/myCharacter/UPDATE_MY_CHARACTER_ID";
 
 
 export const requestMyCharacterInfo = characterId => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_my_character_info", characterId, characterInfo => {
       dispatch(updateMyCharacterState(characterId, characterInfo.id));
       dispatch(addEntityInfo(characterId, characterInfo));

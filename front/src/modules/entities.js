@@ -1,5 +1,4 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 
 export const ADD_ENTITY_INFO = "exeris-front/entities/ADD_ENTITY_INFO";
@@ -25,7 +24,7 @@ export const SELECT_ENTITY_ACTION = "exeris-front/entities/SELECT_ENTITY_ACTION"
 
 
 export const requestRefreshEntity = (characterId, entityId) => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     const childrenByEntity = getChildren(fromEntitiesState(getState(), characterId));
     const entityInfos = getEntityInfos(fromEntitiesState(getState(), characterId));
     const currentEntityInfo = entityInfos.get(entityId);
@@ -63,7 +62,7 @@ const extractActivityFromEntityInfo = function (dispatch, entityInfo, characterI
 };
 
 export const requestRootEntities = (characterId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_root_entities", characterId, entitiesInfo => {
       for (let entityInfo of entitiesInfo) {
         entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
@@ -77,7 +76,7 @@ export const requestRootEntities = (characterId) => {
 };
 
 export const requestInventoryEntities = characterId => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_items_in_inventory", characterId, entitiesInfo => {
       for (let entityInfo of entitiesInfo) {
         entityInfo.activities = extractActivityFromEntityInfo(dispatch, entityInfo, characterId);
@@ -100,7 +99,7 @@ const getParentEntity = (characterId, entityId, state) => {
 };
 
 export const requestChildrenEntities = (characterId, entityId) => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     const parentEntity = getParentEntity(characterId, entityId, getState());
 
     socket.request("character.get_children_entities", characterId, entityId, parentEntity, childrenInfo => {
@@ -170,7 +169,7 @@ export const selectEntity = (characterId, entityId) => {
 };
 
 export const requestSelectedDetails = (characterId, entityId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_detailed_entity_info", characterId, entityId, (entityDetails) => {
       dispatch({
         type: SHOW_SELECTED_DETAILS,
@@ -201,7 +200,7 @@ export const deselectEntity = (characterId, entityId) => {
 };
 
 export const updateExpandedInput = (characterId, expandedInput) => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
 
     const selectedDetails = getSelectedDetails(fromEntitiesState(getState(), characterId));
     socket.request("character.add_item_to_activity", characterId, [selectedDetails.get("id")], expandedInput);

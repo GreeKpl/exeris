@@ -1,5 +1,4 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 import {extractActionsFromHtml} from "../util/parseDynamicName";
 import {addEntityInfo} from "../modules/entities";
@@ -16,7 +15,7 @@ export const DIALOG_READABLE = "DIALOG_READABLE";
 
 
 export const requestCharacterDetails = (characterId, targetId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_character_details", characterId, targetId, entityInfo => {
       const actionsToUpdateNames = extractActionsFromHtml(characterId, entityInfo.name);
       actionsToUpdateNames.forEach(action => dispatch(action));
@@ -36,7 +35,7 @@ export const applyCharacterDetails = (characterId, targetId) => {
 };
 
 export const requestCombatDetails = (characterId, combatId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_combat_details", characterId, combatId, combatInfo => {
       dispatch(addEntityInfo(characterId, combatInfo));
     });
@@ -88,7 +87,7 @@ export const closeDetails = (characterId) => {
 
 
 export const submitEditedName = (characterId, newName) => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     const targetId = getDetailsTarget(fromDetailsState(getState(), characterId));
     socket.request("character.rename_entity", characterId, targetId, newName, () => {
       // panel is *probably* still open, so refresh it

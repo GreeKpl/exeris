@@ -1,4 +1,3 @@
-import socket from "../util/server";
 import {
   requestRefreshEntity,
   deselectEntity,
@@ -16,7 +15,7 @@ export const ENTITY_ACTION_PUT_INTO_STORAGE = "ENTITY_ACTION_PUT_INTO_STORAGE";
 export const ENTITY_ACTION_BIND_TO_VEHICLE = "ENTITY_ACTION_BIND_TO_VEHICLE";
 
 
-export const setUpSocketioListeners = dispatch => {
+export const setUpSocketioListeners = (dispatch, socket) => {
 
   socket.on("character.take_item_setup", (characterId, maxAmount) => {
     dispatch(selectEntityAction(characterId, ENTITY_ACTION_TAKE, {maxAmount: maxAmount}));
@@ -147,7 +146,7 @@ export const setUpSocketioListeners = dispatch => {
 
 
 export const performEntityAction = (characterId, endpoint, entityIds, ...params) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request(endpoint, characterId, entityIds, ...params);
   }
 };

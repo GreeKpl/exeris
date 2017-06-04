@@ -1,6 +1,5 @@
 import * as Immutable from "immutable";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
-import socket from "../util/server";
 
 export const SET_SELECTED_RECIPE = "exeris-front/recipes/SET_SELECTED_RECIPE";
 export const UPDATE_RECIPES_LIST = "exeris-front/recipes/UPDATE_RECIPES_LIST";
@@ -17,7 +16,7 @@ export const updateFilterText = (characterId, filterText) => {
 };
 
 export const requestRecipesList = characterId => {
-  return dispatch =>
+  return (dispatch, getState, socket) =>
     socket.request("character.get_all_recipes", characterId, recipesList =>
       dispatch(updateRecipesList(characterId, recipesList)));
 };
@@ -31,7 +30,7 @@ export const updateRecipesList = (characterId, recipesList) => {
 };
 
 export const selectRecipe = (characterId, recipeId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_recipe_details", characterId, recipeId, (recipeDetails) => {
       dispatch(setSelectedRecipe(characterId, recipeDetails));
     });
@@ -39,7 +38,7 @@ export const selectRecipe = (characterId, recipeId) => {
 };
 
 export const createActivityFromRecipe = (characterId, recipeFormState) => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     const selectedRecipe = getSelectedRecipe(fromRecipesState(getState(), characterId));
     const recipeId = selectedRecipe.get("id");
     const subjectEntityId = recipeFormState.activitySubject;

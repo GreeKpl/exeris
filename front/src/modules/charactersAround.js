@@ -1,5 +1,4 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 import {extractActionsFromHtml} from "../util/parseDynamicName";
 import {addEntityInfo} from "./entities";
@@ -7,7 +6,7 @@ import {addEntityInfo} from "./entities";
 export const UPDATE_CHARACTERS_LIST = "exeris-front/charactersAround/UPDATE_CHARACTERS_LIST";
 
 export const requestCharactersAround = (characterId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_all_characters_around", characterId, charactersList => {
       charactersList.map(characterInfo => {
         dispatch(addEntityInfo(characterId, characterInfo));

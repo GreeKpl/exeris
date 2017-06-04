@@ -1,18 +1,17 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 
 export const UPDATE_EVENTS_LIST = "exeris-front/events/UPDATE_EVENTS_LIST";
 export const APPEND_TO_EVENTS_LIST = "exeris-front/events/APPEND_TO_EVENTS_LIST";
 
-export const setUpSocketioListeners = dispatch => {
+export const setUpSocketioListeners = (dispatch, socket) => {
   socket.on("character.new_event", (characterId, event) => {
     dispatch(appendToEventsList(characterId, [event]));
   });
 };
 
 export const requestAllEvents = (characterId) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("character.get_all_events", characterId, eventsList => {
       dispatch(updateEventsList(characterId, eventsList));
     });

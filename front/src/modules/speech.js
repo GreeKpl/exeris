@@ -1,6 +1,5 @@
 import * as Immutable from "immutable";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
-import socket from "../util/server";
 
 export const SELECT_SPEAKING_TARGET = "exeris-front/speechReducer/SELECT_SPEAKING_TARGET";
 export const UPDATE_TEXT = "exeris-front/speechReducer/UPDATE_TEXT";
@@ -32,20 +31,20 @@ export const selectSpeakingTarget = (characterId, targetId, speechType) => {
 
 
 export const speakText = characterId => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     const spokenText = getText(fromSpeechState(getState(), characterId));
-    if (spokenText.length == 0) {
+    if (spokenText.length === 0) {
       return {};
     }
     dispatch(updateText(characterId, ""));
 
     const speechType = getSpeechType(fromSpeechState(getState(), characterId));
     const speechTarget = getSpeechTargetId(fromSpeechState(getState(), characterId));
-    if (speechType == SPEECH_TYPE_ALOUD) {
+    if (speechType === SPEECH_TYPE_ALOUD) {
       socket.request("character.say_aloud", characterId, spokenText);
-    } else if (speechType == SPEECH_TYPE_SPEAK_TO) {
+    } else if (speechType === SPEECH_TYPE_SPEAK_TO) {
       socket.request("character.say_to_somebody", characterId, speechTarget, spokenText);
-    } else if (speechType == SPEECH_TYPE_WHISPER_TO) {
+    } else if (speechType === SPEECH_TYPE_WHISPER_TO) {
       socket.request("character.whisper", characterId, speechTarget, spokenText);
     }
   }

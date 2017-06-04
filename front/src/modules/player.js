@@ -1,11 +1,10 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 
 export const UPDATE_OWN_CHARACTERS_LIST = "exeris-front/player/UPDATE_OWN_CHARACTERS_LIST";
 export const UPDATE_ACHIEVEMENTS_LIST = "exeris-front/player/UPDATE_ACHIEVEMENTS_LIST";
 
 export const requestOwnCharactersList = () => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("player.get_characters_list", characterslist => {
       dispatch(updateOwnCharactersList(characterslist));
     });
@@ -20,7 +19,7 @@ export const updateOwnCharactersList = (charactersList) => {
 };
 
 export const createNewCharacter = (characterName) => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("player.create_new_character", characterName, () => {
       dispatch(requestOwnCharactersList());
     });
@@ -28,7 +27,7 @@ export const createNewCharacter = (characterName) => {
 };
 
 export const requestAchievementsList = () => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("player.get_achievements_list", achievementsList => {
       dispatch(updateAchievementsList(achievementsList));
     });

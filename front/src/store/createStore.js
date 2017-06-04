@@ -4,12 +4,13 @@ import {browserHistory} from "react-router";
 import makeRootReducer from "./mainReducer";
 import {updateLocation} from "./location";
 import {responsiveStoreEnhancer} from "redux-responsive";
+import socket from "../util/server";
 
 export default () => {
   // ======================================================
   // Middleware Configuration
   // ======================================================
-  const middleware = [thunk];
+  const middleware = [thunk.withExtraArgument(socket)];
 
   // ======================================================
   // Store Enhancers

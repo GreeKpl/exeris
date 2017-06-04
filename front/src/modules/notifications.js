@@ -1,5 +1,4 @@
 import * as Immutable from "immutable";
-import socket from "../util/server";
 
 export const ADD_NOTIFICATION = "exeris-front/notifications/ADD_NOTIFICATION";
 export const START_LOADING_NOTIFICATIONS = "exeris-front/notifications/START_LOADING_NOTIFICATIONS";
@@ -8,7 +7,7 @@ export const HIDE_NOTIFICATION_DIALOG = "exeris-front/notifications/HIDE_NOTIFIC
 export const REMOVE_NOTIFICATION = "exeris-front/notifications/REMOVE_NOTIFICATION";
 
 
-export const setUpSocketioListeners = dispatch => {
+export const setUpSocketioListeners = (dispatch, socket) => {
   socket.on("player.new_notification", notification => {
     dispatch(addNotification(notification));
   });
@@ -30,7 +29,7 @@ export const setUpSocketioListeners = dispatch => {
 };
 
 export const requestMissingNotifications = () => {
-  return (dispatch, getState) => {
+  return (dispatch, getState, socket) => {
     if (!alreadyStartedLoading(fromNotificationsState(getState()))) {
       dispatch(startLoading());
 

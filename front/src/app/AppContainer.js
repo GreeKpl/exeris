@@ -4,6 +4,7 @@ import {Provider} from "react-redux";
 import * as duckModules from "../modules";
 import {I18nextProvider} from 'react-i18next';
 import i18n from "../i18n";
+import socket from "../util/server";
 
 
 class AppContainer extends Component {
@@ -15,7 +16,7 @@ class AppContainer extends Component {
   componentDidMount() {
     for (let module of Object.values(duckModules)) {
       if ("setUpSocketioListeners" in module) {
-        module.setUpSocketioListeners(this.props.store.dispatch);
+        module.setUpSocketioListeners(this.props.store.dispatch, socket);
       }
     }
   }
