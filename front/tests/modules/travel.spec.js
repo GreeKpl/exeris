@@ -2,9 +2,11 @@ import {
   travelReducer,
   canBeControlled,
   getMovementAction,
-  UPDATE_TRAVEL_STATE, incrementTravelStateTick, getTickId
+  UPDATE_TRAVEL_STATE, incrementTravelStateTick, getTickId,
+  requestTravelState, changeMovementDirection, stopMovement
 } from "../../src/modules/travel";
 import * as Immutable from "immutable";
+import {createMockStore} from "../testUtils";
 
 describe('(character) travelReducer', () => {
 
@@ -48,5 +50,45 @@ describe('(character) travelReducer', () => {
     expect(getTickId(state)).to.equal(1);
     state = travelReducer(state, incrementTravelStateTick("DEF"));
     expect(getTickId(state)).to.equal(2);
+  });
+
+  describe("Asynchronous socketio actions", () => {
+    const travelData = {id: 123};
+    const charId = "DEF";
+    const updateTravelStateAction = {
+      type: UPDATE_TRAVEL_STATE,
+      travelData: travelData,
+      characterId: charId,
+    };
+
+    it('Should request travel state from the backend.', () => {
+      const store = createMockStore({}, [travelData]);
+      store.dispatch(requestTravelState(charId));
+      const actions = store.getActions();
+      expect(actions).to.have.length(1);
+      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+    });
+
+    it('Should change travel direction which also requests travel state from the backend.', () => {
+      const store = createMockStore({}, {
+        "character.move_in_direction": [],
+        "character.get_movement_info": [travelData],
+      });
+      store.dispatch(changeMovementDirection(charId, 100));
+      const actions = store.getActions();
+      expect(actions).to.have.length(1);
+      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+    });
+
+    it('Should stop movement which also requests travel state from the backend.', () => {
+      const store = createMockStore({}, {
+        "character.stop_movement": [],
+        "character.get_movement_info": [travelData],
+      });
+      store.dispatch(stopMovement(charId));
+      const actions = store.getActions();
+      expect(actions).to.have.length(1);
+      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+    });
   });
 });
