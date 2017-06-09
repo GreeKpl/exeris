@@ -3,7 +3,7 @@ import {mount} from "enzyme";
 import * as React from "react";
 import {ActionsFilter} from "../../../src/components/character/actions/ActionsFilterContainer";
 
-describe('(component) ActionsList', () => {
+describe('(component) ActionsFilter', () => {
 
   it('Should render empty list when no data specified.', () => {
     const onChangeSpy = sinon.spy();
