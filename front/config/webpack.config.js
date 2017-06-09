@@ -120,6 +120,11 @@ if (!__TEST__) {
 // Loaders
 // ------------------------------------
 // JavaScript / JSON
+
+if (__TEST__) {
+  project.compiler_babel.plugins.push('babel-plugin-rewire');
+}
+
 webpackConfig.module.loaders = [{
   test: /\.(js|jsx)$/,
   exclude: /node_modules/,

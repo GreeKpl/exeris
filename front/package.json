@@ -127,11 +127,13 @@
   "devDependencies": {
     "babel-eslint": "^7.1.0",
     "babel-plugin-istanbul": "^3.0.0",
+    "babel-plugin-rewire": "1.0.0",
     "chai": "^3.4.1",
     "chai-as-promised": "^6.0.0",
     "chai-enzyme": "^0.6.1",
     "chai-immutable": "^1.6.0",
     "cheerio": "^0.22.0",
+    "deep-equal": "latest",
     "codecov": "^1.0.1",
     "enzyme": "^2.0.0",
     "eslint": "^3.0.1",
