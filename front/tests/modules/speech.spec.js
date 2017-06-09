@@ -8,9 +8,12 @@ import {
   getText,
   fromSpeechState,
   SPEECH_TYPE_ALOUD,
-  SPEECH_TYPE_WHISPER_TO
+  SPEECH_TYPE_WHISPER_TO,
+  speakText,
+  __RewireAPI__ as speechRewire, UPDATE_TEXT
 } from "../../src/modules/speech";
 import * as Immutable from "immutable";
+import {createMockStore, DependenciesStubber} from "../testUtils";
 
 describe('(speech) speechReducer', () => {
 
@@ -68,5 +71,32 @@ describe('(speech) speechReducer', () => {
     expect(getText(fromSpeechState(globalState, "DEF"))).to.equal("new text");
     expect(getSpeechTargetId(fromSpeechState(globalState, "OWN_CHAR"))).to.equal("TARGET");
     expect(getSpeechType(fromSpeechState(globalState, "OWN_CHAR"))).to.equal(SPEECH_TYPE_WHISPER_TO);
+  });
+
+  describe("Asynchronous socketio actions", () => {
+    const charId = "DEF";
+
+    it('Should request speaking in the backend.', () => {
+      const store = createMockStore({}, null);
+      const dependencies = new DependenciesStubber(speechRewire, {
+        fromSpeechState: () => 1,
+        getText: () => "ABC",
+        getSpeechType: () => SPEECH_TYPE_ALOUD,
+        getSpeechTargetId: () => null,
+      });
+
+      dependencies.rewireAll();
+      store.dispatch(speakText(charId));
+
+      const actions = store.getActions();
+      expect(actions).to.have.length(1);
+      expect(actions[0]).to.deep.equal({
+        type: UPDATE_TEXT,
+        newText: "",
+        characterId: charId,
+      });
+      store.socketCalledWith("character.say_aloud", charId, "ABC");
+      dependencies.unwireAll();
+    });
   });
 });
