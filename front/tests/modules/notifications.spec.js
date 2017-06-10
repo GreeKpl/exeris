@@ -168,7 +168,7 @@ describe('(notifications) notificationsReducer', () => {
     dependencies.unwireAll();
   });
 
-  it('Should request the notifications list when it is loaded.', () => {
+  it('Should request the info about notification.', () => {
     const notificationId = "ALECOTO";
     const notification = {
       id: notificationId,
@@ -189,7 +189,7 @@ describe('(notifications) notificationsReducer', () => {
   });
 
 
-  it('Should request the notifications list when it is loaded.', () => {
+  it('Should request executing the notification option.', () => {
     const notificationId = "ALECOTO";
     const endpoint = "close_notification";
     const params = ["A", "B", "C"];
@@ -200,7 +200,6 @@ describe('(notifications) notificationsReducer', () => {
     };
 
     const store = createMockStore({}, []);
-
     store.dispatch(selectNotificationOption(notificationOption));
 
     store.socketCalledWith(endpoint, ...params);
