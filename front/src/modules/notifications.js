@@ -59,7 +59,7 @@ export const removeNotification = notificationId => {
 };
 
 export const requestShowNotification = notificationId => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request("player.show_notification", notificationId, notification => {
       dispatch(showNotificationDialog(notification));
     });
@@ -80,7 +80,7 @@ export const hideNotificationDialog = () => {
 };
 
 export const selectNotificationOption = notificationOption => {
-  return dispatch => {
+  return (dispatch, getState, socket) => {
     socket.request(notificationOption.endpoint, ...notificationOption.params,
       () => {
         dispatch(hideNotificationDialog());
@@ -101,7 +101,7 @@ export const notificationsReducer = (state = Immutable.fromJS(
     case ADD_NOTIFICATION:
       return state.update("list", list => list.push(Immutable.fromJS(action.notification)));
     case REMOVE_NOTIFICATION:
-      return state.update("list", list => list.filter(item => item.get("id") != action.notificationId));
+      return state.update("list", list => list.filter(item => item.get("id") !== action.notificationId));
     case SHOW_NOTIFICATION_DIALOG:
       return state.set("visibleNotification", Immutable.fromJS(action.notification));
     case HIDE_NOTIFICATION_DIALOG:
