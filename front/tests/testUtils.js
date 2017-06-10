@@ -15,7 +15,13 @@ export const createMockStore = (initialState, mapOfParamsForCallback) => {
       throw new Error("socketio request not called with args " + expectedArgs);
     }
   };
+  mockStore.socketNotCalled = () => {
+    if (socketMock.calls.length > 0) {
+      throw new Error("socketio request should never be called, but it was called with args " + socketMock.calls);
+    }
+  };
   mockStore.socketCalledWith = mockStore.socketCalledWith.bind(mockStore);
+  mockStore.socketNotCalled = mockStore.socketNotCalled.bind(mockStore);
   return mockStore;
 };
 
