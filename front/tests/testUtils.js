@@ -23,24 +23,39 @@ export const requestMock = (mapOfParamsForCallback) => {
   const socketRequestMock = {
     calls: [],
     request: function (eventName, ...requestArgs) {
-      let paramsForCallback;
-      if (Array.isArray(mapOfParamsForCallback) || mapOfParamsForCallback === null) {
-        paramsForCallback = mapOfParamsForCallback;
-      } else {
-        paramsForCallback = mapOfParamsForCallback[eventName];
-      }
+      let paramsForCallback = getParamsForCallback(mapOfParamsForCallback, eventName);
 
       // if there are arguments, then callback exists and it needs to be called
-      const requestArgsWithoutCallback = [...requestArgs];
+      const argsWithoutCallback = [...requestArgs];
+      let callback = popCallbackFromArgsArray(argsWithoutCallback);
       if (paramsForCallback !== null) {
-        const callback = requestArgsWithoutCallback.pop();
-        callback(...paramsForCallback);
+        if (callback !== null) {
+          callback(...paramsForCallback);
+        } else {
+          throw new Error("Request '" + argsWithoutCallback[0]
+            + "' should call a callback, but there is no callback for the request");
+        }
       }
-      this.calls.push([eventName, ...requestArgsWithoutCallback]);
+      this.calls.push([eventName, ...argsWithoutCallback]);
     }
   };
   socketRequestMock.request = socketRequestMock.request.bind(socketRequestMock);
   return socketRequestMock;
+};
+
+const getParamsForCallback = function (mapOfParamsForCallback, eventName) {
+  if (Array.isArray(mapOfParamsForCallback) || mapOfParamsForCallback === null) {
+    return mapOfParamsForCallback;
+  } else {
+    return mapOfParamsForCallback[eventName];
+  }
+};
+
+const popCallbackFromArgsArray = function (argsWithoutCallback) {
+  if (Object.prototype.toString.call(argsWithoutCallback[argsWithoutCallback.length - 1]) === '[object Function]') {
+    return argsWithoutCallback.pop();
+  }
+  return null;
 };
 
 export class DependenciesStubber {
