@@ -12,7 +12,8 @@ import {
   updateItemsInInventoryList,
   requestRefreshEntity,
   __RewireAPI__ as entitiesRewire, ADD_ENTITY_INFO, UPDATE_CHILDREN_OF_ENTITY, REMOVE_CHILD_OF_ENTITY,
-  requestRootEntities, UPDATE_ROOT_ENTITIES_LIST, requestInventoryEntities, UPDATE_ITEMS_IN_INVENTORY_LIST
+  requestRootEntities, UPDATE_ROOT_ENTITIES_LIST, requestInventoryEntities, UPDATE_ITEMS_IN_INVENTORY_LIST,
+  requestChildrenEntities, SHOW_SELECTED_DETAILS, requestSelectedDetails
 } from "../../src/modules/entities";
 import * as Immutable from "immutable";
 import {createMockStore, DependenciesStubber} from "../testUtils";
@@ -626,6 +627,92 @@ describe('(entities) entitiesReducer', () => {
       characterId: charId,
     });
   });
+
+  it('Should request children entities.', () => {
+    const charId = "DEF";
+    const parentId = "PARENT";
+    const parentOfParentId = "PARENT_OF_PARENT";
+    const itemId = "SWORD_2";
+    const activityId = "activity1";
+    const activity = {
+      id: activityId,
+      name: "activity in sword",
+    };
+    const item = {
+      id: itemId,
+      name: "sword",
+      activities: [activity],
+    };
+
+    const store = createMockStore({}, [
+      [item],
+    ]);
+
+    const dependencies = new DependenciesStubber(entitiesRewire, {
+      fromEntitiesState: () => 1,
+      getChildren: () => Immutable.fromJS({
+        [parentOfParentId]: [parentId],
+      }),
+    });
+
+    dependencies.rewireAll();
+    store.dispatch(requestChildrenEntities(charId, parentId));
+    store.socketCalledWith("character.get_children_entities", charId, parentId, parentOfParentId);
+
+    const actions = store.getActions();
+    expect(actions).to.have.length(3);
+    expect(actions[0]).to.deep.equal({
+      type: ADD_ENTITY_INFO,
+      entityInfo: activity,
+      characterId: charId,
+    });
+    expect(actions[1]).to.deep.equal({
+      type: ADD_ENTITY_INFO,
+      entityInfo: {
+        id: itemId,
+        name: "sword",
+        activities: [activityId],
+      },
+      characterId: charId,
+    });
+    expect(actions[2]).to.deep.equal({
+      type: UPDATE_CHILDREN_OF_ENTITY,
+      parentEntityId: parentId,
+      childrenIds: [itemId],
+      characterId: charId,
+    });
+
+    dependencies.unwireAll();
+  });
+
+  it('Should request details of a selected entity.', () => {
+    const charId = "DEF";
+    const itemId = "SWORD_2";
+    const itemDetails = {
+      id: itemId,
+      name: "sword",
+      nice: "yes",
+    };
+
+    const store = createMockStore({}, [
+      itemDetails,
+    ]);
+
+    store.dispatch(requestSelectedDetails(charId, itemId));
+    store.socketCalledWith("character.get_detailed_entity_info", charId, itemId);
+
+    const actions = store.getActions();
+    expect(actions).to.have.length(1);
+    expect(actions[0]).to.deep.equal({
+      type: SHOW_SELECTED_DETAILS,
+      entityDetails: itemDetails,
+      characterId: charId,
+    });
+  });
+
+  it('Should request update expanded input -- not implemented.', () => {
+  });
+
 });
 
 
