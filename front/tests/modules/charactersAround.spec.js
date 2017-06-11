@@ -3,9 +3,14 @@ import {
   charactersAroundReducer,
   getIdsOfCharactersAround,
   fromCharactersAroundState,
-  decoratedCharactersAroundReducer
+  decoratedCharactersAroundReducer,
+  requestCharactersAround,
+  UPDATE_CHARACTERS_LIST,
 } from "../../src/modules/charactersAround";
 import * as Immutable from "immutable";
+import {createMockStore, DependenciesStubber} from "../testUtils";
+import {__RewireAPI__ as parseDynamicNameRewire} from "./../../src/util/parseDynamicName";
+import {ADD_ENTITY_INFO} from "../../src/modules/entities";
 
 describe('(charactersAround) charactersAroundReducer', () => {
 
@@ -44,5 +49,49 @@ describe('(charactersAround) charactersAroundReducer', () => {
       .to.equal(Immutable.List(["HEJ", "HON"]));
     expect(getIdsOfCharactersAround(fromCharactersAroundState(state, "DEF")))
       .to.equal(Immutable.List(["HEH", "AHA"]));
+  });
+
+  it('Should request all characters around.', () => {
+    const charId = "myChar";
+    const char1Id = "char1";
+    const char2Id = "char2";
+    const char1 = {
+      id: char1Id,
+      name: "John",
+    };
+    const char2 = {
+      id: char2Id,
+      name: "Ally",
+    };
+    const store = createMockStore({}, [
+      [
+        char1, char2,
+      ],
+    ]);
+
+    const dependencies = new DependenciesStubber(parseDynamicNameRewire, {
+      extractActionsFromHtml: (characterId, html) => [],
+    });
+    dependencies.rewireAll();
+    store.dispatch(requestCharactersAround(charId));
+    store.socketCalledWith("character.get_all_characters_around", charId);
+    const actions = store.getActions();
+    expect(actions).to.have.length(3);
+    expect(actions[0]).to.deep.equal({
+      type: ADD_ENTITY_INFO,
+      entityInfo: char1,
+      characterId: charId,
+    });
+    expect(actions[1]).to.deep.equal({
+      type: ADD_ENTITY_INFO,
+      entityInfo: char2,
+      characterId: charId,
+    });
+    expect(actions[2]).to.deep.equal({
+      type: UPDATE_CHARACTERS_LIST,
+      characterIdsList: [char1Id, char2Id],
+      characterId: charId,
+    });
+    dependencies.unwireAll();
   });
 });
