@@ -13,9 +13,11 @@ import {decoratedTravelReducer} from "../modules/travel";
 import {decoratedMyCharacterReducer} from "../modules/myCharacter";
 import {createResponsiveStateReducer} from "redux-responsive";
 import {transform} from 'lodash';
+import {gameContentReducer} from "../modules/gameContent";
 
 const mainReducer = combineReducers({
   player: playerReducer,
+  gameContent: gameContentReducer,
   events: decoratedEventsReducer,
   charactersAround: decoratedCharactersAroundReducer,
   speech: decoratedSpeechReducer,
