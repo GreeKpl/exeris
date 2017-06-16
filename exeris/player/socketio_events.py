@@ -1,5 +1,3 @@
-import copy
-
 import flask_socketio as client_socket
 from exeris.app import socketio_player_event
 from exeris.core import achievements

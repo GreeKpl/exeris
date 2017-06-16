@@ -151,6 +151,7 @@ main.property_cache = cache.PropertyCache()
 from exeris.outer import outer_bp
 from exeris.player import player_bp
 from exeris.character import character_bp, character_static
+from exeris.admin import admin_bp
 
 
 @app.before_first_request
@@ -720,7 +721,6 @@ def outer_preprocessor(endpoint, values):
     g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
 
 
-@player_bp.before_request
 def player_before_request():
     if not current_user.is_authenticated:
         return app.login_manager.unauthorized()
@@ -728,6 +728,10 @@ def player_before_request():
     g.language = g.player.language
     conn = psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
     g.pyslate = create_pyslate(g.language, backend=postgres_backend.PostgresBackend(conn, "translations"))
+
+
+player_bp.before_request(player_before_request)
+admin_bp.before_request(player_before_request)
 
 
 @character_bp.url_value_preprocessor
@@ -804,6 +808,7 @@ def handle_error(exception):
 
 app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)
+app.register_blueprint(admin_bp)
 app.register_blueprint(character_bp)
 app.register_blueprint(character_static)
 
