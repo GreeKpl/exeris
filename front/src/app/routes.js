@@ -8,6 +8,9 @@ import DashboardContainer from "../components/player/DashboardContainer";
 import EntitiesPageContainer from "../components/character/entities/EntitiesPageContainer";
 import ActionsPageContainer from "../components/character/actions/ActionsPageContainer";
 import OwnCharacterPageContainer from "../components/character/myCharacter/MyCharacterPageContainer";
+import AdminPageContainer from "../components/admin/AdminPageContainer";
+import AdminDashboardContainer from "../components/admin/AdminDashboardContainer";
+import EntityTypesManagementContainer from "../components/admin/entities/EntityTypesManagementContainer";
 
 const routes = (
   <Route path="/" component={Root}>
@@ -15,6 +18,11 @@ const routes = (
     <Route path="player" component={PlayerPageContainer}>
       <IndexRedirect to="dashboard"/>
       <Route path="dashboard" component={DashboardContainer}/>
+    </Route>
+    <Route path="admin" component={AdminPageContainer}>
+      <IndexRedirect to="dashboard"/>
+      <Route path="dashboard" component={AdminDashboardContainer}/>
+      <Route path="entityTypes" component={EntityTypesManagementContainer}/>
     </Route>
     <Route path="character/:characterId" component={CharacterPageContainer}>
       <IndexRedirect to="events"/>
