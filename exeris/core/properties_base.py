@@ -1,5 +1,8 @@
 # property
-class P:
+from enum import Enum
+
+
+class P(Enum):
     BOARDABLE = "Boardable"
     IN_BOARDING = "InBoarding"
     ANY = "Any"  # special property which exists for every entity
