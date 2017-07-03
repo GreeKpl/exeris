@@ -1,8 +1,8 @@
 import {connect} from "react-redux";
 import React from "react";
 import {
-  fromGameContentState, getAllEntityTypes, getSelectedEntityType,
-  requestAllEntityTypes, requestEntityType, CLASSES
+  fromGameContentState, getAllEntityTypes, requestAllPropertyNames, getSelectedEntityType,
+  requestAllEntityTypes, requestEntityType
 } from "../../../modules/gameContent";
 import {ListGroup, ListGroupItem} from "react-bootstrap";
 import "./style.scss";
@@ -70,7 +70,10 @@ const mapStateToProps = (state) => {
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    requestState: () => dispatch(requestAllEntityTypes()),
+    requestState: () => {
+      dispatch(requestAllEntityTypes());
+      dispatch(requestAllPropertyNames());
+    },
     onClick: (entityTypeName) => dispatch(requestEntityType(entityTypeName)),
   };
 };
