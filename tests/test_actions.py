@@ -1253,8 +1253,6 @@ class CharacterActionsTest(TestCase):
         self.assertTrue(stallion.has_property(P.DOMESTICATED))
         self.assertEqual({str(first_owner.id): 1.0}, stallion.get_property(P.DOMESTICATED)["trusted"])
 
-        db.session.delete(taming_activity)
-
         other_char = util.create_character("other_char", rl, util.create_player("kodw"))
         start_taming_animal_action = StartTamingAnimalAction(other_char, stallion)
         start_taming_animal_action.perform()
