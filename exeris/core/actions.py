@@ -10,7 +10,7 @@ from exeris.core import deferred, main, util, combat, models, general, propertie
 from exeris.core.deferred import convert
 from exeris.core.main import db, Events, PartialEvents
 from exeris.core.properties import P
-from flask import logging
+import logging
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
