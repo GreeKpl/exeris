@@ -24,9 +24,10 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
     install_requires=['sqlalchemy>=1.1.1', 'flask', 'flask-bootstrap', 'flask-bower', 'flask-sqlalchemy',
-                      'flask-socketio', 'flask-security>=1.7.5', 'flask_redis', 'oauthlib==1.1.2',
+                      'flask-socketio', 'flask-security>=1.7.5', 'flask_redis',
                       'Flask-OAuthlib', 'pycrypto', 'geoalchemy2', 'eventlet', 'bcrypt',
-                      'psycopg2', 'shapely', 'pillow', 'markdown', 'wtforms', 'pyslate', 'wrapt', 'redis',
+                      'psycopg2', 'shapely', 'pillow', 'markdown', 'wtforms', "email_validator",
+                      'pyslate', 'wrapt', 'redis',
                       "pydiscourse"],
 
     extras_require={

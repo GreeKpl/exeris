@@ -1253,7 +1253,8 @@ class DecayProcess(ProcessAction):
         self.decay_abandoned_activities()
 
     def degrade_items(self):
-        items_and_props = db.session.query(models.Item, models.EntityTypeProperty).join(models.ItemType).filter(
+        items_and_props = db.session.query(models.Item, models.EntityTypeProperty) \
+            .join(models.ItemType, models.Item.type_name == models.ItemType.name).filter(
             sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,  # ON clause
                      models.Item.role == models.Item.ROLE_BEING_IN,
                      models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all items
@@ -1287,7 +1288,8 @@ class DecayProcess(ProcessAction):
         activities = models.Activity.query.filter_by(damage=1.0) \
             .filter(models.Activity.ticks_left == models.Activity.ticks_needed).all()
         for activity in activities:
-            items_and_props = db.session.query(models.Item, models.EntityTypeProperty).join(models.ItemType).filter(
+            items_and_props = db.session.query(models.Item, models.EntityTypeProperty) \
+                .join(models.ItemType, models.Item.type_name == models.ItemType.name).filter(
                 sql.and_(models.ItemType.name == models.EntityTypeProperty.type_name,  # ON clause
                          models.Item.is_used_for(activity),
                          models.EntityTypeProperty.name == P.DEGRADABLE)).all()  # handle all normal stackables

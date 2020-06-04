@@ -48,5 +48,3 @@ class Config:
     SECURITY_POST_REGISTER_VIEW = "/register"
 
     SECURITY_LOGIN_URL = "/users/sign_in"  # URL required by SSO for android mattermost app
-
-    OAUTH2_CLIENTS = []
