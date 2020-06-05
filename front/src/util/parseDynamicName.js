@@ -1,7 +1,7 @@
 import React from 'react';
 import {Parser as HtmlToReactParser, ProcessNodeDefinitions, IsValidNodeDefinitions} from 'html-to-react';
 import * as Immutable from "immutable";
-import DynamicNameContainer from "../../src/components/commons/DynamicNameContainer";
+import DynamicNameContainer from "../components/commons/DynamicNameContainer";
 import {updateDynamicName} from "../modules/dynamicNames";
 
 const htmlToReactParser = new HtmlToReactParser();

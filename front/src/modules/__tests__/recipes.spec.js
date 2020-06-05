@@ -10,14 +10,14 @@ import {
   setSelectedRecipe,
   __RewireAPI__ as recipesRewire, requestRecipesList, UPDATE_RECIPES_LIST, selectRecipe, SET_SELECTED_RECIPE,
   CLEAR_SELECTED_RECIPE, createActivityFromRecipe
-} from "../../src/modules/recipes";
+} from "../recipes";
 import * as Immutable from "immutable";
-import {createMockStore, DependenciesStubber} from "../testUtils";
+import {createMockStore, DependenciesStubber} from "../../../tests/testUtils";
 
 describe('(recipes) recipesReducer', () => {
 
   it('Should initialize with initial state.', () => {
-    expect(recipesReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(recipesReducer(undefined, {})).toEqual(Immutable.fromJS({
       "filter": "",
       "list": [],
       "selectedRecipe": {},
@@ -31,7 +31,7 @@ describe('(recipes) recipesReducer', () => {
       "selectedRecipe": {},
     });
     let state = recipesReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
   it('Should update the filter text when a new filter text is supplied.', () => {
@@ -41,7 +41,7 @@ describe('(recipes) recipesReducer', () => {
       "selectedRecipe": {},
     });
     let state = recipesReducer(previousState, updateFilterText(0, "hehe"));
-    expect(state).to.equal(previousState.set("filter", "hehe"));
+    expect(state).toEqual(previousState.set("filter", "hehe"));
   });
 
   it('Should update the selected recipe.', () => {
@@ -54,7 +54,7 @@ describe('(recipes) recipesReducer', () => {
       id: 1,
       name: "forging a sword",
     }));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       "filter": "",
       "list": [],
       "selectedRecipe": {
@@ -75,9 +75,9 @@ describe('(recipes) recipesReducer', () => {
     state = decoratedRecipesReducer(state, updateFilterText("DEF", "forg"));
 
     const globalState = Immutable.Map({recipes: state});
-    expect(getFilterText(fromRecipesState(globalState, "DEF"))).to.equal("forg");
-    expect(getAllRecipes(fromRecipesState(globalState, "DEF"))).to.equal(Immutable.fromJS(recipesList));
-    expect(getFilteredRecipes(fromRecipesState(globalState, "DEF"))).to.equal(Immutable.fromJS([
+    expect(getFilterText(fromRecipesState(globalState, "DEF"))).toEqual("forg");
+    expect(getAllRecipes(fromRecipesState(globalState, "DEF"))).toEqual(Immutable.fromJS(recipesList));
+    expect(getFilteredRecipes(fromRecipesState(globalState, "DEF"))).toEqual(Immutable.fromJS([
       {id: 1, name: "forging a sword"},
     ]));
   });
@@ -98,8 +98,8 @@ describe('(recipes) recipesReducer', () => {
       store.socketCalledWith("character.get_all_recipes", charId);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: UPDATE_RECIPES_LIST,
         recipesList: recipesList,
         characterId: charId,
@@ -119,8 +119,8 @@ describe('(recipes) recipesReducer', () => {
       store.socketCalledWith("character.get_recipe_details", charId, recipeId);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: SET_SELECTED_RECIPE,
         recipeDetails: recipeDetails,
         characterId: charId,
@@ -143,27 +143,25 @@ describe('(recipes) recipesReducer', () => {
         required: "yes",
       };
 
-      const store = createMockStore({}, [recipeFormStateWithSubject]);
+      const store = createMockStore(Immutable.fromJS({
+        recipes: {
+          [charId]: {
+            selectedRecipe: recipeDetails,
+          },
+        }
+      }), [recipeFormStateWithSubject]);
 
-      const dependencies = new DependenciesStubber(recipesRewire, {
-        fromRecipesState: () => 1,
-        getSelectedRecipe: () => Immutable.fromJS(recipeDetails),
-      });
-
-      dependencies.rewireAll();
 
       store.dispatch(createActivityFromRecipe(charId, recipeFormStateWithSubject));
       store.socketCalledWith("character.create_activity_from_recipe", charId,
         recipeId, recipeFormStateWithoutSubject, activitySubjectId);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: CLEAR_SELECTED_RECIPE,
         characterId: charId,
       });
-
-      dependencies.unwireAll();
     });
   });
 });

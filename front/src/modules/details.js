@@ -1,7 +1,7 @@
 import * as Immutable from "immutable";
 import {characterReducerDecorator} from "../util/characterReducerDecorator";
 import {extractActionsFromHtml} from "../util/parseDynamicName";
-import {addEntityInfo} from "../modules/entities";
+import {addEntityInfo} from "./entities";
 
 export const APPLY_DETAILS_CHANGE = "exeris-front/details/APPLY_DETAILS_CHANGE";
 export const CLOSE_DETAILS = "exeris-front/details/CLOSE_DETAILS";

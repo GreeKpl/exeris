@@ -16,14 +16,14 @@ import {
   SHOW_NOTIFICATION_DIALOG,
   REMOVE_NOTIFICATION,
   HIDE_NOTIFICATION_DIALOG
-} from "../../src/modules/notifications";
+} from "../notifications";
 import * as Immutable from "immutable";
-import {createMockStore, DependenciesStubber} from "../testUtils";
+import {createMockStore, DependenciesStubber} from "../../../tests/testUtils";
 
 describe('(notifications) notificationsReducer', () => {
 
   it('Should initialize with initial state of empty list.', () => {
-    expect(notificationsReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(notificationsReducer(undefined, {})).toEqual(Immutable.fromJS({
       list: [],
       startedLoading: false,
       visibleNotification: Immutable.Map(),
@@ -37,7 +37,7 @@ describe('(notifications) notificationsReducer', () => {
       visibleNotification: Immutable.Map(),
     });
     let state = notificationsReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
 
@@ -47,16 +47,16 @@ describe('(notifications) notificationsReducer', () => {
       startedLoading: false,
       visibleNotification: Immutable.Map(),
     });
-    expect(alreadyStartedLoading(previousState)).to.equal(false);
+    expect(alreadyStartedLoading(previousState)).toEqual(false);
 
     const state = notificationsReducer(previousState, startLoading());
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       list: [],
       startedLoading: true,
       visibleNotification: Immutable.Map(),
     }));
 
-    expect(alreadyStartedLoading(state)).to.equal(true);
+    expect(alreadyStartedLoading(state)).toEqual(true);
   });
 
   it('Should be able to store and read notifications.', () => {
@@ -77,7 +77,7 @@ describe('(notifications) notificationsReducer', () => {
       ));
 
 
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       list: [
         {"id": 1, "characterId": "TAK"},
         {"id": 3, "characterId": "0"},
@@ -87,17 +87,17 @@ describe('(notifications) notificationsReducer', () => {
       visibleNotification: Immutable.Map(),
     }));
 
-    expect(getCharacterAndPlayerNotifications(state, "TAK")).to.equal(Immutable.fromJS([
+    expect(getCharacterAndPlayerNotifications(state, "TAK")).toEqual(Immutable.fromJS([
       {"id": 1, "characterId": "TAK"},
       {"id": 3, "characterId": "0"},
     ]));
 
-    expect(getCharacterAndPlayerNotifications(state, null)).to.equal(Immutable.fromJS([
+    expect(getCharacterAndPlayerNotifications(state, null)).toEqual(Immutable.fromJS([
       {"id": 3, "characterId": "0"},
     ]));
 
     state = notificationsReducer(state, removeNotification(7));
-    expect(getCharacterAndPlayerNotifications(state, "NIE")).to.equal(Immutable.fromJS([
+    expect(getCharacterAndPlayerNotifications(state, "NIE")).toEqual(Immutable.fromJS([
       {"id": 3, "characterId": "0"},
     ]));
   });
@@ -109,21 +109,21 @@ describe('(notifications) notificationsReducer', () => {
       visibleNotification: Immutable.Map(),
     });
 
-    expect(getVisibleNotification(state)).to.equal(Immutable.Map());
+    expect(getVisibleNotification(state)).toEqual(Immutable.Map());
 
     state = notificationsReducer(state, showNotificationDialog({
       id: "hehehe",
       options: [],
       title: "HEHE"
     }));
-    expect(getVisibleNotification(state)).to.equal(Immutable.fromJS({
+    expect(getVisibleNotification(state)).toEqual(Immutable.fromJS({
       id: "hehehe",
       options: [],
       title: "HEHE"
     }));
 
     state = notificationsReducer(state, hideNotificationDialog());
-    expect(getVisibleNotification(state)).to.equal(Immutable.Map());
+    expect(getVisibleNotification(state)).toEqual(Immutable.Map());
   });
 
   describe("Asynchronous socketio actions", () => {
@@ -131,41 +131,35 @@ describe('(notifications) notificationsReducer', () => {
 
     it('Should request the notifications list when it is not loaded.', () => {
 
-      const dependencies = new DependenciesStubber(notificationsRewire, {
-        alreadyStartedLoading: () => false,
-        fromNotificationsState: () => 123,
-      });
-      const store = createMockStore({}, null);
-      dependencies.rewireAll();
+      const store = createMockStore(Immutable.fromJS({
+        notifications: {
+          startedLoading: false,
+        },
+      }), null);
 
       store.dispatch(requestMissingNotifications());
       store.socketCalledWith("player.request_all_notifications");
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: START_LOADING_NOTIFICATIONS,
       });
-
-      dependencies.unwireAll();
     });
   });
 
   it('Should request the notifications list when it is loaded.', () => {
-    const dependencies = new DependenciesStubber(notificationsRewire, {
-      alreadyStartedLoading: () => true,
-      fromNotificationsState: () => 123,
-    });
-    const store = createMockStore({}, null);
-    dependencies.rewireAll();
+    const store = createMockStore(Immutable.fromJS({
+      notifications: {
+        startedLoading: true,
+      },
+    }), null);
 
     store.dispatch(requestMissingNotifications());
 
     store.socketNotCalled();
     const actions = store.getActions();
-    expect(actions).to.have.length(0);
-
-    dependencies.unwireAll();
+    expect(actions).toHaveLength(0);
   });
 
   it('Should request the info about notification.', () => {
@@ -181,8 +175,8 @@ describe('(notifications) notificationsReducer', () => {
 
     store.socketCalledWith("player.show_notification", notificationId);
     const actions = store.getActions();
-    expect(actions).to.have.length(1);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toEqual({
       type: SHOW_NOTIFICATION_DIALOG,
       notification: notification,
     });
@@ -204,11 +198,11 @@ describe('(notifications) notificationsReducer', () => {
 
     store.socketCalledWith(endpoint, ...params);
     const actions = store.getActions();
-    expect(actions).to.have.length(2);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toEqual({
       type: HIDE_NOTIFICATION_DIALOG,
     });
-    expect(actions[1]).to.deep.equal({
+    expect(actions[1]).toEqual({
       type: REMOVE_NOTIFICATION,
       notificationId: notificationId,
     });

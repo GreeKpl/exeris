@@ -2,14 +2,14 @@ import {
   playerReducer,
   updateOwnCharactersList, updateAchievementsList, requestOwnCharactersList, UPDATE_OWN_CHARACTERS_LIST,
   createNewCharacter, UPDATE_ACHIEVEMENTS_LIST, requestAchievementsList,
-} from "../../src/modules/player";
+} from "../player";
 import * as Immutable from "immutable";
-import {createMockStore} from "../testUtils";
+import {createMockStore} from "../../../tests/testUtils";
 
 describe('(player) playerReducer', () => {
 
   it('Should initialize with initial state of empty list.', () => {
-    expect(playerReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(playerReducer(undefined, {})).toEqual(Immutable.fromJS({
       ownCharacters: [],
       achievements: [],
     }));
@@ -21,7 +21,7 @@ describe('(player) playerReducer', () => {
       achievements: [],
     });
     let state = playerReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
   describe('ownCharacters', () => {
@@ -34,7 +34,7 @@ describe('(player) playerReducer', () => {
         achievements: [],
       });
       let state = playerReducer(previousState, updateOwnCharactersList([]));
-      expect(state).to.equal(previousState.setIn(["ownCharacters"], Immutable.List()));
+      expect(state).toEqual(previousState.setIn(["ownCharacters"], Immutable.List()));
     });
 
     it('Should update the state if new list is supplied.', () => {
@@ -45,7 +45,7 @@ describe('(player) playerReducer', () => {
         achievements: [],
       });
       let state = playerReducer(previousState, updateOwnCharactersList([{id: 11, name: "ad"}]));
-      expect(state).to.equal(previousState.setIn(["ownCharacters"],
+      expect(state).toEqual(previousState.setIn(["ownCharacters"],
         Immutable.fromJS([{id: 11, name: "ad"}])));
     });
 
@@ -69,8 +69,8 @@ describe('(player) playerReducer', () => {
       store.socketCalledWith("player.get_characters_list");
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: UPDATE_OWN_CHARACTERS_LIST,
         characterIdsList: charactersList,
       });
@@ -90,7 +90,7 @@ describe('(player) playerReducer', () => {
     it('Should return the previous state if an action was not matched.', () => {
       const previousState = Immutable.Map({achievements: []});
       let state = playerReducer(previousState, {});
-      expect(state).to.equal(previousState);
+      expect(state).toEqual(previousState);
     });
 
     it('Should update the state.', () => {
@@ -99,7 +99,7 @@ describe('(player) playerReducer', () => {
         updateAchievementsList(
           [{title: "abc", content: "be able to read abc"}]
         ));
-      expect(state).to.equal(Immutable.fromJS({
+      expect(state).toEqual(Immutable.fromJS({
         achievements: [{title: "abc", content: "be able to read abc"}]
       }));
     });
@@ -122,8 +122,8 @@ describe('(player) playerReducer', () => {
       store.socketCalledWith("player.get_achievements_list");
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: UPDATE_ACHIEVEMENTS_LIST,
         achievementsList: achievementsList,
       });

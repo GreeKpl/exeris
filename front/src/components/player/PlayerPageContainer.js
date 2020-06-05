@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
 import {fromPlayerState, getOwnCharactersList, requestOwnCharactersList} from "../../modules/player";
 import React from "react";
-import TopBarContainer from "../player/topBar/TopBarContainer";
+import TopBarContainer from "./topBar/TopBarContainer";
 import NotificationsContainer from "../commons/notifications/NotificationsContainer";
 
 class PlayerPage extends React.Component {

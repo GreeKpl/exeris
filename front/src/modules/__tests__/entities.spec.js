@@ -14,13 +14,13 @@ import {
   __RewireAPI__ as entitiesRewire, ADD_ENTITY_INFO, UPDATE_CHILDREN_OF_ENTITY, REMOVE_CHILD_OF_ENTITY,
   requestRootEntities, UPDATE_ROOT_ENTITIES_LIST, requestInventoryEntities, UPDATE_ITEMS_IN_INVENTORY_LIST,
   requestChildrenEntities, SHOW_SELECTED_DETAILS, requestSelectedDetails
-} from "../../src/modules/entities";
+} from "../entities";
 import * as Immutable from "immutable";
-import {createMockStore, DependenciesStubber} from "../testUtils";
+import {createMockStore, DependenciesStubber} from "../../../tests/testUtils";
 
 describe('(entities) entitiesReducer', () => {
   it('Should initialize with initial state of empty list.', () => {
-    expect(entitiesReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(entitiesReducer(undefined, {})).toEqual(Immutable.fromJS({
       rootEntities: [],
       itemsInInventory: [],
       children: {},
@@ -46,7 +46,7 @@ describe('(entities) entitiesReducer', () => {
       selectedDetails: null,
     });
     let state = entitiesReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
   it('Should update the rootEntities.', () => {
@@ -62,7 +62,7 @@ describe('(entities) entitiesReducer', () => {
       selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateRootEntitiesList(0, ["ABC", "DEF"]));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       rootEntities: ["ABC", "DEF"],
       itemsInInventory: [],
       children: {},
@@ -89,7 +89,7 @@ describe('(entities) entitiesReducer', () => {
       selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateItemsInInventoryList(0, ["HEJ", "TAM"]));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       rootEntities: [],
       itemsInInventory: ["HEJ", "TAM"],
       children: {},
@@ -116,7 +116,7 @@ describe('(entities) entitiesReducer', () => {
     });
 
     let state = entitiesReducer(previousState, removeChildOfEntity(0, "BAF", "CBA"));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       rootEntities: [],
       itemsInInventory: [],
       children: {"BAF": ["DOM"]},
@@ -142,7 +142,7 @@ describe('(entities) entitiesReducer', () => {
       selectedDetails: null,
     });
     let state = entitiesReducer(previousState, updateChildrenOfEntity(0, "BAF", ["CBA", "DOM"]));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       rootEntities: [],
       itemsInInventory: [],
       children: {"BAF": ["CBA", "DOM"]},
@@ -175,7 +175,7 @@ describe('(entities) entitiesReducer', () => {
       id: "CAN",
       name: "a hammer",
     }));
-    expect(state).to.equal(Immutable.fromJS({
+    expect(state).toEqual(Immutable.fromJS({
       rootEntities: [],
       itemsInInventory: [],
       children: {},
@@ -203,7 +203,7 @@ describe('(entities) entitiesReducer', () => {
 
     const globalState = Immutable.Map({entities: state});
 
-    expect(globalState).to.equal(Immutable.fromJS({
+    expect(globalState).toEqual(Immutable.fromJS({
       entities: {
         "CHAR": {
           rootEntities: ["CAN"],
@@ -229,23 +229,23 @@ describe('(entities) entitiesReducer', () => {
     }));
 
     expect(getChildren(fromEntitiesState(globalState, "CHAR")))
-      .to.equal(Immutable.fromJS({
-      "CAN": ["KLA"],
-    }));
+      .toEqual(Immutable.fromJS({
+        "CAN": ["KLA"],
+      }));
 
     expect(getRootEntities(fromEntitiesState(globalState, "CHAR")))
-      .to.equal(Immutable.List.of("CAN"));
+      .toEqual(Immutable.List.of("CAN"));
     expect(getEntityInfos(fromEntitiesState(globalState, "CHAR")))
-      .to.equal(Immutable.fromJS({
-      "KLA": {
-        id: "KLA",
-        name: "a hammer",
-      },
-      "CAN": {
-        id: "CAN",
-        name: "a chest",
-      },
-    }));
+      .toEqual(Immutable.fromJS({
+        "KLA": {
+          id: "KLA",
+          name: "a hammer",
+        },
+        "CAN": {
+          id: "CAN",
+          name: "a chest",
+        },
+      }));
   });
 
   describe("Asynchronous socketio actions to refresh an entity", () => {
@@ -254,27 +254,24 @@ describe('(entities) entitiesReducer', () => {
     it('Should request refresh of entity that is not visible.', () => {
       const itemId = "HAMMER_1";
 
-      const dependencies = new DependenciesStubber(entitiesRewire, {
-        fromEntitiesState: () => 1,
-        getChildren: () => Immutable.Map(),
-        getEntityInfos: () => Immutable.fromJS({
-          [itemId]: {
-            id: itemId,
-            name: "hammer",
-          }
-        }),
-        getItemsInInventory: () => Immutable.List(),
-      });
-      dependencies.rewireAll();
-
-      const store = createMockStore({}, null);
+      const store = createMockStore(Immutable.fromJS({
+        entities: {
+          children: {},
+          info: {
+            [itemId]: {
+              id: itemId,
+              name: "hammer",
+            }
+          },
+          itemsInInventory: [],
+        },
+      }), null);
 
       store.dispatch(requestRefreshEntity(charId, itemId));
       store.socketNotCalled();
 
       const actions = store.getActions();
-      expect(actions).to.have.length(0);
-      dependencies.unwireAll();
+      expect(actions).toHaveLength(0);
     });
 
     it('Should request refresh of entity that is inventory.', () => {
@@ -285,43 +282,42 @@ describe('(entities) entitiesReducer', () => {
         activities: [],
       };
 
-      const dependencies = new DependenciesStubber(entitiesRewire, {
-        fromEntitiesState: () => 1,
-        getChildren: () => Immutable.Map(),
-        getEntityInfos: () => Immutable.fromJS({
-          [itemId]: {
-            id: itemId,
-            name: "old hammer",
+      const store = createMockStore(
+        Immutable.fromJS({
+          entities: {
+            [charId]: {
+              children: {},
+              info: {
+                [itemId]: {
+                  id: itemId,
+                  name: "old hammer",
+                }
+              },
+              itemsInInventory: [itemId],
+            },
           }
-        }),
-        getItemsInInventory: () => Immutable.List([itemId]),
-      });
-      dependencies.rewireAll();
-
-      const store = createMockStore({}, [{
-        id: itemId,
-        children: [],
-        info: newItemInfo,
-      }]);
+        }), [{
+          id: itemId,
+          children: [],
+          info: newItemInfo,
+        }]);
 
       store.dispatch(requestRefreshEntity(charId, itemId));
       store.socketCalledWith("character.get_extended_entity_info", charId, itemId, null);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(2);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(2);
+      expect(actions[0]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: newItemInfo,
         characterId: charId,
       });
-      expect(actions[1]).to.deep.equal({
+      expect(actions[1]).toEqual({
         type: UPDATE_CHILDREN_OF_ENTITY,
         parentEntityId: itemId,
         childrenIds: [],
         characterId: charId,
       });
-
-      dependencies.unwireAll();
     });
 
     it('Should request refresh of entity with 2 activities that is on the ground.', () => {
@@ -346,22 +342,22 @@ describe('(entities) entitiesReducer', () => {
         ],
       };
 
-      const dependencies = new DependenciesStubber(entitiesRewire, {
-        fromEntitiesState: () => 1,
-        getChildren: () => Immutable.fromJS({
-          [parentIdOfItem]: [itemId],
-        }),
-        getEntityInfos: () => Immutable.fromJS({
-          [itemId]: {
-            id: itemId,
-            name: "old hammer",
-          }
-        }),
-        getItemsInInventory: () => Immutable.List(),
-      });
-      dependencies.rewireAll();
-
-      const store = createMockStore({}, [{
+      const store = createMockStore(Immutable.fromJS({
+        entities: {
+          [charId]: {
+            children: {
+              [parentIdOfItem]: [itemId],
+            },
+            info: {
+              [itemId]: {
+                id: itemId,
+                name: "old hammer",
+              }
+            },
+            itemsInInventory: [],
+          },
+        },
+      }), [{
         id: itemId,
         children: [],
         info: newItemInfo,
@@ -371,52 +367,50 @@ describe('(entities) entitiesReducer', () => {
       store.socketCalledWith("character.get_extended_entity_info", charId, itemId, parentIdOfItem);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(4);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(4);
+      expect(actions[0]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: activity1,
         characterId: charId,
       });
-      expect(actions[1]).to.deep.equal({
+      expect(actions[1]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: activity2,
         characterId: charId,
       });
-      expect(actions[2]).to.deep.equal({
+      expect(actions[2]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: newItemInfo,
         characterId: charId,
       });
-      expect(actions[3]).to.deep.equal({
+      expect(actions[3]).toEqual({
         type: UPDATE_CHILDREN_OF_ENTITY,
         parentEntityId: itemId,
         childrenIds: [],
         characterId: charId,
       });
-
-      dependencies.unwireAll();
     });
 
     it('Should request refresh of entity that was visible on the ground but disappears.', () => {
       const itemId = "HAMMER_1";
       const parentIdOfItem = "PARENT_OF_HAMMER_1";
 
-      const dependencies = new DependenciesStubber(entitiesRewire, {
-        fromEntitiesState: () => 1,
-        getChildren: () => Immutable.fromJS({
-          [parentIdOfItem]: [itemId],
-        }),
-        getEntityInfos: () => Immutable.fromJS({
-          [itemId]: {
-            id: itemId,
-            name: "hammer",
-          }
-        }),
-        getItemsInInventory: () => Immutable.List(),
-      });
-      dependencies.rewireAll();
-
-      const store = createMockStore({}, [{
+      const store = createMockStore(Immutable.fromJS({
+        entities: {
+          [charId]: {
+            children: {
+              [parentIdOfItem]: [itemId],
+            },
+            info: {
+              [itemId]: {
+                id: itemId,
+                name: "hammer",
+              }
+            },
+            itemsInInventory: [],
+          },
+        },
+      }), [{
         id: itemId,
         children: [],
         info: null,
@@ -426,15 +420,13 @@ describe('(entities) entitiesReducer', () => {
       store.socketCalledWith("character.get_extended_entity_info", charId, itemId, parentIdOfItem);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
         type: REMOVE_CHILD_OF_ENTITY,
         parentEntityId: parentIdOfItem,
         childId: itemId,
         characterId: charId,
       });
-
-      dependencies.unwireAll();
     });
 
     it('Should request refresh of entity which is visible', () => {
@@ -454,28 +446,28 @@ describe('(entities) entitiesReducer', () => {
         ],
       };
 
-      const dependencies = new DependenciesStubber(entitiesRewire, {
-        fromEntitiesState: () => 1,
-        getChildren: () => Immutable.fromJS({
-          [parentIdOfItem]: [itemId],
-        }),
-        getEntityInfos: () => Immutable.fromJS({
-          [itemId]: {
-            id: itemId,
-            name: "hammer",
-            activities: [activityId],
-          },
-          [activityId]: {
-            id: activityId,
-            name: "repairing hammer",
-            parent: itemId,
-          },
-        }),
-        getItemsInInventory: () => Immutable.List(),
-      });
-      dependencies.rewireAll();
-
-      const store = createMockStore({}, [{
+      const store = createMockStore(Immutable.fromJS({
+        entities: {
+            [charId]: {
+              children: {
+                [parentIdOfItem]: [itemId],
+              },
+              info: {
+                [itemId]: {
+                  id: itemId,
+                  name: "hammer",
+                  activities: [activityId],
+                },
+                [activityId]: {
+                  id: activityId,
+                  name: "repairing hammer",
+                  parent: itemId,
+                },
+              },
+            },
+          itemsInInventory: [],
+        },
+      }), [{
         id: itemId,
         children: [],
         info: newItemInfo,
@@ -485,13 +477,13 @@ describe('(entities) entitiesReducer', () => {
       store.socketCalledWith("character.get_extended_entity_info", charId, itemId, parentIdOfItem);
 
       const actions = store.getActions();
-      expect(actions).to.have.length(3);
-      expect(actions[0]).to.deep.equal({
+      expect(actions).toHaveLength(3);
+      expect(actions[0]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: newActivityInfo,
         characterId: charId,
       });
-      expect(actions[1]).to.deep.equal({
+      expect(actions[1]).toEqual({
         type: ADD_ENTITY_INFO,
         entityInfo: {
           id: itemId,
@@ -500,13 +492,12 @@ describe('(entities) entitiesReducer', () => {
         },
         characterId: charId,
       });
-      expect(actions[2]).to.deep.equal({
+      expect(actions[2]).toEqual({
         type: UPDATE_CHILDREN_OF_ENTITY,
         parentEntityId: itemId,
         childrenIds: [],
         characterId: charId,
       });
-      dependencies.unwireAll();
     });
   });
 
@@ -542,18 +533,18 @@ describe('(entities) entitiesReducer', () => {
     store.socketCalledWith("character.get_root_entities", charId);
 
     const actions = store.getActions();
-    expect(actions).to.have.length(4);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(4);
+    expect(actions[0]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: item1,
       characterId: charId,
     });
-    expect(actions[1]).to.deep.equal({
+    expect(actions[1]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: activityOfItem2,
       characterId: charId,
     });
-    expect(actions[2]).to.deep.equal({
+    expect(actions[2]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: {
         id: item2Id,
@@ -562,7 +553,7 @@ describe('(entities) entitiesReducer', () => {
       },
       characterId: charId,
     });
-    expect(actions[3]).to.deep.equal({
+    expect(actions[3]).toEqual({
       type: UPDATE_ROOT_ENTITIES_LIST,
       rootEntitiesList: [item1Id, item2Id],
       characterId: charId,
@@ -601,18 +592,18 @@ describe('(entities) entitiesReducer', () => {
     store.socketCalledWith("character.get_items_in_inventory", charId);
 
     const actions = store.getActions();
-    expect(actions).to.have.length(4);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(4);
+    expect(actions[0]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: item1,
       characterId: charId,
     });
-    expect(actions[1]).to.deep.equal({
+    expect(actions[1]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: activityOfItem2,
       characterId: charId,
     });
-    expect(actions[2]).to.deep.equal({
+    expect(actions[2]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: {
         id: item2Id,
@@ -621,7 +612,7 @@ describe('(entities) entitiesReducer', () => {
       },
       characterId: charId,
     });
-    expect(actions[3]).to.deep.equal({
+    expect(actions[3]).toEqual({
       type: UPDATE_ITEMS_IN_INVENTORY_LIST,
       itemsList: [item1Id, item2Id],
       characterId: charId,
@@ -644,29 +635,29 @@ describe('(entities) entitiesReducer', () => {
       activities: [activity],
     };
 
-    const store = createMockStore({}, [
+    const store = createMockStore(Immutable.fromJS({
+      entities: {
+        [charId]: {
+          children: {
+            [parentOfParentId]: [parentId],
+          },
+        },
+      },
+    }), [
       [item],
     ]);
 
-    const dependencies = new DependenciesStubber(entitiesRewire, {
-      fromEntitiesState: () => 1,
-      getChildren: () => Immutable.fromJS({
-        [parentOfParentId]: [parentId],
-      }),
-    });
-
-    dependencies.rewireAll();
     store.dispatch(requestChildrenEntities(charId, parentId));
     store.socketCalledWith("character.get_children_entities", charId, parentId, parentOfParentId);
 
     const actions = store.getActions();
-    expect(actions).to.have.length(3);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(3);
+    expect(actions[0]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: activity,
       characterId: charId,
     });
-    expect(actions[1]).to.deep.equal({
+    expect(actions[1]).toEqual({
       type: ADD_ENTITY_INFO,
       entityInfo: {
         id: itemId,
@@ -675,14 +666,12 @@ describe('(entities) entitiesReducer', () => {
       },
       characterId: charId,
     });
-    expect(actions[2]).to.deep.equal({
+    expect(actions[2]).toEqual({
       type: UPDATE_CHILDREN_OF_ENTITY,
       parentEntityId: parentId,
       childrenIds: [itemId],
       characterId: charId,
     });
-
-    dependencies.unwireAll();
   });
 
   it('Should request details of a selected entity.', () => {
@@ -702,8 +691,8 @@ describe('(entities) entitiesReducer', () => {
     store.socketCalledWith("character.get_detailed_entity_info", charId, itemId);
 
     const actions = store.getActions();
-    expect(actions).to.have.length(1);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toEqual({
       type: SHOW_SELECTED_DETAILS,
       entityDetails: itemDetails,
       characterId: charId,
@@ -712,7 +701,6 @@ describe('(entities) entitiesReducer', () => {
 
   it('Should request update expanded input -- not implemented.', () => {
   });
-
 });
 
 

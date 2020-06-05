@@ -5,14 +5,14 @@ import {
   updateEventsList,
   appendToEventsList,
   decoratedEventsReducer, UPDATE_EVENTS_LIST, requestAllEvents
-} from "../../src/modules/events";
+} from "../events";
 import * as Immutable from "immutable";
-import {createMockStore} from "../testUtils";
+import {createMockStore} from "../../../tests/testUtils";
 
 describe('(events) eventsReducer', () => {
 
   it('Should initialize with initial state.', () => {
-    expect(eventsReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(eventsReducer(undefined, {})).toEqual(Immutable.fromJS({
       eventsList: [],
     }));
   });
@@ -22,7 +22,7 @@ describe('(events) eventsReducer', () => {
       eventsList: [{"id": 1, "text": "abc"}],
     });
     let state = eventsReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
 
@@ -31,7 +31,7 @@ describe('(events) eventsReducer', () => {
       eventsList: [{"id": 1, "text": "abc"}],
     });
     let state = eventsReducer(previousState, updateEventsList(0, []));
-    expect(state).to.equal(previousState.setIn(["eventsList"], Immutable.List()));
+    expect(state).toEqual(previousState.setIn(["eventsList"], Immutable.List()));
   });
 
   it('Should replace the state if a new list is supplied.', () => {
@@ -39,7 +39,7 @@ describe('(events) eventsReducer', () => {
       eventsList: [{"id": 1, "text": "abc"}],
     });
     let state = eventsReducer(previousState, updateEventsList(0, [{id: 11, text: "ade"}]));
-    expect(state).to.equal(previousState.setIn(["eventsList"],
+    expect(state).toEqual(previousState.setIn(["eventsList"],
       Immutable.fromJS([{id: 11, text: "ade"}])));
   });
 
@@ -48,7 +48,7 @@ describe('(events) eventsReducer', () => {
       eventsList: [{"id": 1, "text": "abc"}],
     });
     let state = eventsReducer(previousState, appendToEventsList(0, [{id: 11, text: "ade"}]));
-    expect(state).to.equal(previousState.setIn(["eventsList"],
+    expect(state).toEqual(previousState.setIn(["eventsList"],
       Immutable.fromJS([{"id": 1, "text": "abc"}, {id: 11, text: "ade"}])));
   });
 
@@ -57,7 +57,7 @@ describe('(events) eventsReducer', () => {
       eventsList: [{"id": 1, "text": "abc"}, {id: 11, text: "ade"}],
     });
 
-    expect(getAllEvents(state)).to.equal(Immutable.fromJS([
+    expect(getAllEvents(state)).toEqual(Immutable.fromJS([
       {"id": 1, "text": "abc"},
       {id: 11, text: "ade"}
     ]));
@@ -68,10 +68,10 @@ describe('(events) eventsReducer', () => {
     state = decoratedEventsReducer(state, updateEventsList("DEF", [{"id": 1, "text": "abc"}]));
     state = decoratedEventsReducer(state, updateEventsList("3", [{id: 11, text: "ade"}]));
     state = Immutable.Map({events: state});
-    expect(getAllEvents(fromEventsState(state, "3"))).to.equal(Immutable.fromJS([
+    expect(getAllEvents(fromEventsState(state, "3"))).toEqual(Immutable.fromJS([
       {id: 11, text: "ade"}
     ]));
-    expect(getAllEvents(fromEventsState(state, "DEF"))).to.equal(Immutable.fromJS([
+    expect(getAllEvents(fromEventsState(state, "DEF"))).toEqual(Immutable.fromJS([
       {"id": 1, "text": "abc"},
     ]));
   });
@@ -91,8 +91,8 @@ describe('(events) eventsReducer', () => {
     store.socketCalledWith("character.get_all_events", charId);
 
     const actions = store.getActions();
-    expect(actions).to.have.length(1);
-    expect(actions[0]).to.deep.equal({
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toEqual({
       type: UPDATE_EVENTS_LIST,
       eventsList: eventsList,
       characterId: charId,

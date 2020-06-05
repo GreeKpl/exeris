@@ -4,14 +4,14 @@ import {
   getMovementAction,
   UPDATE_TRAVEL_STATE, incrementTravelStateTick, getTickId,
   requestTravelState, changeMovementDirection, stopMovement
-} from "../../src/modules/travel";
+} from "../travel";
 import * as Immutable from "immutable";
-import {createMockStore} from "../testUtils";
+import {createMockStore} from "../../../tests/testUtils";
 
 describe('(character) travelReducer', () => {
 
   it('Should initialize with initial state of empty list.', () => {
-    expect(travelReducer(undefined, {})).to.equal(Immutable.fromJS({
+    expect(travelReducer(undefined, {})).toEqual(Immutable.fromJS({
       "canBeControlled": false,
       "travelTick": 0,
     }));
@@ -23,13 +23,13 @@ describe('(character) travelReducer', () => {
       "travelTick": 0,
     });
     let state = travelReducer(previousState, {});
-    expect(state).to.equal(previousState);
+    expect(state).toEqual(previousState);
   });
 
   it('Should update travel state.', () => {
     let state = travelReducer(undefined, {});
-    expect(canBeControlled(state)).to.equal(false);
-    expect(getMovementAction(state)).to.equal(null);
+    expect(canBeControlled(state)).toEqual(false);
+    expect(getMovementAction(state)).toEqual(null);
 
     state = travelReducer(state, {
       type: UPDATE_TRAVEL_STATE,
@@ -39,17 +39,17 @@ describe('(character) travelReducer', () => {
       },
       characterId: "ABC",
     });
-    expect(canBeControlled(state)).to.equal(true);
-    expect(getMovementAction(state)).to.equal("DEF");
+    expect(canBeControlled(state)).toEqual(true);
+    expect(getMovementAction(state)).toEqual("DEF");
   });
 
   it('Should update travel tick.', () => {
     let state = travelReducer(undefined, {});
 
     state = travelReducer(state, incrementTravelStateTick("DEF"));
-    expect(getTickId(state)).to.equal(1);
+    expect(getTickId(state)).toEqual(1);
     state = travelReducer(state, incrementTravelStateTick("DEF"));
-    expect(getTickId(state)).to.equal(2);
+    expect(getTickId(state)).toEqual(2);
   });
 
   describe("Asynchronous socketio actions", () => {
@@ -65,8 +65,8 @@ describe('(character) travelReducer', () => {
       const store = createMockStore({}, [travelData]);
       store.dispatch(requestTravelState(charId));
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual(updateTravelStateAction);
     });
 
     it('Should change travel direction which also requests travel state from the backend.', () => {
@@ -76,8 +76,8 @@ describe('(character) travelReducer', () => {
       });
       store.dispatch(changeMovementDirection(charId, 100));
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual(updateTravelStateAction);
     });
 
     it('Should stop movement which also requests travel state from the backend.', () => {
@@ -87,8 +87,8 @@ describe('(character) travelReducer', () => {
       });
       store.dispatch(stopMovement(charId));
       const actions = store.getActions();
-      expect(actions).to.have.length(1);
-      expect(actions[0]).to.deep.equal(updateTravelStateAction);
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual(updateTravelStateAction);
     });
   });
 });
