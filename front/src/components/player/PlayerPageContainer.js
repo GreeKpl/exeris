@@ -5,10 +5,6 @@ import TopBarContainer from "./topBar/TopBarContainer";
 import NotificationsContainer from "../commons/notifications/NotificationsContainer";
 
 class PlayerPage extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     if (this.props.characterIdsList.size === 0) {
       this.props.requestState();

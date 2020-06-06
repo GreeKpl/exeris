@@ -3,7 +3,7 @@ import {Nav, NavItem} from "react-bootstrap";
 import {IndexLinkContainer} from "react-router-bootstrap";
 import "./style.scss";
 
-const AdminTopBar = ({}) => {
+const AdminTopBar = () => {
   return <Nav bsStyle="pills"
               className="Admin-TopBar-Nav">
     <IndexLinkContainer to="/player"

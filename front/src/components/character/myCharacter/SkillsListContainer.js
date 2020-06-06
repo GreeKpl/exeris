@@ -14,11 +14,6 @@ const Skill = ({name, value, indent = false}) => {
 };
 
 class SkillsListRaw extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     const {t} = this.props;
 

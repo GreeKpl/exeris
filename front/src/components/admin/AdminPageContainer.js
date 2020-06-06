@@ -5,10 +5,6 @@ import AdminTopBar from "./topBar/AdminTopBarContainer";
 import "./style.scss";
 
 class AdminPage extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return <div>
       <div style={{

@@ -28,10 +28,6 @@ const DropdownMenu = ({characters, characterId}) => {
 };
 
 class MobileCharacterTopBarRaw extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

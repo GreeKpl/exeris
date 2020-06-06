@@ -5,11 +5,6 @@ import {IndexLinkContainer} from "react-router-bootstrap";
 import "./style.scss";
 
 class TopBar extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return <Nav bsStyle="pills"
                 className="Player-TopBar-Nav">

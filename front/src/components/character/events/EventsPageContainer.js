@@ -8,11 +8,6 @@ import TopPanelContainer from "../topPanel/TopPanelContainer";
 import "./style.scss";
 
 export class EventsPage extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     if (this.props.isSmall) {
       return (

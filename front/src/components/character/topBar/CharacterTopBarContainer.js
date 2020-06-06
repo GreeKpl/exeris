@@ -37,10 +37,6 @@ const CharacterState = ({workIntent, combatIntent, hunger, damage}) => {
 };
 
 class CharacterTopBarRaw extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

@@ -8,10 +8,6 @@ import {Panel, Grid, Row, ListGroup, ListGroupItem, Button, Col} from "react-boo
 
 
 class CombatTopPanel extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   displayFighter(fighter) {
     return <ListGroupItem>
       {fighter.get("name")} Damage: {fighter.get("damage")}

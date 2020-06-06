@@ -31,11 +31,6 @@ class EntityTypeListRow extends React.Component {
 }
 
 class EntityTypesManagement extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

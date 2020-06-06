@@ -20,11 +20,6 @@ import Entities from "../../commons/entities/Entities";
 
 
 export class EntitiesList extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
     this.props.clearSelection();

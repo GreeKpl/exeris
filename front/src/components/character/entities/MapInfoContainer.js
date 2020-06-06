@@ -5,11 +5,6 @@ import {Panel} from "react-bootstrap";
 import {fromTravelState, getTickId} from "../../../modules/travel";
 
 class MapInfo extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <Panel header="World map">

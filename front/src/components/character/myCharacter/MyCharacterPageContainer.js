@@ -10,11 +10,6 @@ import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer
 import IntentsListContainer from "./IntentsListContainer";
 
 export class MyCharacterPage extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

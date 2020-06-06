@@ -1,11 +1,11 @@
 import i18n from 'i18next';
 import XHR from 'i18next-xhr-backend';
-import {translate} from "react-i18next";
+import {withTranslation} from "react-i18next";
 import Cache from 'i18next-localstorage-cache';
 
 
 export const i18nize = component => {
-  return translate(["common"], {
+  return withTranslation(["common"], {
     wait: true,
   })(component);
 };

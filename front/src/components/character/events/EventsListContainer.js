@@ -6,11 +6,6 @@ import {ListGroup, ListGroupItem} from "react-bootstrap";
 
 
 export class EventsList extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

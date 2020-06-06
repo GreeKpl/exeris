@@ -28,10 +28,6 @@ class NotificationDialogOption extends React.Component {
 }
 
 class NotificationDialog extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     if (!this.props.isNotificationDialogVisible) { // notification dialog is not visible
       return null;

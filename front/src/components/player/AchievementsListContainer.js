@@ -10,11 +10,6 @@ const AchievementEntry = ({title, children}) => (
 );
 
 class AchievementsList extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.onMount();
   }

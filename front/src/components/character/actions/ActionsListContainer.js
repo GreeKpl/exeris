@@ -31,11 +31,6 @@ class ActionsListItem extends React.Component {
 }
 
 export class ActionsList extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

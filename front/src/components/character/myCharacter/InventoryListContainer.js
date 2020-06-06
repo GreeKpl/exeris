@@ -18,11 +18,6 @@ import Entities from "../../commons/entities/Entities";
 import {Panel} from "react-bootstrap";
 
 export class InventoryList extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
     this.props.clearSelection();

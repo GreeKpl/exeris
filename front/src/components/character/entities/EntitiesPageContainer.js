@@ -10,11 +10,6 @@ import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer
 import {EntityDetailsContainer, ActivityDetailsContainer} from "./EntityDetailsContainer";
 
 export class EntitiesPage extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
 
     let optionalEntityInfo = null;

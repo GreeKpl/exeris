@@ -17,7 +17,7 @@ class Notification extends React.Component {
   }
 
   render() {
-    return <Alert bsStyle={this.props.type == "error" ? "danger" : "info"}
+    return <Alert bsStyle={this.props.type === "error" ? "danger" : "info"}
                   onDismiss={this.props.closeable ? this.handleDismiss : null}
                   onClick={this.props.detailed ? this.handleDisplay : null}>
       {this.props.title}
@@ -35,10 +35,6 @@ class Notification extends React.Component {
 
 
 class Notifications extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.props.requestState();
   }

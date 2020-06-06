@@ -18,10 +18,8 @@ const TopPanel = ({characterId, detailsType}) => {
   switch (detailsType) {
     case PANEL_COMBAT:
       return <CombatTopPanelContainer characterId={characterId}/>;
-      break;
     case PANEL_CHARACTER:
       return <CharacterPanelContainer characterId={characterId}/>;
-      break;
     default:
       return null;
   }

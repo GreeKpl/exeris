@@ -6,4 +6,4 @@ from exeris.admin import admin_bp, socketio_events
 @admin_bp.route("/", defaults={'path': ''})
 @admin_bp.route("/<path:path>")
 def page_player(path):
-    return render_template("front/dist/index.html")
+    return render_template("front/build/index.html")

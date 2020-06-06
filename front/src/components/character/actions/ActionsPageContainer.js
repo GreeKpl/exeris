@@ -7,11 +7,6 @@ import ActionsListContainer from "./ActionsListContainer";
 import ActionDetailsContainer from "./ActionDetailsContainer";
 
 export class ActionsPage extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
 
     if (this.props.isSmall) {

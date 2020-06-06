@@ -18,11 +18,6 @@ const OptionalCol = ({value, children}) => {
 };
 
 export class EntityDetails extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <Panel header="EntityInfo">
@@ -153,10 +148,6 @@ const InputRequirements = ({
   </ListGroup>;
 
 export class ActivityDetails extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
 
   render() {
     const {details, onExpandInput, onCollapseInput, onSubmitForm} = this.props;

@@ -7,10 +7,6 @@ import "./style.scss";
 import CharacterDialogsContainer from "./dialogs/CharacterDialogsContainer";
 
 class CharacterPage extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     if (this.props.characterIdsList.size === 0) {
       this.props.requestState();

@@ -171,7 +171,7 @@ export const EatFormContainer = connect(
 
 
 const PutIntoStorage = ({entityIds, details, handleSubmit, onSubmit, pristine, reset, submitting}) => {
-  const singleStackableItem = entityIds.size == 1 && details.get("maxAmount") > 1;
+  const singleStackableItem = entityIds.size === 1 && details.get("maxAmount") > 1;
 
   return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
