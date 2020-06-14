@@ -6,7 +6,6 @@ import geoalchemy2 as gis
 import sqlalchemy as sql
 import sqlalchemy.dialects.postgresql as psql
 import sqlalchemy.orm
-from flask_security import UserMixin, RoleMixin
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
@@ -51,14 +50,14 @@ roles_users = db.Table('player_roles',
                        db.Index("player_roles_index", "player_id", "role_id"))
 
 
-class Role(db.Model, RoleMixin):
+class Role(db.Model):
     __tablename__ = "roles"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True)
     description = db.Column(db.String(255))
 
 
-class Player(db.Model, UserMixin):
+class Player(db.Model):
     __tablename__ = "players"
 
     id = sql.Column(sql.String(PLAYER_ID_MAXLEN), primary_key=True)

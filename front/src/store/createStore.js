@@ -6,7 +6,7 @@ import {updateLocation} from "./location";
 import {responsiveStoreEnhancer} from "redux-responsive";
 import socket from "../util/server";
 
-export default () => {
+export default (socket) => {
   // ======================================================
   // Middleware Configuration
   // ======================================================

@@ -1,16 +1,11 @@
 import flask
+from flask import g
+
 # noinspection PyUnresolvedReferences
 from exeris.character import character_bp, socketio_events
+from exeris.core.graphics import get_map
 # noinspection PyUnresolvedReferences
 from exeris.extra import hooks
-from exeris.core.graphics import get_map
-from flask import render_template, g
-
-
-@character_bp.route("/", defaults={'path': ''})
-@character_bp.route("/<path:path>")
-def page_player(path):
-    return render_template("front/build/index.html")
 
 
 @character_bp.route("/map_image")

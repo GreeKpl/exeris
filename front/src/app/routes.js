@@ -11,9 +11,11 @@ import OwnCharacterPageContainer from "../components/character/myCharacter/MyCha
 import AdminPageContainer from "../components/admin/AdminPageContainer";
 import AdminDashboardContainer from "../components/admin/AdminDashboardContainer";
 import EntityTypesManagementContainer from "../components/admin/entities/EntityTypesManagementContainer";
+import LoginPageContainer from "../components/outer/LoginPageContainer/LoginPageContainer";
 
 const routes = (
   <Route path="/" component={Root}>
+    <Route path="login" component={LoginPageContainer}/>
     <IndexRedirect to="player"/>
     <Route path="player" component={PlayerPageContainer}>
       <IndexRedirect to="dashboard"/>
@@ -30,7 +32,6 @@ const routes = (
       <Route path="entities" component={EntitiesPageContainer}/>
       <Route path="actions" component={ActionsPageContainer}/>
       <Route path="myCharacter" component={OwnCharacterPageContainer}/>
-
     </Route>
   </Route>
 );

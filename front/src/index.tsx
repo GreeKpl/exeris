@@ -2,14 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import AppContainer from './app/AppContainer';
 import * as serviceWorker from './serviceWorker';
-import createStore from "./store/createStore";
-import routes from "./app/routes";
+import 'bootstrap/dist/css/bootstrap.css';
 
-const store = createStore();
 
 ReactDOM.render(
     <React.StrictMode>
-        <AppContainer store={store} routes={routes}/>
+        <AppContainer/>
     </React.StrictMode>,
     document.getElementById('root')
 );

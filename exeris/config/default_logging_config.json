@@ -25,7 +25,7 @@
     "log_file_handler": {
       "class": "logging.handlers.WatchedFileHandler",
       "formatter": "standard",
-      "filename": "exeris.log",
+      "filename": "log/exeris.log",
       "mode": "a",
       "encoding": "utf-8",
       "level": "INFO"

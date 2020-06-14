@@ -1,37 +1,31 @@
 import datetime
 import logging
+import os
+import time
 import traceback
+from functools import wraps
 
 import flask_socketio as client_socket
-import os
 import psycopg2
 import redis
+from flask import g, request
+from flask_bootstrap import Bootstrap
+from flask_bower import Bower
+from flask_login import LoginManager, current_user
+from flask_mail import Mail
+from flask_redis import FlaskRedis
+from flask_socketio import SocketIO
+from geoalchemy2.shape import from_shape
+from pyslate.backends import postgres_backend
+from shapely.geometry import Point, Polygon
 
+# noinspection PyUnresolvedReferences
+from exeris.core import achievements
 from exeris.core import cache
 from exeris.core import models, main, general
 from exeris.core.i18n import create_pyslate
 from exeris.core.main import create_app, db, Types
 from exeris.core.properties_base import P
-from flask import g, request
-from flask_bootstrap import Bootstrap
-from flask_bower import Bower
-from flask_login import current_user
-from flask_redis import FlaskRedis
-from flask_security import SQLAlchemyUserDatastore, Security, RegisterForm
-from flask_security.forms import Required
-from flask_socketio import SocketIO
-from functools import wraps
-from flask_wtf import RecaptchaField
-from wtforms import validators
-from geoalchemy2.shape import from_shape
-from pyslate.backends import postgres_backend
-from shapely.geometry import Point, Polygon
-from wtforms import StringField, SelectField
-from flask_mail import Mail
-import time
-
-# noinspection PyUnresolvedReferences
-from exeris.core import achievements
 
 logger = logging.getLogger(__name__)
 
@@ -44,24 +38,9 @@ Bower(app)
 
 mail = Mail(app)
 
+login_manager = LoginManager(app)
+
 redis_db = FlaskRedis.from_custom_provider(redis.StrictRedis, app)
-
-
-class ExtendedRegisterForm(RegisterForm):
-    id = StringField('Username', [Required(),
-                                  validators.Regexp(r'^[a-zA-Z0-9][a-zA-Z0-9_\-]+$',
-                                                    message='Identifiers can contain only alphanumerics, ' +
-                                                            '"_" and "-". It must start with an alphanumeric character'),
-                                  validators.Length(min=3, max=20)])
-    language = SelectField('Language', [Required()], choices=[("en", "English")])
-
-
-if app.config["USE_RECAPTCHA_IN_FORMS"]:
-    ExtendedRegisterForm.recaptcha = RecaptchaField("Recaptcha")
-
-user_datastore = SQLAlchemyUserDatastore(db, models.Player, models.Role)
-security = Security(app, user_datastore, register_form=ExtendedRegisterForm,
-                    confirm_register_form=ExtendedRegisterForm)
 
 
 def socketio_outer_event(*args, **kwargs):
@@ -147,7 +126,7 @@ main.property_cache = cache.PropertyCache()
 
 from exeris.outer import outer_bp
 from exeris.player import player_bp
-from exeris.character import character_bp, character_static
+from exeris.character import character_bp
 from exeris.admin import admin_bp
 
 
@@ -744,6 +723,10 @@ def character_preprocessor(endpoint, values):
                                character=g.character)
 
 
+@login_manager.user_loader
+def load_user(player_id):
+    return models.Player.by_id(player_id)
+
 class SocketioUsers:
     def __init__(self):
         # redis_db.flushdb()
@@ -807,7 +790,6 @@ app.register_blueprint(outer_bp)
 app.register_blueprint(player_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(character_bp)
-app.register_blueprint(character_static)
 
 app.jinja_env.globals.update(t=lambda *args, **kwargs: g.pyslate.t(*args, **kwargs))
 app.jinja_env.globals.update(encode=main.encode)

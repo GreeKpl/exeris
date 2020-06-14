@@ -22,8 +22,8 @@ const configuredI18n = i18n
     load: "languageOnly",
     debug: true,
     backend: {
-      loadPath: "/player/static/{{lng}}.json",
-      addPath: '/player/report_missing_tag',
+      loadPath: "/static/{{lng}}.json",
+      addPath: '/report_missing_tag',
     },
     saveMissing: true,
     prefix: "%{",

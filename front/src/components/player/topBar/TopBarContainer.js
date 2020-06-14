@@ -1,8 +1,10 @@
 import {connect} from "react-redux";
 import React from "react";
-import {Nav, NavItem} from "react-bootstrap";
+import {Button, Nav, NavItem} from "react-bootstrap";
 import {IndexLinkContainer} from "react-router-bootstrap";
 import "./style.scss";
+import {logout} from "../../../modules/session";
+import {browserHistory} from "react-router";
 
 class TopBar extends React.Component {
   render() {
@@ -24,6 +26,7 @@ class TopBar extends React.Component {
           </NavItem>
         </IndexLinkContainer>
       )}
+      <Button onClick={this.props.logout}>Logout</Button>
     </Nav>
   }
 }
@@ -39,7 +42,9 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 const mapDispatchToProps = (dispatch) => {
-  return {};
+  return {
+    logout: () => dispatch(logout(browserHistory)),
+  };
 };
 
 const TopBarContainer = connect(

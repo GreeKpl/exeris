@@ -1,43 +1,39 @@
-import React, {Component} from "react";
+import React, {useEffect, useState} from "react";
 import PropTypes from "prop-types";
 import {browserHistory, Router} from "react-router";
 import {Provider} from "react-redux";
 import * as duckModules from "../modules";
 import {I18nextProvider} from 'react-i18next';
 import i18n from "../i18n";
-import socket from "../util/server";
+import setupSocketio from "../util/server";
+import createStore from "../store/createStore";
+import routes from "./routes";
 
+const AppContainer = () => {
+  const [store, setStore] = useState(null);
 
-class AppContainer extends Component {
-
-  static shouldComponentUpdate() {
-    return false;
-  }
-
-  componentDidMount() {
+  useEffect(() => {
+    const socket = setupSocketio();
+    const store = createStore(socket);
     for (let module of Object.values(duckModules)) {
       if ("setUpSocketioListeners" in module) {
-        module.setUpSocketioListeners(this.props.store.dispatch, socket);
+        module.setUpSocketioListeners(store.dispatch, socket);
       }
     }
+    setStore(store);
+  }, []);
+
+  if (!store) {
+    return null;
   }
 
-  render() {
-    const {routes, store} = this.props;
-
-    return (
-      <I18nextProvider i18n={i18n}>
-        <Provider store={store}>
-          <Router history={browserHistory} children={routes}/>
-        </Provider>
-      </I18nextProvider>
-    )
-  }
-}
-
-AppContainer.propTypes = {
-  routes: PropTypes.object.isRequired,
-  store: PropTypes.object.isRequired,
+  return (
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <Router history={browserHistory} children={routes}/>
+      </Provider>
+    </I18nextProvider>
+  )
 };
 
 export default AppContainer

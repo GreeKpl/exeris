@@ -1,4 +1,6 @@
+import datetime
 import os
+
 
 # DO NOT EDIT!
 # This is a default Exeris server configuration.
@@ -22,17 +24,9 @@ class Config:
     REDIS_URL = "redis://localhost:6379/1"
     SECRET_KEY = "I LIKE POTATOES"
     STATIC_PATH = os.path.join('.', os.path.dirname(__file__))
-    SECURITY_REGISTERABLE = True
-    SECURITY_CONFIRMABLE = False
-    SECURITY_SEND_REGISTER_EMAIL = False
-    SECURITY_LOGIN_WITHOUT_CONFIRMATION = True
-    SECURITY_DEFAULT_REMEMBER_ME = True
-    SECURITY_PASSWORD_HASH = "bcrypt"
-    SECURITY_PASSWORD_SALT = ""
     ENABLE_SSO_FOR_DISCOURSE = False
     DISCOURSE_SSO_SECRET = "CHOCOLATE IS NICE"
     ENABLE_CHARACTER_CREATION = True
-    USE_RECAPTCHA_IN_FORMS = False
     RECAPTCHA_PUBLIC_KEY = ""
     RECAPTCHA_PRIVATE_KEY = ""
     DASHBOARD_ANNOUNCEMENT = None
@@ -42,9 +36,8 @@ class Config:
     MAIL_USERNAME = None
     MAIL_PASSWORD = None
 
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_DURATION = datetime.timedelta(7)
+    REMEMBER_COOKIE_REFRESH_EACH_REQUEST = True
+
     LOGGER_CONFIG_PATH = "exeris/config/default_logging_config.json"
-
-    SECURITY_POST_LOGIN_VIEW = "/player"
-    SECURITY_POST_REGISTER_VIEW = "/register"
-
-    SECURITY_LOGIN_URL = "/users/sign_in"  # URL required by SSO for android mattermost app
