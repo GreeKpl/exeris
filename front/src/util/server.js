@@ -25,6 +25,12 @@ const setupSocketio = () => {
     }
     socket.emit.apply(this, args);
   };
+
+  socket.reconnect = function() {
+    socket.disconnect();
+    socket.connect();
+  };
+
   return socket;
 }
 

@@ -13,8 +13,9 @@ export const i18nize = component => {
 
 const configuredI18n = i18n
   .use(XHR)
-  .use(Cache)
-  .init({
+  .use(Cache);
+
+configuredI18n.init({
     lng: "en",
     fallbackLng: 'en',
     ns: ['common'],
@@ -38,7 +39,10 @@ const configuredI18n = i18n
         if (format === 'uppercase') return value.toUpperCase();
         return value;
       }
-    }
+    },
+    react: {
+      useSuspense: false,
+    },
   });
 
 export default configuredI18n;

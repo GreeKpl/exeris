@@ -26,7 +26,9 @@ class TopBar extends React.Component {
           </NavItem>
         </IndexLinkContainer>
       )}
-      <Button onClick={this.props.logout}>Logout</Button>
+      <NavItem className="actionItem" onClick={this.props.logout}>
+        Logout
+      </NavItem>
     </Nav>
   }
 }

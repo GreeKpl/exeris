@@ -1,15 +1,15 @@
-import {Dispatch} from "../store/types";
+import {Dispatch, SocketIO} from "../store/types";
 import {browserHistory} from "react-router";
 import { History } from "history";
 
-export const setUpSocketioListeners = (dispatch: Dispatch, socket: SocketIOClient.Socket) => {
+export const setUpSocketioListeners = (dispatch: Dispatch, socket: SocketIO) => {
   socket.on("player.not_logged_in", () => {
     dispatch(logout(browserHistory));
   });
 }
 
 export const login = (email: string, password: string, history: any) => {
-  return async (dispatch: Dispatch, getState: any, socket: SocketIOClient.Socket) => {
+  return async (dispatch: Dispatch, getState: any, socket: SocketIO) => {
     const response = await fetch("/login", {
       method: 'POST',
       headers: {
@@ -21,8 +21,7 @@ export const login = (email: string, password: string, history: any) => {
       }),
     });
     if (response.ok) {
-      socket.disconnect();
-      socket.connect();
+      socket.reconnect();
 
       history.push("/player");
     }
@@ -30,7 +29,7 @@ export const login = (email: string, password: string, history: any) => {
 };
 
 export const logout = (history: History) => {
-  return async (dispatch: any, getState: any, socket: SocketIOClient.Socket) => {
+  return async (dispatch: any, getState: any, socket: SocketIO) => {
     const response = await fetch("/logout", {
       method: 'POST',
       headers: {
@@ -38,8 +37,7 @@ export const logout = (history: History) => {
       }
     });
     if (response.ok) {
-      socket.disconnect();
-      socket.connect();
+      socket.reconnect();
 
       history.push("/login");
     }

@@ -76,7 +76,7 @@ export class CharactersList extends React.Component {
     return <Panel header={<div>People around <Button
       bsStyle={this.props.speechType === SPEECH_TYPE_ALOUD ? "primary" : "default"}
       onClick={this.props.onSelectSayAloud}>Say to all</Button></div>}>
-      <ListGroup fill>
+      <ListGroup fill="true">
         {this.props.charactersAround.map(this.createCharacterEntry)}
       </ListGroup>
     </Panel>;
