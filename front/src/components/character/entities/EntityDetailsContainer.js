@@ -1,12 +1,9 @@
 import {connect} from "react-redux";
-import {getSelectedDetails, fromEntitiesState, updateExpandedInput} from "../../../modules/entities";
+import {fromEntitiesState, getSelectedDetails, updateExpandedInput} from "../../../modules/entities";
 import {performAddEntityToItemAction} from "../../../modules/entities-actionsAddon";
 
 import React from "react";
-import {
-  Grid, Row, Col, Panel, ListGroup, ListGroupItem, Button,
-  Form, FormGroup, ControlLabel, FormControl
-} from "react-bootstrap";
+import {Button, Card, Col, Container, Form, ListGroup, ListGroupItem, Row} from "react-bootstrap";
 
 
 const OptionalCol = ({value, children}) => {
@@ -20,14 +17,17 @@ const OptionalCol = ({value, children}) => {
 export class EntityDetails extends React.Component {
   render() {
     return (
-      <Panel header="EntityInfo">
-        <Grid>
-          <Row>
-            <Col>Type: {this.props.details.get("type")}</Col>
-            <Col>Name: {this.props.details.get("name")}</Col>
-          </Row>
-        </Grid>
-      </Panel>);
+      <Card>
+        <Card.Header>EntityInfo</Card.Header>
+        <Card.Body>
+          <Container>
+            <Row>
+              <Col>Type: {this.props.details.get("type")}</Col>
+              <Col>Name: {this.props.details.get("name")}</Col>
+            </Row>
+          </Container>
+        </Card.Body>
+      </Card>);
   }
 }
 
@@ -69,25 +69,25 @@ class AddInputSelection extends React.Component {
   render() {
     const expandedDetails = this.props.expandedDetails;
     return <Form autoComplete="off">
-      <FormGroup controlId="addToActivitySelect">
-        <ControlLabel>Select resource to add:</ControlLabel>
-        <FormControl
+      <Form.Group controlId="addToActivitySelect">
+        <Form.Label>Select resource to add:</Form.Label>
+        <Form.Control
           value={this.state.selectedItem}
           componentClass="select"
           onChange={this.handleSelectChange}
           placeholder="select">
           {expandedDetails && expandedDetails.get("itemsToAdd").map(item => <option
             value={item.get("id")}>{item.get("name")}</option>)}
-        </FormControl>
-      </FormGroup>
-      <FormGroup controlId="addToActivityAmount">
-        <ControlLabel>Amount</ControlLabel>
-        <FormControl
+        </Form.Control>
+      </Form.Group>
+      <Form.Group controlId="addToActivityAmount">
+        <Form.Label>Amount</Form.Label>
+        <Form.Control
           type="text"
           placeholder="Amount"
           value={this.state.amount}
           onChange={this.handleAmountChange}/>
-      </FormGroup>
+      </Form.Group>
       <Button onClick={this.handleSubmit}>Confirm</Button>
     </Form>;
   }
@@ -108,13 +108,13 @@ export class InputRequirement extends React.Component {
     return <ListGroupItem>
       {name} - {itemData.get("needed") - itemData.get("left")} / {itemData.get("needed")}
       {expanded ? [
-        <Button key="button-collapse" onClick={this.handleCollapse}>Hide</Button>,
-        <AddInputSelection
-          key="add-input-selection"
-          activityId={activityId}
-          expandedInput={expandedInput}
-          expandedDetails={expandedDetails}
-          onSubmitForm={onSubmitForm}/>]
+          <Button key="button-collapse" onClick={this.handleCollapse}>Hide</Button>,
+          <AddInputSelection
+            key="add-input-selection"
+            activityId={activityId}
+            expandedInput={expandedInput}
+            expandedDetails={expandedDetails}
+            onSubmitForm={onSubmitForm}/>]
         : <Button onClick={this.handleExpand}>Add stuff</Button>}
     </ListGroupItem>;
   }
@@ -152,25 +152,29 @@ export class ActivityDetails extends React.Component {
   render() {
     const {details, onExpandInput, onCollapseInput, onSubmitForm} = this.props;
     return (
-      <Panel header="ActivityInfo">
-        <Grid fluid={true}>
-          <Row>
-            <Col>Name: {details.get("name")}</Col>
-            {details.has("input") &&
-            <OptionalCol value={details.get("input")}>
-              <InputRequirements
-                activityId={details.get("id")}
-                reqInputs={details.get("input")}
-                expandedInput={details.get("expandedInput")}
-                expandedInputDetails={details.get("expandedInputDetails")}
-                onExpandInput={onExpandInput}
-                onCollapseInput={onCollapseInput}
-                onSubmitForm={onSubmitForm}/>
-            </OptionalCol>}
-            <Col>Work left: {details.get("ticksLeft")} / {details.get("ticksNeeded")}</Col>
-          </Row>
-        </Grid>
-      </Panel>);
+      <Card>
+        <Card.Header>ActivityInfo</Card.Header>
+        <Card.Body>
+          <Container fluid={true}>
+            <Row>
+              <Col>Name: {details.get("name")}</Col>
+              {details.has("input") &&
+              <OptionalCol value={details.get("input")}>
+                <InputRequirements
+                  activityId={details.get("id")}
+                  reqInputs={details.get("input")}
+                  expandedInput={details.get("expandedInput")}
+                  expandedInputDetails={details.get("expandedInputDetails")}
+                  onExpandInput={onExpandInput}
+                  onCollapseInput={onCollapseInput}
+                  onSubmitForm={onSubmitForm}/>
+              </OptionalCol>}
+              <Col>Work left: {details.get("ticksLeft")} / {details.get("ticksNeeded")}</Col>
+            </Row>
+          </Container>
+        </Card.Body>
+      </Card>
+    );
   }
 }
 

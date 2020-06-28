@@ -2,7 +2,7 @@ import {connect} from "react-redux";
 import * as Immutable from "immutable";
 import {getMyCharacterInfoFromMyCharacterState} from "../../../modules/myCharacter";
 import React from "react";
-import {Table, Panel} from "react-bootstrap";
+import {Card, Table} from "react-bootstrap";
 
 
 const EquipmentPart = ({piece, name}) => {
@@ -37,12 +37,16 @@ const NoEquipmentInfo = () => {
   </p>;
 };
 
-export const Equipment = ({equipment}) =>
-  <Panel header="Equipment">
-    {equipment.size > 0
-      ? <EquipmentList equipment={equipment}/>
-      : <NoEquipmentInfo/>}
-  </Panel>;
+export const Equipment = ({equipment}) => (
+  <Card>
+    <Card.Header>Equipment</Card.Header>
+    <Card.Body>
+      {equipment.size > 0
+        ? <EquipmentList equipment={equipment}/>
+        : <NoEquipmentInfo/>}
+    </Card.Body>
+  </Card>
+);
 
 
 const mapStateToProps = (state, ownProps) => {

@@ -1,13 +1,13 @@
 import {connect} from "react-redux";
-import {getSelectedDetails, fromEntitiesState} from "../../../modules/entities";
+import {fromEntitiesState, getSelectedDetails} from "../../../modules/entities";
 
 import React from "react";
-import {Grid, Row, Col, Tabs, Tab} from "react-bootstrap";
+import {Col, Container, Row, Tab, Tabs} from "react-bootstrap";
 import EntitiesListContainer from "./EntitiesListContainer";
 import MapInfoContainer from "./MapInfoContainer";
 import ControlMovementContainer from "./ControlMovementContainer";
 import ActionsBarContainer from "../../commons/entityActions/ActionsBarContainer";
-import {EntityDetailsContainer, ActivityDetailsContainer} from "./EntityDetailsContainer";
+import {ActivityDetailsContainer, EntityDetailsContainer} from "./EntityDetailsContainer";
 
 export class EntitiesPage extends React.Component {
   render() {
@@ -26,7 +26,7 @@ export class EntitiesPage extends React.Component {
     if (this.props.isSmall) {
       return (
         <div>
-          <Tabs bsStyle="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
+          <Tabs variant="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
             <Tab eventKey={1} title="List">
               <EntitiesListContainer characterId={this.props.characterId}/>
             </Tab>
@@ -43,7 +43,7 @@ export class EntitiesPage extends React.Component {
     } else {
       return (
         <div>
-          <Grid fluid={true}>
+          <Container fluid={true}>
             <Row>
               <Col xs={12} md={7}>
                 <EntitiesListContainer characterId={this.props.characterId}/>
@@ -54,7 +54,7 @@ export class EntitiesPage extends React.Component {
                 <ControlMovementContainer characterId={this.props.characterId}/>
               </Col>
             </Row>
-          </Grid>
+          </Container>
           <ActionsBarContainer characterId={this.props.characterId}/>
         </div>);
     }
@@ -64,8 +64,8 @@ export class EntitiesPage extends React.Component {
 
 const mapStateToProps = (state, ownProps) => {
   return {
-    characterId: ownProps.params.characterId,
-    selectedDetails: getSelectedDetails(fromEntitiesState(state, ownProps.params.characterId)),
+    characterId: ownProps.match.params.characterId,
+    selectedDetails: getSelectedDetails(fromEntitiesState(state, ownProps.match.params.characterId)),
     isSmall: state.get("browser").atMost.small,
   };
 };

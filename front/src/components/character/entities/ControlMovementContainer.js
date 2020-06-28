@@ -1,26 +1,26 @@
 import {connect} from "react-redux";
 import {
   canBeControlled,
-  fromTravelState,
   changeMovementDirection,
-  stopMovement,
+  fromTravelState,
   getMovementAction,
-  requestTravelState
+  requestTravelState,
+  stopMovement
 } from "../../../modules/travel";
 import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 
 import React from "react";
-import {Panel, Form, FormGroup, FormControl, ControlLabel, Button} from "react-bootstrap";
+import {Button, Card, Form} from "react-bootstrap";
 
 
 const SetDirectionForm = ({onSubmitDirection, onSubmitStop, onChange, direction}) => {
   return <Form autoComplete="off" inline>
-    <FormGroup controlId="travelDirection">
-      <ControlLabel>Direction</ControlLabel>
+    <Form.Group controlId="travelDirection">
+      <Form.Label>Direction</Form.Label>
       {' '}
-      <FormControl type="number" placeholder="Set degrees..."
-                   onChange={onChange} value={direction}/>
-    </FormGroup>
+      <Form.Control type="number" placeholder="Set degrees..."
+                    onChange={onChange} value={direction}/>
+    </Form.Group>
     {' '}
     <Button type="submit" onClick={onSubmitDirection}>
       Set travel direction
@@ -81,14 +81,17 @@ export class ControlMovement extends React.Component {
   render() {
     return (
       this.props.canBeControlled ?
-        <Panel header="Control movement">
-          {this.props.movementAction && <MovementInfo
-            movementAction={this.props.movementAction}/>}
-          <SetDirectionForm onSubmitStop={this.handleSubmitStop}
-                            onSubmitDirection={this.handleSubmitDirection}
-                            onChange={this.handleChange}
-                            value={this.state.value}/>
-        </Panel>
+        <Card>
+          <Card.Header>Control movement</Card.Header>
+          <Card.Body>
+            {this.props.movementAction && <MovementInfo
+              movementAction={this.props.movementAction}/>}
+            <SetDirectionForm onSubmitStop={this.handleSubmitStop}
+                              onSubmitDirection={this.handleSubmitDirection}
+                              onChange={this.handleChange}
+                              value={this.state.value}/>
+          </Card.Body>
+        </Card>
         : null
     );
   }

@@ -1,10 +1,12 @@
 import {connect} from "react-redux";
 import {getMyCharacterInfoFromMyCharacterState, requestMyCharacterInfo} from "../../../modules/myCharacter";
 import React from "react";
-import {Nav, NavItem, Glyphicon, Popover, OverlayTrigger} from "react-bootstrap";
-import {LinkContainer} from "react-router-bootstrap";
+import {Nav, OverlayTrigger, Popover} from "react-bootstrap";
 import "./style.scss";
 import {i18nize} from "../../../i18n";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faAppleAlt, faCaretRight, faCrosshairs, faExclamationTriangle} from "@fortawesome/free-solid-svg-icons";
+import {Link} from "react-router-dom";
 
 
 const WithPopover = ({children, id, title}) => {
@@ -17,13 +19,15 @@ const WithPopover = ({children, id, title}) => {
   </OverlayTrigger>;
 };
 
-const CharacterHungry = () => <WithPopover id="hunger-icon" title="HUNGRY"><Glyphicon glyph="apple"/></WithPopover>;
+const CharacterHungry = () => <WithPopover id="hunger-icon" title="HUNGRY"><FontAwesomeIcon
+  icon={faAppleAlt}/></WithPopover>;
 
-const CharacterDamaged = () => <WithPopover id="damage-icon" title="DAMAGED"><Glyphicon glyph="alert"/></WithPopover>;
+const CharacterDamaged = () => <WithPopover id="damage-icon" title="DAMAGED"><FontAwesomeIcon
+  icon={faExclamationTriangle}/></WithPopover>;
 
-const CharacterIntent = ({glyph, intentName}) => {
+const CharacterIntent = ({icon, intentName}) => {
   return <WithPopover id="character-intent" title={intentName}>
-    <Glyphicon className="Clickable" glyph={glyph} title={intentName}/>
+    <FontAwesomeIcon className="Clickable" icon={icon} title={intentName}/>
   </WithPopover>;
 };
 
@@ -31,8 +35,8 @@ const CharacterState = ({workIntent, combatIntent, hunger, damage}) => {
   return <div className="Character-TopBar-State hidden-xs">
     {hunger > 0.5 && <CharacterHungry/>}
     {damage > 0.5 && <CharacterDamaged/>}
-    {workIntent && <CharacterIntent glyph="triangle-right" intentName={workIntent}/>}
-    {combatIntent && <CharacterIntent glyph="screenshot" intentName={combatIntent}/>}
+    {workIntent && <CharacterIntent icon={faCaretRight} intentName={workIntent}/>}
+    {combatIntent && <CharacterIntent icon={faCrosshairs} intentName={combatIntent}/>}
   </div>
 };
 
@@ -54,16 +58,19 @@ class CharacterTopBarRaw extends React.Component {
       events: t("top_bar_events"),
       entities: t("top_bar_entities"),
       actions: t("top_bar_actions"),
-      myCharacter: t("top_bar_my_character")
+      "my-character": t("top_bar_my_character")
     }).forEach(
       (entries) => {
-        links.push(<LinkContainer to={"/character/" + this.props.characterId + "/" + entries[0]} key={entries[0]}>
-          <NavItem className="actionItem" active={this.props.activePage === entries[0]}>
-            {entries[1]}
-          </NavItem>
-        </LinkContainer>);
+        links.push(
+          <Nav.Item key={entries[0]}>
+            <Nav.Link as={Link} active={this.props.activePage === entries[0]}
+                      to={"/character/" + this.props.characterId + "/" + entries[0]}>
+              {entries[1]}
+            </Nav.Link>
+          </Nav.Item>
+        );
       });
-    return <Nav bsStyle="pills"
+    return <Nav variant="pills"
                 className="Character-TopBar-Nav">
       {links}
       <CharacterState workIntent={this.props.workIntent}

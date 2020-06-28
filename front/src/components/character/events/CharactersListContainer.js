@@ -5,23 +5,21 @@ import {
   getIdsOfCharactersAround,
   requestCharactersAround,
 } from "../../../modules/charactersAround";
-import {getEntityInfos, fromEntitiesState} from "../../../modules/entities";
+import {fromEntitiesState, getEntityInfos} from "../../../modules/entities";
 import {
+  fromSpeechState,
   getSpeechTargetId,
   getSpeechType,
-  fromSpeechState,
   selectSpeakingTarget,
+  SPEECH_TYPE_ALOUD,
   SPEECH_TYPE_SPEAK_TO,
   SPEECH_TYPE_WHISPER_TO,
-  SPEECH_TYPE_ALOUD,
 } from "../../../modules/speech";
-import {requestCharacterDetails} from "../../../modules/details";
 import {parseHtmlToComponents} from "../../../util/parseDynamicName";
 import React from "react";
-import {Panel, ListGroup, ListGroupItem, Button} from "react-bootstrap";
+import {Button, Card, ListGroup, ListGroupItem} from "react-bootstrap";
 import speakBubble from "../../../images/speakBubble.png";
 import whisperBubble from "../../../images/whisperBubble.png";
-import actionDots from "../../../images/threeDots.png";
 
 
 const SpeakBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
@@ -39,9 +37,9 @@ const WhisperBubble = ({targetId, onClick, isSpeechTarget, speechType}) =>
        onClick={onClick}
        src={whisperBubble}/>;
 
-const CharacterEntry = ({id, nameComponent, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper, onShowMore}) => (
+const CharacterEntry = ({id, nameComponent, isSpeechTarget, speechType, onSelectSpeak, onSelectWhisper}) => (
   <ListGroupItem>
-    {nameComponent} <SpeakBubble targetId={id}
+    <SpeakBubble targetId={id}
                                  isSpeechTarget={isSpeechTarget}
                                  speechType={speechType}
                                  onClick={onSelectSpeak}/>
@@ -49,7 +47,7 @@ const CharacterEntry = ({id, nameComponent, isSpeechTarget, speechType, onSelect
                    isSpeechTarget={isSpeechTarget}
                    speechType={speechType}
                    onClick={onSelectWhisper}/>
-    <img src={actionDots} className="Character-CharactersList-actionIcon" onClick={onShowMore}/>
+     {nameComponent}
   </ListGroupItem>
 );
 
@@ -73,13 +71,23 @@ export class CharactersList extends React.Component {
   }
 
   render() {
-    return <Panel header={<div>People around <Button
-      bsStyle={this.props.speechType === SPEECH_TYPE_ALOUD ? "primary" : "default"}
-      onClick={this.props.onSelectSayAloud}>Say to all</Button></div>}>
-      <ListGroup fill="true">
-        {this.props.charactersAround.map(this.createCharacterEntry)}
-      </ListGroup>
-    </Panel>;
+    return (
+      <Card>
+        <Card.Header>
+          <div>
+            People around
+            <Button
+            variant={this.props.speechType === SPEECH_TYPE_ALOUD ? "primary" : "default"}
+            onClick={this.props.onSelectSayAloud}>Say to all</Button>
+          </div>
+        </Card.Header>
+        <Card.Body>
+          <ListGroup fill="true">
+            {this.props.charactersAround.map(this.createCharacterEntry)}
+          </ListGroup>
+        </Card.Body>
+      </Card>
+    );
   }
 
   createCharacterEntry(character) {
@@ -91,7 +99,6 @@ export class CharactersList extends React.Component {
       combatId={character.get("combatId")}
       onSelectSpeak={this.props.onSelectSpeak(character.get("id"))}
       onSelectWhisper={this.props.onSelectWhisper(character.get("id"))}
-      onShowMore={this.props.onShowMore(character.get("id"))}
       isSpeechTarget={this.props.speechTarget === character.get("id")}
       speechType={this.props.speechType}
     />;
@@ -125,7 +132,6 @@ const mapDispatchToProps = (dispatch, ownProps) => {
     onSelectSpeak: targetId => () => dispatch(selectSpeakingTarget(ownProps.characterId, targetId, SPEECH_TYPE_SPEAK_TO)),
     onSelectWhisper: targetId => () => dispatch(selectSpeakingTarget(ownProps.characterId, targetId, SPEECH_TYPE_WHISPER_TO)),
     onSelectSayAloud: () => dispatch(selectSpeakingTarget(ownProps.characterId, null, SPEECH_TYPE_ALOUD)),
-    onShowMore: targetId => () => dispatch(requestCharacterDetails(ownProps.characterId, targetId)),
   }
 };
 

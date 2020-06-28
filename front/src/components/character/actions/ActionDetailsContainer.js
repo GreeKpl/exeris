@@ -1,16 +1,10 @@
 import {connect} from "react-redux";
-import {
-  fromRecipesState,
-  getSelectedRecipe,
-  createActivityFromRecipe
-} from "../../../modules/recipes";
-import {getFormValues} from "redux-form/immutable";
+import {createActivityFromRecipe, fromRecipesState, getSelectedRecipe} from "../../../modules/recipes";
+import {Field, getFormValues, reduxForm} from "redux-form/immutable";
 
 import React from "react";
-import {FormGroup, Form, Col, FormControl, ControlLabel, Button, ListGroup, ListGroupItem} from "react-bootstrap";
+import {Button, Col, Form, ListGroup, ListGroupItem} from "react-bootstrap";
 import HorizontalFormInput from "../../commons/HorizontalFormInput";
-
-import {Field, reduxForm} from 'redux-form/immutable';
 import HorizontalFormInfo from "../../commons/HorizontalFormInfo";
 
 
@@ -74,14 +68,14 @@ export class ActionDetailsRaw extends React.Component {
           />);
       } else if (formInput.get("type") === "AnimalResourceLevel") {
         renderedFormInputs.push(
-          <FormGroup key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
-            <Col componentClass={ControlLabel} sm={3}>
+          <Form.Group key={"form-" + formInput.get("name")} controlId={"form-" + formInput.get("name")}>
+            <Col componentClass={Form.Label} sm={3}>
               Animal resource level
             </Col>
-            <Col sm={9} componentClass={FormControl.Static}>
+            <Col sm={9} componentClass={Form.Control.Static}>
               {formInput.get("args").get("resource_type")}
             </Col>
-          </FormGroup>);
+          </Form.Group>);
       }
     }
     return renderedFormInputs;
@@ -107,8 +101,8 @@ export class ActionDetailsRaw extends React.Component {
     return (
       <Form autoComplete="off" horizontal onSubmit={handleSubmit}>
         {recipeDetails.get("errorMessages").size > 0 &&
-        <FormGroup key="errorMessages" controlId="errorMessages">
-          <Col componentClass={ControlLabel} sm={3}>
+        <Form.Group key="errorMessages" controlId="errorMessages">
+          <Col componentClass={Form.Label} sm={3}>
             Errors
           </Col>
           <Col sm={9}>
@@ -117,14 +111,14 @@ export class ActionDetailsRaw extends React.Component {
                 key={message}>{message}</ListGroupItem>)}
             </ListGroup>
           </Col>
-        </FormGroup>}
+        </Form.Group>}
         <RequirementInfo info={recipeDetails}
                          infoKey="name"
                          label="Name"/>
         {recipeDetails.get("requiresSubject") &&
         <Field name="activitySubject"
                component={HorizontalFormInput}
-               componentClass="select"
+               as="select"
                label="Subject of activity"
                placeholder="Select subject..."
                key="activitySubject">
@@ -142,27 +136,27 @@ export class ActionDetailsRaw extends React.Component {
         <RequirementInfo info={recipeDetails}
                          infoKey="requiredMachines"
                          label="Required machines"/>
-        <FormGroup key="requiredDays" controlId="requiredDays">
-          <Col componentClass={ControlLabel} sm={3}>
+        <Form.Group key="requiredDays" controlId="requiredDays">
+          <Col componentClass={Form.Label} sm={3}>
             Required days
           </Col>
-          <Col sm={9} componentClass={FormControl.Static}>
+          <Col sm={9} componentClass={Form.Control.Static}>
             {recipeDetails.get("requiredDays") * this.getAmount()} = {recipeDetails.get("requiredDays")}
             {" "}
             x {this.getAmount()}
           </Col>
-        </FormGroup>
+        </Form.Group>
         <RequirementInfo info={recipeDetails}
                          infoKey="requiredSkills"
                          label="Required skills"/>
         {this.renderAdditionalFormInputs()}
-        <FormGroup key="submit">
+        <Form.Group key="submit">
           <Col smOffset={3} sm={9}>
             <Button type="submit" disabled={recipeDetails.get("errorMessages").size > 0}>
               Start an activity
             </Button>
           </Col>
-        </FormGroup>
+        </Form.Group>
       </Form>);
   }
 }

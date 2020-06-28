@@ -1,10 +1,10 @@
 import {Dispatch, SocketIO} from "../store/types";
-import {browserHistory} from "react-router";
 import { History } from "history";
 
 export const setUpSocketioListeners = (dispatch: Dispatch, socket: SocketIO) => {
   socket.on("player.not_logged_in", () => {
-    dispatch(logout(browserHistory));
+    // @ts-ignore
+    dispatch(logout(null)); // TODO
   });
 }
 

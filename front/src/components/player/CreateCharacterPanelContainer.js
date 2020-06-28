@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
 import {createNewCharacter} from "../../modules/player";
 import React from "react";
-import {FormControl, FormGroup, Form, Col, Button} from "react-bootstrap";
+import {Button, Col, Form} from "react-bootstrap";
 
 class CreateCharacterPanel extends React.Component {
 
@@ -30,25 +30,25 @@ class CreateCharacterPanel extends React.Component {
 
   render() {
     return <Form autoComplete="off" horizontal>
-      <FormGroup controlId="characterName">
+      <Form.Group controlId="characterName">
         <Col sm={3}>
           Character name
         </Col>
         <Col sm={9}>
-          <FormControl type="text"
-                       placeholder="Character name"
-                       value={this.state.characterName}
-                       onChange={this.onNameChange}/>
+          <Form.Control type="text"
+                        placeholder="Character name"
+                        value={this.state.characterName}
+                        onChange={this.onNameChange}/>
         </Col>
-      </FormGroup>
+      </Form.Group>
 
-      <FormGroup>
+      <Form.Group>
         <Col smOffset={3} sm={9}>
           <Button type="submit" onClick={this.onClick}>
             Create character
           </Button>
         </Col>
-      </FormGroup>
+      </Form.Group>
     </Form>
   }
 }

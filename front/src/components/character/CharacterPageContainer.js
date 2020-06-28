@@ -5,6 +5,11 @@ import NotificationsContainer from "../commons/notifications/NotificationsContai
 import TopBarLayout from "../TopBarLayout";
 import "./style.scss";
 import CharacterDialogsContainer from "./dialogs/CharacterDialogsContainer";
+import {IndexRedirect, Redirect, Route, Switch} from "react-router";
+import EventsPageContainer from "./events/EventsPageContainer";
+import EntitiesPageContainer from "./entities/EntitiesPageContainer";
+import ActionsPageContainer from "./actions/ActionsPageContainer";
+import OwnCharacterPageContainer from "./myCharacter/MyCharacterPageContainer";
 
 class CharacterPage extends React.Component {
   componentDidMount() {
@@ -30,7 +35,14 @@ class CharacterPage extends React.Component {
         />
       </div>
       <div className="CharacterPage-TopBarPlaceholder"/>
-      {this.props.children}
+      <Switch>
+        <Route path="/character/:characterId/events" component={EventsPageContainer}/>
+        <Route path="/character/:characterId/entities" component={EntitiesPageContainer}/>
+        <Route path="/character/:characterId/actions" component={ActionsPageContainer}/>
+        <Route path="/character/:characterId/my-character" component={OwnCharacterPageContainer}/>
+        <Route exact path="/character/:characterId"
+               component={({location}) => <Redirect to={location.pathname + "/events"}/>}/>
+      </Switch>
       <NotificationsContainer characterId={this.props.characterId}/>
       <CharacterDialogsContainer characterId={this.props.characterId}/>
     </div>;
@@ -41,8 +53,10 @@ export {CharacterPage};
 
 
 const mapStateToProps = (state, ownProps) => {
+  console.log(state);
+  console.log(ownProps);
   return {
-    characterId: ownProps.params.characterId,
+    characterId: ownProps.match.params.characterId,
     characterIdsList: getOwnCharactersList(fromPlayerState(state)),
     characterPageUrl: /character\/\d+\/([^/]+)/.exec(ownProps.location.pathname)[1],
     isSmall: state.get("browser").atMost.small,

@@ -3,6 +3,9 @@ import React from "react";
 import NotificationsContainer from "../commons/notifications/NotificationsContainer";
 import AdminTopBar from "./topBar/AdminTopBarContainer";
 import "./style.scss";
+import {IndexRedirect, Redirect, Route, Switch} from "react-router";
+import AdminDashboardContainer from "./AdminDashboardContainer";
+import EntityTypesManagementContainer from "./entities/EntityTypesManagementContainer";
 
 class AdminPage extends React.Component {
   render() {
@@ -17,7 +20,11 @@ class AdminPage extends React.Component {
         <AdminTopBar activePage={this.props.pageUrl}/>
       </div>
       <div className="AdminPage-TopBarPlaceholder"/>
-      {this.props.children}
+      <Switch>
+        <Route path="/admin/dashboard" component={AdminDashboardContainer}/>
+        <Route path="/admin/entity-types" component={EntityTypesManagementContainer}/>
+        <Route exact path="/admin" component={() => <Redirect to="/admin/dashboard"/>}/>
+      </Switch>
       <NotificationsContainer characterId={null}/>
     </div>;
   }
@@ -27,13 +34,11 @@ export {AdminPage};
 
 
 const mapStateToProps = (state, ownProps) => {
-  return {
-  };
+  return {};
 };
 
 const mapDispatchToProps = (dispatch) => {
-  return {
-  };
+  return {};
 };
 
 const AdminPageContainer = connect(

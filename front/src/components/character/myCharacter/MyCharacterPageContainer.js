@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
 import {requestMyCharacterInfo} from "../../../modules/myCharacter";
 import React from "react";
-import {Grid, Row, Col, Tab, Tabs} from "react-bootstrap";
+import {Col, Container, Row, Tab, Tabs} from "react-bootstrap";
 import EquipmentContainer from "./EquipmentContainer";
 import InventoryListContainer from "./InventoryListContainer";
 import SkillsListContainer from "./SkillsListContainer";
@@ -24,7 +24,7 @@ export class MyCharacterPage extends React.Component {
 
     if (this.props.isSmall) {
       return (
-        <Tabs bsStyle="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
+        <Tabs variant="tabs" className="TripleNavTabsContainer" defaultActiveKey={1}>
           <Tab eventKey={1} title="Inventory">
             <InventoryListContainer characterId={this.props.characterId}/>
             <ActionsBarContainer characterId={this.props.characterId}/>
@@ -41,7 +41,7 @@ export class MyCharacterPage extends React.Component {
     } else {
       return (
         <div>
-          <Grid fluid={true}>
+          <Container fluid={true}>
             <Row>
               <Col xs={12} md={6}>
                 <InventoryListContainer characterId={this.props.characterId}/>
@@ -53,7 +53,7 @@ export class MyCharacterPage extends React.Component {
                 <AppearanceContainer characterId={this.props.characterId}/>
               </Col>
             </Row>
-          </Grid>
+          </Container>
           <ActionsBarContainer characterId={this.props.characterId}/>
         </div>);
     }
@@ -63,14 +63,14 @@ export class MyCharacterPage extends React.Component {
 
 const mapStateToProps = (state, ownProps) => {
   return {
-    characterId: ownProps.params.characterId,
+    characterId: ownProps.match.params.characterId,
     isSmall: state.get("browser").atMost.small,
   };
 };
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    requestState: () => dispatch(requestMyCharacterInfo(ownProps.params.characterId)),
+    requestState: () => dispatch(requestMyCharacterInfo(ownProps.match.params.characterId)),
   }
 };
 

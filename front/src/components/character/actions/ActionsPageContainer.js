@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
 
 import React from "react";
-import {Grid, Row, Col, Panel, Tab, Tabs} from "react-bootstrap";
+import {Card, Col, Container, Row, Tab, Tabs} from "react-bootstrap";
 import ActionsFilterContainer from "./ActionsFilterContainer";
 import ActionsListContainer from "./ActionsListContainer";
 import ActionDetailsContainer from "./ActionDetailsContainer";
@@ -11,34 +11,43 @@ export class ActionsPage extends React.Component {
 
     if (this.props.isSmall) {
       return (
-        <Tabs bsStyle="tabs" className="TupleNavTabsContainer" defaultActiveKey={1}>
+        <Tabs variant="tabs" className="TupleNavTabsContainer" defaultActiveKey={1}>
           <Tab eventKey={1} title="List">
             <ActionsFilterContainer characterId={this.props.characterId}/>
             <ActionsListContainer characterId={this.props.characterId}/>
           </Tab>
           <Tab eventKey={2} title="Info">
-            <Panel>
-              <ActionDetailsContainer characterId={this.props.characterId}/>
-            </Panel>
+            <Card>
+              <Card.Body>
+                <ActionDetailsContainer characterId={this.props.characterId}/>
+              </Card.Body>
+            </Card>
           </Tab>
         </Tabs>);
     } else {
       return (
-        <Grid fluid={true}>
+        <Container fluid={true}>
           <Row>
             <Col xs={12} md={6}>
-              <Panel header="Actions">
-                <ActionsFilterContainer characterId={this.props.characterId}/>
-                <ActionsListContainer characterId={this.props.characterId}/>
-              </Panel>
+              <Card>
+                <Card.Header>Actions</Card.Header>
+                <Card.Body>
+                  <ActionsFilterContainer characterId={this.props.characterId}/>
+                  <ActionsListContainer characterId={this.props.characterId}/>
+                </Card.Body>
+              </Card>
             </Col>
             <Col xs={12} md={6}>
-              <Panel header="Action info">
-                <ActionDetailsContainer characterId={this.props.characterId}/>
-              </Panel>
+              <Card>
+                <Card.Header>Action info</Card.Header>
+                <Card.Body>
+                  <ActionDetailsContainer characterId={this.props.characterId}/>
+                </Card.Body>
+              </Card>
             </Col>
           </Row>
-        </Grid>);
+        </Container>
+      );
     }
   }
 }
@@ -46,7 +55,7 @@ export class ActionsPage extends React.Component {
 
 const mapStateToProps = (state, ownProps) => {
   return {
-    characterId: ownProps.params.characterId,
+    characterId: ownProps.match.params.characterId,
     isSmall: state.get("browser").atMost.small,
   };
 };

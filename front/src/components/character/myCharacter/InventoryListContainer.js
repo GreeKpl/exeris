@@ -1,21 +1,21 @@
 import {connect} from "react-redux";
 import {
-  requestInventoryEntities,
-  fromEntitiesState,
-  getEntityInfos,
-  getChildren,
-  getExpanded,
-  getSelectedEntities,
+  clearEntitySelection,
   collapseEntity,
-  expandEntity,
-  selectEntity,
   deselectEntity,
+  expandEntity,
+  fromEntitiesState,
+  getChildren,
+  getEntityInfos,
+  getExpanded,
   getItemsInInventory,
-  clearEntitySelection
+  getSelectedEntities,
+  requestInventoryEntities,
+  selectEntity
 } from "../../../modules/entities";
 import React from "react";
 import Entities from "../../commons/entities/Entities";
-import {Panel} from "react-bootstrap";
+import {Card} from "react-bootstrap";
 
 export class InventoryList extends React.Component {
   componentDidMount() {
@@ -30,9 +30,14 @@ export class InventoryList extends React.Component {
   }
 
   render() {
-    return <Panel header="Inventory">
-      <Entities entities={this.props.itemsInInventory} {...this.props}/>
-    </Panel>;
+    return (
+      <Card>
+        <Card.Header>Inventory</Card.Header>
+        <Card.Body>
+          <Entities entities={this.props.itemsInInventory} {...this.props}/>
+        </Card.Body>
+      </Card>
+    );
   }
 }
 

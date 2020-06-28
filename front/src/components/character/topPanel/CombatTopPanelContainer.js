@@ -1,10 +1,8 @@
 import {connect} from "react-redux";
-import {
-  fromDetailsState, getDetailsTarget
-} from "../../../modules/details";
-import {getEntityInfo, fromEntitiesState} from "../../../modules/entities";
+import {fromDetailsState, getDetailsTarget} from "../../../modules/details";
+import {fromEntitiesState, getEntityInfo} from "../../../modules/entities";
 import React from "react";
-import {Panel, Grid, Row, ListGroup, ListGroupItem, Button, Col} from "react-bootstrap";
+import {Button, Card, Col, Container, ListGroup, ListGroupItem, Row} from "react-bootstrap";
 
 
 class CombatTopPanel extends React.Component {
@@ -37,23 +35,28 @@ class CombatTopPanel extends React.Component {
       </Row>;
     }
 
-    return <Panel header="Combat info">
-      <Grid fluid>
-        {topPart}
-        <Row>
-          <Col md={6}>
-            <ListGroup>
-              {this.props.attackers.map(this.displayFighter)}
-            </ListGroup>
-          </Col>
-          <Col md={6}>
-            <ListGroup>
-              {this.props.defenders.map(this.displayFighter)}
-            </ListGroup>
-          </Col>
-        </Row>
-      </Grid>
-    </Panel>;
+    return (
+      <Card>
+        <Card.Header>Combat info</Card.Header>
+        <Card.Body>
+          <Container fluid>
+            {topPart}
+            <Row>
+              <Col md={6}>
+                <ListGroup>
+                  {this.props.attackers.map(this.displayFighter)}
+                </ListGroup>
+              </Col>
+              <Col md={6}>
+                <ListGroup>
+                  {this.props.defenders.map(this.displayFighter)}
+                </ListGroup>
+              </Col>
+            </Row>
+          </Container>
+        </Card.Body>
+      </Card>
+    );
   }
 }
 

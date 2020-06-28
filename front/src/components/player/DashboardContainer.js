@@ -2,12 +2,12 @@ import {connect} from "react-redux";
 import React from "react";
 import CreateCharacterPanelContainer from "./CreateCharacterPanelContainer";
 import AchievementsListContainer from "./AchievementsListContainer";
-import {Grid, Row, Col} from "react-bootstrap";
+import {Col, Container, Row} from "react-bootstrap";
 
 const Dashboard = () => {
   return <div>
     Bonvenon! It's rendered with react.
-    <Grid>
+    <Container>
       <Row className="show-grid">
         <Col xs={12} md={8}>
           <CreateCharacterPanelContainer/>
@@ -16,8 +16,7 @@ const Dashboard = () => {
           <AchievementsListContainer/>
         </Col>
       </Row>
-    </Grid>
-
+    </Container>
   </div>
 };
 

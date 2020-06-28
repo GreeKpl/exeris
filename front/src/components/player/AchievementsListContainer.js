@@ -1,7 +1,7 @@
 import {connect} from "react-redux";
-import {requestAchievementsList, getAchievementsList, fromPlayerState} from "../../modules/player";
+import {fromPlayerState, getAchievementsList, requestAchievementsList} from "../../modules/player";
 import React from "react";
-import {ListGroup, ListGroupItem, Panel} from "react-bootstrap";
+import {Card, ListGroup, ListGroupItem} from "react-bootstrap";
 
 const AchievementEntry = ({title, children}) => (
   <ListGroupItem header={title}>
@@ -15,16 +15,21 @@ class AchievementsList extends React.Component {
   }
 
   render() {
-    return <Panel header="Achievements">
-      <ListGroup>
-        {this.props.achievements.map(achievement =>
-          <AchievementEntry key={achievement.get("title")}
-                            title={achievement.get("title")}>
-            {achievement.get("content")}
-          </AchievementEntry>
-        )}
-      </ListGroup>
-    </Panel>;
+    return (
+      <Card>
+        <Card.Header>Achievements</Card.Header>
+        <Card.Body>
+          <ListGroup>
+            {this.props.achievements.map(achievement =>
+              <AchievementEntry key={achievement.get("title")}
+                                title={achievement.get("title")}>
+                {achievement.get("content")}
+              </AchievementEntry>
+            )}
+          </ListGroup>
+        </Card.Body>
+      </Card>
+    );
   }
 }
 

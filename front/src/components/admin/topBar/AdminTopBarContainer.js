@@ -1,29 +1,28 @@
 import React from "react";
-import {Nav, NavItem} from "react-bootstrap";
-import {IndexLinkContainer} from "react-router-bootstrap";
+import {Nav} from "react-bootstrap";
 import "./style.scss";
+import {Link} from "react-router-dom";
 
 const AdminTopBar = () => {
-  return <Nav bsStyle="pills"
+  return <Nav variant="pills"
               className="Admin-TopBar-Nav">
-    <IndexLinkContainer to="/player"
-                        key="main">
-      <NavItem className="actionItem">
+    <Nav.Item className="actionItem" key="main">
+      <Nav.Link as={Link}
+                to="/player">
         Main
-      </NavItem>
-    </IndexLinkContainer>
-    <IndexLinkContainer to="/admin"
-                        key="admin">
-      <NavItem className="actionItem">
+      </Nav.Link>
+    </Nav.Item>
+    <Nav.Item className="actionItem" key="dashboard">
+      <Nav.Link as={Link}
+                to="/admin">
         Admin dashboard
-      </NavItem>
-    </IndexLinkContainer>
-    <IndexLinkContainer to="/admin/entityTypes"
-                        key="entityTypes">
-      <NavItem className="actionItem">
+      </Nav.Link>
+    </Nav.Item>
+    <Nav.Item className="actionItem" key="entity-types">
+      <Nav.Link as={Link} to="/admin/entity-types">
         EntityTypes
-      </NavItem>
-    </IndexLinkContainer>
+      </Nav.Link>
+    </Nav.Item>
   </Nav>;
 };
 

@@ -1,15 +1,17 @@
 import {connect} from "react-redux";
 import {
-  updateText,
-  getText,
+  fromSpeechState,
   getSpeechTargetId,
   getSpeechType,
-  fromSpeechState,
-  speakText
+  getText,
+  speakText,
+  SPEECH_TYPE_ALOUD,
+  SPEECH_TYPE_SPEAK_TO,
+  SPEECH_TYPE_WHISPER_TO,
+  updateText
 } from "../../../modules/speech";
 import React from "react";
-import {Panel, FormGroup, FormControl, Button, Col} from "react-bootstrap";
-import {SPEECH_TYPE_WHISPER_TO, SPEECH_TYPE_ALOUD, SPEECH_TYPE_SPEAK_TO} from "../../../modules/speech";
+import {Button, Card, Col, Form, Row} from "react-bootstrap";
 
 
 export class SpeechPanel extends React.Component {
@@ -31,24 +33,27 @@ export class SpeechPanel extends React.Component {
       [SPEECH_TYPE_ALOUD]: "Say aloud",
     };
 
-    return <Panel>
-      <form autoComplete="off" onSubmit={this.props.onSubmit}>
-        <FormGroup
-          controlId="speechMessage">
-          <Col sm={10} xs={12} className="noPadding">
-            <FormControl
-              type="text"
-              value={this.props.text}
-              placeholder="Enter message..."
-              onChange={this.onTextChange}
-            />
-          </Col>
-          <Col componentClass={Button} sm={2} xs={12} type="submit">
-            {speechTypeToLabel[this.props.speechType]}
-          </Col>
-        </FormGroup>
-      </form>
-    </Panel>;
+    return <Card>
+      <Card.Body>
+        <form autoComplete="off" onSubmit={this.props.onSubmit}>
+          <Form.Group controlId="speechMessage">
+            <Row>
+              <Col sm={10} xs={12} className="noPadding">
+                <Form.Control
+                  type="text"
+                  value={this.props.text}
+                  placeholder="Enter message..."
+                  onChange={this.onTextChange}
+                />
+              </Col>
+              <Col as={Button} sm={2} xs={12} type="submit">
+                {speechTypeToLabel[this.props.speechType]}
+              </Col>
+            </Row>
+          </Form.Group>
+        </form>
+      </Card.Body>
+    </Card>;
   }
 }
 

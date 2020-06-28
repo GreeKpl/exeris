@@ -23,12 +23,13 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['sqlalchemy>=1.1.1',
+    install_requires=['sqlalchemy>=1.3.18',
                       'flask',
                       'flask-bootstrap',
                       'flask-bower',
                       'flask-sqlalchemy',
                       'flask-socketio',
+                      'flask-mail',
                       'flask_redis',
                       'flask-login==0.5.0',
                       'Flask-OAuthlib',

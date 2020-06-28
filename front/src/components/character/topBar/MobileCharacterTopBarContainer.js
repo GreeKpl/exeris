@@ -2,27 +2,25 @@ import {connect} from "react-redux";
 import {getMyCharacterInfoFromMyCharacterState, requestMyCharacterInfo} from "../../../modules/myCharacter";
 import React from "react";
 import {IndexLinkContainer, LinkContainer} from "react-router-bootstrap";
-import {Glyphicon, MenuItem, Nav, NavDropdown, NavItem} from "react-bootstrap";
+import {Nav, NavDropdown, NavItem} from "react-bootstrap";
 import {i18nize} from "../../../i18n";
+import {faBars} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {Link} from 'react-router-dom';
 
 
 const DropdownMenu = ({characters, characterId}) => {
   return <NavDropdown id="CharacterMenu-Dropdown"
-                      title={<Glyphicon glyph="menu-hamburger"/>}>
-    <IndexLinkContainer to={"/player/dashboard/"}
-                        key="main">
-      <MenuItem className="actionItem">
-        Community
-      </MenuItem>
-    </IndexLinkContainer>
+                      title={<FontAwesomeIcon icon={faBars}/>}>
+    <NavDropdown.Item
+      className="actionItem" as={Link}
+      to="/player/dashboard/">
+      Community
+    </NavDropdown.Item>
     {characters.map(characterInfo =>
-      <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
-        /*active={characterId === characterInfo.get("id")}*/
-                          key={characterInfo.get("id")}>
-        <MenuItem className="actionItem">
-          {characterInfo.get("name")}
-        </MenuItem>
-      </IndexLinkContainer>
+      <NavDropdown.Item className="actionItem" as={Link} to={"/character/" + characterInfo.get("id") + "/events"}>
+        {characterInfo.get("name")}
+      </NavDropdown.Item>
     )}
   </NavDropdown>;
 };
@@ -46,19 +44,20 @@ class MobileCharacterTopBarRaw extends React.Component {
       events: t("top_bar_mobile_events"),
       entities: t("top_bar_mobile_entities"),
       actions: t("top_bar_mobile_actions"),
-      myCharacter: t("top_bar_mobile_my_character")
+      "my-character": t("top_bar_mobile_my_character")
     }).forEach(
       (entries) => {
-        links.push(<LinkContainer key={entries[0]}
-                                  to={"/character/" + this.props.characterId + "/" + entries[0]}>
-          <NavItem className="actionItem Character-TopBar-NavItem"
-                   active={this.props.characterActivePage === entries[0]}>
-            {entries[1]}
-          </NavItem>
-        </LinkContainer>);
+        links.push(
+          <Nav.Item key={entries[0]} className="actionItem Character-TopBar-NavItem">
+            <Nav.Link as={Link} active={this.props.activePage === entries[0]}
+                      to={"/character/" + this.props.characterId + "/" + entries[0]}>
+              {entries[1]}
+            </Nav.Link>
+          </Nav.Item>
+        );
       });
 
-    return <Nav bsStyle="pills"
+    return <Nav variant="pills"
                 className="Character-TopBar-Nav">
       <DropdownMenu characterId={this.props.characterId}
                     characters={this.props.characterIdsList}/>

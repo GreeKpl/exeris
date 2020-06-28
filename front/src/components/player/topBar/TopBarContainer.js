@@ -1,34 +1,32 @@
 import {connect} from "react-redux";
 import React from "react";
-import {Button, Nav, NavItem} from "react-bootstrap";
-import {IndexLinkContainer} from "react-router-bootstrap";
+import {Nav} from "react-bootstrap";
 import "./style.scss";
 import {logout} from "../../../modules/session";
-import {browserHistory} from "react-router";
+import {Link} from "react-router-dom";
 
 class TopBar extends React.Component {
   render() {
-    return <Nav bsStyle="pills"
+    return <Nav variant="pills"
                 className="Player-TopBar-Nav">
-      <IndexLinkContainer to="/player"
-                          active={this.props.mainPageActive}
-                          key="main">
-        <NavItem className="actionItem">
+      <Nav.Item>
+        <Nav.Link as={Link} to="/player">
           Main
-        </NavItem>
-      </IndexLinkContainer>
+        </Nav.Link>
+      </Nav.Item>
       {this.props.characterIdsList.map(characterInfo =>
-        <IndexLinkContainer to={"/character/" + characterInfo.get("id") + "/events"}
-                            active={this.props.characterId === characterInfo.get("id")}
-                            key={characterInfo.get("id")}>
-          <NavItem className="actionItem">
+        <Nav.Item key={characterInfo.get("id")}>
+          <Nav.Link as={Link} active={this.props.characterId === characterInfo.get("id")}
+                    to={"/character/" + characterInfo.get("id") + "/events"}>
             {characterInfo.get("name")}
-          </NavItem>
-        </IndexLinkContainer>
+          </Nav.Link>
+        </Nav.Item>
       )}
-      <NavItem className="actionItem" onClick={this.props.logout}>
-        Logout
-      </NavItem>
+      <Nav.Item>
+        <Nav.Link onClick={this.props.logout}>
+          Logout
+        </Nav.Link>
+      </Nav.Item>
     </Nav>
   }
 }
@@ -43,9 +41,9 @@ const mapStateToProps = (state, ownProps) => {
   };
 };
 
-const mapDispatchToProps = (dispatch) => {
+const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    logout: () => dispatch(logout(browserHistory)),
+    logout: () => dispatch(logout(ownProps.history)),
   };
 };
 

@@ -1,51 +1,39 @@
 import {connect} from "react-redux";
-import {
-  fromDetailsState, submitEditedName, getDetailsTarget
-} from "../../../modules/details";
+import {fromDetailsState, getDetailsTarget, submitEditedName} from "../../../modules/details";
 import {parseHtmlToComponents} from "../../../util/parseDynamicName";
-import {getEntityInfo, fromEntitiesState} from "../../../modules/entities";
+import {fromEntitiesState, getEntityInfo} from "../../../modules/entities";
 import React from "react";
-import {
-  Panel,
-  Grid,
-  Row,
-  ListGroupItem,
-  Col,
-  Glyphicon,
-  ControlLabel,
-  Form,
-  FormGroup,
-  FormControl,
-  Button
-} from "react-bootstrap";
 import {fireOnEnter} from "../../eventUtil";
 import "./style.scss";
+import {Button, Card, Col, Container, Form, ListGroupItem, Row} from "react-bootstrap";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faCheck, faGlobe, faPencilAlt, faTimes} from "@fortawesome/free-solid-svg-icons";
 
 
 const CharacterNameEditBox = ({newName, onNewNameChange, onSubmitName, onCancelName}) => {
 
-  return <FormGroup
+  return <Form.Group
     controlId="newCharacterName">
-    <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
+    <Col componentClass={Form} sm={4} key="characterNameLabel">
       Name
     </Col>
     <Col sm={8}>
-      <Grid fluid>
+      <Container fluid>
         <Row>
           <Col>
-            <FormControl type="text" onKeyPress={fireOnEnter(onSubmitName)} onChange={onNewNameChange}
-                         value={newName}/>
+            <Form.Control type="text" onKeyPress={fireOnEnter(onSubmitName)} onChange={onNewNameChange}
+                          value={newName}/>
           </Col>
         </Row>
         <Row>
           <Col>
-            <Button style={{width: "50%"}} onClick={onCancelName}><Glyphicon glyph="remove"/></Button>
-            <Button style={{width: "50%"}} onClick={onSubmitName}><Glyphicon glyph="ok"/></Button>
+            <Button style={{width: "50%"}} onClick={onCancelName}><FontAwesomeIcon icon={faTimes}/></Button>
+            <Button style={{width: "50%"}} onClick={onSubmitName}><FontAwesomeIcon icon={faCheck}/></Button>
           </Col>
         </Row>
-      </Grid>
+      </Container>
     </Col>
-  </FormGroup>;
+  </Form.Group>;
 };
 
 class CharacterPanel extends React.Component {
@@ -91,85 +79,102 @@ class CharacterPanel extends React.Component {
   }
 
   render() {
-    return <Panel header="Character info">
-      <Grid fluid>
-        <Row>
-          <Col xs={12} md={3}>
-            <Form autoComplete="off" horizontal>
-              {this.state.nameBeingEdited ? <CharacterNameEditBox
-                newName={this.state.newName}
-                onNewNameChange={this.onNewNameChange}
-                onSubmitName={this.handleSubmitName}
-                onCancelName={this.cancelEditingName}/> : <FormGroup controlId="characterName">
-                <Col componentClass={ControlLabel} sm={4} key="characterNameLabel">
-                  Name
-                </Col>
-                <Col sm={8}
-                     onClick={this.startEditingName}
-                     componentClass={FormControl.Static}
-                     className="CharacterPanel-ClickableName">
-                  {this.props.rawName} <Glyphicon glyph="pencil"/>
-                </Col>
-              </FormGroup>}
-              <FormGroup controlId="characterLocation">
-                <Col componentClass={ControlLabel} sm={4}>
-                  Location
-                </Col>
-                <Col componentClass={FormControl.Static} sm={8}>
-                  {this.props.locationName} <Glyphicon glyph="globe"/>
-                </Col>
-              </FormGroup>
-              {this.props.workIntent &&
-              <FormGroup controlId="characterWork">
-                <Col componentClass={ControlLabel} sm={4}>
-                  Working on
-                </Col>
-                <Col componentClass={FormControl.Static} sm={8}>
-                  {this.props.workIntent}
-                </Col>
-              </FormGroup>}
-              {this.props.combatIntent &&
-              <FormGroup controlId="characterCombat">
-                <Col componentClass={ControlLabel} sm={4}>
-                  Fighting in
-                </Col>
-                <Col componentClass={FormControl.Static} sm={8}>
-                  {this.props.combatIntent}
-                </Col>
-              </FormGroup>}
-            </Form>
-          </Col>
-          <Col xs={12} md={3}>
-            <FormGroup controlId="inventory">
-              <ControlLabel>Equipment</ControlLabel>
-              <FormControl componentClass="list-group">
-                {this.props.equipment.map((itemName, eqPart) => <ListGroupItem>{itemName}</ListGroupItem>)}
-              </FormControl>
-            </FormGroup>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form autoComplete="off" horizontal>
-              <FormGroup controlId="shortDescription">
-                <Col componentClass={ControlLabel} sm={3}>
-                  Short description
-                </Col>
-                <Col componentClass={FormControl.Static} sm={9}>
-                  {this.props.shortDescription}
-                </Col>
-              </FormGroup>
-              <FormGroup controlId="longDescription">
-                <Col componentClass={ControlLabel} sm={3}>
-                  Long description
-                </Col>
-                <Col componentClass={FormControl.Static} sm={9}>
-                  {this.props.longDescription}
-                </Col>
-              </FormGroup>
-            </Form>
-          </Col>
-        </Row>
-      </Grid>
-    </Panel>;
+    return (
+      <Card>
+        <Card.Header>Character info</Card.Header>
+        <Card.Body>
+          <Container fluid>
+            <Row>
+              <Col xs={12} md={3}>
+                <Form autoComplete="off" horizontal>
+                  {this.state.nameBeingEdited ? <CharacterNameEditBox
+                    newName={this.state.newName}
+                    onNewNameChange={this.onNewNameChange}
+                    onSubmitName={this.handleSubmitName}
+                    onCancelName={this.cancelEditingName}/> : <Form.Group controlId="characterName">
+                    <Row>
+                      <Col componentClass={Form} sm={4} key="characterNameLabel">
+                        Name
+                      </Col>
+                      <Col sm={8}
+                           onClick={this.startEditingName}
+                           componentClass={Form.Control.Static}
+                           className="CharacterPanel-ClickableName">
+                        {this.props.rawName} <FontAwesomeIcon icon={faPencilAlt}/>
+                      </Col>
+                    </Row>
+                  </Form.Group>}
+                  <Form.Group controlId="characterLocation">
+                    <Row>
+                      <Col componentClass={Form} sm={4}>
+                        Location
+                      </Col>
+                      <Col componentClass={Form.Control.Static} sm={8}>
+                        {this.props.locationName} <FontAwesomeIcon icon={faGlobe}/>
+                      </Col>
+                    </Row>
+                  </Form.Group>
+                  {this.props.workIntent &&
+                  <Form.Group controlId="characterWork">
+                    <Row>
+                      <Col componentClass={Form} sm={4}>
+                        Working on
+                      </Col>
+                      <Col componentClass={Form.Control.Static} sm={8}>
+                        {this.props.workIntent}
+                      </Col>
+                    </Row>
+                  </Form.Group>}
+                  {this.props.combatIntent &&
+                  <Form.Group controlId="characterCombat">
+                    <Row>
+                      <Col componentClass={Form} sm={4}>
+                        Fighting in
+                      </Col>
+                      <Col componentClass={Form.Control.Static} sm={8}>
+                        {this.props.combatIntent}
+                      </Col>
+                    </Row>
+                  </Form.Group>}
+                </Form>
+              </Col>
+              <Col xs={12} md={3}>
+                <Form.Group controlId="inventory">
+                  <Form>Equipment</Form>
+                  <Form.Control as="list-group">
+                    {this.props.equipment.map((itemName, eqPart) => <ListGroupItem>{itemName}</ListGroupItem>)}
+                  </Form.Control>
+                </Form.Group>
+              </Col>
+              <Col xs={12} md={6}>
+                <Form autoComplete="off" horizontal>
+                  <Form.Group controlId="shortDescription">
+                    <Row>
+                      <Col componentClass={Form} sm={3}>
+                        Short description
+                      </Col>
+                      <Col componentClass={Form.Control.Static} sm={9}>
+                        {this.props.shortDescription}
+                      </Col>
+                    </Row>
+                  </Form.Group>
+                  <Form.Group controlId="longDescription">
+                    <Row>
+                      <Col componentClass={Form} sm={3}>
+                        Long description
+                      </Col>
+                      <Col componentClass={Form.Control.Static} sm={9}>
+                        {this.props.longDescription}
+                      </Col>
+                    </Row>
+                  </Form.Group>
+                </Form>
+              </Col>
+            </Row>
+          </Container>
+        </Card.Body>
+      </Card>
+    );
   }
 }
 

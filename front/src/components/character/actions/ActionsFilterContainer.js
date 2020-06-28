@@ -1,11 +1,7 @@
 import {connect} from "react-redux";
-import {
-  getFilterText,
-  fromRecipesState,
-  updateFilterText
-} from "../../../modules/recipes";
+import {fromRecipesState, getFilterText, updateFilterText} from "../../../modules/recipes";
 import React from "react";
-import {FormControl, FormGroup} from "react-bootstrap";
+import {Form} from "react-bootstrap";
 
 export class ActionsFilter extends React.Component {
 
@@ -18,15 +14,15 @@ export class ActionsFilter extends React.Component {
   render() {
     return (
       <form autoComplete="off" onSubmit={this.onSubmit}>
-        <FormGroup
+        <Form.Group
           controlId="actionsFilter">
-          <FormControl
+          <Form.Control
             type="text"
             value={this.props.filterText}
             placeholder="Enter filter text..."
             onChange={this.props.onChange}
           />
-        </FormGroup>
+        </Form.Group>
       </form>);
   }
 

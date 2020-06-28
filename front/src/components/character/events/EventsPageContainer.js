@@ -1,6 +1,6 @@
 import {connect} from "react-redux";
 import React from "react";
-import {Grid, Row, Col, Tab, Tabs} from "react-bootstrap";
+import {Col, Container, Row, Tab, Tabs} from "react-bootstrap";
 import EventsListContainer from "./EventsListContainer";
 import CharactersListContainer from "./CharactersListContainer";
 import SpeechPanelContainer from "./SpeechPanelContainer";
@@ -11,7 +11,7 @@ export class EventsPage extends React.Component {
   render() {
     if (this.props.isSmall) {
       return (
-        <Tabs bsStyle="tabs" className="TupleNavTabsContainer" defaultActiveKey={1}>
+        <Tabs variant="tabs" className="TupleNavTabsContainer" defaultActiveKey={1}>
           <Tab eventKey={1} title="Speaking">
             <SpeechPanelContainer characterId={this.props.characterId}/>
             <EventsListContainer characterId={this.props.characterId}/>
@@ -23,7 +23,7 @@ export class EventsPage extends React.Component {
         </Tabs>);
     } else {
       return (
-        <Grid fluid={true}>
+        <Container fluid={true}>
           <Row>
             <Col xs={12} md={8}>
               <TopPanelContainer characterId={this.props.characterId}/>
@@ -34,7 +34,7 @@ export class EventsPage extends React.Component {
               <CharactersListContainer characterId={this.props.characterId}/>
             </Col>
           </Row>
-        </Grid>);
+        </Container>);
     }
   }
 }
@@ -42,7 +42,7 @@ export class EventsPage extends React.Component {
 
 const mapStateToProps = (state, ownProps) => {
   return {
-    characterId: ownProps.params.characterId,
+    characterId: ownProps.match.params.characterId,
     isSmall: state.get("browser").atMost.small,
   };
 };

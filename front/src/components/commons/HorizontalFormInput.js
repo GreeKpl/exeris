@@ -1,5 +1,5 @@
 import React from "react";
-import {FormGroup, FormControl, ControlLabel, Col} from "react-bootstrap";
+import {Col, Form, FormControl} from "react-bootstrap";
 
 class HorizontalFormInput extends React.Component {
   render() {
@@ -26,19 +26,20 @@ class HorizontalFormInput extends React.Component {
       message = <span className="help-block">{error || warning}</span>;
     }
 
-    return <FormGroup validationState={validationState}>
-      <Col componentClass={ControlLabel} sm={3}>
+    return <Form.Group validationState={validationState}>
+      <Col componentClass={Form.Label} sm={3}>
         {label}
       </Col>
       <Col sm={9}>
-        <FormControl {...input}
-                     type={type}
-                     {...props}/>
+        <Form.Control {...input}
+                      type={type}
+                      {...props}/>
       </Col>
       {feedbackIcon &&
-      <FormControl.Feedback>{ feedbackIcon }</FormControl.Feedback>}
+      <FormControl.Feedback>{feedbackIcon}</FormControl.Feedback>}
       {message}
-    </FormGroup>;
+    </Form.Group>;
   }
 }
+
 export default HorizontalFormInput;
