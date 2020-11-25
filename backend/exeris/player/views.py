@@ -14,7 +14,7 @@ from exeris.player import player_bp, socketio_events
 @player_bp.route("/", defaults={'path': ''})
 @player_bp.route("/<path:path>")
 def page_player(path):
-    return render_template("front/build/index.html")
+    return render_template("frontend/build/index.html")
 
 
 @player_bp.route("/report_missing_tag", methods=['POST'])
