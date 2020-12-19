@@ -45,7 +45,7 @@ def create_pyslate(language, backend=None, character=None, **kwargs):
         return g
 
     def on_missing_tag_key(key, params):
-        file_path = os.path.join(os.path.dirname(__file__), "../missing_tags.json")
+        file_path = os.path.join(os.path.dirname(__file__), "../../log/missing_tags.json")  # TODO pass as argument
         with open(file_path, 'r+') as f:
             try:
                 old_data = json.loads(f.read())

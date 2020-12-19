@@ -1,0 +1,23 @@
+version: '3'
+services:
+    web:
+        build: .
+        ports:
+          - "5000:5000"
+        volumes:
+          - .:/app
+        depends_on:
+         - postgres
+         - redis
+        environment:
+          - EXERIS_CONFIG_PATH=config/dev_config.py
+    postgres:
+        image: postgis/postgis:13-3.0-alpine
+        ports:
+          - "5432:5432"
+        environment:
+          - POSTGRES_PASSWORD=root
+    redis:
+        image: redis:6.0.9-alpine
+        ports:
+          - "6379:6379"
