@@ -33,7 +33,10 @@ exeris_config_path = os.environ.get("EXERIS_CONFIG_PATH", "")
 app = create_app(own_config_file_path=exeris_config_path)
 
 Bootstrap(app)
-socketio = SocketIO(app, message_queue=app.config["SOCKETIO_REDIS_DATABASE_URI"])
+socketio = SocketIO(app,
+                    message_queue=app.config["SOCKETIO_REDIS_DATABASE_URI"],
+                    cors_allowed_origins="*",
+                    path="/api/socket.io")
 Bower(app)
 
 mail = Mail(app)
@@ -67,7 +70,7 @@ def socketio_player_event(*args, **kwargs):
         @wraps(f)
         def fg(*a, **k):
             if not current_user.is_authenticated:
-                logger.warning("Disconnected unwanted user", request.access_route)
+                logger.warning("Disconnected unwanted user: %s", request.access_route)
                 client_socket.disconnect()
 
             character_id = request.args.get("character_id", 0)
@@ -95,7 +98,7 @@ def socketio_character_event(*args, **kwargs):
         def fg(*request_args, **request_kwargs):
             start = time.time()
             if not current_user.is_authenticated:
-                logger.warning("Disconnected unwanted user", request.access_route)
+                logger.warning("Disconnected unwanted user: %s", request.access_route)
                 client_socket.disconnect()
             character_id = request_args[0]
             g.player = current_user
@@ -128,10 +131,12 @@ from exeris.outer import outer_bp
 from exeris.player import player_bp
 from exeris.character import character_bp
 from exeris.admin import admin_bp
+import logging
 
 
 @app.before_first_request
 def create_database():
+    logging.warning("@@@@@@@@@@@@@@ before_first_request")
     db.create_all()
 
     redis_db.flushdb()  # clear pub/sub queue for events
@@ -726,6 +731,7 @@ def character_preprocessor(endpoint, values):
 @login_manager.user_loader
 def load_user(player_id):
     return models.Player.by_id(player_id)
+
 
 class SocketioUsers:
     def __init__(self):

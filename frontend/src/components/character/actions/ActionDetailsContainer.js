@@ -99,7 +99,7 @@ export class ActionDetailsRaw extends React.Component {
     const {handleSubmit, pristine, reset, submitting} = this.props;
 
     return (
-      <Form autoComplete="off" horizontal onSubmit={handleSubmit}>
+      <Form autoComplete="off" onSubmit={handleSubmit}>
         {recipeDetails.get("errorMessages").size > 0 &&
         <Form.Group key="errorMessages" controlId="errorMessages">
           <Col componentClass={Form.Label} sm={3}>
@@ -151,7 +151,7 @@ export class ActionDetailsRaw extends React.Component {
                          label="Required skills"/>
         {this.renderAdditionalFormInputs()}
         <Form.Group key="submit">
-          <Col smOffset={3} sm={9}>
+          <Col sm={{span: 9, offset: 3}}>
             <Button type="submit" disabled={recipeDetails.get("errorMessages").size > 0}>
               Start an activity
             </Button>

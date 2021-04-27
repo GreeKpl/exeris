@@ -54,7 +54,7 @@ export default EntityTypeFormContainer;
 
 
 const ItemTypeForm = ({typeParams, handleSubmit, onSubmit, pristine, reset, submitting, propertyNames}) => {
-  return <Form horizontal autoComplete="off"  onSubmit={handleSubmit(onSubmit)}>
+  return <Form autoComplete="off"  onSubmit={handleSubmit(onSubmit)}>
     <Field name="name"
            component={HorizontalFormInput}
            componentClass="input"
@@ -76,7 +76,7 @@ const ItemTypeForm = ({typeParams, handleSubmit, onSubmit, pristine, reset, subm
       }
     } component={EntityTypePropertiesForm}/>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>

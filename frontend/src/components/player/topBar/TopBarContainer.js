@@ -4,6 +4,7 @@ import {Nav} from "react-bootstrap";
 import "./style.scss";
 import {logout} from "../../../modules/session";
 import {Link} from "react-router-dom";
+import {withRouter} from "react-router";
 
 class TopBar extends React.Component {
   render() {
@@ -43,13 +44,15 @@ const mapStateToProps = (state, ownProps) => {
 
 const mapDispatchToProps = (dispatch, ownProps) => {
   return {
-    logout: () => dispatch(logout(ownProps.history)),
+    logout: () => {
+      dispatch(logout(ownProps.history));
+    },
   };
 };
 
-const TopBarContainer = connect(
+const TopBarContainer = withRouter(connect(
   mapStateToProps,
   mapDispatchToProps
-)(TopBar);
+)(TopBar));
 
 export default TopBarContainer;

@@ -20,7 +20,7 @@ const universalMapStateToProps = (state, ownProps) => {
 };
 
 const TakeForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submitting}) => {
-  return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
+  return <Form autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
   )} style={{
     maxWidth: "400px",
@@ -33,7 +33,7 @@ const TakeForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submittin
            placeholder="Enter amount"
            key="amountField"/>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>
@@ -56,7 +56,7 @@ export const TakeFormContainer = connect(
 
 
 const DropForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submitting}) => {
-  return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
+  return <Form autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
   )} style={{
     maxWidth: "400px",
@@ -69,7 +69,7 @@ const DropForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submittin
            placeholder="Enter amount"
            key="amountField"/>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>
@@ -92,7 +92,7 @@ export const DropFormContainer = connect(
 
 
 const GiveForm = ({entityIds, details, handleSubmit, onSubmit, pristine, reset, submitting}) => {
-  return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
+  return <Form autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
   )} style={{
     maxWidth: "400px",
@@ -112,7 +112,7 @@ const GiveForm = ({entityIds, details, handleSubmit, onSubmit, pristine, reset, 
       <option value="1">John</option>
     </Field>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>
@@ -135,7 +135,7 @@ export const GiveFormContainer = connect(
 
 
 const EatForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submitting}) => {
-  return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
+  return <Form autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
   )} style={{
     maxWidth: "400px",
@@ -148,7 +148,7 @@ const EatForm = ({entityIds, handleSubmit, onSubmit, pristine, reset, submitting
            placeholder="Enter amount"
            key="amountField"/>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>
@@ -173,7 +173,7 @@ export const EatFormContainer = connect(
 const PutIntoStorage = ({entityIds, details, handleSubmit, onSubmit, pristine, reset, submitting}) => {
   const singleStackableItem = entityIds.size === 1 && details.get("maxAmount") > 1;
 
-  return <Form horizontal autoComplete="off" onSubmit={handleSubmit(data =>
+  return <Form autoComplete="off" onSubmit={handleSubmit(data =>
     onSubmit(data.set("entityIds", entityIds))
   )} style={{
     maxWidth: "400px",
@@ -195,7 +195,7 @@ const PutIntoStorage = ({entityIds, details, handleSubmit, onSubmit, pristine, r
         <option value={storage.get("id")}>{storage.get("name")}</option>)}
     </Field>
     <Row>
-      <Col smOffset={3} sm={9}>
+      <Col sm={{span: 9, offset: 3}}>
         <Button type="submit" disabled={submitting || pristine}>Confirm</Button>
       </Col>
     </Row>

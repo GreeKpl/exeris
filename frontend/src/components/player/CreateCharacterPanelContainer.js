@@ -29,7 +29,7 @@ class CreateCharacterPanel extends React.Component {
   }
 
   render() {
-    return <Form autoComplete="off" horizontal>
+    return <Form autoComplete="off">
       <Form.Group controlId="characterName">
         <Col sm={3}>
           Character name
@@ -43,7 +43,7 @@ class CreateCharacterPanel extends React.Component {
       </Form.Group>
 
       <Form.Group>
-        <Col smOffset={3} sm={9}>
+        <Col sm={{span: 9, offset: 3}}>
           <Button type="submit" onClick={this.onClick}>
             Create character
           </Button>

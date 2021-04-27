@@ -17,13 +17,14 @@ const AppContainer = () => {
   useEffect(() => {
     const socket = setupSocketio();
     const store = createStore(socket);
+    const newHistory = createBrowserHistory();
+    setStore(store);
+    setHistory(newHistory);
     for (let module of Object.values(duckModules)) {
       if ("setUpSocketioListeners" in module) {
-        module.setUpSocketioListeners(store.dispatch, socket);
+        module.setUpSocketioListeners(store.dispatch, socket, newHistory);
       }
     }
-    setStore(store);
-    setHistory(createBrowserHistory());
   }, []);
 
   if (!store || !history) {

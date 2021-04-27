@@ -2,7 +2,9 @@ import io from "socket.io-client";
 
 
 const setupSocketio = () => {
-  const socket = io.connect('//' + window.location.hostname + ':' + window.location.port);
+  const socket = io.connect('//' + window.location.hostname + ':' + window.location.port, {
+    path: "/api/socket.io",
+  });
 
   socket.on("reset_connection", () => {
     socket.io.disconnect();

@@ -8,7 +8,7 @@ export const Appearance = ({shortDescription, longDescription}) => {
     <Card>
       <Card.Header>Appearance</Card.Header>
       <Card.Body>
-        <Form autoComplete="off" horizontal>
+        <Form autoComplete="off">
           <Form.Group controlId="shortDescriptionTextarea">
             <Col componentClass={Form.Label} sm={3}>
               Short description

@@ -23,8 +23,8 @@ configuredI18n.init({
     load: "languageOnly",
     debug: true,
     backend: {
-      loadPath: "/static/{{lng}}.json",
-      addPath: '/report_missing_tag',
+      loadPath: "/api/static/{{lng}}.json",
+      addPath: '/api/report_missing_tag',
     },
     saveMissing: true,
     prefix: "%{",

@@ -52,7 +52,7 @@
 
                 {% if logged_in %}
                     <a href="{{ url_for("player.page_player") }}" class="btn btn-default">Player dashboard</a>
-                    <a href="/logout" class="btn btn-default">Logout</a>
+                    <a href="/api/logout" class="btn btn-default">Logout</a>
                 {% else %}
                     {% include "security/_menu.html" %}
                 {% endif %}

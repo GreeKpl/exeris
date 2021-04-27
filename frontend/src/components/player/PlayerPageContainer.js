@@ -3,16 +3,15 @@ import {fromPlayerState, getOwnCharactersList, requestOwnCharactersList} from ".
 import React, {useEffect} from "react";
 import TopBarContainer from "./topBar/TopBarContainer";
 import NotificationsContainer from "../commons/notifications/NotificationsContainer";
-import {Redirect, Route, Switch, withRouter} from "react-router";
+import {Redirect, Route, Switch} from "react-router";
 import DashboardContainer from "./DashboardContainer";
-import {compose} from "redux";
 
 const PlayerPage = ({characterIdsList, requestState}) => {
   useEffect(() => {
     if (characterIdsList.size === 0) {
       requestState();
     }
-  }, []);
+  }, [characterIdsList, requestState]);
 
   return <div>
     <div style={{

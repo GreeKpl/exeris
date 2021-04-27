@@ -10,7 +10,7 @@ class MapInfo extends React.Component {
       <Card>
         <Card.Header>World map</Card.Header>
         <Card.Body>
-          <img src={"/character/" + this.props.characterId + "/map_image?" + this.props.travelTick}
+          <img src={"/api/character/" + this.props.characterId + "/map_image?" + this.props.travelTick}
                style={{maxWidth: "100%"}}/>
         </Card.Body>
       </Card>

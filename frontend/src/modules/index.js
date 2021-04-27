@@ -9,6 +9,7 @@ import * as recipes from "./recipes";
 import * as speech from "./speech";
 import * as details from "./details";
 import * as travel from "./travel";
+import * as session from "./session";
 
 export {
   charactersAround,
@@ -22,4 +23,5 @@ export {
   speech,
   details,
   travel,
+  session,
 };

@@ -26,10 +26,10 @@ class CombatTopPanel extends React.Component {
       </Row>;
     } else {
       topPart = <Row>
-        <Col xs={6} md={2} mdOffset={6}>
+        <Col xs={6} md={{span: 2, offset: 6}}>
           <Button>Join attacker</Button>
         </Col>
-        <Col xs={6} md={2} mdOffset={6}>
+        <Col xs={6} md={{span: 2, offset: 6}}>
           <Button>Join defender</Button>
         </Col>
       </Row>;

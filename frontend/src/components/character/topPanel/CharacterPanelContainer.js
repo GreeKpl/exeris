@@ -86,7 +86,7 @@ class CharacterPanel extends React.Component {
           <Container fluid>
             <Row>
               <Col xs={12} md={3}>
-                <Form autoComplete="off" horizontal>
+                <Form autoComplete="off">
                   {this.state.nameBeingEdited ? <CharacterNameEditBox
                     newName={this.state.newName}
                     onNewNameChange={this.onNewNameChange}
@@ -147,7 +147,7 @@ class CharacterPanel extends React.Component {
                 </Form.Group>
               </Col>
               <Col xs={12} md={6}>
-                <Form autoComplete="off" horizontal>
+                <Form autoComplete="off">
                   <Form.Group controlId="shortDescription">
                     <Row>
                       <Col componentClass={Form} sm={3}>
