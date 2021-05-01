@@ -1,0 +1,30 @@
+version: '3.3'
+services:
+    backend:
+        build:
+            context: ../backend
+            dockerfile: Dockerfile.prod
+        depends_on:
+         - postgres
+         - redis
+        environment:
+          - EXERIS_CONFIG_PATH=config/game_config.py
+        volumes:
+          - "./game_config.py:/app/exeris/config/game_config.py"
+    postgres:
+        image: postgis/postgis:13-3.0-alpine
+        environment:
+          - POSTGRES_DB=${DB_NAME?}
+          - POSTGRES_PASSWORD=${DB_PASSWORD?}
+    redis:
+        image: redis:6.0.9-alpine
+    frontend:
+        build:
+            context: ../frontend
+            dockerfile: Dockerfile
+        volumes:
+          - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        ports:
+          - "8089:80"
+        depends_on:
+          - backend
